@@ -1,6 +1,6 @@
 # Runtime dependencies. Compile the hashed lock file with:
 #   uv pip compile --universal --generate-hashes --python-version 3.13 requirements.in -o requirements.txt
-Django>=5.2.17,<5.3            # LTS, security support until 04/2028
+Django>=6.1.1,<6.2            # LTS, security support until 04/2028
 djangorestframework>=3.16,<3.19
 djangorestframework-camel-case==1.4.2
 django-filter>=25.1
