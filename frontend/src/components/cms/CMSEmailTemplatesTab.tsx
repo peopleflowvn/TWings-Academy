@@ -40,10 +40,8 @@ import {
   renderEmailTemplate, 
   sendEmailWithResend,
   extractOrderEmailVariables,
-  getSavedResendApiKey,
-  setSavedResendApiKey,
-  getSavedResendFrom,
-  setSavedResendFrom,
+  isLiveEmailEnabled,
+  SENDER_DISPLAY,
   getSavedEmailSendLogs,
   getSavedWebhookConfig,
   processIncomingWebhookEvent
@@ -103,8 +101,6 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
   // Modals state
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showWebhookModal, setShowWebhookModal] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState(getSavedResendApiKey());
-  const [fromEmailInput, setFromEmailInput] = useState(getSavedResendFrom());
 
   // Load persistent logs on mount
   useEffect(() => {
@@ -183,15 +179,6 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
     }
   };
 
-  const handleSaveApiConfig = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavedResendApiKey(apiKeyInput);
-    setSavedResendFrom(fromEmailInput);
-    setShowConfigModal(false);
-    showToast('Đã lưu cấu hình kết nối Resend API!');
-    confetti({ particleCount: 35, spread: 60, origin: { y: 0.5 } });
-  };
-
   const handleSendTestEmail = async () => {
     if (!testEmailTo.trim()) {
       alert('Vui lòng nhập địa chỉ email nhận thư.');
@@ -248,7 +235,7 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
   const previewVariables = extractOrderEmailVariables(previewOrder);
   const renderedPreviewBody = renderEmailTemplate(editBody, previewVariables);
   const renderedPreviewSubject = renderEmailTemplate(editSubject, previewVariables);
-  const hasLiveApiKey = !!getSavedResendApiKey() && getSavedResendApiKey().startsWith('re_');
+  const hasLiveApiKey = isLiveEmailEnabled();
   const webhookConfig = getSavedWebhookConfig();
 
   const AVAILABLE_VARIABLES = [
@@ -300,7 +287,7 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
               className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-700 flex items-center gap-2 transition-colors cursor-pointer"
             >
               <Settings className="w-4 h-4 text-slate-300" />
-              <span>Cài Đặt API Key</span>
+              <span>Cấu Hình Gửi Thư</span>
             </button>
 
             <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border ${
@@ -754,24 +741,11 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
               </div>
 
               <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/80 space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="font-semibold flex items-center gap-1">
-                    <Key className="w-3 h-3 text-emerald-400" /> Signing Secret (Xác thực chữ ký Svix):
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(webhookConfig.signingSecret);
-                      showToast('Đã sao chép Signing Secret vào clipboard!');
-                    }}
-                    className="text-emerald-300 hover:text-white font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Copy className="w-3 h-3" />
-                    <span>Sao chép</span>
-                  </button>
+                <div className="text-[11px] text-slate-400 font-semibold flex items-center gap-1">
+                  <Key className="w-3 h-3 text-emerald-400" /> Signing Secret (Xác thực chữ ký Svix):
                 </div>
-                <div className="font-mono text-emerald-300 text-xs truncate bg-slate-900/90 p-2 rounded-lg border border-slate-700 select-all">
-                  {webhookConfig.signingSecret}
+                <div className="text-emerald-300 text-xs bg-slate-900/90 p-2 rounded-lg border border-slate-700">
+                  Lưu an toàn trên máy chủ (RESEND_WEBHOOK_SECRET) – không hiển thị trên trình duyệt.
                 </div>
               </div>
             </div>
@@ -1018,65 +992,38 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
               </button>
             </div>
 
-            <form onSubmit={handleSaveApiConfig} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Resend API Key:
-                </label>
-                <input
-                  type="password"
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  placeholder="re_123456789..."
-                  className="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 font-mono focus:bg-white focus:outline-none focus:border-[#0073C1]"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Nếu để trống, hệ thống sẽ tự động chuyển sang chế độ <strong>Developer Sandbox</strong> để test an toàn.
-                </p>
+            <div className="space-y-4 text-xs text-slate-700">
+              <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50">
+                <span className="font-bold">Chế độ gửi:</span>
+                <span className={hasLiveApiKey ? 'text-emerald-700 font-bold' : 'text-blue-700 font-bold'}>
+                  {hasLiveApiKey ? 'Resend Live (qua máy chủ TWings)' : 'Sandbox mô phỏng'}
+                </span>
               </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Địa Chỉ Người Gửi (Sender / From):
-                </label>
-                <input
-                  type="text"
-                  value={fromEmailInput}
-                  onChange={(e) => setFromEmailInput(e.target.value)}
-                  placeholder="TWings x MSB <onboarding@resend.dev>"
-                  className="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 font-mono focus:bg-white focus:outline-none focus:border-[#0073C1]"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Mặc định: <code className="bg-slate-100 px-1 rounded text-slate-700">onboarding@resend.dev</code> (tên miền test của Resend).
-                </p>
+              <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50">
+                <span className="font-bold">Người gửi:</span>
+                <span className="font-mono text-[11px]">{SENDER_DISPLAY}</span>
               </div>
-
               <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-[11px] text-blue-900 space-y-1">
                 <div className="font-bold flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
                   <span>Cơ Chế Bảo Mật Resend</span>
                 </div>
                 <p>
-                  Khóa API được lưu cục bộ trong trình duyệt an toàn của bạn. Hệ thống hỗ trợ phát email thật tới bất kỳ hòm thư học viên nào có trong cơ sở dữ liệu.
+                  Khóa API Resend chỉ tồn tại trên máy chủ (biến môi trường <code>RESEND_API_KEY</code>). Trình duyệt chỉ gửi yêu cầu
+                  đã xác thực tới API TWings; máy chủ kiểm tra quyền <code>email.send</code>, ghi nhật ký và gọi Resend.
+                  Thay đổi khóa hoặc địa chỉ gửi bằng cách cập nhật tệp <code>.env</code> trên VPS.
                 </p>
               </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={() => setShowConfigModal(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
                   className="px-5 py-2 text-xs font-bold bg-[#0073C1] hover:bg-[#005fa3] text-white rounded-xl shadow-xs"
                 >
-                  Lưu Cấu Hình
+                  Đóng
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

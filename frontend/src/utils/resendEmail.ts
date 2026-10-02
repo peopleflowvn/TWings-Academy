@@ -1,4 +1,5 @@
 import { EmailTemplate, EmailSendLog, Order, ResendWebhookConfig, ResendWebhookEvent, ResendEmailStatus } from '../types';
+import { api, API_ROOT, isBackendEnabled } from '../lib/api';
 
 /**
  * PRODUCTION-GRADE RESPONSIVE HTML EMAIL TEMPLATES
@@ -651,56 +652,30 @@ export const INITIAL_EMAIL_SEND_LOGS: EmailSendLog[] = [
 ];
 
 export const INITIAL_WEBHOOK_CONFIG: ResendWebhookConfig = {
-  webhookUrl: typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/resend` : 'https://twings.edu.vn/api/webhooks/resend',
-  signingSecret: 'whsec_9a8b7c6d5e4f3a2b1c0d_msb',
+  webhookUrl: API_ROOT ? `${API_ROOT}/webhooks/resend/` : '(chưa cấu hình VITE_API_BASE_URL)',
+  // The real signing secret (whsec_...) lives only on the server as RESEND_WEBHOOK_SECRET.
+  signingSecret: '',
   enabledEvents: ['email.sent', 'email.delivered', 'email.opened', 'email.clicked', 'email.bounced'],
-  status: 'active',
-  lastPingAt: '02/10/2026 09:43:10'
+  status: isBackendEnabled() ? 'active' : 'not_configured'
 };
 
 /**
- * Storage helpers for Resend API Key & From Email
+ * Live delivery happens only through the backend, which holds RESEND_API_KEY.
+ * The browser never sees or stores a Resend API key.
  */
-export function getSavedResendApiKey(): string {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem('resend_api_key') || (import.meta as any).env?.VITE_RESEND_API_KEY || '';
+export function isLiveEmailEnabled(): boolean {
+  return isBackendEnabled();
 }
 
-export function setSavedResendApiKey(key: string): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem('resend_api_key', key.trim());
-}
-
-export function getSavedResendFrom(): string {
-  if (typeof window === 'undefined') return 'TWings x MSB <onboarding@resend.dev>';
-  return localStorage.getItem('resend_from_email') || 'TWings x MSB <onboarding@resend.dev>';
-}
-
-export function setSavedResendFrom(fromEmail: string): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem('resend_from_email', fromEmail.trim());
-}
+export const SENDER_DISPLAY = isBackendEnabled()
+  ? 'Cấu hình trên máy chủ (RESEND_FROM_EMAIL)'
+  : 'Sandbox – không gửi thư thật';
 
 /**
  * Resend Webhook Config storage
  */
 export function getSavedWebhookConfig(): ResendWebhookConfig {
-  if (typeof window === 'undefined') return INITIAL_WEBHOOK_CONFIG;
-  try {
-    const raw = localStorage.getItem('twings_resend_webhook_config');
-    if (raw) return JSON.parse(raw);
-  } catch {
-    // fallback
-  }
-  return {
-    ...INITIAL_WEBHOOK_CONFIG,
-    webhookUrl: `${window.location.origin}/api/webhooks/resend`
-  };
-}
-
-export function setSavedWebhookConfig(cfg: ResendWebhookConfig): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem('twings_resend_webhook_config', JSON.stringify(cfg));
+  return INITIAL_WEBHOOK_CONFIG;
 }
 
 /**
@@ -798,12 +773,6 @@ export function processIncomingWebhookEvent(event: ResendWebhookEvent): { update
     logs[index] = log;
     localStorage.setItem('twings_resend_send_logs', JSON.stringify(logs));
 
-    // Update webhook config lastPingAt
-    const cfg = getSavedWebhookConfig();
-    cfg.lastPingAt = now;
-    cfg.status = 'active';
-    setSavedWebhookConfig(cfg);
-
     return { updatedLog: log };
   }
 
@@ -864,62 +833,41 @@ export async function sendEmailWithResend(params: {
   templateName?: string;
   recipientName?: string;
 }): Promise<{ success: boolean; messageId: string; status: ResendEmailStatus; error?: string; isLiveApi?: boolean }> {
-  const apiKey = getSavedResendApiKey();
-  const fromEmail = getSavedResendFrom();
-
-  // 1. If valid Resend API key is available (starts with re_), attempt direct Resend REST API call
-  if (apiKey && apiKey.startsWith('re_')) {
+  // 1. Live delivery via the TWings backend (holds the Resend key server-side)
+  if (isBackendEnabled()) {
     try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey.trim()}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: fromEmail || 'onboarding@resend.dev',
-          to: [params.to],
+      const data = await api.post<{ id: string; resendMessageId: string; status: ResendEmailStatus }>(
+        '/notifications/emails/send/',
+        {
+          to: params.to,
           subject: params.subject,
-          html: params.html
-        })
+          html: params.html,
+          templateCode: params.templateId,
+          recipientName: params.recipientName
+        }
+      );
+      saveEmailSendLog({
+        id: data.id,
+        templateId: params.templateId || 'custom',
+        templateName: params.templateName || 'Email tùy chỉnh',
+        recipientEmail: params.to,
+        recipientName: params.recipientName || params.to.split('@')[0],
+        subject: params.subject,
+        sentAt: new Date().toLocaleString('vi-VN'),
+        status: data.status,
+        resendMessageId: data.resendMessageId,
+        webhookEvents: [
+          { type: 'email.sent', timestamp: new Date().toLocaleString('vi-VN'), details: 'Đã phát qua máy chủ TWings → Resend' }
+        ]
       });
-
-      const data = await response.json();
-      if (response.ok && data.id) {
-        const logEntry: EmailSendLog = {
-          id: `log-${Date.now()}`,
-          templateId: params.templateId || 'custom',
-          templateName: params.templateName || 'Email tùy chỉnh',
-          recipientEmail: params.to,
-          recipientName: params.recipientName || params.to.split('@')[0],
-          subject: params.subject,
-          sentAt: new Date().toLocaleString('vi-VN'),
-          status: 'sent',
-          resendMessageId: data.id,
-          renderedHtml: params.html,
-          webhookEvents: [
-            { type: 'email.sent', timestamp: new Date().toLocaleString('vi-VN'), details: 'Đã phát đi thành công qua Resend Live API' }
-          ]
-        };
-        saveEmailSendLog(logEntry);
-
-        return {
-          success: true,
-          messageId: data.id,
-          status: 'sent',
-          isLiveApi: true
-        };
-      } else {
-        const errMsg = data.message || data.error?.message || 'Lỗi gửi email qua Resend API';
-        return {
-          success: false,
-          messageId: '',
-          status: 'failed',
-          error: errMsg
-        };
-      }
-    } catch (err: any) {
-      console.warn('Resend direct fetch failed, falling back to simulated sandbox:', err);
+      return { success: true, messageId: data.resendMessageId, status: data.status, isLiveApi: true };
+    } catch (err) {
+      return {
+        success: false,
+        messageId: '',
+        status: 'failed',
+        error: err instanceof Error ? err.message : 'Lỗi gửi email qua máy chủ'
+      };
     }
   }
 

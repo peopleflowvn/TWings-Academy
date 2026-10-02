@@ -169,6 +169,21 @@ export const COHORT_STATUS_CONFIG: Record<
   }
 };
 
+const normalizeCohortLabel = (s: string | undefined) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+/**
+ * True when a lead's free-text cohort label refers to the given cohort name: exact match, or the
+ * label is a less specific prefix ending on a word boundary ("Khóa học 8" → "Khóa học 8 - Hà Nội",
+ * but never "Khóa học 1" → "Khóa học 10"). Empty labels never match.
+ */
+export function cohortLabelMatches(label: string | undefined, cohortName: string): boolean {
+  const l = normalizeCohortLabel(label);
+  const n = normalizeCohortLabel(cohortName);
+  if (!l || !n) return false;
+  if (l === n) return true;
+  return n.startsWith(l) && !/[\p{L}\p{N}]/u.test(n.charAt(l.length));
+}
+
 /**
  * Resolves the active cohort for a course when an inbound lead arrives.
  * If the preferred cohort is full or in_progress, it automatically routes to the next opening cohort.
@@ -180,9 +195,9 @@ export function resolveActiveCohortForCourse(
 ): { assignedCohort: CourseCohort; wasRerouted: boolean; originalCohortName?: string } {
   // If user specified a cohort, check its status
   if (preferredCohortName) {
-    const matched = cohorts.find(
-      (c) => c.name.toLowerCase() === preferredCohortName.toLowerCase() || preferredCohortName.toLowerCase().includes(c.name.toLowerCase())
-    );
+    const matched =
+      cohorts.find((c) => normalizeCohortLabel(c.name) === normalizeCohortLabel(preferredCohortName)) ||
+      cohorts.find((c) => c.courseId === courseId && cohortLabelMatches(preferredCohortName, c.name));
     if (matched) {
       if (matched.status === 'opening') {
         return { assignedCohort: matched, wasRerouted: false };
@@ -220,8 +235,7 @@ export function rolloverLeadsToNextCohort(
 
   const updatedOrders = orders.map((ord) => {
     // Only migrate leads that are NOT paid yet and match the fromCohort
-    const matchesCohort = (ord.batchCohort || '').toLowerCase().includes(fromCohortName.toLowerCase()) ||
-      fromCohortName.toLowerCase().includes((ord.batchCohort || '').toLowerCase());
+    const matchesCohort = cohortLabelMatches(ord.batchCohort, fromCohortName);
 
     const isPending = ord.status !== 'paid' && ord.crmStatus !== '5. Đã đóng phí';
 

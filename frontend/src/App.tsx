@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { 
   Course, 
   Order, 
@@ -31,10 +31,14 @@ import { CourseraCatalogPage } from './components/CourseraCatalogPage';
 import { CourseraCourseDetailPage } from './components/CourseraCourseDetailPage';
 import { CourseraArticlesPage } from './components/CourseraArticlesPage';
 import { CourseraArticleDetailPage } from './components/CourseraArticleDetailPage';
-import { CourseraCMSAdmin } from './components/CourseraCMSAdmin';
 import { CourseraCheckoutModal } from './components/CourseraCheckoutModal';
 import { RegistrationModal } from './components/RegistrationModal';
 import { YouTubeTrialModal } from './components/YouTubeTrialModal';
+
+// The CMS is only needed by staff: keep it out of the public bundle.
+const CourseraCMSAdmin = lazy(() =>
+  import('./components/CourseraCMSAdmin').then((m) => ({ default: m.CourseraCMSAdmin }))
+);
 
 export default function App() {
   // Navigation View State (User: "Bỏ chế độ bàn học của tôi đi", thêm bài viết chuẩn SEO, CMS CRM)
@@ -108,6 +112,7 @@ export default function App() {
   // CMS Portal View
   if (currentView === 'cms') {
     return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Đang tải CMS…</div>}>
       <CourseraCMSAdmin
         courses={courses}
         orders={orders}
@@ -131,6 +136,7 @@ export default function App() {
         }}
         onBackToHome={() => handleNavigate('home')}
       />
+      </Suspense>
     );
   }
 

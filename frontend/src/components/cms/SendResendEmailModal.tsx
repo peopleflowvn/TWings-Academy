@@ -27,8 +27,8 @@ import {
   extractOrderEmailVariables,
   renderEmailTemplate,
   sendEmailWithResend,
-  getSavedResendApiKey,
-  getSavedResendFrom
+  isLiveEmailEnabled,
+  SENDER_DISPLAY
 } from '../../utils/resendEmail';
 
 interface SendResendEmailModalProps {
@@ -85,8 +85,8 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
   if (!isOpen) return null;
 
   const currentTemplate = INITIAL_EMAIL_TEMPLATES.find((t) => t.id === selectedTemplateId) || INITIAL_EMAIL_TEMPLATES[0];
-  const hasLiveApiKey = !!getSavedResendApiKey() && getSavedResendApiKey().startsWith('re_');
-  const senderFrom = getSavedResendFrom();
+  const hasLiveApiKey = isLiveEmailEnabled();
+  const senderFrom = SENDER_DISPLAY;
 
   const handleSend = async () => {
     if (!recipientEmail || !recipientEmail.includes('@')) {

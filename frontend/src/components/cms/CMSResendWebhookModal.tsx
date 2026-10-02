@@ -24,7 +24,6 @@ import confetti from 'canvas-confetti';
 import { ResendWebhookConfig, ResendWebhookEvent, EmailSendLog } from '../../types';
 import {
   getSavedWebhookConfig,
-  setSavedWebhookConfig,
   getSavedWebhookEvents,
   processIncomingWebhookEvent,
   getSavedEmailSendLogs
@@ -41,11 +40,9 @@ export const CMSResendWebhookModal: React.FC<CMSResendWebhookModalProps> = ({
   onClose,
   onWebhookProcessed
 }) => {
-  const [config, setConfig] = useState<ResendWebhookConfig>(getSavedWebhookConfig());
-  const [signingSecretInput, setSigningSecretInput] = useState(config.signingSecret);
+  const [config] = useState<ResendWebhookConfig>(getSavedWebhookConfig());
   const [eventsList, setEventsList] = useState<ResendWebhookEvent[]>(getSavedWebhookEvents());
   const [copiedUrl, setCopiedUrl] = useState(false);
-  const [copiedSecret, setCopiedSecret] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Simulation controls
@@ -67,19 +64,6 @@ export const CMSResendWebhookModal: React.FC<CMSResendWebhookModalProps> = ({
     setCopiedUrl(true);
     showToast('Đã sao chép Webhook URL vào clipboard!');
     setTimeout(() => setCopiedUrl(false), 2000);
-  };
-
-  const handleSaveSecret = (e: React.FormEvent) => {
-    e.preventDefault();
-    const updated = {
-      ...config,
-      signingSecret: signingSecretInput.trim(),
-      status: 'active' as const
-    };
-    setConfig(updated);
-    setSavedWebhookConfig(updated);
-    showToast('Đã lưu Signing Secret thành công!');
-    confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 } });
   };
 
   const handleTriggerSimulatedWebhook = () => {
@@ -236,30 +220,17 @@ export const CMSResendWebhookModal: React.FC<CMSResendWebhookModalProps> = ({
                 </p>
               </div>
 
-              {/* Signing Secret Box */}
-              <form onSubmit={handleSaveSecret} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+              {/* Signing Secret Box: the secret is never exposed to the browser */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
                   Webhook Signing Secret (<code className="text-indigo-600">whsec_...</code>):
                 </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={signingSecretInput}
-                    onChange={(e) => setSigningSecretInput(e.target.value)}
-                    placeholder="whsec_1234567890abcdef..."
-                    className="flex-1 p-2.5 bg-white border border-slate-300 rounded-xl font-mono text-xs text-slate-900 focus:outline-none focus:border-[#0073C1]"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shrink-0"
-                  >
-                    Lưu Secret
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Dùng để xác thực chữ ký số HMAC-SHA256 gửi trong header <code className="bg-white px-1 rounded border">svix-signature</code> của Resend.
+                <p className="text-[11px] text-slate-600">
+                  Secret chỉ được lưu trên máy chủ dưới biến môi trường <code className="bg-white px-1 rounded border">RESEND_WEBHOOK_SECRET</code>,
+                  không bao giờ hiển thị hay lưu trên trình duyệt. Máy chủ xác thực chữ ký HMAC-SHA256 trong header{' '}
+                  <code className="bg-white px-1 rounded border">svix-signature</code> và từ chối mọi yêu cầu sai chữ ký hoặc quá 5 phút.
                 </p>
-              </form>
+              </div>
 
               {/* Monitored Events Matrix */}
               <div className="space-y-2">
