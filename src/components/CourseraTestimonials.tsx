@@ -1,8 +1,16 @@
 import React from 'react';
 import { Quote, TrendingUp, CheckCircle, Star } from 'lucide-react';
 import { TESTIMONIALS } from '../data/courseraData';
+import { CMSSectionsConfig } from '../types';
 
-export const CourseraTestimonials: React.FC = () => {
+interface CourseraTestimonialsProps {
+  config?: CMSSectionsConfig['testimonials'];
+}
+
+export const CourseraTestimonials: React.FC<CourseraTestimonialsProps> = ({ config }) => {
+  const title = config?.title || 'Từ cộng đồng học viên & cựu sinh viên TWings Academy';
+  const subtitle = config?.subtitle || 'Báo cáo khảo sát thực tế: 92% học viên sau khi hoàn thành khóa đào tạo thực chiến tại TWings đã tự tin trúng tuyển vào các ngân hàng thương mại lớn (MSB, Techcombank, VPBank, MB) hoặc được nâng bậc lương/chức danh.';
+
   return (
     <section className="bg-slate-50 py-12 sm:py-16 border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
@@ -12,10 +20,10 @@ export const CourseraTestimonials: React.FC = () => {
             <span>Kết Quả Sự Nghiệp Thực Tế</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Từ cộng đồng học viên Coursera toàn cầu
+            {title}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-600">
-            <span className="font-bold text-[#0056D2]">77% người học</span> báo cáo đạt được lợi ích sự nghiệp rõ ràng: được thăng chức, tăng lương hoặc chuyển sang vai trò công nghệ mới.
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            {subtitle}
           </p>
         </div>
 
@@ -23,7 +31,7 @@ export const CourseraTestimonials: React.FC = () => {
           {TESTIMONIALS.map((t) => (
             <div
               key={t.id}
-              className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative"
+              className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow relative"
             >
               <div className="space-y-4">
                 <Quote className="w-8 h-8 text-blue-200/80" />

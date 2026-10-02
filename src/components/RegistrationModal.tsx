@@ -140,7 +140,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
           <div className="space-y-1">
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-200 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>TWINGS ACADEMY & COURSERA</span>
+              <span>TWINGS ACADEMY · ĐÀO TẠO THỰC CHIẾN</span>
             </span>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight">
               ĐĂNG KÝ TƯ VẤN KHÓA HỌC

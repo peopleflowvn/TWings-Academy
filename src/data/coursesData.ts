@@ -1,4 +1,47 @@
-import { Course, Coupon, Order, StudentEnrollment, Instructor, CMSSectionsConfig, PartnerItem, GalleryPhoto } from '../types';
+import { Course, Coupon, Order, StudentEnrollment, Instructor, CMSSectionsConfig, PartnerItem, GalleryPhoto, CourseReview } from '../types';
+
+export const DEFAULT_COURSE_REVIEWS: CourseReview[] = [
+  {
+    id: 'rev-1',
+    studentName: 'Nguyễn Thị Khánh Linh',
+    role: 'Chuyên viên Tín dụng SME - MSB Sở Giao Dịch',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+    rating: 5,
+    date: '15/09/2026',
+    comment: 'Khóa học cực kỳ thực tế! Nhờ được các thầy cô là Giám đốc MSB trực tiếp hướng dẫn cách đọc báo cáo CIC và thẩm định thực địa, em đã vượt qua kỳ phỏng vấn và hiện tại đã đạt 150% chỉ tiêu KPI giải ngân ngay tháng đầu.',
+    verifiedStudent: true
+  },
+  {
+    id: 'rev-2',
+    studentName: 'Trần Quốc Huy',
+    role: 'RM Bán Lẻ - MSB Chi nhánh TP.HCM',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+    rating: 5,
+    date: '02/09/2026',
+    comment: 'Trước đây em là sinh viên mới ra trường rất sợ gọi điện thoại và tiếp cận khách hàng VIP. Sau khóa học này với bộ kịch bản chốt sale thực chiến, em tự tin tư vấn gói vay mua nhà và thẻ tín dụng cao cấp.',
+    verifiedStudent: true
+  },
+  {
+    id: 'rev-3',
+    studentName: 'Lê Hoàng Long',
+    role: 'Chuyên viên Thẩm định Khách hàng Cá nhân',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+    rating: 5,
+    date: '20/08/2026',
+    comment: 'Học liệu rất chuẩn mực, các biểu mẫu hồ sơ đều là tài liệu thật đang áp dụng tại hệ thống ngân hàng. Đặc biệt phần YouTube học thử giúp mình xem trước được chất lượng giảng dạy trước khi quyết định đăng ký.',
+    verifiedStudent: true
+  },
+  {
+    id: 'rev-4',
+    studentName: 'Phạm Minh Trang',
+    role: 'Chuyên viên Quản lý Khách hàng Priority',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    rating: 5,
+    date: '10/08/2026',
+    comment: 'Được học trực tiếp cùng cô Vũ Thu Phương về thương hiệu cá nhân giúp mình nâng tầm phong thái giao tiếp, thấu hiểu tâm lý của khách hàng giàu có khi tư vấn giải pháp tài chính.',
+    verifiedStudent: true
+  }
+];
 
 export const REAL_INSTRUCTORS: Instructor[] = [
   {
@@ -39,8 +82,11 @@ export const INITIAL_COURSES: Course[] = [
     slug: 'quan-he-khach-hang-ca-nhan',
     title: 'Quan hệ Khách hàng cá nhân',
     subtitle: 'Nghiệp vụ cốt lõi thẩm định tín dụng cá nhân, khai thác nhu cầu tài chính và kỹ năng chốt sale sản phẩm thẻ, tiền gửi, vay mua nhà tại ngân hàng.',
+    overview: 'Khóa học Quan hệ Khách hàng Cá nhân tại TWings Academy được thiết kế và trực tiếp dẫn dắt bởi các Giám đốc Khối Ngân hàng Bán lẻ MSB. Học viên được đào tạo theo mô hình "Cầm tay chỉ việc", trực tiếp xử lý các bộ hồ sơ vay vốn, mở thẻ tín dụng thực tế từ ngân hàng thương mại, nắm vững kỹ thuật đọc báo cáo CIC và tự tin vượt qua các vòng phỏng vấn tuyển dụng.',
     category: 'Ngân Hàng & Tín Dụng',
     level: 'Chuyên viên Mới (Fresher)',
+    deliveryFormat: 'online_external_lms',
+    locationText: 'Học qua LMS chuyên biệt + Cố vấn 1-1 & Thực tập tại MSB',
     price: 7599000,
     originalPrice: 9500000,
     rating: 5.0,
@@ -50,7 +96,17 @@ export const INITIAL_COURSES: Course[] = [
     lessonsCount: 36,
     badgeType: 'bestseller',
     thumbnail: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80',
+    youtubeVideoId: 'sal78ACtGTc',
+    youtubeTrialUrl: 'https://www.youtube.com/watch?v=sal78ACtGTc',
     instructor: REAL_INSTRUCTORS[0],
+    instructors: [REAL_INSTRUCTORS[0], REAL_INSTRUCTORS[1]],
+    reviews: DEFAULT_COURSE_REVIEWS,
+    guarantees: [
+      'Bảo lãnh cơ hội thực tập & giới thiệu việc làm tại MSB',
+      'Cấp tài khoản cá nhân trên hệ thống LMS chuyên biệt',
+      'Cố vấn 1-1 cùng Giám đốc Khối ngân hàng thương mại',
+      'Chứng chỉ hoàn thành có giá trị công nhận trong hồ sơ tuyển dụng'
+    ],
     highlights: [
       'Bộ hồ sơ mẫu thẩm định tín dụng thực tế từ ngân hàng thương mại',
       'Kỹ năng phỏng vấn xác thực nguồn thu nhập và lịch sử tín dụng CIC',
@@ -223,8 +279,11 @@ export const INITIAL_COURSES: Course[] = [
     slug: 'quan-he-khach-hang-doanh-nghiep',
     title: 'Quan hệ Khách hàng Doanh nghiệp',
     subtitle: 'Chuyên sâu thẩm định tài chính doanh nghiệp, phân tích dòng tiền, cơ cấu tài sản bảo đảm và đàm phán hợp đồng cấp tín dụng lớn.',
+    overview: 'Chương trình đào tạo chuyên sâu dành cho chuyên viên quan hệ khách hàng doanh nghiệp (Corporate RM). Học viên được hướng dẫn trực tiếp bởi Giám đốc Bán hàng Toàn quốc Đặng Văn Thành và đội ngũ lãnh đạo Khối Khách hàng Doanh nghiệp MSB, phân tích 20 bộ báo cáo tài chính kiểm toán thực tế, bóc tách dòng tiền và đàm phán hạn mức tín dụng nghìn tỷ.',
     category: 'Ngân Hàng & Tín Dụng',
     level: 'Chuyên viên Chính',
+    deliveryFormat: 'hybrid',
+    locationText: 'Tòa ROX Tower, 54A Nguyễn Chí Thanh, Hà Nội & Hệ thống LMS',
     price: 7999000,
     originalPrice: 10500000,
     rating: 5.0,
@@ -234,7 +293,37 @@ export const INITIAL_COURSES: Course[] = [
     lessonsCount: 40,
     badgeType: 'recommended',
     thumbnail: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80',
+    youtubeVideoId: 'sal78ACtGTc',
+    youtubeTrialUrl: 'https://www.youtube.com/watch?v=sal78ACtGTc',
     instructor: REAL_INSTRUCTORS[1],
+    instructors: [REAL_INSTRUCTORS[1], REAL_INSTRUCTORS[2]],
+    reviews: [
+      {
+        id: 'rev-dn-1',
+        studentName: 'Võ Minh Quân',
+        role: 'Chuyên viên Quản lý Khách hàng Doanh nghiệp - MSB',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
+        rating: 5,
+        date: '12/09/2026',
+        comment: 'Phần bóc tách Báo cáo tài chính doanh nghiệp và dòng tiền của thầy Đặng Văn Thành quá đỉnh cao. Giúp mình phát hiện được các thủ thuật làm đẹp số liệu kế toán khi thẩm định cấp hạn mức tín dụng 50 tỷ.',
+        verifiedStudent: true
+      },
+      {
+        id: 'rev-dn-2',
+        studentName: 'Hoàng Bích Thủy',
+        role: 'Cố vấn Tín dụng Cao cấp',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+        rating: 5,
+        date: '28/08/2026',
+        comment: 'Các case study thẩm định hồ sơ tài sản bảo đảm và đàm phán với CFO rất sát thực tế tác nghiệp tại ngân hàng.',
+        verifiedStudent: true
+      }
+    ],
+    guarantees: [
+      'Bảo lãnh thực tập và phỏng vấn vào Khối KHDN tại MSB',
+      'Được đồng hành trực tiếp bởi các Giám đốc Vùng & Giám đốc Khối',
+      'Cấp tài khoản trọn đời trên hệ thống LMS TWings'
+    ],
     highlights: [
       'Phân tích 20 bộ Báo cáo tài chính doanh nghiệp kiểm toán thực tế',
       'Đánh giá rủi ro ngành sản xuất, thương mại xuất nhập khẩu và bất động sản',

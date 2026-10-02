@@ -24,7 +24,8 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Course, Module, Lesson, Order } from '../types';
+import { Course, Module, Lesson, Order, Instructor, CourseReview } from '../types';
+import { DEFAULT_COURSE_REVIEWS } from '../data/coursesData';
 
 interface CourseraCourseDetailPageProps {
   course: Course;
@@ -46,7 +47,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
   onQuickRegisterSuccess,
 }) => {
   const chapters = course.chapters || course.syllabus || [];
-  const instructor = course.instructor || course.instructors?.[0] || {
+  const defaultInstructor: Instructor = {
     id: 'inst-default',
     name: course.partner?.name || 'Giảng viên Chuyên gia MSB & TWINGS',
     title: 'Giám đốc Đào tạo & Thực chiến',
@@ -54,6 +55,14 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
     bio: 'Đội ngũ chuyên gia từ MSB, ROX Group và các viện nghiên cứu tài chính thiết kế và trực tiếp giảng dạy.',
     credential: course.partner?.name || 'Chứng chỉ Quốc tế'
   };
+
+  const instructorList: Instructor[] = (course.instructors && course.instructors.length > 0)
+    ? course.instructors
+    : (course.instructor ? [course.instructor] : [defaultInstructor]);
+
+  const reviewsList: CourseReview[] = (course.reviews && course.reviews.length > 0)
+    ? course.reviews
+    : DEFAULT_COURSE_REVIEWS;
 
   const objectives = course.objectives || course.learningObjectives || [
     'Nắm vững kiến thức nghiệp vụ thực chiến và cách xử lý hồ sơ tín dụng',
@@ -249,7 +258,26 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
               </div>
             </div>
 
-            {/* What you'll learn */}
+            {/* 1. Giới thiệu tổng quan khóa học */}
+            {(course.overview || course.description || course.subtitle) && (
+              <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-[#0073C1]" />
+                  <span>Giới thiệu khóa học & Mục tiêu nghề nghiệp</span>
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                  {course.overview || course.description || course.subtitle}
+                </p>
+                {course.locationText && (
+                  <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <MapPin className="w-4 h-4 text-[#0073C1] shrink-0" />
+                    <span><strong>Địa điểm đào tạo:</strong> {course.locationText}</span>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* 2. What you'll learn */}
             <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
               <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-500" />
@@ -268,7 +296,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
               </div>
             </section>
 
-            {/* Detailed Curriculum Syllabus */}
+            {/* 3. Detailed Curriculum Syllabus */}
             <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
                 <div>
@@ -352,24 +380,135 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
               </div>
             </section>
 
-            {/* Instructor Profile (Chuyên gia thực chiến MSB) */}
-            <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-              <h2 className="text-lg font-bold text-slate-900">Đội ngũ giảng viên thực chiến</h2>
-              <div className="flex flex-col sm:flex-row items-start gap-4">
-                <img
-                  src={instructor.avatar}
-                  alt={instructor.name}
-                  className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-2xs shrink-0"
-                />
-                <div className="space-y-1">
-                  <h3 className="font-bold text-base text-slate-900">{instructor.name}</h3>
-                  <div className="text-xs text-[#0073C1] font-semibold">{instructor.title}</div>
-                  <p className="text-xs text-slate-600 leading-relaxed pt-1">{instructor.bio}</p>
+            {/* 4. Đội ngũ Giảng viên thực chiến (Multi-Instructor Team) */}
+            <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Award className="w-5 h-5 text-amber-500" />
+                    <span>Đội ngũ Giảng viên & Chuyên gia Thực chiến ({instructorList.length})</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Các Giám đốc Khối, Giám đốc Vùng và Chuyên gia từ Ngân hàng MSB & Tập đoàn ROX Group
+                  </p>
                 </div>
+              </div>
+
+              <div className="space-y-6">
+                {instructorList.map((inst, idx) => (
+                  <div
+                    key={inst.id || idx}
+                    className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-2xl bg-slate-50/70 border border-slate-100 hover:border-slate-200 transition-all"
+                  >
+                    <img
+                      src={inst.avatar}
+                      alt={inst.name}
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-slate-200 shadow-xs shrink-0"
+                    />
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-bold text-base text-slate-900">{inst.name}</h3>
+                        {inst.credential && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-[#0073C1] font-bold">
+                            {inst.credential}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-[#0073C1] font-semibold">{inst.title}</div>
+                      <p className="text-xs text-slate-600 leading-relaxed pt-1">{inst.bio}</p>
+                      
+                      <div className="flex items-center gap-4 text-[11px] text-slate-500 pt-1 font-mono">
+                        <span className="flex items-center gap-1 text-amber-500 font-bold">
+                          <Star className="w-3.5 h-3.5 fill-current" />
+                          <span>{inst.rating ? inst.rating.toFixed(1) : '5.0'}</span>
+                        </span>
+                        <span>·</span>
+                        <span>{inst.studentsCount ? `${inst.studentsCount.toLocaleString()}+ học viên đã theo học` : '3,000+ học viên'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </section>
 
-            {/* Notice regarding LMS delivery */}
+            {/* 5. ⭐ ĐÁNH GIÁ & REVIEW TỪ CỰU HỌC VIÊN */}
+            <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Star className="w-5 h-5 text-amber-500 fill-current" />
+                    <span>Review & Đánh Giá Của Cựu Học Viên ({reviewsList.length})</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Trải nghiệm thực tế từ các học viên hiện đang công tác tại MSB và các ngân hàng lớn
+                  </p>
+                </div>
+
+                {/* Rating score badge */}
+                <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-2 rounded-2xl shrink-0">
+                  <div className="text-2xl font-black text-amber-600 font-mono">
+                    {course.rating.toFixed(1)}
+                  </div>
+                  <div className="text-xs">
+                    <div className="flex items-center text-amber-500">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                      ))}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-bold mt-0.5">
+                      100% Cựu học viên hài lòng
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Review Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {reviewsList.map((rev) => (
+                  <div
+                    key={rev.id}
+                    className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all space-y-3 flex flex-col justify-between"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-amber-400">
+                          {[...Array(rev.rating || 5)].map((_, i) => (
+                            <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                          ))}
+                        </div>
+                        <span className="text-[11px] text-slate-400 font-mono">{rev.date}</span>
+                      </div>
+
+                      <p className="text-xs text-slate-700 italic leading-relaxed">
+                        "{rev.comment}"
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                      <img
+                        src={rev.avatar}
+                        alt={rev.studentName}
+                        className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-xs text-slate-900 truncate">{rev.studentName}</span>
+                          {rev.verifiedStudent && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold flex items-center gap-0.5" title="Học viên đã hoàn thành khóa">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                              <span>Xác thực</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate">{rev.role}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* 6. Notice regarding LMS delivery */}
             <div className="bg-purple-50 p-5 rounded-3xl border border-purple-200 text-xs text-purple-900 space-y-1.5">
               <div className="font-bold flex items-center gap-1.5 text-sm">
                 <ShieldCheck className="w-4 h-4 text-purple-600" />

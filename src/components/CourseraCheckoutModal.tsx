@@ -46,21 +46,21 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
 
   // Banking config
   const bankConfig = {
-    bankName: 'MB Bank (Ngân hàng Quân Đội)',
-    accountNumber: '03001010888899',
-    accountName: 'CONG TY CP GIAO DUC TRUC TUYEN COURSERA VIETNAM',
+    bankName: 'MSB (Ngân hàng Hàng Hải Việt Nam)',
+    accountNumber: '03001010999988',
+    accountName: 'CONG TY CP GIAO DUC TWINGS ACADEMY',
     transferMemo: orderCode,
   };
 
   // Dynamic VietQR QuickLink API
-  const vietQrUrl = `https://img.vietqr.io/image/MB-${bankConfig.accountNumber}-compact2.png?amount=${finalPrice}&addInfo=${encodeURIComponent(orderCode)}&accountName=${encodeURIComponent(bankConfig.accountName)}`;
+  const vietQrUrl = `https://img.vietqr.io/image/970426-${bankConfig.accountNumber}-compact2.png?amount=${finalPrice}&addInfo=${encodeURIComponent(orderCode)}&accountName=${encodeURIComponent(bankConfig.accountName)}`;
 
   // Apply Coupon
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
     setCouponError('');
     const code = couponCode.trim().toUpperCase();
-    if (code === 'COURSERA2026' || code === 'AILEARNER') {
+    if (code === 'TWINGS2026' || code === 'MSB2026' || code === 'AILEARNER') {
       setDiscountPercent(20);
       setCouponApplied(true);
     } else if (code === 'VIP10') {
@@ -212,7 +212,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                     type="text"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
-                    placeholder="Nhập mã ưu đãi (Thử: COURSERA2026)"
+                    placeholder="Nhập mã ưu đãi (Thử: TWINGS2026)"
                     className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:border-[#0056D2] uppercase font-mono"
                   />
                   <Tag className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />

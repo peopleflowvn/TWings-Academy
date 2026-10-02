@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
 import { ChevronDown, HelpCircle } from 'lucide-react';
 import { FAQ_ITEMS } from '../data/courseraData';
+import { CMSSectionsConfig } from '../types';
 
-export const CourseraFAQ: React.FC = () => {
+interface CourseraFAQProps {
+  config?: CMSSectionsConfig['faq'];
+}
+
+export const CourseraFAQ: React.FC<CourseraFAQProps> = ({ config }) => {
   const [openIds, setOpenIds] = useState<string[]>(['faq-1', 'faq-4']);
+
+  const title = config?.title || 'Giải Đáp Thắc Mắc Thường Gặp (FAQ)';
+  const subtitle = config?.subtitle || 'Mọi điều bạn cần biết về hình thức học LMS, cấp tài khoản riêng và cơ hội thực tập tại ngân hàng MSB.';
+  const displayItems = config?.items && config.items.length > 0 ? config.items : FAQ_ITEMS;
 
   const toggle = (id: string) => {
     setOpenIds((prev) =>
@@ -20,15 +29,15 @@ export const CourseraFAQ: React.FC = () => {
             <span>Giải Đáp Thắc Mắc</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Những câu hỏi thường gặp về Coursera
+            {title}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500">
-            Tìm hiểu cách các khóa học, chứng chỉ chuyên nghiệp và thanh toán tự động VietQR hoạt động.
+            {subtitle}
           </p>
         </div>
 
         <div className="space-y-3">
-          {FAQ_ITEMS.map((item) => {
+          {displayItems.map((item) => {
             const isOpen = openIds.includes(item.id);
             return (
               <div

@@ -1,16 +1,21 @@
 import React from 'react';
 import { Sparkles, Check, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { CMSSectionsConfig } from '../types';
 
 interface CourseraPlusBannerProps {
   onJoinPlus: () => void;
+  config?: CMSSectionsConfig['courseraPlus'];
 }
 
-export const CourseraPlusBanner: React.FC<CourseraPlusBannerProps> = ({ onJoinPlus }) => {
-  const benefits = [
-    'Hơn 7,000 khóa học và dự án không giới hạn',
-    'Nhận chứng chỉ chuyên môn từ Google, Meta, IBM',
-    'Lộ trình học linh hoạt, học bất cứ khi nào bạn muốn',
-    'Tiết kiệm chi phí nếu bạn học trên 2 khóa mỗi năm'
+export const CourseraPlusBanner: React.FC<CourseraPlusBannerProps> = ({ onJoinPlus, config }) => {
+  const badgeText = config?.badgeText || 'TWINGS PLUS';
+  const title = config?.title || 'Đầu tư vào sự nghiệp của bạn với TWings Plus';
+  const subtitle = config?.subtitle || 'Truy cập không giới hạn các chương trình đào tạo thực chiến ngành tài chính - ngân hàng và công nghệ từ các chuyên gia hàng đầu. Nhận chứng chỉ chính thức và cố vấn sự nghiệp 1-1.';
+  const benefits = config?.bulletPoints && config.bulletPoints.length > 0 ? config.bulletPoints : [
+    'Hơn 70+ học phần chuyên sâu và dự án thực chiến tín dụng ngân hàng',
+    'Nhận chứng chỉ nghề nghiệp chính thức được ngân hàng đối tác MSB săn đón',
+    'Lộ trình học linh hoạt qua LMS riêng kết hợp cố vấn thực tế',
+    'Tiết kiệm chi phí tối đa cho lộ trình phát triển sự nghiệp dài hạn'
   ];
 
   return (
@@ -18,17 +23,17 @@ export const CourseraPlusBanner: React.FC<CourseraPlusBannerProps> = ({ onJoinPl
       <div className="absolute top-0 right-0 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
         <div className="lg:col-span-8 space-y-4">
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-blue-200 border border-white/20">
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-amber-300 border border-white/20">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>coursera plus</span>
+            <span className="uppercase tracking-wider font-mono">{badgeText}</span>
           </div>
 
           <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
-            Đầu tư vào sự nghiệp của bạn với Coursera Plus
+            {title}
           </h2>
 
           <p className="text-sm text-blue-100 max-w-2xl leading-relaxed">
-            Học tập không giới hạn từ hơn 350+ trường đại học và các tập đoàn hàng đầu. Xây dựng kỹ năng mới, đạt chứng chỉ nghề nghiệp và nâng cao thu nhập.
+            {subtitle}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -55,7 +60,7 @@ export const CourseraPlusBanner: React.FC<CourseraPlusBannerProps> = ({ onJoinPl
               onClick={onJoinPlus}
               className="w-full py-3 px-6 bg-white hover:bg-slate-100 text-[#0056D2] font-black text-sm rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Thử Coursera Plus</span>
+              <span>Khám Phá TWings Plus</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

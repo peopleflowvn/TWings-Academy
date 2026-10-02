@@ -45,19 +45,28 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
         {/* Left Section: Logo & Explore Dropdown */}
         <div className="flex items-center gap-4 sm:gap-6">
-          {/* Logo Brand: TWINGS ACADEMY & Coursera style */}
+          {/* Logo Brand: TWINGS ACADEMY */}
           <button
             onClick={() => onNavigate('home')}
-            className="flex items-center gap-2 cursor-pointer focus:outline-none"
-            title="Trang Chủ"
+            className="flex items-center gap-2.5 cursor-pointer focus:outline-none group text-left"
+            title="Trang Chủ TWings Academy"
           >
-            <span className="text-2xl sm:text-3xl font-black tracking-tighter text-[#0073C1] font-sans lowercase">
-              coursera
-            </span>
-            <span className="text-xs font-bold text-slate-400">×</span>
-            <span className="text-xs font-black tracking-tight text-[#0073C1] uppercase bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-              TWiNGS
-            </span>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00388A] via-[#0050D8] to-[#0073C1] flex items-center justify-center text-white font-black text-sm shadow-sm group-hover:scale-105 transition-transform shrink-0">
+              TW
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="text-base sm:text-lg font-black tracking-tight text-[#00388A] font-sans uppercase">
+                  TWINGS
+                </span>
+                <span className="text-base sm:text-lg font-black tracking-tight text-[#0073C1] font-sans uppercase">
+                  ACADEMY
+                </span>
+              </div>
+              <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1 hidden sm:block">
+                Học Viện Thực Chiến
+              </div>
+            </div>
           </button>
 
           {/* "Khám phá" Dropdown Button */}

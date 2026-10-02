@@ -31,10 +31,13 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Edit3,
-  X
+  X,
+  ShieldCheck,
+  ChevronDown,
+  UserCheck
 } from 'lucide-react';
-import { Course, Order, CMSSectionsConfig, HeroBannerItem, PartnerItem } from '../types';
-import { HERO_BANNERS, DEFAULT_PARTNERS } from '../data/courseraData';
+import { Course, Order, CMSSectionsConfig, HeroBannerItem, PartnerItem, AdminUser, UserRole, RolePermissionConfig } from '../types';
+import { HERO_BANNERS, DEFAULT_PARTNERS, INITIAL_ADMIN_USERS } from '../data/courseraData';
 import { CMSCRMOrdersTab } from './cms/CMSCRMOrdersTab';
 import { CMSUsersTab } from './cms/CMSUsersTab';
 import { CMSArchitectureTab } from './cms/CMSArchitectureTab';
@@ -42,6 +45,13 @@ import { CMSArticlesSEOTab } from './cms/CMSArticlesSEOTab';
 import { CMSSiteSEOSettingsTab } from './cms/CMSSiteSEOSettingsTab';
 import { CMSPartnersTab } from './cms/CMSPartnersTab';
 import { CMSHomepageContentTab } from './cms/CMSHomepageContentTab';
+import { CMSCoursesTab } from './cms/CMSCoursesTab';
+import { RBACAccessGuard } from './cms/RBACAccessGuard';
+import { 
+  DEFAULT_ROLE_CONFIGS, 
+  checkUserCanAccessTab, 
+  TAB_PERMISSION_MAP 
+} from '../utils/rbac';
 
 interface CourseraCMSAdminProps {
   courses: Course[];
@@ -52,6 +62,7 @@ interface CourseraCMSAdminProps {
   onUpdateCourse: (updatedCourse: Course) => void;
   onDeleteCourse: (courseId: string) => void;
   onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
+  onPreviewCourse?: (course: Course) => void;
   onBackToHome: () => void;
 }
 
@@ -64,6 +75,7 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
   onUpdateCourse,
   onDeleteCourse,
   onUpdateOrderStatus,
+  onPreviewCourse,
   onBackToHome,
 }) => {
   const [activeTab, setActiveTab] = useState<
@@ -73,42 +85,15 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [sectionsState, setSectionsState] = useState<CMSSectionsConfig>(cmsSections);
   const [bannersState, setBannersState] = useState<HeroBannerItem[]>(HERO_BANNERS);
-  const [courseSearch, setCourseSearch] = useState('');
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
-  // Edit Course Form State
-  const [editCourseTitle, setEditCourseTitle] = useState('');
-  const [editCoursePrice, setEditCoursePrice] = useState(0);
-  const [editCourseDelivery, setEditCourseDelivery] = useState<Course['deliveryFormat']>('online_external_lms');
-  const [editCourseYouTube, setEditCourseYouTube] = useState('');
+  // RBAC Global State
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(INITIAL_ADMIN_USERS);
+  const [roleConfigs, setRoleConfigs] = useState<Record<UserRole, RolePermissionConfig>>(DEFAULT_ROLE_CONFIGS);
+  const [currentActorUser, setCurrentActorUser] = useState<AdminUser>(INITIAL_ADMIN_USERS[0]); // Default: Hoang Tung (Super Admin)
+  const [showActorSwitcherDropdown, setShowActorSwitcherDropdown] = useState(false);
 
   const formatVND = (num: number) => {
     return new Intl.NumberFormat('vi-VN').format(num) + ' ₫';
-  };
-
-  const handleOpenEditCourse = (c: Course) => {
-    setEditingCourse(c);
-    setEditCourseTitle(c.title);
-    setEditCoursePrice(c.price);
-    setEditCourseDelivery(c.deliveryFormat || 'online_external_lms');
-    setEditCourseYouTube(c.youtubeVideoId || 'sal78ACtGTc');
-  };
-
-  const handleSaveCourse = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCourse) return;
-
-    const updated: Course = {
-      ...editingCourse,
-      title: editCourseTitle,
-      price: editCoursePrice,
-      deliveryFormat: editCourseDelivery,
-      youtubeVideoId: editCourseYouTube,
-      youtubeTrialUrl: `https://www.youtube.com/watch?v=${editCourseYouTube}`
-    };
-
-    onUpdateCourse(updated);
-    setEditingCourse(null);
   };
 
   const handleToggleSection = (key: keyof CMSSectionsConfig) => {
@@ -198,9 +183,12 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
     },
   ];
 
+  // RBAC Access Check for current active tab
+  const canAccessActiveTab = checkUserCanAccessTab(currentActorUser, activeTab, roleConfigs);
+
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-sans text-slate-800">
-      {/* 1. COLLAPSIBLE SIDEBAR ON THE LEFT (User: "menu các chức năng topbar cần đưa về đưa về dạng sidebar bên trái có cơ chế colapsse, expand") */}
+      {/* 1. COLLAPSIBLE SIDEBAR ON THE LEFT */}
       <aside
         className={`${
           isSidebarCollapsed ? 'w-20' : 'w-72'
@@ -214,7 +202,7 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
                 TWINGS CMS
               </span>
               <span className="text-[10px] bg-blue-500/20 text-blue-300 font-mono px-2 py-0.5 rounded border border-blue-400/30">
-                Django 5.x
+                RBAC v2.4
               </span>
             </div>
           )}
@@ -232,26 +220,46 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
           </button>
         </div>
 
-        {/* Sidebar Nav Items */}
+        {/* Sidebar Nav Items with RBAC Status Badges */}
         <div className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
+            const hasAccess = checkUserCanAccessTab(currentActorUser, item.id, roleConfigs);
+
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
                   isActive
                     ? 'bg-[#0073C1] text-white shadow-md'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    : hasAccess
+                    ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    : 'text-slate-500 hover:bg-slate-800/60 hover:text-slate-400 opacity-70'
                 } ${isSidebarCollapsed ? 'justify-center' : ''}`}
-                title={item.label}
+                title={!hasAccess ? `${item.label} (Yêu cầu nâng quyền RBAC)` : item.label}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <div className="relative shrink-0">
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : hasAccess ? 'text-slate-400' : 'text-slate-600'}`} />
+                  {!hasAccess && (
+                    <span className="absolute -bottom-1 -right-1.5 w-2.5 h-2.5 bg-red-600 rounded-full flex items-center justify-center text-white text-[7px]">
+                      <Lock className="w-1.5 h-1.5" />
+                    </span>
+                  )}
+                </div>
+
                 {!isSidebarCollapsed && (
-                  <span className="truncate flex-1 text-left">{item.label}</span>
+                  <span className="truncate flex-1 text-left flex items-center gap-1.5">
+                    <span>{item.label}</span>
+                    {!hasAccess && (
+                      <span className="text-[9px] bg-red-950/80 text-red-300 font-mono px-1 py-0.2 rounded border border-red-500/30">
+                        Khóa
+                      </span>
+                    )}
+                  </span>
                 )}
+
                 {!isSidebarCollapsed && item.badge !== undefined && (
                   <span className={`text-[10px] px-2 py-0.2 rounded-full font-mono font-bold ${item.badgeColor || 'bg-slate-800 text-slate-300'}`}>
                     {item.badge}
@@ -262,7 +270,7 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
           })}
         </div>
 
-        {/* Sidebar Footer: Back to Homepage */}
+        {/* Sidebar Footer: Current User Persona & Back to Homepage */}
         <div className="p-3 border-t border-slate-800 space-y-2 bg-slate-950">
           <button
             onClick={onBackToHome}
@@ -276,8 +284,22 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
           </button>
 
           {!isSidebarCollapsed && (
-            <div className="text-[11px] text-slate-500 px-2 truncate">
-              Admin: nguyen.tuan@twings.edu.vn
+            <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+              <div className="flex items-center gap-2">
+                <img
+                  src={currentActorUser.avatar}
+                  alt={currentActorUser.name}
+                  className="w-6 h-6 rounded-full object-cover border border-slate-700 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-bold text-white truncate">
+                    {currentActorUser.name}
+                  </div>
+                  <div className="text-[10px] text-blue-300 truncate font-mono">
+                    {roleConfigs[currentActorUser.role]?.roleName.split(' ')[0]}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -285,430 +307,426 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
 
       {/* 2. MAIN SCROLLABLE CONTENT AREA ON THE RIGHT */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Top Header Bar */}
-        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-20 shadow-2xs">
+        {/* Top Header Bar with Live RBAC Persona Switcher */}
+        <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between gap-4 sticky top-0 z-20 shadow-2xs">
           <div className="flex items-center gap-3">
-            <h1 className="text-base font-black text-slate-900 capitalize">
-              {navItems.find((i) => i.id === activeTab)?.label}
+            <h1 className="text-base font-black text-slate-900 capitalize flex items-center gap-2">
+              <span>{navItems.find((i) => i.id === activeTab)?.label}</span>
+              {!canAccessActiveTab && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold border border-red-200 flex items-center gap-1 font-mono">
+                  <Lock className="w-3 h-3" />
+                  <span>Quyền Hạn Chế</span>
+                </span>
+              )}
             </h1>
           </div>
 
           <div className="flex items-center gap-3 text-xs">
-            <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 flex items-center gap-1.5 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Hệ thống CRM Hoạt Động Bình Thường</span>
-            </span>
-          </div>
-        </header>
-
-        {/* Tab Body View */}
-        <main className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24">
-          {/* TAB 1: CRM & Orders */}
-          {activeTab === 'crm_orders' && (
-            <CMSCRMOrdersTab
-              orders={orders}
-              onUpdateOrderStatus={onUpdateOrderStatus}
-              onUpdateOrderCRM={(upd) => onUpdateOrderStatus(upd.id, upd.status)}
-            />
-          )}
-
-          {/* TAB 2: Courses & YouTube Video Embeds */}
-          {activeTab === 'courses' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">
-                    Quản Lý Khóa Học & Nhúng ID Video YouTube Học Thử
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Cấu hình hình thức đào tạo (LMS riêng biệt, Offline trung tâm hoặc Hybrid) và nhúng video YouTube cho học viên xem trước.
-                  </p>
+            {/* Live Role Persona Switcher Dropdown (Allows testing RBAC permissions instantly) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowActorSwitcherDropdown(!showActorSwitcherDropdown)}
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-white transition-all cursor-pointer text-xs shadow-2xs"
+                title="Bấm để đổi tài khoản giả lập quyền hạn khác nhau"
+              >
+                <img
+                  src={currentActorUser.avatar}
+                  alt={currentActorUser.name}
+                  className="w-6 h-6 rounded-full object-cover border border-slate-300 shrink-0"
+                />
+                <div className="text-left hidden sm:block">
+                  <div className="font-bold text-slate-800 leading-tight flex items-center gap-1.5">
+                    <span>{currentActorUser.name}</span>
+                    <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold border ${roleConfigs[currentActorUser.role]?.color || 'bg-slate-100'}`}>
+                      {roleConfigs[currentActorUser.role]?.roleName.split(' ')[0]}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    Giả lập vai trò RBAC ▾
+                  </div>
                 </div>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
 
-                <div className="w-full sm:w-72 relative">
-                  <input
-                    type="text"
-                    value={courseSearch}
-                    onChange={(e) => setCourseSearch(e.target.value)}
-                    placeholder="Tìm kiếm khóa học..."
-                    className="w-full pl-9 pr-4 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50"
-                  />
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                </div>
-              </div>
+              {/* Persona Selector Dropdown Menu */}
+              {showActorSwitcherDropdown && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 animate-fadeIn space-y-1">
+                  <div className="px-3 py-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
+                    <span>Giả lập nhân sự kiểm toán:</span>
+                    <span className="text-[10px] text-blue-600 font-mono font-bold">5 Tài khoản</span>
+                  </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
-                      <tr>
-                        <th className="p-3.5">Khóa Học</th>
-                        <th className="p-3.5">Hình Thức Đào Tạo</th>
-                        <th className="p-3.5">YouTube Embed ID</th>
-                        <th className="p-3.5">Học Phí</th>
-                        <th className="p-3.5 text-right">Thao Tác</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {courses
-                        .filter((c) => c.title.toLowerCase().includes(courseSearch.toLowerCase()))
-                        .map((c) => (
-                          <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="p-3.5">
-                              <div className="font-bold text-slate-900 max-w-sm truncate">{c.title}</div>
-                              <div className="text-[11px] text-[#0073C1] font-semibold">{c.partner?.name} · {c.level}</div>
-                            </td>
-
-                            <td className="p-3.5">
-                              {c.deliveryFormat === 'online_external_lms' && (
-                                <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-bold border border-purple-200">
-                                  Online qua LMS chuyên biệt
-                                </span>
-                              )}
-                              {c.deliveryFormat === 'offline' && (
-                                <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 text-[10px] font-bold border border-orange-200">
-                                  Trực tiếp tại Trung tâm
-                                </span>
-                              )}
-                              {c.deliveryFormat === 'hybrid' && (
-                                <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold border border-blue-200">
-                                  Hybrid (LMS + Workshop)
-                                </span>
-                              )}
-                              {!c.deliveryFormat && (
-                                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px]">
-                                  Tự học tiêu chuẩn
-                                </span>
-                              )}
-                            </td>
-
-                            <td className="p-3.5">
-                              <span className="font-mono text-slate-700 flex items-center gap-1.5 text-[11px]">
-                                <Play className="w-3.5 h-3.5 text-red-500 fill-current" />
-                                <span>{c.youtubeVideoId || 'sal78ACtGTc'}</span>
-                              </span>
-                            </td>
-
-                            <td className="p-3.5 font-mono font-bold text-slate-900">
-                              {formatVND(c.price)}
-                            </td>
-
-                            <td className="p-3.5 text-right space-x-2">
-                              <button
-                                onClick={() => handleOpenEditCourse(c)}
-                                className="p-1.5 hover:bg-blue-50 text-[#0073C1] rounded-lg transition-colors cursor-pointer"
-                                title="Sửa Khóa Học & Link YouTube"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => onDeleteCourse(c.id)}
-                                className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg transition-colors cursor-pointer"
-                                title="Xóa"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Edit Course Modal */}
-              {editingCourse && (
-                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-                  <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
-                    <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
-                      <h3 className="font-bold text-base">Chỉnh Sửa Khóa Học & Nhúng YouTube</h3>
-                      <button onClick={() => setEditingCourse(null)} className="p-1 hover:bg-slate-800 rounded-full">
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    <form onSubmit={handleSaveCourse} className="p-6 space-y-4 text-xs">
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Tên khóa học *</label>
-                        <input
-                          type="text"
-                          required
-                          value={editCourseTitle}
-                          onChange={(e) => setEditCourseTitle(e.target.value)}
-                          className="w-full p-2.5 border border-slate-300 rounded-xl"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Học phí (VND) *</label>
-                        <input
-                          type="number"
-                          required
-                          value={editCoursePrice}
-                          onChange={(e) => setEditCoursePrice(Number(e.target.value))}
-                          className="w-full p-2.5 border border-slate-300 rounded-xl font-mono"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Hình thức đào tạo *</label>
-                        <select
-                          value={editCourseDelivery}
-                          onChange={(e) => setEditCourseDelivery(e.target.value as any)}
-                          className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-slate-50"
-                        >
-                          <option value="online_external_lms">Online qua LMS chuyên biệt (Cấp tài khoản & kèm 1-1)</option>
-                          <option value="offline">Trực tiếp tại Trung tâm (Offline)</option>
-                          <option value="hybrid">Hybrid (Kết hợp Online LMS & Workshop Offline)</option>
-                        </select>
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          Khi chọn "Online qua LMS chuyên biệt", học viên sẽ được cấp tài khoản trên nền tảng riêng và ban đào tạo làm việc 1-1 sau.
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">ID Video YouTube Học Thử *</label>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-slate-400 bg-slate-100 p-2 rounded-lg text-[11px]">
-                            youtube.com/watch?v=
-                          </span>
-                          <input
-                            type="text"
-                            required
-                            value={editCourseYouTube}
-                            onChange={(e) => setEditCourseYouTube(e.target.value)}
-                            placeholder="sal78ACtGTc"
-                            className="flex-1 p-2.5 border border-slate-300 rounded-xl font-mono font-bold"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="pt-2 flex items-center justify-end gap-2">
+                  <div className="max-h-72 overflow-y-auto space-y-1 py-1">
+                    {adminUsers.map((u) => {
+                      const isSelected = u.id === currentActorUser.id;
+                      const rCfg = roleConfigs[u.role];
+                      return (
                         <button
+                          key={u.id}
                           type="button"
-                          onClick={() => setEditingCourse(null)}
-                          className="px-4 py-2 border border-slate-300 rounded-xl font-bold text-slate-700"
+                          onClick={() => {
+                            setCurrentActorUser(u);
+                            setShowActorSwitcherDropdown(false);
+                          }}
+                          className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-colors cursor-pointer ${
+                            isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'
+                          }`}
                         >
-                          Hủy
+                          <img
+                            src={u.avatar}
+                            alt={u.name}
+                            className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-bold text-slate-900 text-xs truncate flex items-center justify-between">
+                              <span>{u.name}</span>
+                              {isSelected && <span className="text-[10px] text-blue-600 font-bold">✓ Đang dùng</span>}
+                            </div>
+                            <div className="text-[10px] text-slate-500 truncate">{rCfg?.roleName}</div>
+                            <div className="text-[9px] text-slate-400 font-mono">{rCfg?.department}</div>
+                          </div>
                         </button>
-                        <button
-                          type="submit"
-                          className="px-5 py-2 bg-[#0073C1] hover:bg-[#005FA0] text-white font-bold rounded-xl"
-                        >
-                          Lưu Cập Nhật
-                        </button>
-                      </div>
-                    </form>
+                      );
+                    })}
+                  </div>
+
+                  <div className="p-2 bg-slate-50 rounded-xl text-[10px] text-slate-500 border border-slate-100 flex items-start gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                    <span>Hệ thống phân quyền áp dụng ngay lập tức cho sidebar và các tab chức năng.</span>
                   </div>
                 </div>
               )}
             </div>
-          )}
 
-          {/* TAB 3: Banners Management (Full Image & Hyperlink Mode) */}
-          {activeTab === 'banners' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">
-                    Quản Lý Banner Trang Chủ ({bannersState.length} Banner Cuộn Ngang)
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Hỗ trợ chế độ thay thế hoàn toàn bằng ảnh và gắn liên kết (hyperlink) nội bộ hoặc link ngoài theo yêu cầu.
-                  </p>
-                </div>
+            <span className="hidden md:flex px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 items-center gap-1.5 font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>CRM & RBAC Sẵn Sàng</span>
+            </span>
+          </div>
+        </header>
 
-                <button
-                  onClick={() => {
-                    const newB: HeroBannerItem = {
-                      id: `banner-${Date.now()}`,
-                      title: 'Banner Chương Trình Mới 2026',
-                      subtitle: 'Chắp cánh sự nghiệp ngân hàng thực chiến cùng TWings.',
-                      bgGradient: 'from-[#0048C8] via-[#0056D2] to-[#0073C1]',
-                      buttonText: 'Đăng Ký Ngay',
-                      buttonAction: 'consultation',
-                      buttonStyle: 'primary',
-                      displayType: 'image_only',
-                      fullBannerImageUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80',
-                      linkUrl: '#dang-ky',
-                      partnerBadges: [{ name: 'TWINGS', color: '#0073C1' }],
-                      imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-                      floatingBadges: [{ text: 'MỚI 2026', position: 'top-left' }]
-                    };
-                    setBannersState([...bannersState, newB]);
-                  }}
-                  className="px-4 py-2 bg-[#0073C1] hover:bg-[#005FA0] text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Thêm Banner Mới</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {bannersState.map((b, idx) => (
-                  <div key={b.id} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-2xs space-y-4 p-5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-400">Banner #{idx + 1}</span>
-                      <button
-                        onClick={() => setBannersState(bannersState.filter((item) => item.id !== b.id))}
-                        className="p-1 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
-                        title="Xóa Banner"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-3 text-xs">
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Chế độ hiển thị banner *</label>
-                        <select
-                          value={b.displayType || 'card'}
-                          onChange={(e) => {
-                            const val = e.target.value as any;
-                            setBannersState(bannersState.map((item) => item.id === b.id ? { ...item, displayType: val } : item));
-                          }}
-                          className="w-full p-2 border border-blue-300 rounded-lg font-bold bg-blue-50/50"
-                        >
-                          <option value="image_only">Chế độ ảnh toàn phần (Thay thế hoàn toàn bằng ảnh)</option>
-                          <option value="card">Chế độ thẻ Gradient Typography</option>
-                        </select>
-                      </div>
-
-                      {b.displayType === 'image_only' && (
-                        <div>
-                          <label className="font-bold text-slate-700 block mb-1">Đường dẫn ảnh Banner đầy đủ (Full Image URL) *</label>
-                          <input
-                            type="text"
-                            value={b.fullBannerImageUrl || ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setBannersState(bannersState.map((item) => item.id === b.id ? { ...item, fullBannerImageUrl: val } : item));
-                            }}
-                            placeholder="https://images.unsplash.com/..."
-                            className="w-full p-2 border border-slate-300 rounded-lg font-mono text-[11px]"
-                          />
-                        </div>
-                      )}
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Hyperlink khi bấm vào banner (URL ngoài hoặc anchor #dang-ky)</label>
-                        <input
-                          type="text"
-                          value={b.linkUrl || ''}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setBannersState(bannersState.map((item) => item.id === b.id ? { ...item, linkUrl: val } : item));
-                          }}
-                          placeholder="#dang-ky hoặc https://..."
-                          className="w-full p-2 border border-slate-300 rounded-lg font-mono text-[11px]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Tiêu đề Banner *</label>
-                        <input
-                          type="text"
-                          value={b.title}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setBannersState(bannersState.map((item) => item.id === b.id ? { ...item, title: val } : item));
-                          }}
-                          className="w-full p-2 border border-slate-300 rounded-lg font-bold"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Mô tả phụ</label>
-                        <textarea
-                          rows={2}
-                          value={b.subtitle}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setBannersState(bannersState.map((item) => item.id === b.id ? { ...item, subtitle: val } : item));
-                          }}
-                          className="w-full p-2 border border-slate-300 rounded-lg text-xs"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: Partners Management */}
-          {activeTab === 'partners' && (
-            <CMSPartnersTab
-              partners={sectionsState.partners.items || DEFAULT_PARTNERS}
-              onUpdatePartners={handleUpdatePartners}
-            />
-          )}
-
-          {/* TAB 5: Homepage Content Editor */}
-          {activeTab === 'homepage_content' && (
-            <CMSHomepageContentTab
-              cmsSections={sectionsState}
-              onUpdateCMSSections={(upd) => {
-                setSectionsState(upd);
-                onUpdateCMSSections(upd);
+        {/* Tab Body View (With RBAC 403 Guard for Unauthorized Roles) */}
+        <main className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24">
+          {!canAccessActiveTab ? (
+            <RBACAccessGuard
+              currentTabId={activeTab}
+              tabLabel={navItems.find((i) => i.id === activeTab)?.label || activeTab}
+              currentUser={currentActorUser}
+              roleConfigs={roleConfigs}
+              onSwitchToSuperAdmin={() => {
+                const superAdmin = adminUsers.find((u) => u.role === 'super_admin') || adminUsers[0];
+                setCurrentActorUser(superAdmin);
+              }}
+              onNavigateToAllowedTab={() => {
+                const allowed = navItems.find((item) => checkUserCanAccessTab(currentActorUser, item.id, roleConfigs));
+                if (allowed) setActiveTab(allowed.id as any);
               }}
             />
-          )}
+          ) : (
+            <>
+              {/* TAB 1: CRM & Orders */}
+              {activeTab === 'crm_orders' && (
+                <CMSCRMOrdersTab
+                  orders={orders}
+                  onUpdateOrderStatus={onUpdateOrderStatus}
+                  onUpdateOrderCRM={(upd) => onUpdateOrderStatus(upd.id, upd.status)}
+                />
+              )}
 
-          {/* TAB 6: Articles & SEO Scoring */}
-          {activeTab === 'articles' && <CMSArticlesSEOTab />}
+              {/* TAB 2: Courses & YouTube Video Embeds (Dedicated Professional Full-Page Editor) */}
+              {activeTab === 'courses' && (
+                <CMSCoursesTab
+                  courses={courses}
+                  onAddCourse={onAddCourse}
+                  onUpdateCourse={onUpdateCourse}
+                  onDeleteCourse={onDeleteCourse}
+                  onPreviewCourse={onPreviewCourse}
+                />
+              )}
 
-          {/* TAB 7: Operational Users & RBAC */}
-          {activeTab === 'users' && <CMSUsersTab />}
-
-          {/* TAB 8: Site SEO Settings */}
-          {activeTab === 'seo_settings' && <CMSSiteSEOSettingsTab />}
-
-          {/* TAB 9: Django Backend Architecture & Database Analysis */}
-          {activeTab === 'architecture' && <CMSArchitectureTab />}
-
-          {/* TAB 10: Sections Toggle */}
-          {activeTab === 'sections' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">Bật / Tắt Các Khối Trên Trang Chủ</h2>
-                  <p className="text-xs text-slate-500 mt-1">Ẩn hoặc hiện các section theo nhu cầu vận hành.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { key: 'hero', name: 'Hero Carousel Banners (Cuộn Ngang)' },
-                  { key: 'partners', name: 'Thanh Logo Đối Tác Doanh Nghiệp' },
-                  { key: 'bestsellers', name: 'Kệ Khóa Học Bán Chạy Nhất' },
-                  { key: 'recommended', name: 'Kệ Khóa Học Được Đề Xuất' },
-                  { key: 'newReleases', name: 'Kệ Khóa Học Mới Ra Mắt' },
-                  { key: 'mostUseful', name: 'Kệ Khóa Học Hữu Ích Nhất' },
-                  { key: 'courseraPlus', name: 'Gói Đào Tạo Doanh Nghiệp & Hội Viên' },
-                  { key: 'testimonials', name: 'Cảm Nhận Học Viên & Việc Làm' },
-                  { key: 'faq', name: 'Câu Hỏi Thường Gặp (FAQ)' },
-                ].map(({ key, name }) => {
-                  const isEnabled = (sectionsState as any)[key]?.enabled !== false;
-                  return (
-                    <div key={key} className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-2xs">
-                      <div>
-                        <div className="font-bold text-xs text-slate-900">{name}</div>
-                        <div className="text-[11px] text-slate-400">Trạng thái: {isEnabled ? 'Đang bật' : 'Đang ẩn'}</div>
-                      </div>
-                      <button
-                        onClick={() => handleToggleSection(key as keyof CMSSectionsConfig)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                          isEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        {isEnabled ? 'Đang bật' : 'Tắt'}
-                      </button>
+              {/* TAB 3: Banners Management (Full Image & Hyperlink Mode) */}
+              {activeTab === 'banners' && (
+                <div className="space-y-6">
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900">
+                        Quản Lý Banner Trang Chủ ({bannersState.length} Banner Cuộn Ngang)
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Hỗ trợ chế độ thay thế hoàn toàn bằng ảnh và gắn liên kết (hyperlink) nội bộ hoặc link ngoài theo yêu cầu.
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+
+                    <button
+                      onClick={() => {
+                        const newB: HeroBannerItem = {
+                          id: `banner-${Date.now()}`,
+                          title: 'Banner Chương Trình Mới 2026',
+                          subtitle: 'Chắp cánh sự nghiệp ngân hàng thực chiến cùng TWings.',
+                          bgGradient: 'from-[#0048C8] via-[#0056D2] to-[#0073C1]',
+                          buttonText: 'Đăng Ký Ngay',
+                          buttonAction: 'consultation',
+                          buttonStyle: 'primary',
+                          displayType: 'image_only',
+                          fullBannerImageUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80',
+                          partnerBadges: [{ name: 'MSB', color: 'text-orange-500' }],
+                          imageUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80',
+                          floatingBadges: [{ text: 'Khóa Học Mới', sub: 'Thực chiến 2026', position: 'top-left' }],
+                        };
+                        setBannersState([newB, ...bannersState]);
+                      }}
+                      className="px-4 py-2 bg-[#0073C1] hover:bg-[#005FA0] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Thêm Banner Mới</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {bannersState.map((banner, idx) => (
+                      <div
+                        key={banner.id}
+                        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4 flex flex-col justify-between"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
+                              Slide #{idx + 1}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setBannersState(bannersState.filter((b) => b.id !== banner.id));
+                              }}
+                              className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              title="Xóa banner"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-700 block">
+                              Chế độ hiển thị banner
+                            </label>
+                            <div className="flex items-center gap-3">
+                              <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`displayType-${banner.id}`}
+                                  checked={banner.displayType === 'image_only'}
+                                  onChange={() => {
+                                    setBannersState(
+                                      bannersState.map((b) =>
+                                        b.id === banner.id ? { ...b, displayType: 'image_only' } : b
+                                      )
+                                    );
+                                  }}
+                                  className="text-blue-600"
+                                />
+                                <span>Ảnh toàn phần (Full-bleed Image)</span>
+                              </label>
+
+                              <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`displayType-${banner.id}`}
+                                  checked={banner.displayType !== 'image_only'}
+                                  onChange={() => {
+                                    setBannersState(
+                                      bannersState.map((b) =>
+                                        b.id === banner.id ? { ...b, displayType: 'card' } : b
+                                      )
+                                    );
+                                  }}
+                                  className="text-blue-600"
+                                />
+                                <span>Tiêu đề text + Badge nổi</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          {banner.displayType === 'image_only' ? (
+                            <div className="space-y-2">
+                              <label className="text-xs font-bold text-slate-700 block">
+                                Link Ảnh Banner Toàn Phần (URL)
+                              </label>
+                              <input
+                                type="text"
+                                value={banner.fullBannerImageUrl || banner.imageUrl}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setBannersState(
+                                    bannersState.map((b) =>
+                                      b.id === banner.id ? { ...b, fullBannerImageUrl: val, imageUrl: val } : b
+                                    )
+                                  );
+                                }}
+                                className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-slate-50 font-mono"
+                                placeholder="https://images.unsplash.com/..."
+                              />
+
+                              <div className="aspect-[16/6] rounded-xl overflow-hidden border border-slate-200 bg-slate-100 relative group">
+                                <img
+                                  src={banner.fullBannerImageUrl || banner.imageUrl}
+                                  alt="Preview"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as any).src =
+                                      'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80';
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div>
+                                <label className="text-xs font-bold text-slate-700 block mb-1">
+                                  Tiêu đề Banner
+                                </label>
+                                <input
+                                  type="text"
+                                  value={banner.title}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setBannersState(
+                                      bannersState.map((b) => (b.id === banner.id ? { ...b, title: val } : b))
+                                    );
+                                  }}
+                                  className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-slate-50"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-700 block mb-1">
+                                  Mô tả phụ
+                                </label>
+                                <input
+                                  type="text"
+                                  value={banner.subtitle}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setBannersState(
+                                      bannersState.map((b) => (b.id === banner.id ? { ...b, subtitle: val } : b))
+                                    );
+                                  }}
+                                  className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-slate-50"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="space-y-2 pt-1 border-t border-slate-100">
+                            <label className="text-xs font-bold text-slate-700 block">
+                              Gắn Hyperlink khi click banner (Tùy chọn)
+                            </label>
+                            <input
+                              type="text"
+                              value={banner.linkUrl || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setBannersState(
+                                  bannersState.map((b) => (b.id === banner.id ? { ...b, linkUrl: val } : b))
+                                );
+                              }}
+                              className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-slate-50 font-mono"
+                              placeholder="#dang-ky hoặc https://..."
+                            />
+                            <p className="text-[11px] text-slate-400">
+                              Người dùng click vào banner trên trang chủ sẽ tự động chuyển hướng đến link này.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: Enterprise Partners & Logos */}
+              {activeTab === 'partners' && (
+                <CMSPartnersTab
+                  partners={sectionsState.partners.items || DEFAULT_PARTNERS}
+                  onUpdatePartners={handleUpdatePartners}
+                />
+              )}
+
+              {/* TAB 5: Homepage Content Editor */}
+              {activeTab === 'homepage_content' && (
+                <CMSHomepageContentTab
+                  cmsSections={sectionsState}
+                  onUpdateCMSSections={(upd) => {
+                    setSectionsState(upd);
+                    onUpdateCMSSections(upd);
+                  }}
+                />
+              )}
+
+              {/* TAB 6: Articles & SEO Scoring */}
+              {activeTab === 'articles' && <CMSArticlesSEOTab />}
+
+              {/* TAB 7: Operational Users & RBAC */}
+              {activeTab === 'users' && (
+                <CMSUsersTab
+                  users={adminUsers}
+                  onUpdateUsers={setAdminUsers}
+                  roleConfigs={roleConfigs}
+                  onUpdateRoleConfigs={setRoleConfigs}
+                  currentActorUser={currentActorUser}
+                  onSelectCurrentActor={setCurrentActorUser}
+                />
+              )}
+
+              {/* TAB 8: Site SEO Settings */}
+              {activeTab === 'seo_settings' && <CMSSiteSEOSettingsTab />}
+
+              {/* TAB 9: Django Backend Architecture & Database Analysis */}
+              {activeTab === 'architecture' && <CMSArchitectureTab />}
+
+              {/* TAB 10: Sections Toggle */}
+              {activeTab === 'sections' && (
+                <div className="space-y-6">
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900">Bật / Tắt Các Khối Trên Trang Chủ</h2>
+                      <p className="text-xs text-slate-500 mt-1">Ẩn hoặc hiện các section theo nhu cầu vận hành.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[
+                      { key: 'hero', name: 'Hero Carousel Banners (Cuộn Ngang)' },
+                      { key: 'partners', name: 'Thanh Logo Đối Tác Doanh Nghiệp' },
+                      { key: 'bestsellers', name: 'Kệ Khóa Học Bán Chạy Nhất' },
+                      { key: 'recommended', name: 'Kệ Khóa Học Được Đề Xuất' },
+                      { key: 'newReleases', name: 'Kệ Khóa Học Mới Ra Mắt' },
+                      { key: 'mostUseful', name: 'Kệ Khóa Học Hữu Ích Nhất' },
+                      { key: 'courseraPlus', name: 'Gói Đào Tạo Doanh Nghiệp & Hội Viên' },
+                      { key: 'testimonials', name: 'Cảm Nhận Học Viên & Việc Làm' },
+                      { key: 'faq', name: 'Câu Hỏi Thường Gặp (FAQ)' },
+                    ].map(({ key, name }) => {
+                      const isEnabled = (sectionsState as any)[key]?.enabled !== false;
+                      return (
+                        <div
+                          key={key}
+                          className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between"
+                        >
+                          <span className="text-xs font-bold text-slate-800">{name}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSection(key as any)}
+                            className={`w-11 h-6 rounded-full transition-colors p-1 cursor-pointer flex items-center ${
+                              isEnabled ? 'bg-blue-600 justify-end' : 'bg-slate-300 justify-start'
+                            }`}
+                          >
+                            <div className="w-4 h-4 rounded-full bg-white shadow-md" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>

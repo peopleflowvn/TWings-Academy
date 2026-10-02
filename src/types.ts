@@ -137,11 +137,24 @@ export interface Instructor {
   studentsCount?: number;
 }
 
+export interface CourseReview {
+  id: string;
+  studentName: string;
+  role: string; // e.g. "Chuyên viên QHKH Doanh nghiệp - MSB Sở Giao Dịch"
+  avatar: string;
+  rating: number; // 1 - 5
+  date: string;
+  comment: string;
+  verifiedStudent?: boolean;
+}
+
 export interface Course {
   id: string;
   slug: string;
   title: string;
   subtitle: string;
+  description?: string;
+  overview?: string;
   partner?: Partner;
   type?: CourseType;
   level: CourseLevel;
@@ -162,13 +175,17 @@ export interface Course {
   price: number;
   originalPrice: number;
   isFreeEnrollmentAvailable?: boolean;
-  youtubeTrialUrl?: string; // e.g. "https://www.youtube.com/watch?v=kqtD5dpn9C8"
-  youtubeVideoId?: string;  // e.g. "kqtD5dpn9C8"
+  youtubeTrialUrl?: string; // e.g. "https://www.youtube.com/watch?v=sal78ACtGTc"
+  youtubeVideoId?: string;  // e.g. "sal78ACtGTc"
   syllabus?: Module[];
   chapters?: Module[];
   learningObjectives?: string[];
   highlights?: string[];
   objectives?: string[];
+  targetAudience?: string[];
+  requirements?: string[];
+  reviews?: CourseReview[];
+  guarantees?: string[];
   lessonsCount?: number;
   studentsCount?: number;
 }
@@ -355,6 +372,26 @@ export type UserRole =
   | 'academic_management' // Quản lý Đào tạo, Chứng chỉ & Việc làm
   | 'finance_accountant'; // Kế toán, Đối soát VietQR & Hoa hồng
 
+export interface PermissionDefinition {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  category: 'crm' | 'courses' | 'homepage' | 'articles_seo' | 'finance' | 'rbac' | 'system';
+  categoryLabel: string;
+  riskLevel?: 'high' | 'medium' | 'low';
+}
+
+export interface RolePermissionConfig {
+  role: UserRole;
+  roleName: string;
+  department: string;
+  description: string;
+  color: string;
+  badgeBg: string;
+  allowedPermissionCodes: string[];
+}
+
 export interface AdminUser {
   id: string;
   name: string;
@@ -365,6 +402,10 @@ export interface AdminUser {
   status: 'active' | 'suspended';
   lastActive: string;
   permissions: string[];
+  customOverrides?: {
+    grantedCodes?: string[];
+    revokedCodes?: string[];
+  };
 }
 
 // -------------------------------------------------------------

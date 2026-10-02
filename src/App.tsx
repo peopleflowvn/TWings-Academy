@@ -23,6 +23,8 @@ import { CourseraPlusBanner } from './components/CourseraPlusBanner';
 import { CourseraTestimonials } from './components/CourseraTestimonials';
 import { CourseraFAQ } from './components/CourseraFAQ';
 import { CourseraFooter } from './components/CourseraFooter';
+import { IntroSection } from './components/IntroSection';
+import { AboutSection } from './components/AboutSection';
 
 // Subpages & Modals
 import { CourseraCatalogPage } from './components/CourseraCatalogPage';
@@ -112,11 +114,21 @@ export default function App() {
         cmsSections={cmsSections}
         onUpdateCMSSections={setCmsSections}
         onAddCourse={(newC) => setCourses([newC, ...courses])}
-        onUpdateCourse={(updC) => setCourses(courses.map((c) => (c.id === updC.id ? updC : c)))}
+        onUpdateCourse={(updC) => {
+          setCourses(courses.map((c) => (c.id === updC.id ? updC : c)));
+          if (selectedCourse?.id === updC.id) {
+            setSelectedCourse(updC);
+          }
+        }}
         onDeleteCourse={(id) => setCourses(courses.filter((c) => c.id !== id))}
         onUpdateOrderStatus={(id, status) =>
           setOrders(orders.map((o) => (o.id === id ? { ...o, status } : o)))
         }
+        onPreviewCourse={(course) => {
+          setSelectedCourse(course);
+          setCurrentView('course-detail');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         onBackToHome={() => handleNavigate('home')}
       />
     );
@@ -216,6 +228,17 @@ export default function App() {
             />
           )}
 
+          {/* Intro Section: PDF Trang 2 - Nâng tầm năng lực, kiến tạo tương lai */}
+          {cmsSections.intro?.enabled !== false && (
+            <IntroSection 
+              introData={cmsSections.intro}
+              onScrollToSection={(id) => {
+                const el = document.getElementById(id);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+            />
+          )}
+
           {/* Shelf 1: Most Popular Courses */}
           {cmsSections.bestsellers.enabled && (
             <CourseraShelf
@@ -227,6 +250,7 @@ export default function App() {
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
               onEnrollCourse={(c) => handleOpenRegistration(c)}
+              onOpenYouTubeTrial={(c) => handleOpenYouTubeTrial(c.youtubeVideoId || 'sal78ACtGTc', c.title, c)}
               onViewAll={() => handleNavigate('catalog')}
             />
           )}
@@ -242,6 +266,7 @@ export default function App() {
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
               onEnrollCourse={(c) => handleOpenRegistration(c)}
+              onOpenYouTubeTrial={(c) => handleOpenYouTubeTrial(c.youtubeVideoId || 'sal78ACtGTc', c.title, c)}
               onViewAll={() => {
                 setSearchCategory('Trí tuệ nhân tạo (AI)');
                 handleNavigate('catalog');
@@ -260,13 +285,17 @@ export default function App() {
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
               onEnrollCourse={(c) => handleOpenRegistration(c)}
+              onOpenYouTubeTrial={(c) => handleOpenYouTubeTrial(c.youtubeVideoId || 'sal78ACtGTc', c.title, c)}
               onViewAll={() => handleNavigate('catalog')}
             />
           )}
 
-          {/* Coursera Plus Subscription Banner */}
+          {/* Coursera Plus / TWings Plus Subscription Banner */}
           {cmsSections.courseraPlus?.enabled !== false && (
-            <CourseraPlusBanner onJoinPlus={() => handleNavigate('catalog')} />
+            <CourseraPlusBanner 
+              config={cmsSections.courseraPlus}
+              onJoinPlus={() => handleNavigate('catalog')} 
+            />
           )}
 
           {/* Shelf 4: Degrees & Online Master's */}
@@ -280,15 +309,25 @@ export default function App() {
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
               onEnrollCourse={(c) => handleOpenRegistration(c)}
+              onOpenYouTubeTrial={(c) => handleOpenYouTubeTrial(c.youtubeVideoId || 'sal78ACtGTc', c.title, c)}
               onViewAll={() => handleNavigate('catalog')}
             />
           )}
 
+          {/* About TWings Academy: PDF Trang 11 - Tầm Nhìn, Sứ Mệnh, Giá Trị Cốt Lõi */}
+          {cmsSections.about?.enabled !== false && (
+            <AboutSection aboutData={cmsSections.about} />
+          )}
+
           {/* Learner Outcomes & Testimonials */}
-          {cmsSections.testimonials?.enabled !== false && <CourseraTestimonials />}
+          {cmsSections.testimonials?.enabled !== false && (
+            <CourseraTestimonials config={cmsSections.testimonials} />
+          )}
 
           {/* Frequently Asked Questions */}
-          {cmsSections.faq?.enabled !== false && <CourseraFAQ />}
+          {cmsSections.faq?.enabled !== false && (
+            <CourseraFAQ config={cmsSections.faq} />
+          )}
         </main>
       )}
 
