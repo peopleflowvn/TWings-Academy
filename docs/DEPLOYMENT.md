@@ -164,6 +164,23 @@ sudo docker compose exec backend python manage.py seed_content
 
 ---
 
+## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
+
+Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị
+lưu trong environment `ops` (chỉ dùng được từ `main`). Vì repo công khai, **không có output nào từ VPS
+xuất hiện trong log**: kết quả được mã hóa bằng `OPS_OUTPUT_KEY` thành artifact giữ 1 ngày.
+
+```bash
+python infra/ops/sync_github.py                        # đẩy secret/variable từ .env lên GitHub (không in giá trị)
+gh workflow run ops.yml -f task=status                 # status | bootstrap | sync-env | logs | seed-content | create-admin | restart
+gh run watch "$(gh run list -w ops.yml -L1 --json databaseId -q '.[0].databaseId')"
+python infra/ops/fetch_output.py <run-id>              # tải và giải mã kết quả
+gh workflow run ops.yml -f task=create-admin -f arg=ban@twings.edu.vn   # mật khẩu ngẫu nhiên nằm trong output đã mã hóa
+```
+
+Lần chạy đầu workflow tự quét host key của VPS và in vân tay; chép dòng `ssh-keyscan` vào `GH_VPS_KNOWN_HOSTS`
+trong `.env` rồi chạy lại `sync_github.py` để ghim cố định. Thu hồi quyền: xóa secret `VPS_ADMIN_SSH_KEY`.
+
 ## Vận hành
 
 | Việc | Lệnh (trên VPS, thư mục `/opt/twings`) |

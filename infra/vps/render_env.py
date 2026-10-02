@@ -38,10 +38,14 @@ def main() -> int:
 
     out.mkdir(parents=True, exist_ok=True)
     for name, lines in files.items():
-        (out / f"{name}.env").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+        (out / f"{name}.env").write_text(
+            "\n".join(lines) + "\n", encoding="utf-8", newline="\n"
+        )
         print(f"wrote {name}.env ({len(lines)} vars)")
     if empty:
-        print("\nstill empty (fill them in .env before going live):", *empty, sep="\n  ")
+        print(
+            "\nstill empty (fill them in .env before going live):", *empty, sep="\n  "
+        )
     return 0
 
 

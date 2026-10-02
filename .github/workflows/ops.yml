@@ -1,0 +1,115 @@
+name: Ops
+
+# Administrative access to the VPS from GitHub's runners (the admin workstation's network blocks SSH).
+# Manually triggered only, from main only, using the admin key stored in the protected "ops"
+# environment. The repository is public, so NOTHING from the VPS is printed to the job log: the
+# remote output is encrypted with OPS_OUTPUT_KEY and uploaded as a short-lived artifact. Decrypt it
+# locally with:  python infra/ops/fetch_output.py <run-id>
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: What to run on the VPS
+        type: choice
+        options: [status, bootstrap, sync-env, logs, seed-content, create-admin, restart]
+      arg:
+        description: "create-admin: e-mail of the new superuser"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ops
+  cancel-in-progress: false
+
+jobs:
+  run:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: ops
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate input
+        env:
+          TASK: ${{ inputs.task }}
+          ARG: ${{ inputs.arg }}
+        run: |
+          if [[ "$TASK" == create-admin ]]; then
+            [[ "$ARG" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "::error::arg must be an e-mail"; exit 1; }
+          else
+            [[ -z "$ARG" ]] || { echo "::error::arg is only used by create-admin"; exit 1; }
+          fi
+
+      - name: SSH setup (pinned host key when VPS_KNOWN_HOSTS is set)
+        env:
+          SSH_KEY: ${{ secrets.VPS_ADMIN_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/admin_key && chmod 600 ~/.ssh/admin_key
+          if [[ -n "$KNOWN_HOSTS" ]]; then
+            printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            # First contact only: record the key and show its fingerprint (public data) so it can be
+            # pinned in VPS_KNOWN_HOSTS for every later run.
+            ssh-keyscan -t ed25519 "$VPS_HOST" 2>/dev/null > ~/.ssh/known_hosts
+            echo "::warning::VPS_KNOWN_HOSTS not set; scanned host key:"
+            cat ~/.ssh/known_hosts
+            ssh-keygen -lf ~/.ssh/known_hosts
+          fi
+          cat > ~/.ssh/config <<EOF
+          Host vps
+            HostName $VPS_HOST
+            User ubuntu
+            IdentityFile ~/.ssh/admin_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ConnectTimeout 20
+            ServerAliveInterval 30
+          EOF
+
+      - name: Run task (output captured, never printed)
+        env:
+          TASK: ${{ inputs.task }}
+          ARG: ${{ inputs.arg }}
+          ENV_BUNDLE: ${{ secrets.VPS_ENV_BUNDLE }}
+          CI_DEPLOY_PUBKEY: ${{ vars.CI_DEPLOY_PUBKEY }}
+        run: |
+          set -o pipefail
+          rc=0
+          bash infra/ops/task.sh "$TASK" "$ARG" > "$RUNNER_TEMP/out.txt" 2>&1 || rc=$?
+          echo "task exit code: $rc"
+          echo "rc=$rc" >> "$GITHUB_ENV"
+
+      - name: Encrypt output
+        if: always()
+        env:
+          OPS_OUTPUT_KEY: ${{ secrets.OPS_OUTPUT_KEY }}
+        run: |
+          [[ -n "$OPS_OUTPUT_KEY" ]] || { echo "::error::OPS_OUTPUT_KEY missing"; rm -f "$RUNNER_TEMP/out.txt"; exit 1; }
+          touch "$RUNNER_TEMP/out.txt"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 -salt -pass env:OPS_OUTPUT_KEY \
+            -in "$RUNNER_TEMP/out.txt" -out "$RUNNER_TEMP/ops-output.enc"
+          rm -f "$RUNNER_TEMP/out.txt"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: ops-output
+          path: ${{ runner.temp }}/ops-output.enc
+          retention-days: 1
+          if-no-files-found: ignore
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/admin_key
+
+      - name: Result
+        run: exit "${rc:-1}"

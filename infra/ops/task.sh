@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Runs on the GitHub runner for .github/workflows/ops.yml; "vps" is the SSH alias set up there.
+# Output goes to an encrypted artifact, so it may contain sensitive details.
+set -euo pipefail
+
+TASK="${1:?task}"
+ARG="${2:-}"
+APP=/opt/twings
+
+remote() { ssh vps "$@"; }
+
+case "$TASK" in
+  status)
+    remote 'set -x
+      . /etc/os-release; echo "$PRETTY_NAME $(uname -m)"; uptime; free -h; df -h /
+      sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+      sudo ss -tlnup
+      command -v docker && sudo docker compose -f /opt/twings/docker-compose.yml ps -a || true
+      sudo cat /opt/twings/.env 2>/dev/null || true
+      curl -fsS -m 10 -H "Host: $(sudo sed -n "s/^API_DOMAIN=//p" /opt/twings/env/caddy.env 2>/dev/null)" \
+        -k https://127.0.0.1/api/v1/health/ || true
+      sudo journalctl -t twings-deploy -n 20 --no-pager || true'
+    ;;
+
+  bootstrap)
+    [[ "$CI_DEPLOY_PUBKEY" =~ ^ssh-ed25519\  ]] || { echo "repository variable CI_DEPLOY_PUBKEY missing"; exit 1; }
+    remote 'rm -rf /tmp/twings-infra && mkdir -p /tmp/twings-infra'
+    tar -C infra -czf - . | remote 'tar -C /tmp/twings-infra -xzf -'
+    printf '%s\n' "$CI_DEPLOY_PUBKEY" | remote 'cat > /tmp/ci-deploy.pub'
+    remote 'sudo bash /tmp/twings-infra/vps/bootstrap.sh /tmp/ci-deploy.pub && rm -rf /tmp/twings-infra /tmp/ci-deploy.pub'
+    # Same login must still work after the SSH hardening.
+    remote 'echo "admin SSH still OK after hardening"'
+    ;;
+
+  sync-env)
+    [[ -n "$ENV_BUNDLE" ]] || { echo "secret VPS_ENV_BUNDLE missing"; exit 1; }
+    printf '%s' "$ENV_BUNDLE" | base64 -d | remote "set -e
+      t=\$(mktemp -d); trap 'rm -rf \$t' EXIT
+      tar -C \$t -xzf -
+      for f in \$t/*.env; do sudo install -m 600 -o root -g root \"\$f\" $APP/env/; done
+      ls -l $APP/env/
+      if [ -f $APP/.env ]; then cd $APP && sudo docker compose up -d; fi"
+    ;;
+
+  logs)
+    remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
+    ;;
+
+  seed-content)
+    remote "cd $APP && sudo docker compose exec -T backend python manage.py seed_content"
+    ;;
+
+  create-admin)
+    # Random password, shown only in the encrypted output; change it after the first login.
+    remote "cd $APP && pw=\$(openssl rand -base64 18) && \
+      sudo docker compose exec -T -e DJANGO_SUPERUSER_PASSWORD=\"\$pw\" -e DJANGO_SUPERUSER_EMAIL='$ARG' -e DJANGO_SUPERUSER_NAME=Administrator \
+        backend python manage.py createsuperuser --noinput && echo \"login: $ARG  password: \$pw\""
+    ;;
+
+  restart)
+    remote "cd $APP && sudo docker compose up -d --remove-orphans && sudo docker compose ps"
+    ;;
+
+  *)
+    echo "unknown task: $TASK"; exit 2 ;;
+esac
