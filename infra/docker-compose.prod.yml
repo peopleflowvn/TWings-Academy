@@ -1,8 +1,8 @@
 # Production stack on the Oracle VPS (/opt/twings/docker-compose.yml).
 #
-#   Internet ──HTTPS──▶ Cloudflare edge ──tunnel (outbound only)──▶ cloudflared ──▶ backend:8000 ──▶ db
+#   Internet ──HTTPS :443──▶ caddy (Let's Encrypt TLS) ──▶ backend:8000 ──▶ db
 #
-# No container publishes a port: the VPS firewall only needs SSH (22) open. Secrets live in
+# Only caddy publishes ports (80/443); backend and db are unreachable from outside. Secrets live in
 # /opt/twings/env/*.env (root-owned, chmod 600) and never in this file or the image.
 # IMAGE_TAG is written to /opt/twings/.env by bin/deploy.sh.
 
@@ -44,23 +44,31 @@ services:
     mem_limit: 1g
     pids_limit: 256
 
-  cloudflared:
+  caddy:
     <<: *hardening
-    image: cloudflare/cloudflared:2026.9.3@sha256:072c067d25ccbe61d46e18f0d0723255f2bb5304f7317caa95b27031520ff92c
-    command: ["tunnel", "--no-autoupdate", "run"]
-    env_file: [./env/cloudflared.env]  # TUNNEL_TOKEN=...
+    image: caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    env_file: [./env/caddy.env]  # API_DOMAIN, ACME_EMAIL
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # certificates: keep across restarts (Let's Encrypt rate limits)
+      - caddy_config:/config
     depends_on: [backend]
     networks: [egress]
     read_only: true
+    tmpfs: ["/tmp"]
     cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
     mem_limit: 256m
 
 networks:
   # Database network has no route to the internet.
   internal:
     internal: true
-  # Backend (Resend, R2) and cloudflared (Cloudflare edge) need outbound access.
+  # Backend (Resend, R2) and caddy (ACME, public traffic) need outbound access.
   egress: {}
 
 volumes:
   pgdata: {}
+  caddy_data: {}
+  caddy_config: {}

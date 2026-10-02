@@ -328,3 +328,24 @@ def test_csv_export_neutralises_formulas_and_omits_cccd(staff_client, course):
     content = b"".join(res.streaming_content).decode("utf-8")
     assert "'=HYPERLINK" in content
     assert "001099012345" not in content
+
+
+# ------------------------------------------------------------------ reverse proxy
+def test_real_ip_header_only_trusted_when_configured(rf, settings):
+    from apps.core.middleware import ProxyRealIPMiddleware
+
+    seen = {}
+
+    def view(request):
+        seen["ip"] = request.META["REMOTE_ADDR"]
+
+    settings.REAL_IP_HEADER = ""
+    ProxyRealIPMiddleware(view)(rf.get("/", HTTP_X_REAL_IP="203.0.113.7"))
+    assert seen["ip"] == "127.0.0.1"
+
+    settings.REAL_IP_HEADER = "X-Real-IP"
+    mw = ProxyRealIPMiddleware(view)
+    mw(rf.get("/", HTTP_X_REAL_IP="203.0.113.7"))
+    assert seen["ip"] == "203.0.113.7"
+    mw(rf.get("/", HTTP_X_REAL_IP="not-an-ip"))
+    assert seen["ip"] == "127.0.0.1"

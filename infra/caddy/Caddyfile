@@ -1,0 +1,20 @@
+# Public entry point of the API (/opt/twings/caddy/Caddyfile). Caddy obtains and renews the
+# Let's Encrypt certificate itself and redirects HTTP to HTTPS.
+# API_DOMAIN comes from /opt/twings/env/caddy.env.
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	request_body {
+		max_size 10MB
+	}
+
+	header -Server
+
+	reverse_proxy backend:8000 {
+		# Overwrite (never append) so visitors cannot spoof their address; Django reads it via
+		# REAL_IP_HEADER=X-Real-IP for throttling and login lockouts.
+		header_up X-Real-IP {remote_host}
+	}
+
+	# No access log here: gunicorn already logs requests without query strings (personal data).
+}

@@ -50,7 +50,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "apps.core.middleware.CloudflareRealIPMiddleware",
+    "apps.core.middleware.ProxyRealIPMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "apps.core.middleware.SecurityHeadersMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -149,15 +149,16 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_URLS_REGEX = r"^/api/v1/(?!webhooks/).*$"
 
 # ---------------------------------------------------------------------------
-# Security headers (TLS terminates at Cloudflare; the tunnel forwards X-Forwarded-Proto)
+# Security headers (TLS terminates at the Caddy reverse proxy, which sets X-Forwarded-Proto)
 # ---------------------------------------------------------------------------
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
-# Only trust CF-Connecting-IP when the app is reachable exclusively through Cloudflare.
-TRUST_CLOUDFLARE_IP_HEADER = env.bool("TRUST_CLOUDFLARE_IP_HEADER", default=False)
+# Header carrying the visitor IP, set by the reverse proxy (X-Real-IP behind Caddy). Empty = use
+# the socket address. Only set it when the app is reachable exclusively through that proxy.
+REAL_IP_HEADER = env("REAL_IP_HEADER", default="")
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024

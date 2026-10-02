@@ -94,15 +94,27 @@ chmod 440 /etc/sudoers.d/twings-deploy
 visudo -cf /etc/sudoers.d/twings-deploy
 
 echo "==> application layout in ${APP}"
-install -d -m 755 -o root -g root "$APP" "$APP/bin" "$APP/postgres" "$APP/postgres/init"
+install -d -m 755 -o root -g root "$APP" "$APP/bin" "$APP/postgres" "$APP/postgres/init" "$APP/caddy"
 install -d -m 700 -o root -g root "$APP/env"
 install -m 644 -o root -g root "$SRC/docker-compose.prod.yml" "$APP/docker-compose.yml"
+install -m 644 -o root -g root "$SRC/caddy/Caddyfile" "$APP/caddy/Caddyfile"
 install -m 755 -o root -g root "$SRC/postgres/init/01-app-role.sh" "$APP/postgres/init/01-app-role.sh"
 install -m 755 -o root -g root "$SRC/vps/bin/deploy-gate" "$SRC/vps/bin/deploy.sh" "$SRC/vps/bin/backup.sh" "$APP/bin/"
-for f in db cloudflared backup; do
+for f in db caddy backup; do
   [[ -f "$APP/env/$f.env" ]] || install -m 600 -o root -g root "$SRC/env/$f.env.example" "$APP/env/$f.env"
 done
 [[ -f "$APP/env/backend.env" ]] || install -m 600 -o root -g root /dev/null "$APP/env/backend.env"
+
+echo "==> host firewall: allow HTTP/HTTPS for Caddy"
+# Oracle's Ubuntu images ship iptables rules that reject everything but SSH on INPUT. Docker's
+# published ports normally bypass INPUT (DNAT + FORWARD), but open 80/443 explicitly so Caddy also
+# works with the userland proxy or host networking. Persisted with netfilter-persistent if present.
+for proto_port in tcp:80 tcp:443 udp:443; do
+  proto="${proto_port%%:*}" port="${proto_port##*:}"
+  iptables -C INPUT -p "$proto" --dport "$port" -j ACCEPT 2>/dev/null \
+    || iptables -I INPUT 1 -p "$proto" --dport "$port" -j ACCEPT
+done
+command -v netfilter-persistent >/dev/null && netfilter-persistent save >/dev/null 2>&1 || true
 
 echo "==> nightly encrypted backup (02:30 Asia/Ho_Chi_Minh)"
 timedatectl set-timezone Asia/Ho_Chi_Minh
@@ -114,7 +126,8 @@ chmod 644 /etc/cron.d/twings-backup
 cat <<EOF
 
 Done. Remaining manual steps (secrets are never stored in git):
-  1. Fill ${APP}/env/db.env, backend.env, cloudflared.env, backup.env   (sudo nano ..., keep chmod 600)
-  2. Oracle VCN security list: ingress TCP 22 only (ideally from your IP); no 80/443 needed.
+  1. Fill ${APP}/env/db.env, backend.env, caddy.env, backup.env   (or upload files rendered by
+     infra/vps/render_env.py; keep chmod 600)
+  2. Oracle VCN security list: ingress TCP 22 (ideally from your IP) + TCP 80, TCP 443, UDP 443.
   3. Push to main → GitHub Actions builds the image and runs: ssh deploy@<vps> "deploy <sha>"
 EOF

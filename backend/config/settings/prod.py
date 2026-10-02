@@ -12,7 +12,7 @@ if ADMIN_URL == "admin/":  # noqa: F405
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-# Cloudflare enforces HTTPS at the edge; redirecting here too would loop through the tunnel.
+# Caddy redirects HTTP to HTTPS before requests reach Django.
 SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=False)
 SECURE_HSTS_SECONDS = env.int("DJANGO_SECURE_HSTS_SECONDS", default=31536000)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True)
@@ -58,7 +58,6 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
-# W008: HTTPS redirect is enforced by Cloudflare ("Always Use HTTPS"); the origin is only reachable
-#       through the tunnel, so redirecting here would loop.
+# W008: HTTPS redirect is enforced by Caddy, the only way to reach the app (it publishes no port).
 # W021: HSTS preload is deliberately opt-in (DJANGO_SECURE_HSTS_PRELOAD) because it is hard to undo.
 SILENCED_SYSTEM_CHECKS = ["security.W008"] + ([] if SECURE_HSTS_PRELOAD else ["security.W021"])

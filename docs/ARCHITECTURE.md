@@ -4,18 +4,17 @@
 
 ```mermaid
 flowchart LR
-    U[Học viên / Ứng viên] -->|HTTPS| CFP[Cloudflare Pages<br/>React SPA]
+    U[Học viên / Ứng viên] -->|HTTPS| CFP[Cloudflare Pages<br/>tuyensinh.twings.edu.vn]
     S[Nhân sự nội bộ] -->|HTTPS| CFP
-    CFP -->|fetch + cookie phiên| CFE[Cloudflare Edge<br/>WAF · TLS · DDoS]
-    CFE -->|Cloudflare Tunnel<br/>kết nối outbound| CD[cloudflared]
-    subgraph VPS[Oracle Cloud VPS – chỉ mở SSH 22]
-        CD --> API[Django API<br/>gunicorn, non-root, read-only FS]
+    CFP -->|fetch + cookie phiên| CD
+    subgraph VPS[Oracle Cloud VPS – mở 22, 80, 443]
+        CD[Caddy<br/>api-tuyensinh.twings.edu.vn<br/>TLS Let's Encrypt] --> API[Django API<br/>gunicorn, non-root, read-only FS]
         API --> DB[(PostgreSQL 18<br/>mạng nội bộ, không ra Internet)]
     end
     API -->|S3 API| R2[(Cloudflare R2<br/>media công khai · tài liệu riêng tư)]
     API -->|REST| RS[Resend<br/>email]
-    RS -->|Webhook ký Svix| CFE
-    BANK[SePay / ngân hàng] -->|Webhook API key| CFE
+    RS -->|Webhook ký Svix| CD
+    BANK[SePay / ngân hàng] -->|Webhook API key| CD
     VPS -->|pg_dump mã hóa age, hằng đêm| BK[(R2 bucket backup)]
 ```
 
@@ -94,7 +93,7 @@ Ma trận quyền nằm ở `backend/apps/accounts/rbac.py`, dùng đúng mã qu
 
 ## 7. Định hướng tiếp theo
 
-- Xác thực 2 lớp (TOTP) cho nhân sự, hoặc bảo vệ `/staff` và trang admin bằng Cloudflare Access.
+- Xác thực 2 lớp (TOTP) cho nhân sự, hoặc chỉ cho phép trang admin từ IP văn phòng/VPN (`remote_ip` trong Caddyfile).
 - Chuyển gửi email/đối soát sang hàng đợi (Celery/RQ) khi lưu lượng tăng.
 - Tách các component CMS lớn (`CMSCRMOrdersTab`, `CompAILeadDetailModal`…) và nối dần các tab CMS còn lại vào API. Hiện các tab đó vẫn thao tác trên dữ liệu trong trình duyệt.
 - Thêm router (react-router) để mỗi khóa học và bài viết có URL riêng, phục vụ SEO.

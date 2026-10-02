@@ -3,21 +3,23 @@ import ipaddress
 from django.conf import settings
 
 
-class CloudflareRealIPMiddleware:
+class ProxyRealIPMiddleware:
     """
-    Use Cloudflare's CF-Connecting-IP as the client address so throttling and login lockouts
-    target the real visitor instead of the tunnel.
+    Use the client address set by the reverse proxy (REAL_IP_HEADER, e.g. Caddy's X-Real-IP) so
+    throttling and login lockouts target the real visitor instead of the proxy.
 
-    Only enable (TRUST_CLOUDFLARE_IP_HEADER=true) when the app is reachable exclusively through
-    Cloudflare Tunnel; otherwise anyone could spoof the header.
+    Only set REAL_IP_HEADER when the app is reachable exclusively through a proxy that overwrites
+    that header; otherwise anyone could spoof it.
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
+        header = settings.REAL_IP_HEADER.strip()
+        self.meta_key = "HTTP_" + header.upper().replace("-", "_") if header else ""
 
     def __call__(self, request):
-        if settings.TRUST_CLOUDFLARE_IP_HEADER:
-            candidate = request.META.get("HTTP_CF_CONNECTING_IP", "").strip()
+        if self.meta_key:
+            candidate = request.META.get(self.meta_key, "").strip()
             if candidate:
                 try:
                     ipaddress.ip_address(candidate)

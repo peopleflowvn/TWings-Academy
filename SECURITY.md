@@ -17,7 +17,7 @@ Vui lòng **không** tạo issue công khai. Hãy gửi mô tả lỗ hổng qua
 
 | Lớp | Biện pháp |
 |---|---|
-| Mạng | Cloudflare Tunnel (VPS không mở cổng web), WAF/DDoS của Cloudflare, firewall chỉ mở SSH, PostgreSQL ở mạng Docker nội bộ không có đường ra Internet |
+| Mạng | Chỉ Caddy (HTTPS, tự gia hạn chứng chỉ) nhận kết nối từ Internet; firewall chỉ mở 22/80/443; API không publish cổng; PostgreSQL ở mạng Docker nội bộ không có đường ra Internet; giới hạn tần suất và khóa đăng nhập theo IP thật của người truy cập |
 | Máy chủ | SSH chỉ dùng khóa, cấm root, fail2ban, tự động cập nhật bảo mật, container chạy non-root, filesystem chỉ đọc, `cap_drop: ALL`, `no-new-privileges` |
 | Triển khai | Khóa CI chỉ chạy được 1 forced command, host key được ghim cố định, có health check và tự rollback, action được ghim theo SHA, dependency khóa kèm hash |
 | Ứng dụng | Cookie phiên HttpOnly/Secure/SameSite, CSRF (kể cả trang đăng nhập), Argon2, khóa tài khoản sau 5 lần sai, RBAC mặc định từ chối, CSP và các security header, lọc HTML, mã hóa lại ảnh upload, chống chèn công thức khi xuất CSV |

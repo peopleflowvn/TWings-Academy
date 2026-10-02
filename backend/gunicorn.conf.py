@@ -12,7 +12,7 @@ max_requests = 2000
 max_requests_jitter = 200
 limit_request_line = 8190
 limit_request_fields = 100
-# Cloudflare Tunnel is the only client; trust its X-Forwarded-* headers.
+# The Caddy reverse proxy is the only client (no published port); trust its X-Forwarded-* headers.
 forwarded_allow_ips = "*"
 accesslog = "-"
 errorlog = "-"
