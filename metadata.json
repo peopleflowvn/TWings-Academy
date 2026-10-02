@@ -1,0 +1,6 @@
+{
+  "name": "Twings Edu - Nền Tảng Học & Bán Khóa Học Trực Tuyến LMS",
+  "description": "Nền tảng đào tạo trực tuyến chuẩn Moodle với kiến trúc Next.js + Django Backend, thanh toán tự động VietQR, học liệu đa phương tiện và hệ thống quản trị CMS toàn diện theo phong cách Twings English.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
