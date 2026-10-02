@@ -17,13 +17,15 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Course, Order } from '../types';
+import { api, ApiError, isBackendEnabled } from '../lib/api';
+import type { CheckoutPrefill } from './CourseraCheckoutModal';
 
 interface RegistrationModalProps {
   course?: Course | null;
   allCourses: Course[];
   onClose: () => void;
   onSubmitSuccess: (newOrder: Order) => void;
-  onOpenVietQR?: (course: Course) => void;
+  onOpenVietQR?: (course: Course, prefill?: CheckoutPrefill) => void;
 }
 
 export const RegistrationModal: React.FC<RegistrationModalProps> = ({
@@ -45,6 +47,10 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   const [preferredAction, setPreferredAction] = useState<'consult' | 'vietqr'>('consult');
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [honeypot, setHoneypot] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState('');
 
   const targetCourse = allCourses.find((c) => c.id === selectedCourseId) || course || allCourses[0];
 
@@ -59,57 +65,77 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
     if (!phone.trim() || phone.length < 9) errs.phone = 'Vui lòng nhập số điện thoại chính xác';
     if (!birthDate.trim()) errs.birthDate = 'Vui lòng nhập ngày sinh (dd/mm/yyyy)';
     if (!area) errs.area = 'Vui lòng chọn khu vực';
+    if (!privacyConsent) errs.privacyConsent = 'Vui lòng đồng ý với chính sách xử lý dữ liệu cá nhân';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError('');
     if (!validate()) return;
 
-    const orderCode = `REG_${Math.floor(1000 + Math.random() * 9000)}_${fullName.replace(/\s+/g, '_')}`;
+    // "Giữ chỗ qua VietQR": the checkout modal creates the (single) order server-side.
+    if (preferredAction === 'vietqr' && onOpenVietQR) {
+      onClose();
+      onOpenVietQR(targetCourse, { customerName: fullName, customerEmail: email, customerPhone: phone });
+      return;
+    }
 
+    let registrationCode = `REG-${Date.now().toString(36).toUpperCase()}`;
+    if (isBackendEnabled()) {
+      setSubmitting(true);
+      try {
+        const res = await api.post<{ registrationCode: string }>('/public/registrations/', {
+          courseId: targetCourse.id,
+          customerName: fullName.trim(),
+          customerEmail: email.trim(),
+          customerPhone: phone.trim(),
+          birthDate,
+          area,
+          educationLevel,
+          major,
+          consultNeed: consultNote,
+          source: 'Website Form Tư vấn',
+          privacyConsent,
+          website: honeypot
+        });
+        registrationCode = res.registrationCode;
+      } catch (err) {
+        setServerError(err instanceof ApiError ? err.message : 'Không gửi được đăng ký, vui lòng thử lại.');
+        return;
+      } finally {
+        setSubmitting(false);
+      }
+    }
+
+    // Local copy for the in-browser CRM demo; in live mode the server record is authoritative.
     const newOrder: Order = {
-      id: `ord-${Date.now()}`,
-      orderCode,
+      id: registrationCode,
+      orderCode: registrationCode,
       courseId: targetCourse.id,
       courseTitle: targetCourse.title,
       amount: targetCourse.price,
       originalAmount: targetCourse.originalPrice,
-      status: preferredAction === 'vietqr' ? 'pending' : 'pending',
-      paymentMethod: preferredAction === 'vietqr' ? 'vietqr' : 'transfer',
+      status: 'pending',
+      paymentMethod: 'transfer',
       createdAt: new Date().toISOString(),
-
-      // 1: THÔNG TIN CÁ NHÂN (Image 4)
-      registrationCode: orderCode,
+      registrationCode,
       customerName: fullName,
       birthDate,
-      gender: 'Nữ',
       customerPhone: phone,
       customerEmail: email,
       area,
-      currentResidence: area,
-      campaignCode: 'WEB_FORM_2026',
       educationLevel,
       major,
-      university: 'Đại học Kinh tế Quốc dân / HV Ngân hàng',
-
-      // 2: THÔNG TIN TIẾP CẬN VÀ CHĂM SÓC
       source: 'Website Form Tư vấn',
       registeredAt: new Date().toLocaleString('vi-VN'),
-      reachedDate: new Date().toLocaleDateString('vi-VN'),
       consultNeed: consultNote || 'Tư vấn lộ trình học và hỗ trợ kết nối việc làm',
       interestedCourse: targetCourse.title,
-      pic: 'HuongNT22',
       studyArea: area,
-      approachMethod: 'Zalo / Gọi điện',
-      interestLevel: 'Rất cao',
       crmStatus: '1. Mới',
       enrolledCourseName: targetCourse.title,
-      batchCohort: 'Khóa học 8',
       consultDetail: consultNote ? `Ghi chú học viên: ${consultNote}` : 'Đăng ký tư vấn từ form website.',
-
-      // 3: THÔNG TIN THANH TOÁN
       tuitionFee: targetCourse.price,
       totalReceivable: targetCourse.price,
       paidAmountL1: 0,
@@ -123,13 +149,6 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       spread: 60,
       origin: { y: 0.6 }
     });
-
-    if (preferredAction === 'vietqr' && onOpenVietQR) {
-      setTimeout(() => {
-        onClose();
-        onOpenVietQR(targetCourse);
-      }, 1000);
-    }
   };
 
   return (
@@ -344,10 +363,38 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 </div>
               </div>
 
+              {/* Honeypot: hidden from people, filled in by bots */}
+              <input
+                type="text"
+                name="website"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                className="hidden"
+              />
+
+              <label className="flex items-start gap-2 text-[11px] text-slate-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={privacyConsent}
+                  onChange={(e) => setPrivacyConsent(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Tôi đồng ý để TWings Academy xử lý dữ liệu cá nhân đã cung cấp nhằm tư vấn, xét tuyển và ghi danh
+                  khóa học theo Nghị định 13/2023/NĐ-CP. Tôi có thể yêu cầu xem, sửa hoặc xóa dữ liệu bất kỳ lúc nào.
+                </span>
+              </label>
+              {errors.privacyConsent && <p className="text-[11px] text-red-600">{errors.privacyConsent}</p>}
+              {serverError && <p className="text-xs text-red-600 font-medium">{serverError}</p>}
+
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full py-3 px-4 bg-[#0073C1] hover:bg-[#005FA0] text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-4"
+                disabled={submitting}
+                className="disabled:opacity-60 w-full py-3 px-4 bg-[#0073C1] hover:bg-[#005FA0] text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
                 <Send className="w-4 h-4" />
                 <span>

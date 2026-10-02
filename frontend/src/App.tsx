@@ -1,10 +1,11 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { 
   Course, 
   Order, 
   CMSSectionsConfig,
   HeroBannerItem,
-  Article
+  Article,
+  AdminUser
 } from './types';
 import { 
   COURSES, 
@@ -13,6 +14,7 @@ import {
   INITIAL_ARTICLES
 } from './data/courseraData';
 import { DEFAULT_CMS_SECTIONS } from './data/coursesData';
+import { api, isBackendEnabled, Paginated } from './lib/api';
 
 // Coursera Components
 import { CourseraHeader } from './components/CourseraHeader';
@@ -31,7 +33,8 @@ import { CourseraCatalogPage } from './components/CourseraCatalogPage';
 import { CourseraCourseDetailPage } from './components/CourseraCourseDetailPage';
 import { CourseraArticlesPage } from './components/CourseraArticlesPage';
 import { CourseraArticleDetailPage } from './components/CourseraArticleDetailPage';
-import { CourseraCheckoutModal } from './components/CourseraCheckoutModal';
+import { CourseraCheckoutModal, CheckoutPrefill } from './components/CourseraCheckoutModal';
+import { StaffLoginGate } from './components/cms/StaffLoginGate';
 import { RegistrationModal } from './components/RegistrationModal';
 import { YouTubeTrialModal } from './components/YouTubeTrialModal';
 
@@ -61,6 +64,7 @@ export default function App() {
 
   // Modals State
   const [checkoutCourse, setCheckoutCourse] = useState<Course | null>(null);
+  const [checkoutPrefill, setCheckoutPrefill] = useState<CheckoutPrefill | undefined>(undefined);
   const [registrationCourse, setRegistrationCourse] = useState<Course | null>(null);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [trialVideo, setTrialVideo] = useState<{ videoId: string; title: string; course?: Course } | null>(null);
@@ -70,6 +74,95 @@ export default function App() {
     'google-data-analytics',
     'deeplearning-machine-learning'
   ]);
+
+  // Live content from the Django API; the bundled demo data stays as an offline fallback.
+  useEffect(() => {
+    if (!isBackendEnabled()) return;
+    let cancelled = false;
+    const load = async () => {
+      const [courseRes, articleRes, bannerRes, sectionsRes] = await Promise.allSettled([
+        api.get<Course[]>('/public/courses/'),
+        api.get<Paginated<Article>>('/public/articles/'),
+        api.get<HeroBannerItem[]>('/public/banners/'),
+        api.get<{ data: CMSSectionsConfig }>('/public/site-config/homepage_sections/')
+      ]);
+      if (cancelled) return;
+      if (courseRes.status === 'fulfilled' && courseRes.value.length) {
+        setCourses(courseRes.value);
+        setSelectedCourse(courseRes.value[0]);
+      }
+      if (articleRes.status === 'fulfilled' && articleRes.value.results.length) {
+        setArticles(articleRes.value.results);
+        setSelectedArticle(articleRes.value.results[0]);
+      }
+      if (bannerRes.status === 'fulfilled' && bannerRes.value.length) setBanners(bannerRes.value);
+      if (sectionsRes.status === 'fulfilled' && sectionsRes.value.data?.hero) {
+        setCmsSections({ ...DEFAULT_CMS_SECTIONS, ...sectionsRes.value.data });
+      }
+    };
+    load().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ---- Staff (CMS) actions: persisted through the API when a backend is configured ----
+  const live = isBackendEnabled();
+  const reportError = (err: unknown) =>
+    window.alert(err instanceof Error ? err.message : 'Thao tác thất bại, vui lòng thử lại.');
+
+  const loadStaffData = (user: AdminUser) => {
+    if (!user.permissions.includes('crm.view_leads')) return;
+    api
+      .get<Paginated<Order>>('/staff/orders/?pageSize=200')
+      .then((res) => setOrders(res.results))
+      .catch(reportError);
+  };
+
+  const handleAddCourse = async (newC: Course) => {
+    if (!live) return setCourses([newC, ...courses]);
+    try {
+      const saved = await api.post<Course>('/staff/courses/', newC);
+      setCourses([saved, ...courses]);
+    } catch (err) {
+      reportError(err);
+    }
+  };
+
+  const handleUpdateCourse = async (updC: Course) => {
+    let saved = updC;
+    if (live) {
+      try {
+        saved = await api.patch<Course>(`/staff/courses/${updC.id}/`, updC);
+      } catch (err) {
+        return reportError(err);
+      }
+    }
+    setCourses(courses.map((c) => (c.id === saved.id ? saved : c)));
+    if (selectedCourse?.id === saved.id) setSelectedCourse(saved);
+  };
+
+  const handleDeleteCourse = async (id: string) => {
+    if (live) {
+      try {
+        await api.delete(`/staff/courses/${id}/`);
+      } catch (err) {
+        return reportError(err);
+      }
+    }
+    setCourses(courses.filter((c) => c.id !== id));
+  };
+
+  const handleUpdateOrderStatus = async (id: string, status: Order['status']) => {
+    if (live) {
+      try {
+        await api.patch(`/staff/orders/${id}/`, { status });
+      } catch (err) {
+        return reportError(err);
+      }
+    }
+    setOrders(orders.map((o) => (o.id === id ? { ...o, status } : o)));
+  };
 
   // Shelves
   const mostPopularCourses = courses.filter((c) => c.badgeSection === 'most_popular' || c.reviewsCount > 50000);
@@ -111,31 +204,35 @@ export default function App() {
 
   // CMS Portal View
   if (currentView === 'cms') {
+    const renderCms = (staffUser?: AdminUser, logout?: () => void) => (
+        <CourseraCMSAdmin
+          courses={courses}
+          orders={orders}
+          cmsSections={cmsSections}
+          onUpdateCMSSections={setCmsSections}
+          onAddCourse={handleAddCourse}
+          onUpdateCourse={handleUpdateCourse}
+          onDeleteCourse={handleDeleteCourse}
+          onUpdateOrderStatus={handleUpdateOrderStatus}
+          onPreviewCourse={(course) => {
+            setSelectedCourse(course);
+            setCurrentView('course-detail');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onBackToHome={() => handleNavigate('home')}
+          staffUser={staffUser}
+          onLogout={logout}
+        />
+    );
     return (
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Đang tải CMS…</div>}>
-      <CourseraCMSAdmin
-        courses={courses}
-        orders={orders}
-        cmsSections={cmsSections}
-        onUpdateCMSSections={setCmsSections}
-        onAddCourse={(newC) => setCourses([newC, ...courses])}
-        onUpdateCourse={(updC) => {
-          setCourses(courses.map((c) => (c.id === updC.id ? updC : c)));
-          if (selectedCourse?.id === updC.id) {
-            setSelectedCourse(updC);
-          }
-        }}
-        onDeleteCourse={(id) => setCourses(courses.filter((c) => c.id !== id))}
-        onUpdateOrderStatus={(id, status) =>
-          setOrders(orders.map((o) => (o.id === id ? { ...o, status } : o)))
-        }
-        onPreviewCourse={(course) => {
-          setSelectedCourse(course);
-          setCurrentView('course-detail');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        onBackToHome={() => handleNavigate('home')}
-      />
+        {isBackendEnabled() ? (
+          <StaffLoginGate onBackToHome={() => handleNavigate('home')} onAuthenticated={loadStaffData}>
+            {(user, logout) => renderCms(user, logout)}
+          </StaffLoginGate>
+        ) : (
+          renderCms()
+        )}
       </Suspense>
     );
   }
@@ -349,8 +446,9 @@ export default function App() {
           onSubmitSuccess={(order) => {
             handleRegistrationSuccess(order);
           }}
-          onOpenVietQR={(c) => {
+          onOpenVietQR={(c, prefill) => {
             setShowRegistrationModal(false);
+            setCheckoutPrefill(prefill);
             setCheckoutCourse(c);
           }}
         />
@@ -374,7 +472,11 @@ export default function App() {
       {checkoutCourse && (
         <CourseraCheckoutModal
           course={checkoutCourse}
-          onClose={() => setCheckoutCourse(null)}
+          prefill={checkoutPrefill}
+          onClose={() => {
+            setCheckoutCourse(null);
+            setCheckoutPrefill(undefined);
+          }}
           onPaymentSuccess={handlePaymentSuccess}
         />
       )}

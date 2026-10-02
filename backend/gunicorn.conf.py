@@ -4,7 +4,8 @@ import os
 bind = "0.0.0.0:8000"
 workers = int(os.environ.get("GUNICORN_WORKERS", min(4, multiprocessing.cpu_count() * 2 + 1)))
 threads = int(os.environ.get("GUNICORN_THREADS", 2))
-worker_tmp_dir = "/dev/shm"  # root filesystem is read-only
+# Per-container tmpfs; recommended by gunicorn when the root filesystem is read-only.
+worker_tmp_dir = "/dev/shm"  # noqa: S108
 timeout = 30
 graceful_timeout = 20
 max_requests = 2000

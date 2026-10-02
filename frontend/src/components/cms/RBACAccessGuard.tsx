@@ -8,7 +8,8 @@ interface RBACAccessGuardProps {
   tabLabel: string;
   currentUser: AdminUser;
   roleConfigs: Record<UserRole, RolePermissionConfig>;
-  onSwitchToSuperAdmin: () => void;
+  /** Demo persona switch; omitted for real staff sessions (privileges come from the server). */
+  onSwitchToSuperAdmin?: () => void;
   onRequestPermission?: (permCode: string) => void;
   onNavigateToAllowedTab?: () => void;
 }
@@ -89,6 +90,7 @@ export const RBACAccessGuard: React.FC<RBACAccessGuardProps> = ({
 
       {/* Action CTA Buttons */}
       <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+        {onSwitchToSuperAdmin && (
         <button
           type="button"
           onClick={onSwitchToSuperAdmin}
@@ -97,6 +99,7 @@ export const RBACAccessGuard: React.FC<RBACAccessGuardProps> = ({
           <RefreshCw className="w-4 h-4" />
           <span>Chuyển sang Hoàng Tùng (Super Admin - Toàn quyền)</span>
         </button>
+        )}
 
         {onNavigateToAllowedTab && (
           <button

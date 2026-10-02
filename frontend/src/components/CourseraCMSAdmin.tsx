@@ -68,6 +68,9 @@ interface CourseraCMSAdminProps {
   onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
   onPreviewCourse?: (course: Course) => void;
   onBackToHome: () => void;
+  /** Authenticated staff account (live backend). When absent, the CMS runs in demo-persona mode. */
+  staffUser?: AdminUser;
+  onLogout?: () => void;
 }
 
 export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
@@ -81,7 +84,10 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
   onUpdateOrderStatus,
   onPreviewCourse,
   onBackToHome,
+  staffUser,
+  onLogout,
 }) => {
+  const isLiveSession = !!staffUser;
   const [activeTab, setActiveTab] = useState<
     'crm_orders' | 'courses' | 'instructors' | 'email_templates' | 'banners' | 'partners' | 'homepage_content' | 'articles' | 'users' | 'seo_settings' | 'architecture' | 'sections'
   >('crm_orders');
@@ -93,7 +99,7 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
   // RBAC Global State
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>(INITIAL_ADMIN_USERS);
   const [roleConfigs, setRoleConfigs] = useState<Record<UserRole, RolePermissionConfig>>(DEFAULT_ROLE_CONFIGS);
-  const [currentActorUser, setCurrentActorUser] = useState<AdminUser>(INITIAL_ADMIN_USERS[0]); // Default: Hoang Tung (Super Admin)
+  const [currentActorUser, setCurrentActorUser] = useState<AdminUser>(staffUser ?? INITIAL_ADMIN_USERS[0]); // demo default: Super Admin persona
   const [showActorSwitcherDropdown, setShowActorSwitcherDropdown] = useState(false);
 
   const formatVND = (num: number) => {
@@ -430,7 +436,22 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
           </div>
 
           <div className="flex items-center gap-3 text-xs">
-            {/* Live Role Persona Switcher Dropdown (Allows testing RBAC permissions instantly) */}
+            {isLiveSession ? (
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-800">{currentActorUser.name}</span>
+                <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold border ${roleConfigs[currentActorUser.role]?.color || 'bg-slate-100'}`}>
+                  {getRoleShortLabel(currentActorUser.role)}
+                </span>
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-slate-600 cursor-pointer"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            ) : (
+            /* Demo-only persona switcher (no backend): lets reviewers preview each role's RBAC view */
             <div className="relative">
               <button
                 type="button"
@@ -506,6 +527,7 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
                 </div>
               )}
             </div>
+            )}
 
             <span className="hidden md:flex px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 items-center gap-1.5 font-mono">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -522,10 +544,14 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
               tabLabel={navItems.find((i) => i.id === activeTab)?.label || activeTab}
               currentUser={currentActorUser}
               roleConfigs={roleConfigs}
-              onSwitchToSuperAdmin={() => {
-                const superAdmin = adminUsers.find((u) => u.role === 'super_admin') || adminUsers[0];
-                setCurrentActorUser(superAdmin);
-              }}
+              onSwitchToSuperAdmin={
+                isLiveSession
+                  ? undefined
+                  : () => {
+                      const superAdmin = adminUsers.find((u) => u.role === 'super_admin') || adminUsers[0];
+                      setCurrentActorUser(superAdmin);
+                    }
+              }
               onNavigateToAllowedTab={() => {
                 const allowed = navItems.find((item) => checkUserCanAccessTab(currentActorUser, item.id, roleConfigs));
                 if (allowed) setActiveTab(allowed.id as any);
@@ -786,7 +812,8 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
                   roleConfigs={roleConfigs}
                   onUpdateRoleConfigs={setRoleConfigs}
                   currentActorUser={currentActorUser}
-                  onSelectCurrentActor={setCurrentActorUser}
+                  // Real sessions cannot impersonate other accounts from the UI.
+                  onSelectCurrentActor={isLiveSession ? () => undefined : setCurrentActorUser}
                 />
               )}
 
