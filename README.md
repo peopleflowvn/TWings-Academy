@@ -28,7 +28,7 @@ python -m venv .venv
 .venv/Scripts/activate            # macOS/Linux: source .venv/bin/activate
 pip install --require-hashes --no-deps -r requirements.txt -r requirements-dev.txt
 
-cp .env.example .env              # sau đó điền các khóa bằng lệnh dưới
+cp .env.example ../.env           # .env ở thư mục gốc repo là file secret duy nhất; điền khóa bằng lệnh dưới
 python scripts/generate_secrets.py
 # Đặt DATABASE_URL=sqlite:///db.sqlite3 để chạy nhanh không cần PostgreSQL
 

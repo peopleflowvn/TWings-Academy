@@ -1,7 +1,8 @@
 """
 Base settings shared by every environment.
 
-Every secret comes from environment variables (see backend/.env.example). Nothing sensitive is
+Every secret comes from environment variables (see backend/.env.example; locally they live in the
+repo-root .env). Nothing sensitive is
 hard-coded here, so this file is safe to keep in a public repository.
 """
 
@@ -13,9 +14,10 @@ import environ
 BASE_DIR = Path(__file__).resolve().parents[2]
 
 env = environ.Env()
-# Local development convenience only; production injects variables via docker compose env_file.
-if (BASE_DIR / ".env").is_file():
-    env.read_env(BASE_DIR / ".env")
+# Local development convenience only: the repo-root .env (gitignored) is the single local secrets file.
+# Production injects variables via docker compose env_file and has no .env in the image.
+if (BASE_DIR.parent / ".env").is_file():
+    env.read_env(BASE_DIR.parent / ".env")
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)

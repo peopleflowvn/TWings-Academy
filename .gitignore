@@ -11,6 +11,7 @@ id_rsa*
 id_ed25519*
 *.age
 secrets/
+.secrets/
 infra/vps/*.env
 
 # ---- Node / frontend ----
