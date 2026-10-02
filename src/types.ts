@@ -135,6 +135,79 @@ export interface Instructor {
   credential?: string;
   rating?: number;
   studentsCount?: number;
+  email?: string;
+  phone?: string;
+  expertiseCourses?: string[];
+  assignedCohorts?: string[];
+  yearsOfExperience?: number;
+  status?: 'active' | 'on_leave' | 'adjunct';
+  bankPosition?: string;
+  linkedinUrl?: string;
+}
+
+// -------------------------------------------------------------
+// EMAIL TEMPLATES & RESEND API HUB (WITH WEBHOOK TRACKING)
+// -------------------------------------------------------------
+export type ResendEmailStatus = 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'failed' | 'simulated';
+
+export interface EmailTemplate {
+  id: string;
+  code: string;
+  name: string;
+  category: 'admission' | 'payment' | 'scheduling' | 'marketing';
+  subject: string;
+  body: string; // HTML and template string with {{variables}}
+  variables: string[];
+  description: string;
+  isDefault?: boolean;
+  updatedAt: string;
+}
+
+export interface ResendWebhookEvent {
+  id: string;
+  type: 'email.sent' | 'email.delivered' | 'email.delivery_delayed' | 'email.complained' | 'email.bounced' | 'email.opened' | 'email.clicked';
+  createdAt: string;
+  emailId: string;
+  from: string;
+  to: string[];
+  subject: string;
+  payload?: any;
+}
+
+export interface EmailSendLog {
+  id: string;
+  templateId: string;
+  templateName: string;
+  recipientEmail: string;
+  recipientName: string;
+  subject: string;
+  sentAt: string;
+  deliveredAt?: string;
+  openedAt?: string;
+  openCount?: number;
+  clickedAt?: string;
+  clickCount?: number;
+  lastClickedUrl?: string;
+  bouncedAt?: string;
+  bounceReason?: string;
+  status: ResendEmailStatus;
+  resendMessageId?: string;
+  errorMessage?: string;
+  previewUrl?: string;
+  renderedHtml?: string;
+  webhookEvents?: Array<{
+    type: string;
+    timestamp: string;
+    details?: string;
+  }>;
+}
+
+export interface ResendWebhookConfig {
+  webhookUrl: string;
+  signingSecret: string;
+  enabledEvents: string[];
+  status: 'active' | 'listening' | 'not_configured';
+  lastPingAt?: string;
 }
 
 export interface CourseReview {
@@ -202,6 +275,65 @@ export interface Coupon {
   usageCount?: number;
   maxUsage?: number;
   isActive: boolean;
+}
+
+// -------------------------------------------------------------
+// ADMISSION & TALENT ACQUISITION CAMPAIGN ARCHITECTURE (TalentFlow ATS)
+// -------------------------------------------------------------
+export interface CampaignPositionTrack {
+  id: string;
+  courseId: string;
+  positionTitle: string;        // e.g. "Chuyên viên QHKH Doanh Nghiệp (CIB/SME)"
+  shortName: string;            // e.g. "RM Doanh Nghiệp"
+  department: string;           // e.g. "Khối Khách Hàng Doanh Nghiệp MSB"
+  targetQuota: number;          // Chỉ tiêu tuyển sinh/tuyển dụng (e.g. 25)
+  enrolledCount: number;        // Đã nhập học
+  leadInstructorName?: string;  // Giám đốc Khối / Giảng viên phụ trách
+  salaryRange?: string;         // e.g. "12 - 25 Triệu / tháng"
+  badgeBg: string;
+  iconName?: string;
+}
+
+export interface AdmissionCampaign {
+  id: string;
+  code: string;                 // e.g. "CAMP-2026-Q4-HN"
+  name: string;                 // e.g. "Chiến Dịch Tuyển Sinh Fresher Banker Q4/2026 - Hà Nội"
+  timeRange: string;            // e.g. "Tháng 09/2026 - 12/2026"
+  startDate: string;
+  deadline: string;
+  status: 'active' | 'planning' | 'closed';
+  targetHeadcount: number;      // e.g. 100
+  totalEnrolled: number;        // e.g. 78
+  positions: CampaignPositionTrack[];
+  leadRecruiter: string;        // e.g. "ThS. Lê Hoàng Tùng & Ban Nhân sự MSB"
+  scholarshipBudget: number;    // e.g. 250000000 (250tr)
+  location: string;             // e.g. "Hà Nội & Miền Bắc"
+  description: string;
+}
+
+// -------------------------------------------------------------
+// CRM COURSE COHORT & CLASS LIFECYCLE (Đóng/Mở lớp & Định tuyến)
+// -------------------------------------------------------------
+export type CohortStatus = 'opening' | 'full' | 'in_progress' | 'completed' | 'upcoming';
+
+export interface CourseCohort {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  name: string;
+  startDate: string;
+  registrationDeadline: string;
+  capacity: number;
+  status: CohortStatus;
+  nextCohortId?: string;
+  nextCohortName?: string;
+  autoRolloverWaitlist?: boolean;
+  trainerName?: string;
+  leadInstructorId?: string;
+  leadInstructorName?: string;
+  instructorAvatar?: string;
+  location?: string;
+  notes?: string;
 }
 
 // -------------------------------------------------------------
@@ -323,6 +455,45 @@ export interface Order {
   duplicateCount?: number;
   duplicateNote?: string;
   otherEnrolledCourses?: Array<{ id: string; code: string; title: string; date: string }>;
+
+  // 8: COMP AI AGENTIC CRM (Evidence Ledger, Battle Card & Autonomous Research)
+  agentResearch?: {
+    verifiedFacts: Array<{
+      id: string;
+      fact: string;
+      verifiedAt: string;
+      confidence: number;
+      category: 'background' | 'career_goal' | 'budget' | 'timing';
+      source: string;
+    }>;
+    leadQualityTier: 'Tier A' | 'Tier B' | 'Tier C' | 'Tier D';
+    readinessScore: number; // 0 - 100
+    battleCard: {
+      candidateProfileSummary: string;
+      strengths: string[];
+      objections: string[];
+      recommendedPitch: string;
+      suggestedCoursePackage: string;
+    };
+    researchStatus: 'idle' | 'running' | 'completed';
+    lastResearchedAt: string;
+  };
+  timelineActivities?: Array<{
+    id: string;
+    type: 'call' | 'zalo' | 'email' | 'meeting' | 'note' | 'agent_research' | 'payment';
+    title: string;
+    content: string;
+    actor: string;
+    timestamp: string;
+  }>;
+  followupTasks?: Array<{
+    id: string;
+    title: string;
+    dueDate: string;
+    priority: 'high' | 'medium' | 'low';
+    isCompleted: boolean;
+    assignedTo: string;
+  }>;
 }
 
 // -------------------------------------------------------------

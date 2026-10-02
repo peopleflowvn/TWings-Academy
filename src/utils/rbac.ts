@@ -388,6 +388,16 @@ export const TAB_PERMISSION_MAP: Record<string, { codes: string[]; label: string
     codes: ['system.sections_toggle'],
     label: 'Bật / Tắt Khối Section Trang Chủ',
     minRoleDesc: 'Quản trị viên hệ thống'
+  },
+  instructors: {
+    codes: ['courses.view', 'courses.instructors'],
+    label: 'Profile Giảng Viên & Chuyên Gia',
+    minRoleDesc: 'Đào tạo LMS, Quản trị viên hoặc Super Admin'
+  },
+  email_templates: {
+    codes: ['crm.view_leads', 'crm.edit_status'],
+    label: 'Email Resend & Quản Lý Template',
+    minRoleDesc: 'Tư vấn Tuyển sinh, Quản trị viên hoặc Super Admin'
   }
 };
 

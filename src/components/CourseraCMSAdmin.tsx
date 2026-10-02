@@ -34,7 +34,9 @@ import {
   X,
   ShieldCheck,
   ChevronDown,
-  UserCheck
+  UserCheck,
+  Mail,
+  Award
 } from 'lucide-react';
 import { Course, Order, CMSSectionsConfig, HeroBannerItem, PartnerItem, AdminUser, UserRole, RolePermissionConfig } from '../types';
 import { HERO_BANNERS, DEFAULT_PARTNERS, INITIAL_ADMIN_USERS } from '../data/courseraData';
@@ -46,6 +48,8 @@ import { CMSSiteSEOSettingsTab } from './cms/CMSSiteSEOSettingsTab';
 import { CMSPartnersTab } from './cms/CMSPartnersTab';
 import { CMSHomepageContentTab } from './cms/CMSHomepageContentTab';
 import { CMSCoursesTab } from './cms/CMSCoursesTab';
+import { CMSEmailTemplatesTab } from './cms/CMSEmailTemplatesTab';
+import { CMSInstructorsTab } from './cms/CMSInstructorsTab';
 import { RBACAccessGuard } from './cms/RBACAccessGuard';
 import { 
   DEFAULT_ROLE_CONFIGS, 
@@ -79,7 +83,7 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
   onBackToHome,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'crm_orders' | 'courses' | 'banners' | 'partners' | 'homepage_content' | 'articles' | 'users' | 'seo_settings' | 'architecture' | 'sections'
+    'crm_orders' | 'courses' | 'instructors' | 'email_templates' | 'banners' | 'partners' | 'homepage_content' | 'articles' | 'users' | 'seo_settings' | 'architecture' | 'sections'
   >('crm_orders');
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -125,7 +129,7 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
   const navItems = [
     {
       id: 'crm_orders',
-      label: 'CRM & Đơn Hàng',
+      label: 'CRM Tuyển Sinh & Vị Trí (ATS)',
       icon: DollarSign,
       badge: orders.length,
       badgeColor: 'bg-emerald-500/20 text-emerald-300'
@@ -136,6 +140,20 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
       icon: BookOpen,
       badge: courses.length,
       badgeColor: 'bg-blue-500/20 text-blue-300'
+    },
+    {
+      id: 'instructors',
+      label: 'Profile Giảng Viên MSB',
+      icon: Award,
+      badge: 4,
+      badgeColor: 'bg-amber-500/20 text-amber-300'
+    },
+    {
+      id: 'email_templates',
+      label: 'Email Resend & Cấu Hình Webhook',
+      icon: Mail,
+      badge: 5,
+      badgeColor: 'bg-indigo-500/20 text-indigo-300'
     },
     {
       id: 'banners',
@@ -444,6 +462,12 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
                   onPreviewCourse={onPreviewCourse}
                 />
               )}
+
+              {/* TAB 2.1: Instructors & Faculty Profiles */}
+              {activeTab === 'instructors' && <CMSInstructorsTab />}
+
+              {/* TAB 2.2: Email Templates & Resend API Hub */}
+              {activeTab === 'email_templates' && <CMSEmailTemplatesTab orders={orders} />}
 
               {/* TAB 3: Banners Management (Full Image & Hyperlink Mode) */}
               {activeTab === 'banners' && (
