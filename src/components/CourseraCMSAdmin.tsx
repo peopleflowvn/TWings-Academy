@@ -126,80 +126,129 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
     onUpdateCMSSections(upd);
   };
 
-  const navItems = [
+  // =========================================================================
+  // ENTERPRISE NAVIGATION ARCHITECTURE (Categorized & Professional)
+  // =========================================================================
+  interface NavItem {
+    id: typeof activeTab;
+    label: string;
+    icon: any;
+    badge?: number | string;
+    badgeColor?: string;
+  }
+
+  interface NavSection {
+    sectionKey: string;
+    sectionTitle: string;
+    items: NavItem[];
+  }
+
+  const getRoleShortLabel = (role: UserRole) => {
+    switch (role) {
+      case 'super_admin': return 'Super Admin';
+      case 'sales_crm': return 'Tuyển Sinh';
+      case 'academic_management': return 'Ban Đào Tạo';
+      case 'content_seo': return 'Nội Dung & SEO';
+      case 'finance_accountant': return 'Kế Toán';
+      default: return 'Nhân Sự';
+    }
+  };
+
+  const navSections: NavSection[] = [
     {
-      id: 'crm_orders',
-      label: 'CRM Tuyển Sinh & Vị Trí (ATS)',
-      icon: DollarSign,
-      badge: orders.length,
-      badgeColor: 'bg-emerald-500/20 text-emerald-300'
+      sectionKey: 'admissions',
+      sectionTitle: 'Tuyển Sinh & Đào Tạo',
+      items: [
+        {
+          id: 'crm_orders',
+          label: 'CRM Tuyển Sinh (ATS)',
+          icon: DollarSign,
+          badge: orders.length,
+          badgeColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+        },
+        {
+          id: 'courses',
+          label: 'Chương Trình Đào Tạo',
+          icon: BookOpen,
+          badge: courses.length,
+          badgeColor: 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+        },
+        {
+          id: 'instructors',
+          label: 'Đội Ngũ Giảng Viên',
+          icon: Award,
+          badge: 4,
+          badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
+        },
+        {
+          id: 'email_templates',
+          label: 'Email & Resend Webhook',
+          icon: Mail,
+          badge: 5,
+          badgeColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-400/30'
+        }
+      ]
     },
     {
-      id: 'courses',
-      label: 'Khóa Học & YouTube Embed',
-      icon: BookOpen,
-      badge: courses.length,
-      badgeColor: 'bg-blue-500/20 text-blue-300'
+      sectionKey: 'portal_content',
+      sectionTitle: 'Nội Dung & Truyền Thông',
+      items: [
+        {
+          id: 'banners',
+          label: 'Banner & Truyền Thông',
+          icon: Layers,
+          badge: bannersState.length,
+          badgeColor: 'bg-purple-500/20 text-purple-300 border border-purple-400/30'
+        },
+        {
+          id: 'partners',
+          label: 'Mạng Lưới Đối Tác',
+          icon: Building2,
+          badge: sectionsState.partners.items?.length || 9,
+          badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
+        },
+        {
+          id: 'homepage_content',
+          label: 'Biên Tập Trang Chủ',
+          icon: Edit3
+        },
+        {
+          id: 'articles',
+          label: 'Tin Tức & Bài Viết SEO',
+          icon: FileText
+        },
+        {
+          id: 'sections',
+          label: 'Bố Cục Giao Diện',
+          icon: LayoutDashboard
+        }
+      ]
     },
     {
-      id: 'instructors',
-      label: 'Profile Giảng Viên MSB',
-      icon: Award,
-      badge: 4,
-      badgeColor: 'bg-amber-500/20 text-amber-300'
-    },
-    {
-      id: 'email_templates',
-      label: 'Email Resend & Cấu Hình Webhook',
-      icon: Mail,
-      badge: 5,
-      badgeColor: 'bg-indigo-500/20 text-indigo-300'
-    },
-    {
-      id: 'banners',
-      label: 'Quản Lý Banner (Ảnh/Hyperlink)',
-      icon: Layers,
-      badge: bannersState.length,
-      badgeColor: 'bg-purple-500/20 text-purple-300'
-    },
-    {
-      id: 'partners',
-      label: 'Đối Tác & Logo Doanh Nghiệp',
-      icon: Building2,
-      badge: sectionsState.partners.items?.length || 9,
-      badgeColor: 'bg-amber-500/20 text-amber-300'
-    },
-    {
-      id: 'homepage_content',
-      label: 'Biên Tập Nội Dung Trang Chủ',
-      icon: Edit3,
-    },
-    {
-      id: 'articles',
-      label: 'Bài Viết & Chấm Điểm SEO',
-      icon: FileText,
-    },
-    {
-      id: 'users',
-      label: 'Quản Lý User & Vai Trò (RBAC)',
-      icon: Users,
-    },
-    {
-      id: 'seo_settings',
-      label: 'Cài Đặt Chuẩn SEO Website',
-      icon: Globe,
-    },
-    {
-      id: 'architecture',
-      label: 'Kiến Trúc Django & Database',
-      icon: Code2,
-    },
-    {
-      id: 'sections',
-      label: 'Bật / Tắt Khối Section',
-      icon: LayoutDashboard,
-    },
+      sectionKey: 'system_settings',
+      sectionTitle: 'Hệ Thống & Cấu Hình',
+      items: [
+        {
+          id: 'users',
+          label: 'Phân Quyền & Tài Khoản',
+          icon: Users
+        },
+        {
+          id: 'seo_settings',
+          label: 'Cài Đặt Chuẩn SEO',
+          icon: Globe
+        },
+        {
+          id: 'architecture',
+          label: 'Kiến Trúc & Dữ Liệu',
+          icon: Code2
+        }
+      ]
+    }
   ];
+
+  const allNavItems = navSections.flatMap((s) => s.items);
+  const navItems = allNavItems;
 
   // RBAC Access Check for current active tab
   const canAccessActiveTab = checkUserCanAccessTab(currentActorUser, activeTab, roleConfigs);
@@ -215,13 +264,21 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
         {/* Sidebar Header / Logo */}
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           {!isSidebarCollapsed && (
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-lg font-black tracking-tight text-white uppercase truncate">
-                TWINGS CMS
-              </span>
-              <span className="text-[10px] bg-blue-500/20 text-blue-300 font-mono px-2 py-0.5 rounded border border-blue-400/30">
-                RBAC v2.4
-              </span>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-[#0073C1] flex items-center justify-center text-white font-black text-xs shadow-xs">
+                TW
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-black tracking-tight text-white uppercase truncate">
+                    TWINGS CMS
+                  </span>
+                  <span className="text-[9px] bg-blue-500/20 text-blue-300 font-mono font-bold px-1.5 py-0.2 rounded border border-blue-400/30">
+                    v2.4
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 truncate">Hệ Thống Tuyển Sinh &amp; Đào Tạo</p>
+              </div>
             </div>
           )}
 
@@ -238,83 +295,116 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
           </button>
         </div>
 
-        {/* Sidebar Nav Items with RBAC Status Badges */}
-        <div className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            const hasAccess = checkUserCanAccessTab(currentActorUser, item.id, roleConfigs);
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id as any)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
-                  isActive
-                    ? 'bg-[#0073C1] text-white shadow-md'
-                    : hasAccess
-                    ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                    : 'text-slate-500 hover:bg-slate-800/60 hover:text-slate-400 opacity-70'
-                } ${isSidebarCollapsed ? 'justify-center' : ''}`}
-                title={!hasAccess ? `${item.label} (Yêu cầu nâng quyền RBAC)` : item.label}
-              >
-                <div className="relative shrink-0">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : hasAccess ? 'text-slate-400' : 'text-slate-600'}`} />
-                  {!hasAccess && (
-                    <span className="absolute -bottom-1 -right-1.5 w-2.5 h-2.5 bg-red-600 rounded-full flex items-center justify-center text-white text-[7px]">
-                      <Lock className="w-1.5 h-1.5" />
-                    </span>
-                  )}
+        {/* Sidebar Nav Items with Categorized Sections & RBAC Badges */}
+        <div className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
+          {navSections.map((section, sIdx) => (
+            <div key={section.sectionKey} className="space-y-1">
+              {!isSidebarCollapsed ? (
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2.5 pt-2 pb-1 select-none flex items-center justify-between">
+                  <span>{section.sectionTitle}</span>
+                  <span className="text-[9px] font-mono text-slate-600">{section.items.length}</span>
                 </div>
+              ) : (
+                sIdx > 0 && <div className="my-2 border-t border-slate-800/80 mx-2" />
+              )}
 
-                {!isSidebarCollapsed && (
-                  <span className="truncate flex-1 text-left flex items-center gap-1.5">
-                    <span>{item.label}</span>
-                    {!hasAccess && (
-                      <span className="text-[9px] bg-red-950/80 text-red-300 font-mono px-1 py-0.2 rounded border border-red-500/30">
-                        Khóa
-                      </span>
-                    )}
-                  </span>
-                )}
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  const hasAccess = checkUserCanAccessTab(currentActorUser, item.id, roleConfigs);
 
-                {!isSidebarCollapsed && item.badge !== undefined && (
-                  <span className={`text-[10px] px-2 py-0.2 rounded-full font-mono font-bold ${item.badgeColor || 'bg-slate-800 text-slate-300'}`}>
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id as any)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer relative group ${
+                        isActive
+                          ? 'bg-gradient-to-r from-blue-600 to-[#0073C1] text-white shadow-sm ring-1 ring-blue-400/30'
+                          : hasAccess
+                          ? 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                          : 'text-slate-500 hover:bg-slate-800/40 hover:text-slate-400 opacity-60'
+                      } ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
+                      title={!hasAccess ? `${item.label} (Yêu cầu nâng quyền RBAC)` : item.label}
+                    >
+                      <div className="relative shrink-0">
+                        <Icon className={`w-4 h-4 transition-colors ${
+                          isActive 
+                            ? 'text-white' 
+                            : hasAccess 
+                            ? 'text-slate-400 group-hover:text-blue-400' 
+                            : 'text-slate-600'
+                        }`} />
+                        {!hasAccess && (
+                          <span className="absolute -bottom-1 -right-1.5 w-2.5 h-2.5 bg-red-600 rounded-full flex items-center justify-center text-white text-[7px]">
+                            <Lock className="w-1.5 h-1.5" />
+                          </span>
+                        )}
+                      </div>
+
+                      {!isSidebarCollapsed && (
+                        <span className="truncate flex-1 text-left flex items-center gap-1.5">
+                          <span className="truncate">{item.label}</span>
+                          {!hasAccess && (
+                            <span className="text-[9px] bg-red-950/80 text-red-300 font-mono px-1.5 py-0.2 rounded border border-red-500/30 font-semibold shrink-0">
+                              Khóa
+                            </span>
+                          )}
+                        </span>
+                      )}
+
+                      {!isSidebarCollapsed && item.badge !== undefined && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 transition-colors ${
+                          isActive 
+                            ? 'bg-white/20 text-white' 
+                            : item.badgeColor || 'bg-slate-800 text-slate-400 border border-slate-700/60'
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Sidebar Footer: Current User Persona & Back to Homepage */}
-        <div className="p-3 border-t border-slate-800 space-y-2 bg-slate-950">
+        <div className="p-3 border-t border-slate-800 space-y-2 bg-slate-950/80">
           <button
             onClick={onBackToHome}
-            className={`w-full flex items-center gap-2 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors cursor-pointer ${
+            className={`w-full flex items-center gap-2 p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 hover:text-blue-300 text-slate-300 text-xs font-semibold transition-all cursor-pointer border border-slate-700/50 ${
               isSidebarCollapsed ? 'justify-center' : ''
             }`}
-            title="Quay về Trang Chủ"
+            title="Quay về Trang Chủ Khách Hàng"
           >
             <ArrowLeft className="w-4 h-4 text-blue-400 shrink-0" />
             {!isSidebarCollapsed && <span>Về Trang Chủ</span>}
           </button>
 
           {!isSidebarCollapsed && (
-            <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-              <div className="flex items-center gap-2">
-                <img
-                  src={currentActorUser.avatar}
-                  alt={currentActorUser.name}
-                  className="w-6 h-6 rounded-full object-cover border border-slate-700 shrink-0"
-                />
+            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="relative shrink-0">
+                  <img
+                    src={currentActorUser.avatar}
+                    alt={currentActorUser.name}
+                    className="w-8 h-8 rounded-full object-cover border border-slate-700"
+                  />
+                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-slate-900" />
+                </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[11px] font-bold text-white truncate">
-                    {currentActorUser.name}
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-bold text-white truncate">
+                      {currentActorUser.name}
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-500/20 text-blue-300 font-mono font-bold border border-blue-400/30 shrink-0">
+                      {getRoleShortLabel(currentActorUser.role)}
+                    </span>
                   </div>
-                  <div className="text-[10px] text-blue-300 truncate font-mono">
-                    {roleConfigs[currentActorUser.role]?.roleName.split(' ')[0]}
+                  <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                    {currentActorUser.email}
                   </div>
                 </div>
               </div>
@@ -357,7 +447,7 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
                   <div className="font-bold text-slate-800 leading-tight flex items-center gap-1.5">
                     <span>{currentActorUser.name}</span>
                     <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold border ${roleConfigs[currentActorUser.role]?.color || 'bg-slate-100'}`}>
-                      {roleConfigs[currentActorUser.role]?.roleName.split(' ')[0]}
+                      {getRoleShortLabel(currentActorUser.role)}
                     </span>
                   </div>
                   <div className="text-[10px] text-slate-400 font-mono">
