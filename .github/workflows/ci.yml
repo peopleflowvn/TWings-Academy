@@ -1,0 +1,124 @@
+name: CI
+
+# Runs on every PR (including forks) and on main. Uses NO secrets, so it is safe for public PRs.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: gitleaks (full history)
+        run: |
+          docker run --rm -v "$PWD:/repo" \
+            zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git /repo --config /repo/.gitleaks.toml --redact --verbose --exit-code 1
+
+  frontend:
+    name: Frontend (type-check, build, audit)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm run build
+        env:
+          VITE_API_BASE_URL: https://api.example.invalid
+      - name: Bundle must not contain secrets
+        run: |
+          if grep -rEo '(re_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9+/=]{20,}|sk_live_[A-Za-z0-9]+)' dist; then
+            echo "::error::Secret-looking string found in the public bundle"; exit 1
+          fi
+      - run: npm audit --omit=dev --audit-level=high
+
+  backend:
+    name: Backend (lint, tests, deploy checks)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+        env:
+          POSTGRES_DB: twings_test
+          POSTGRES_USER: twings
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U twings" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://twings:ci-only-password@localhost:5432/twings_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - run: pip install --require-hashes --no-deps -r requirements.txt -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: python manage.py makemigrations --check --dry-run
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+      - run: pytest
+      - name: Django deployment checklist (prod settings, dummy values)
+        run: python manage.py check --deploy --fail-level WARNING
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.prod
+          DJANGO_SECRET_KEY: ci-${{ github.run_id }}-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
+          DJANGO_ADMIN_URL: ops-ci/
+          DJANGO_ALLOWED_HOSTS: api.example.invalid
+          FIELD_ENCRYPTION_KEYS: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          BLIND_INDEX_KEY: ci
+          R2_ENDPOINT_URL: https://example.invalid
+          R2_ACCESS_KEY_ID: x
+          R2_SECRET_ACCESS_KEY: x
+          R2_PUBLIC_BUCKET: x
+          R2_PUBLIC_DOMAIN: media.example.invalid
+          R2_PRIVATE_BUCKET: y
+      - name: Dependency vulnerabilities (pip-audit)
+        run: pip-audit --strict --require-hashes --disable-pip -r requirements.txt
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: backend
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

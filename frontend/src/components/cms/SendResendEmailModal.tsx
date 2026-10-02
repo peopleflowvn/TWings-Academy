@@ -30,6 +30,7 @@ import {
   isLiveEmailEnabled,
   SENDER_DISPLAY
 } from '../../utils/resendEmail';
+import { SandboxedHtmlPreview } from './SandboxedHtmlPreview';
 
 interface SendResendEmailModalProps {
   isOpen: boolean;
@@ -366,10 +367,7 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
 
             {previewTab === 'preview' ? (
               <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 p-4 max-h-72 overflow-y-auto shadow-inner">
-                <div 
-                  className="bg-white rounded-xl shadow-xs p-4"
-                  dangerouslySetInnerHTML={{ __html: htmlBody }} 
-                />
+                <SandboxedHtmlPreview html={htmlBody} className="rounded-xl shadow-xs" minHeight={260} />
               </div>
             ) : (
               <textarea

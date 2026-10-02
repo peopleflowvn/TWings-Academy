@@ -16,6 +16,7 @@ import {
   Code
 } from 'lucide-react';
 import { EmailSendLog } from '../../types';
+import { SandboxedHtmlPreview } from './SandboxedHtmlPreview';
 
 interface CMSEmailDetailModalProps {
   log: EmailSendLog | null;
@@ -212,9 +213,9 @@ export const CMSEmailDetailModal: React.FC<CMSEmailDetailModalProps> = ({
           {viewMode === 'preview' && (
             <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-100 p-4 max-h-[420px] overflow-y-auto">
               {log.renderedHtml ? (
-                <div
-                  className="bg-white rounded-xl shadow-xs overflow-hidden"
-                  dangerouslySetInnerHTML={{ __html: log.renderedHtml }}
+                <SandboxedHtmlPreview
+                  html={log.renderedHtml}
+                  className="rounded-xl shadow-xs"
                 />
               ) : (
                 <div className="p-8 text-center text-slate-400 text-xs italic bg-white rounded-xl">

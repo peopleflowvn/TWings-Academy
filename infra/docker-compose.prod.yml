@@ -1,0 +1,66 @@
+# Production stack on the Oracle VPS (/opt/twings/docker-compose.yml).
+#
+#   Internet ──HTTPS──▶ Cloudflare edge ──tunnel (outbound only)──▶ cloudflared ──▶ backend:8000 ──▶ db
+#
+# No container publishes a port: the VPS firewall only needs SSH (22) open. Secrets live in
+# /opt/twings/env/*.env (root-owned, chmod 600) and never in this file or the image.
+# IMAGE_TAG is written to /opt/twings/.env by bin/deploy.sh.
+
+name: twings
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+services:
+  db:
+    <<: *hardening
+    image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    env_file: [./env/db.env]
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    networks: [internal]
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    <<: *hardening
+    image: ghcr.io/peopleflowvn/twings-academy-backend:${IMAGE_TAG:?IMAGE_TAG is not set}
+    env_file: [./env/backend.env]
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [internal, egress]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    mem_limit: 1g
+    pids_limit: 256
+
+  cloudflared:
+    <<: *hardening
+    image: cloudflare/cloudflared:2026.9.3@sha256:072c067d25ccbe61d46e18f0d0723255f2bb5304f7317caa95b27031520ff92c
+    command: ["tunnel", "--no-autoupdate", "run"]
+    env_file: [./env/cloudflared.env]  # TUNNEL_TOKEN=...
+    depends_on: [backend]
+    networks: [egress]
+    read_only: true
+    cap_drop: [ALL]
+    mem_limit: 256m
+
+networks:
+  # Database network has no route to the internet.
+  internal:
+    internal: true
+  # Backend (Resend, R2) and cloudflared (Cloudflare edge) need outbound access.
+  egress: {}
+
+volumes:
+  pgdata: {}

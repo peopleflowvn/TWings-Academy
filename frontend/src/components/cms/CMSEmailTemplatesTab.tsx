@@ -48,6 +48,7 @@ import {
 } from '../../utils/resendEmail';
 import { CMSResendWebhookModal } from './CMSResendWebhookModal';
 import { CMSEmailDetailModal } from './CMSEmailDetailModal';
+import { SandboxedHtmlPreview } from './SandboxedHtmlPreview';
 
 interface CMSEmailTemplatesTabProps {
   orders: Order[];
@@ -641,10 +642,7 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
                     <span>To: {previewOrder.customerEmail || 'hocvien@gmail.com'}</span>
                     <span>Resend Render View ({devicePreview.toUpperCase()})</span>
                   </div>
-                  <div 
-                    className="p-4 overflow-y-auto max-h-[500px]"
-                    dangerouslySetInnerHTML={{ __html: renderedPreviewBody }} 
-                  />
+                  <SandboxedHtmlPreview html={renderedPreviewBody} minHeight={500} />
                 </div>
               </div>
 

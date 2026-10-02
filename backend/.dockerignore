@@ -1,0 +1,14 @@
+# Keep secrets and local artefacts out of the build context.
+.env
+.env.*
+!.env.example
+.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.sqlite3
+staticfiles/
+media/
+media_private/
+tests/

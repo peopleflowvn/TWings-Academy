@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# SSH forced command for the CI deploy key (see authorized_keys in bootstrap.sh).
+# The key can do exactly one thing: "deploy <40-char git sha>". No shell, no forwarding.
+set -euo pipefail
+
+read -r action tag extra <<<"${SSH_ORIGINAL_COMMAND:-}"
+if [[ "${action:-}" != "deploy" || ! "${tag:-}" =~ ^[0-9a-f]{40}$ || -n "${extra:-}" ]]; then
+  echo "denied: expected 'deploy <git-sha>'" >&2
+  logger -t twings-deploy "denied command from ${SSH_CLIENT%% *}: ${SSH_ORIGINAL_COMMAND:-<empty>}"
+  exit 2
+fi
+
+logger -t twings-deploy "deploy ${tag} requested from ${SSH_CLIENT%% *}"
+exec sudo -n /opt/twings/bin/deploy.sh "$tag"

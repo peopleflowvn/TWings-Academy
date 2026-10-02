@@ -40,3 +40,6 @@ desktop.ini
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# ---- VPS env files: only *.example templates are tracked ----
+infra/env/*.env

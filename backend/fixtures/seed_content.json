@@ -1,0 +1,1461 @@
+{
+ "partners": [
+  {
+   "id": "p-msb",
+   "name": "MSB Ngân hàng TMCP Hàng Hải",
+   "logoText": "MSB",
+   "logoColor": "#EA580C",
+   "logoUrl": "https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?auto=format&fit=crop&w=120&q=80",
+   "type": "company",
+   "slogan": "Đối tác chiến lược tuyển dụng & đào tạo thực chiến",
+   "websiteUrl": "https://www.msb.com.vn"
+  },
+  {
+   "id": "p-rox",
+   "name": "Tập đoàn ROX Group",
+   "logoText": "ROX GROUP",
+   "logoColor": "#0073C1",
+   "logoUrl": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=120&q=80",
+   "type": "company",
+   "slogan": "Tập đoàn kinh tế đa ngành hàng đầu Việt Nam",
+   "websiteUrl": "https://roxgroup.vn"
+  },
+  {
+   "id": "p-tntalent",
+   "name": "TNtalent Human Resources",
+   "logoText": "TNTALENT",
+   "logoColor": "#D97706",
+   "logoUrl": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=120&q=80",
+   "type": "company",
+   "slogan": "Đơn vị phát triển nguồn nhân lực chiến lược",
+   "websiteUrl": "https://tntalent.vn"
+  },
+  {
+   "id": "p-ba",
+   "name": "Học viện Ngân hàng (Banking Academy)",
+   "logoText": "HV NGÂN HÀNG",
+   "logoColor": "#0F294D",
+   "logoUrl": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=120&q=80",
+   "type": "university",
+   "slogan": "Cơ sở đào tạo tài chính - ngân hàng hàng đầu",
+   "websiteUrl": "https://www.hvnh.edu.vn"
+  },
+  {
+   "id": "p-neu",
+   "name": "Đại học Kinh tế Quốc dân (NEU)",
+   "logoText": "NEU",
+   "logoColor": "#DC2626",
+   "logoUrl": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=120&q=80",
+   "type": "university",
+   "slogan": "Trường đại học trọng điểm quốc gia",
+   "websiteUrl": "https://neu.edu.vn"
+  },
+  {
+   "id": "p-google",
+   "name": "Google Career Certificates",
+   "logoText": "Google",
+   "logoColor": "#4285F4",
+   "logoUrl": "https://images.unsplash.com/photo-1572021335469-31706a17aaef?auto=format&fit=crop&w=120&q=80",
+   "type": "company",
+   "websiteUrl": "https://grow.google"
+  },
+  {
+   "id": "p-ibm",
+   "name": "IBM Skills Network",
+   "logoText": "IBM",
+   "logoColor": "#052FAD",
+   "logoUrl": "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=120&q=80",
+   "type": "company",
+   "websiteUrl": "https://www.ibm.com"
+  },
+  {
+   "id": "p-stanford",
+   "name": "Stanford Online",
+   "logoText": "Stanford",
+   "logoColor": "#8C1515",
+   "logoUrl": "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=120&q=80",
+   "type": "university",
+   "websiteUrl": "https://online.stanford.edu"
+  },
+  {
+   "id": "p-illinois",
+   "name": "University of Illinois",
+   "logoText": "ILLINOIS",
+   "logoColor": "#13294B",
+   "logoUrl": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=120&q=80",
+   "type": "university",
+   "websiteUrl": "https://illinois.edu"
+  }
+ ],
+ "instructors": [
+  {
+   "id": "inst-vu-thu-phuong",
+   "name": "GV Vũ Thu Phương",
+   "title": "Giám đốc Phân khúc KH Doanh nghiệp MSB",
+   "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+   "credential": "Giám đốc Phân khúc KH Doanh nghiệp MSB · 25+ năm KN",
+   "bio": "Với hơn 25 năm kinh nghiệm tại các tập đoàn đa quốc gia hàng đầu trong các lĩnh vực dịch vụ cao cấp, tài chính, bất động sản và đầu tư, chị Vũ Phương đã khẳng định vị thế của mình qua nhiều vai trò cấp cao, dẫn dắt đội ngũ lãnh đạo và xây dựng thành công hình ảnh thương hiệu cho doanh nghiệp. Không chỉ là một nhà lãnh đạo xuất sắc, chị còn là chuyên gia hàng đầu trong lĩnh vực xây dựng thương hiệu cá nhân và quản trị hình ảnh chuyên nghiệp. Chị Phương sẽ đồng hành cùng các bạn học viên của TWings trong các học phần nội dung về \"Xây dựng Thương hiệu cá nhân\" giúp học viên: Nhận thức được giá trị Thương hiệu cá nhân, định vị bản thân & tạo dấu ấn khác biệt, Kĩ năng giao tiếp & Quản trị hình ảnh cá nhân.",
+   "rating": 5,
+   "studentsCount": 3400
+  },
+  {
+   "id": "inst-dang-van-thanh",
+   "name": "GV Đặng Văn Thành",
+   "title": "Giám đốc Giám sát, Thúc đẩy và Nâng cao năng lực bán Ngân hàng Doanh nghiệp",
+   "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
+   "credential": "Giám đốc Bán hàng Toàn quốc · 20 năm KN Tài chính Ngân hàng",
+   "bio": "Anh Thành có gần 20 năm kinh nghiệm trong lĩnh vực tài chính - ngân hàng, từng đảm nhiệm các vị trí chiến lược như Giám đốc Chi nhánh, Giám đốc Vùng, và Giám đốc Quản trị Bán hàng toàn quốc. Anh đã gặt hái nhiều thành công nổi bật trong triển khai, quản trị bán hàng và phát triển năng lực đội ngũ. Anh Thành sẽ đồng hành cùng học viên TWings trong các học phần chuyên sâu về Tín dụng cũng như kỹ năng khai thác nhu cầu, xây dựng chiến lược tiếp cận, thuyết phục và duy trì mối quan hệ khách hàng lâu dài, giúp tối ưu hóa giá trị vòng đời khách hàng.",
+   "rating": 5,
+   "studentsCount": 4200
+  },
+  {
+   "id": "inst-nguyen-kim-chi",
+   "name": "GV Nguyễn Kim Chi",
+   "title": "Giám đốc Quản trị dự án chiến lược MSB",
+   "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80",
+   "credential": "Chuyên gia Chuyển đổi số Ngân hàng · Techcombank, VPBank, MSB",
+   "bio": "Với 20 năm kinh nghiệm trong ngành tài chính ngân hàng, chị Kim Chi đã và đang đảm nhiệm những vị trí quan trọng trong các dự án chuyển đổi số tại các ngân hàng lớn nhất Việt Nam như: Techcombank, VPBank. Hiện nay, chị Chi đang là Giám đốc quản trị chuyển đổi tại Khối Chiến lược và sáng tạo đổi mới với vai trò dẫn dắt sự chuyển đổi và hành trình số hóa ngân hàng tại MSB. Ngoài ra, chị Kim Chi còn là một trong những giảng viên nội bộ xuất sắc đang giảng dạy các nội dung liên quan đến tư duy chuyển đổi số và phương pháp làm việc Agile nhằm thúc đẩy văn hóa chuyển đổi số tại ngân hàng.",
+   "rating": 4.98,
+   "studentsCount": 3900
+  }
+ ],
+ "courses": [
+  {
+   "id": "google-data-analytics",
+   "slug": "phan-tich-du-lieu-google",
+   "title": "Phân tích dữ liệu của Google",
+   "subtitle": "Khởi đầu sự nghiệp phân tích dữ liệu với chứng chỉ chuyên môn chính thức từ các chuyên gia Google.",
+   "partner": {
+    "id": "google",
+    "name": "Google",
+    "logoText": "Google",
+    "logoColor": "#4285F4",
+    "type": "company"
+   },
+   "type": "Chứng chỉ Chuyên môn",
+   "level": "Người mới bắt đầu",
+   "deliveryFormat": "online_external_lms",
+   "rating": 4.8,
+   "reviewsCount": 148200,
+   "enrolledCount": "1.4M+",
+   "duration": "6 tháng (10 giờ/tuần)",
+   "skills": [
+    "Data Analysis",
+    "SQL",
+    "Spreadsheets",
+    "Tableau",
+    "R Programming",
+    "Data Cleaning"
+   ],
+   "thumbnail": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80",
+   "category": "Khoa học dữ liệu",
+   "careerRole": "Data Analyst",
+   "badgeSection": "most_popular",
+   "price": 1190000,
+   "originalPrice": 2400000,
+   "isFreeEnrollmentAvailable": true,
+   "youtubeTrialUrl": "https://www.youtube.com/watch?v=kqtD5dpn9C8",
+   "youtubeVideoId": "kqtD5dpn9C8",
+   "instructors": [
+    {
+     "id": "inst-g1",
+     "name": "Google Career Certificates Team",
+     "title": "Senior Data Analytics Instructors",
+     "organization": "Google",
+     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80",
+     "bio": "Đội ngũ chuyên gia phân tích dữ liệu cao cấp tại Google thiết kế chương trình theo chuẩn tuyển dụng thực tế."
+    }
+   ],
+   "learningObjectives": [
+    "Nắm vững quy trình xử lý dữ liệu: Ask, Prepare, Process, Analyze, Share, Act",
+    "Sử dụng thành thạo SQL để truy vấn cơ sở dữ liệu lớn và làm sạch dữ liệu",
+    "Trực quan hóa dữ liệu thuyết phục với bảng điều khiển Tableau"
+   ],
+   "syllabus": [
+    {
+     "id": "mod-1",
+     "title": "Học phần 1: Nền tảng phân tích dữ liệu - Dữ liệu ở mọi nơi",
+     "duration": "22 giờ",
+     "description": "Khám phá bức tranh tổng thể về vai trò của nhà phân tích dữ liệu trong doanh nghiệp.",
+     "lessons": [
+      {
+       "id": "les-g-1",
+       "title": "1.1 Video: Giới thiệu hệ sinh thái dữ liệu số",
+       "duration": "12 phút",
+       "type": "video",
+       "youtubeId": "kqtD5dpn9C8",
+       "isFreePreview": true
+      },
+      {
+       "id": "les-g-2",
+       "title": "1.2 Đọc: Cẩm nang tư duy phản biện với dữ liệu",
+       "duration": "20 phút",
+       "type": "reading"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "twings-qhkh-doanh-nghiep",
+   "slug": "quan-he-khach-hang-doanh-nghiep-msb",
+   "title": "Quan hệ Khách hàng Doanh nghiệp & Thẩm định Tín dụng SME",
+   "subtitle": "Đào tạo thực chiến trực tiếp tại hội trường MSB. Thẩm định báo cáo tài chính, dòng tiền và cấu trúc gói tài trợ.",
+   "partner": {
+    "id": "twings",
+    "name": "TWINGS ACADEMY",
+    "logoText": "TWiNGS",
+    "logoColor": "#0073C1",
+    "type": "company",
+    "slogan": "Nâng tầm năng lực, kiến tạo tương lai"
+   },
+   "type": "Chứng chỉ Chuyên môn",
+   "level": "Chuyên viên Chính",
+   "deliveryFormat": "offline",
+   "locationText": "Hội trường đào tạo MSB & Tòa ROX Tower, 54A Nguyễn Chí Thanh, Hà Nội",
+   "rating": 5,
+   "reviewsCount": 342,
+   "enrolledCount": "1,850+ học viên",
+   "duration": "45 giờ thực hành trực tiếp",
+   "skills": [
+    "Thẩm định Tín dụng",
+    "Phân tích Báo cáo Tài chính",
+    "Quản trị Rủi ro",
+    "Tài trợ Thương mại",
+    "Chốt Sale SME"
+   ],
+   "thumbnail": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80",
+   "category": "Ngân Hàng & Tín Dụng",
+   "careerRole": "Corporate Banker",
+   "badgeSection": "most_popular",
+   "price": 7999000,
+   "originalPrice": 11500000,
+   "isFreeEnrollmentAvailable": true,
+   "youtubeTrialUrl": "https://www.youtube.com/watch?v=v8D1v8J_G1o",
+   "youtubeVideoId": "v8D1v8J_G1o",
+   "instructors": [
+    {
+     "id": "inst-vu-thu-phuong",
+     "name": "GV Vũ Thu Phương",
+     "title": "Giám đốc Phân khúc KH Doanh nghiệp MSB",
+     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+     "credential": "25+ năm kinh nghiệm tài chính ngân hàng quốc tế",
+     "bio": "Dẫn dắt các thương vụ tài trợ vốn lớn cho phân khúc SME và Corporate tại các ngân hàng hàng đầu."
+    }
+   ],
+   "learningObjectives": [
+    "Đọc vị rủi ro tiềm ẩn trong báo cáo tài chính doanh nghiệp và thủ thuật làm đẹp số liệu",
+    "Xây dựng phương án vay vốn và thuyết trình bảo vệ trước Hội đồng Tín dụng MSB",
+    "Cam kết phỏng vấn trực tiếp vào vị trí Chuyên viên QHKH Doanh nghiệp sau tốt nghiệp"
+   ],
+   "syllabus": [
+    {
+     "id": "tw-mod-1",
+     "title": "Học phần 1: Tổng quan Nghiệp vụ Tín dụng Doanh nghiệp tại Ngân hàng Thương mại",
+     "duration": "15 giờ",
+     "description": "Phân loại khách hàng SME, quy định pháp lý và quy trình cấp hạn mức tín dụng.",
+     "lessons": [
+      {
+       "id": "tw-l-1",
+       "title": "1.1 Video: Chân dung Chuyên viên QHKH Doanh nghiệp tiêu chuẩn",
+       "duration": "25 phút",
+       "type": "video",
+       "youtubeId": "v8D1v8J_G1o",
+       "isFreePreview": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "twings-qhkh-ca-nhan",
+   "slug": "quan-he-khach-hang-ca-nhan",
+   "title": "Quan hệ Khách hàng Cá nhân (Retail Banker Master)",
+   "subtitle": "Nghiệp vụ cốt lõi thẩm định tín dụng cá nhân, báo cáo CIC và kỹ năng chốt sale thẻ, vay mua nhà, bảo hiểm.",
+   "partner": {
+    "id": "twings",
+    "name": "TWINGS ACADEMY",
+    "logoText": "TWiNGS",
+    "logoColor": "#0073C1",
+    "type": "company",
+    "slogan": "Nâng tầm năng lực, kiến tạo tương lai"
+   },
+   "type": "Chứng chỉ Chuyên môn",
+   "level": "Chuyên viên Mới (Fresher)",
+   "deliveryFormat": "offline",
+   "locationText": "Tòa ROX Tower, 54A Nguyễn Chí Thanh, Hà Nội",
+   "rating": 4.98,
+   "reviewsCount": 420,
+   "enrolledCount": "2,400+ học viên",
+   "duration": "40 giờ đào tạo trực tiếp",
+   "skills": [
+    "Tín dụng cá nhân",
+    "Kiểm tra CIC",
+    "Tư vấn vay mua nhà",
+    "Khai thác nhu cầu",
+    "Chốt sale"
+   ],
+   "thumbnail": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80",
+   "category": "Ngân Hàng & Tín Dụng",
+   "careerRole": "Retail Relationship Manager",
+   "badgeSection": "most_popular",
+   "price": 7599000,
+   "originalPrice": 9500000,
+   "isFreeEnrollmentAvailable": true,
+   "youtubeTrialUrl": "https://www.youtube.com/watch?v=aircAruvnKk",
+   "youtubeVideoId": "aircAruvnKk",
+   "instructors": [
+    {
+     "id": "inst-dang-van-thanh",
+     "name": "GV Đặng Văn Thành",
+     "title": "Giám đốc Bán hàng Toàn quốc",
+     "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
+     "credential": "20 năm kinh nghiệm Quản trị Bán lẻ Ngân hàng",
+     "bio": "Nguyên Giám đốc Vùng và Giám đốc Bán hàng toàn quốc tại các ngân hàng TMCP lớn."
+    }
+   ],
+   "learningObjectives": [
+    "Đọc hiểu và bóc tách dữ liệu lịch sử tín dụng CIC để nhận diện nợ xấu",
+    "Lập kế hoạch tiếp cận khách hàng cá nhân giàu có và phân khúc Premier Banking",
+    "Được bảo lãnh thực tập và tuyển dụng tại hệ thống chi nhánh ngân hàng đối tác"
+   ],
+   "syllabus": [
+    {
+     "id": "tw-mod-c1",
+     "title": "Chương 1: Quy trình Thẩm định Tín dụng & Đọc Báo cáo CIC",
+     "duration": "12 giờ",
+     "lessons": [
+      {
+       "id": "tw-lc-1",
+       "title": "1.1 Video: Tổng quan Nghiệp vụ RM Cá nhân",
+       "duration": "20 phút",
+       "type": "video",
+       "youtubeId": "aircAruvnKk",
+       "isFreePreview": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "deeplearning-machine-learning",
+   "slug": "chuyen-nganh-machine-learning-stanford",
+   "title": "Chuyên ngành Học Máy (Machine Learning Specialization)",
+   "subtitle": "Nắm vững các thuật toán cốt lõi Supervised Learning, Deep Learning từ GS. Andrew Ng (Stanford & DeepLearning.AI).",
+   "partner": {
+    "id": "deeplearning",
+    "name": "DeepLearning.AI",
+    "logoText": "DeepLearning.AI",
+    "logoColor": "#FF6F00",
+    "type": "company"
+   },
+   "type": "Chuyên ngành",
+   "level": "Người mới bắt đầu",
+   "deliveryFormat": "hybrid",
+   "locationText": "Online LMS + Workshop hỏi đáp trực tiếp cùng Trợ giảng chuyên gia",
+   "rating": 4.9,
+   "reviewsCount": 182000,
+   "enrolledCount": "850K+",
+   "duration": "3 tháng (9 giờ/tuần)",
+   "skills": [
+    "Machine Learning",
+    "Linear Regression",
+    "Neural Networks",
+    "Decision Trees",
+    "Gradient Descent",
+    "Python"
+   ],
+   "thumbnail": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80",
+   "category": "Trí tuệ nhân tạo (AI)",
+   "careerRole": "AI Engineer",
+   "badgeSection": "trending_ai",
+   "price": 1490000,
+   "originalPrice": 2800000,
+   "isFreeEnrollmentAvailable": true,
+   "youtubeTrialUrl": "https://www.youtube.com/watch?v=jGwO_Ei/b5Q",
+   "youtubeVideoId": "jGwO_Ei/b5Q",
+   "instructors": [
+    {
+     "id": "inst-andrew-ng",
+     "name": "Andrew Ng",
+     "title": "Founder DeepLearning.AI & Adjunct Professor Stanford",
+     "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+     "bio": "Đồng sáng lập Coursera, cựu Trưởng nhóm Google Brain và Phó chủ tịch Baidu AI Group."
+    }
+   ],
+   "learningObjectives": [
+    "Xây dựng các mô hình Machine Learning bằng Python với NumPy và scikit-learn",
+    "Huấn luyện mạng Neural Network phân loại hình ảnh và dự báo dữ liệu",
+    "Ứng dụng Best Practices trong việc tinh chỉnh siêu tham số và tối ưu hóa chi phí huấn luyện"
+   ],
+   "syllabus": [
+    {
+     "id": "mod-ml-1",
+     "title": "Khóa 1: Supervised Machine Learning: Regression and Classification",
+     "duration": "33 giờ",
+     "lessons": [
+      {
+       "id": "les-ml-1",
+       "title": "1.1 Video: Welcome to Machine Learning by Andrew Ng",
+       "duration": "10 phút",
+       "type": "video",
+       "youtubeId": "jGwO_Ei/b5Q",
+       "isFreePreview": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "deeplearning-ai-agents",
+   "slug": "xay-dung-cac-dai-ly-ai-agents",
+   "title": "Xây dựng các Đại lý AI & Quy trình Làm việc Tự động (AI Agents)",
+   "subtitle": "Học cách thiết kế hệ thống Multi-Agent, kết hợp LLMs, Function Calling và Memory để giải quyết tác vụ phức tạp.",
+   "partner": {
+    "id": "deeplearning",
+    "name": "DeepLearning.AI",
+    "logoText": "DeepLearning.AI",
+    "logoColor": "#FF6F00",
+    "type": "company"
+   },
+   "type": "Chứng chỉ Chuyên môn",
+   "level": "Trung cấp",
+   "deliveryFormat": "online_external_lms",
+   "rating": 4.9,
+   "reviewsCount": 24500,
+   "enrolledCount": "190K+",
+   "duration": "2 tháng (6 giờ/tuần)",
+   "skills": [
+    "AI Agents",
+    "LangGraph",
+    "CrewAI",
+    "AutoGen",
+    "Function Calling",
+    "RAG"
+   ],
+   "thumbnail": "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=800&q=80",
+   "category": "Trí tuệ nhân tạo (AI)",
+   "careerRole": "AI Engineer",
+   "badgeSection": "trending_ai",
+   "price": 1390000,
+   "originalPrice": 2200000,
+   "isFreeEnrollmentAvailable": true,
+   "youtubeTrialUrl": "https://www.youtube.com/watch?v=sal78ACtGTc",
+   "youtubeVideoId": "sal78ACtGTc",
+   "instructors": [
+    {
+     "id": "inst-dl-team",
+     "name": "Đội ngũ Kỹ sư DeepLearning.AI",
+     "title": "Lead AI Agent Architects",
+     "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+     "bio": "Các chuyên gia hàng đầu về xây dựng Agentic Workflows và tích hợp LLMs trong thực tế."
+    }
+   ],
+   "learningObjectives": [
+    "Phát triển đại lý độc lập tự động lập kế hoạch và gọi công cụ bên ngoài",
+    "Điều phối nhiều tác nhân làm việc cộng tác (Multi-agent collaboration)",
+    "Đánh giá hiệu năng và an toàn cho hệ thống tác nhân trước khi triển khai"
+   ],
+   "syllabus": [
+    {
+     "id": "mod-ag-1",
+     "title": "Học phần 1: Kiến trúc cốt lõi của một AI Agent",
+     "duration": "18 giờ",
+     "lessons": [
+      {
+       "id": "les-ag-1",
+       "title": "1.1 Video: Khái niệm AI Agent vs Prompting truyền thống",
+       "duration": "15 phút",
+       "type": "video",
+       "youtubeId": "sal78ACtGTc",
+       "isFreePreview": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "meta-frontend-developer",
+   "slug": "chuyen-nganh-lap-trinh-frontend-meta",
+   "title": "Lập trình viên Front-End của Meta",
+   "subtitle": "Chương trình nghề nghiệp chính thức từ các kỹ sư Meta: React, JavaScript, HTML/CSS và thiết kế giao diện UI/UX.",
+   "partner": {
+    "id": "meta",
+    "name": "Meta",
+    "logoText": "Meta",
+    "logoColor": "#0668E1",
+    "type": "company"
+   },
+   "type": "Chứng chỉ Chuyên môn",
+   "level": "Người mới bắt đầu",
+   "deliveryFormat": "online_external_lms",
+   "rating": 4.7,
+   "reviewsCount": 78500,
+   "enrolledCount": "480K+",
+   "duration": "7 tháng (6 giờ/tuần)",
+   "skills": [
+    "React",
+    "JavaScript",
+    "HTML5/CSS3",
+    "Version Control (Git)",
+    "UI/UX Principles",
+    "Web Development"
+   ],
+   "thumbnail": "https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?auto=format&fit=crop&w=800&q=80",
+   "category": "Khoa học máy tính",
+   "careerRole": "Front-End Developer",
+   "badgeSection": "most_popular",
+   "price": 1190000,
+   "originalPrice": 2400000,
+   "isFreeEnrollmentAvailable": true,
+   "youtubeTrialUrl": "https://www.youtube.com/watch?v=Ke90Tje7VS0",
+   "youtubeVideoId": "Ke90Tje7VS0",
+   "instructors": [
+    {
+     "id": "inst-meta",
+     "name": "Meta Staff Engineers",
+     "title": "Senior Software Engineers at Meta",
+     "organization": "Meta",
+     "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+     "bio": "Các kỹ sư trực tiếp phát triển React và hệ sinh thái web tại Meta."
+    }
+   ],
+   "learningObjectives": [
+    "Xây dựng các ứng dụng web tương tác mượt mà với React.js",
+    "Làm chủ kiến trúc Component, Hooks và quản lý State hiệu quả",
+    "Hoàn thành một đồ án ứng dụng web đặt chỗ nhà hàng hoàn chỉnh"
+   ],
+   "syllabus": [
+    {
+     "id": "mod-fe-1",
+     "title": "Học phần 1: Giới thiệu về Phát triển Web Front-End",
+     "duration": "20 giờ",
+     "lessons": [
+      {
+       "id": "les-fe-1",
+       "title": "1.1 Video: Làm thế nào Web hoạt động?",
+       "duration": "14 phút",
+       "type": "video",
+       "youtubeId": "Ke90Tje7VS0",
+       "isFreePreview": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "illinois-mba-degree",
+   "slug": "bang-thac-si-quan-tri-kinh-doanh-imba-illinois",
+   "title": "Thạc sĩ Quản trị Kinh doanh Trực tuyến (iMBA) - University of Illinois",
+   "subtitle": "Chương trình MBA trực tuyến hàng đầu thế giới được AACSB kiểm định từ trường Kinh doanh Gies, Illinois.",
+   "partner": {
+    "id": "illinois",
+    "name": "University of Illinois",
+    "logoText": "Illinois",
+    "logoColor": "#13294B",
+    "type": "university"
+   },
+   "type": "Bằng cấp Trực tuyến",
+   "level": "Nâng cao",
+   "deliveryFormat": "online_external_lms",
+   "rating": 4.9,
+   "reviewsCount": 12400,
+   "enrolledCount": "8,500+ sinh viên",
+   "duration": "24-36 tháng (linh hoạt)",
+   "skills": [
+    "Strategic Leadership",
+    "Financial Management",
+    "Business Analytics",
+    "Digital Marketing",
+    "Corporate Strategy"
+   ],
+   "thumbnail": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80",
+   "category": "Kinh doanh & Quản lý",
+   "careerRole": "Business Leader",
+   "badgeSection": "hot_new",
+   "price": 32000000,
+   "originalPrice": 45000000,
+   "isFreeEnrollmentAvailable": false,
+   "youtubeTrialUrl": "https://www.youtube.com/watch?v=2f3KMYYnK6s",
+   "youtubeVideoId": "2f3KMYYnK6s",
+   "instructors": [
+    {
+     "id": "inst-gies",
+     "name": "Gies College of Business Faculty",
+     "title": "Distinguished Business Professors",
+     "organization": "University of Illinois Urbana-Champaign",
+     "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+     "bio": "Khoa kinh doanh Gies là một trong những viện đào tạo MBA uy tín và đổi mới sáng tạo nhất nước Mỹ."
+    }
+   ],
+   "learningObjectives": [
+    "Phát triển tư duy chiến lược và năng lực lãnh đạo cấp cao trong kỷ nguyên chuyển đổi số",
+    "Quản trị tài chính doanh nghiệp, phân bổ vốn và định giá các thương vụ M&A",
+    "Nhận bằng tốt nghiệp Thạc sĩ MBA chính quy từ Đại học Illinois"
+   ],
+   "syllabus": [
+    {
+     "id": "mod-mba-1",
+     "title": "Khối kiến thức 1: Lãnh đạo Chiến lược & Quản trị Thực thi",
+     "duration": "45 giờ",
+     "lessons": [
+      {
+       "id": "les-mba-1",
+       "title": "1.1 Video: Strategic Mindset for Global Leaders",
+       "duration": "30 phút",
+       "type": "video",
+       "youtubeId": "2f3KMYYnK6s",
+       "isFreePreview": true
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "cohorts": [
+  {
+   "id": "cib-k8-hn",
+   "courseId": "twings-qhkh-doanh-nghiep",
+   "courseTitle": "Khóa Quan hệ Khách hàng doanh nghiệp",
+   "name": "Khóa học 8 - Hà Nội",
+   "startDate": "15/09/2026",
+   "registrationDeadline": "10/09/2026",
+   "capacity": 25,
+   "status": "in_progress",
+   "nextCohortId": "cib-k9-hn",
+   "nextCohortName": "Khóa học 9 - Hà Nội",
+   "autoRolloverWaitlist": true,
+   "trainerName": "GV Đặng Văn Thành (Giám đốc Bán hàng Toàn quốc MSB)",
+   "leadInstructorId": "inst-dang-van-thanh",
+   "leadInstructorName": "GV Đặng Văn Thành",
+   "instructorAvatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
+   "location": "Hội sở MSB 54A Nguyễn Chí Thanh, Hà Nội",
+   "notes": "Lớp đã đủ 25/25 học viên và khai giảng thành công. Toàn bộ đăng ký mới được chuyển sang Khóa 9."
+  },
+  {
+   "id": "cib-k9-hn",
+   "courseId": "twings-qhkh-doanh-nghiep",
+   "courseTitle": "Khóa Quan hệ Khách hàng doanh nghiệp",
+   "name": "Khóa học 9 - Hà Nội",
+   "startDate": "15/10/2026",
+   "registrationDeadline": "12/10/2026",
+   "capacity": 25,
+   "status": "opening",
+   "nextCohortId": "cib-k10-hn",
+   "nextCohortName": "Khóa học 10 (Tháng 11/2026)",
+   "autoRolloverWaitlist": true,
+   "trainerName": "GV Vũ Thu Phương (Giám đốc Phân khúc KH Doanh nghiệp MSB)",
+   "leadInstructorId": "inst-vu-thu-phuong",
+   "leadInstructorName": "GV Vũ Thu Phương",
+   "instructorAvatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+   "location": "Hội sở MSB 54A Nguyễn Chí Thanh, Hà Nội",
+   "notes": "Đang mở tuyển sinh đợt cao điểm tháng 10. Đã tuyển được 18/25 chỉ tiêu."
+  },
+  {
+   "id": "cib-k10-hn",
+   "courseId": "twings-qhkh-doanh-nghiep",
+   "courseTitle": "Khóa Quan hệ Khách hàng doanh nghiệp",
+   "name": "Khóa học 10 (Tháng 11/2026)",
+   "startDate": "15/11/2026",
+   "registrationDeadline": "10/11/2026",
+   "capacity": 25,
+   "status": "upcoming",
+   "autoRolloverWaitlist": true,
+   "trainerName": "ThS. Lê Hoàng Tùng (Nguyên GĐ Chi nhánh MSB)",
+   "leadInstructorId": "inst-le-hoang-tung",
+   "leadInstructorName": "ThS. Lê Hoàng Tùng",
+   "instructorAvatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+   "location": "Hội sở MSB Hà Nội",
+   "notes": "Lớp dự bị nhận chuyển tiếp từ Khóa 9 khi Khóa 9 đạt 25 học viên."
+  },
+  {
+   "id": "rb-k8-hcm",
+   "courseId": "twings-qhkh-ca-nhan",
+   "courseTitle": "Quan hệ Khách hàng cá nhân",
+   "name": "Khóa học 8 - HCM",
+   "startDate": "08/09/2026",
+   "registrationDeadline": "05/09/2026",
+   "capacity": 25,
+   "status": "in_progress",
+   "nextCohortId": "rb-k9-hn",
+   "nextCohortName": "Khóa học 9 - Hà Nội & Online",
+   "autoRolloverWaitlist": true,
+   "trainerName": "GV Đặng Văn Thành (Chuyên gia Bán lẻ MSB Miền Nam)",
+   "leadInstructorId": "inst-dang-van-thanh",
+   "leadInstructorName": "GV Đặng Văn Thành",
+   "instructorAvatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
+   "location": "MSB Chi nhánh Sài Gòn, Q.1, TP.HCM",
+   "notes": "Đang đào tạo module Thẩm định Tín dụng Tiêu dùng."
+  },
+  {
+   "id": "rb-k9-hn",
+   "courseId": "twings-qhkh-ca-nhan",
+   "courseTitle": "Quan hệ Khách hàng cá nhân",
+   "name": "Khóa học 9 - Hà Nội & Online",
+   "startDate": "20/10/2026",
+   "registrationDeadline": "16/10/2026",
+   "capacity": 25,
+   "status": "opening",
+   "autoRolloverWaitlist": true,
+   "trainerName": "GV Vũ Thu Phương (25+ năm KN Ngân hàng)",
+   "leadInstructorId": "inst-vu-thu-phuong",
+   "leadInstructorName": "GV Vũ Thu Phương",
+   "instructorAvatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+   "location": "Hội sở MSB & Hybrid Zoom LMS",
+   "notes": "Đang tiếp nhận học viên đăng ký sớm giữ học bổng 20%."
+  },
+  {
+   "id": "gdv-k9-hn",
+   "courseId": "gdv-ngan-hang",
+   "courseTitle": "Giao dịch viên & Vận hành Dịch vụ Khách hàng",
+   "name": "Khóa học 9 - GDV Ngân hàng",
+   "startDate": "25/10/2026",
+   "registrationDeadline": "20/10/2026",
+   "capacity": 20,
+   "status": "opening",
+   "autoRolloverWaitlist": true,
+   "trainerName": "GV Nguyễn Kim Chi (GĐ Quản trị Chuyển đổi MSB)",
+   "leadInstructorId": "inst-nguyen-kim-chi",
+   "leadInstructorName": "GV Nguyễn Kim Chi",
+   "instructorAvatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80",
+   "location": "MSB Sở Giao Dịch Hà Nội",
+   "notes": "Cam kết 100% học viên tốt nghiệp đạt chuẩn tiếp nhận thực tập có lương."
+  },
+  {
+   "id": "ai-k9-online",
+   "courseId": "deeplearning-ai-agents",
+   "courseTitle": "Xây dựng các Đại lý AI & Quy trình Làm việc Tự động",
+   "name": "Khóa học 9 - AI Agents Online",
+   "startDate": "18/10/2026",
+   "registrationDeadline": "15/10/2026",
+   "capacity": 35,
+   "status": "opening",
+   "autoRolloverWaitlist": true,
+   "trainerName": "GV Nguyễn Kim Chi & Chuyên gia AI Banking",
+   "leadInstructorId": "inst-nguyen-kim-chi",
+   "leadInstructorName": "GV Nguyễn Kim Chi",
+   "instructorAvatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80",
+   "location": "Online LMS Coursera & Hands-on Lab",
+   "notes": "Lớp học thực hành xây dựng AI Agent cho nghiệp vụ thẩm định hồ sơ."
+  }
+ ],
+ "campaigns": [
+  {
+   "id": "camp-2026-q4-hn",
+   "code": "CAMP-2026-Q4-HN",
+   "name": "Chiến Dịch Tuyển Sinh Fresher Banker Q4/2026 - Hà Nội & Miền Bắc",
+   "timeRange": "15/09/2026 - 15/11/2026",
+   "startDate": "15/09/2026",
+   "deadline": "12/10/2026",
+   "status": "active",
+   "targetHeadcount": 100,
+   "totalEnrolled": 78,
+   "leadRecruiter": "ThS. Lê Hoàng Tùng & Ban Nhân sự Hội sở MSB",
+   "scholarshipBudget": 250000000,
+   "location": "Hội sở MSB 54A Nguyễn Chí Thanh, Hà Nội",
+   "description": "Chiến dịch trọng điểm tuyển chọn và đào tạo 100 nhân sự đầu vào chất lượng cao tiếp nhận trực tiếp vào các Chi nhánh MSB Hà Nội & Vùng 1.",
+   "positions": [
+    {
+     "id": "pos-cib-hn",
+     "courseId": "twings-qhkh-doanh-nghiep",
+     "positionTitle": "Chuyên viên Quan hệ Khách hàng Doanh nghiệp (RM CIB/SME)",
+     "shortName": "RM Doanh Nghiệp (CIB)",
+     "department": "Khối Khách Hàng Doanh Nghiệp MSB",
+     "targetQuota": 25,
+     "enrolledCount": 18,
+     "leadInstructorName": "GV Vũ Thu Phương (Giám đốc Phân khúc KH Doanh nghiệp)",
+     "salaryRange": "15 - 28 Triệu / tháng",
+     "badgeBg": "bg-blue-50 text-blue-700 border-blue-200"
+    },
+    {
+     "id": "pos-rb-hn",
+     "courseId": "twings-qhkh-ca-nhan",
+     "positionTitle": "Chuyên viên Quan hệ Khách hàng Cá nhân (Retail Banker)",
+     "shortName": "RM Cá Nhân (RB)",
+     "department": "Khối Ngân Hàng Bán Lẻ MSB",
+     "targetQuota": 25,
+     "enrolledCount": 21,
+     "leadInstructorName": "GV Đặng Văn Thành (GĐ Bán Hàng Toàn Quốc MSB)",
+     "salaryRange": "12 - 22 Triệu / tháng",
+     "badgeBg": "bg-indigo-50 text-indigo-700 border-indigo-200"
+    },
+    {
+     "id": "pos-gdv-hn",
+     "courseId": "gdv-ngan-hang",
+     "positionTitle": "Giao Dịch Viên & Vận Hành Dịch Vụ Khách Hàng",
+     "shortName": "Giao Dịch Viên (Teller)",
+     "department": "Khối Quản Trị & Dịch Vụ Khách Hàng Chi Nhánh",
+     "targetQuota": 20,
+     "enrolledCount": 15,
+     "leadInstructorName": "GV Nguyễn Kim Chi (GĐ Quản trị Chuyển đổi MSB)",
+     "salaryRange": "10 - 16 Triệu / tháng",
+     "badgeBg": "bg-emerald-50 text-emerald-700 border-emerald-200"
+    },
+    {
+     "id": "pos-ai-hn",
+     "courseId": "deeplearning-ai-agents",
+     "positionTitle": "Kỹ Sư AI & Tự Động Hóa Quy Trình Ngân Hàng (AI Agents)",
+     "shortName": "Kỹ Sư AI Banking",
+     "department": "Khối Chiến Lược & Sáng Tạo Đổi Mới MSB",
+     "targetQuota": 30,
+     "enrolledCount": 24,
+     "leadInstructorName": "Chuyên gia AI Banking TWings & MSB Labs",
+     "salaryRange": "18 - 35 Triệu / tháng",
+     "badgeBg": "bg-purple-50 text-purple-700 border-purple-200"
+    }
+   ]
+  },
+  {
+   "id": "camp-2026-oct-hcm",
+   "code": "CAMP-2026-OCT-HCM",
+   "name": "Chiến Dịch Thu Hút Cán Bộ Tín Dụng & Banker TP.HCM - Tháng 10/2026",
+   "timeRange": "01/10/2026 - 30/11/2026",
+   "startDate": "01/10/2026",
+   "deadline": "20/10/2026",
+   "status": "active",
+   "targetHeadcount": 60,
+   "totalEnrolled": 42,
+   "leadRecruiter": "Ban Nhân Sự MSB Vùng Miền Nam",
+   "scholarshipBudget": 150000000,
+   "location": "MSB Chi nhánh Sài Gòn, Q.1, TP.HCM",
+   "description": "Chương trình đào tạo thực chiến cấp tốc bổ sung lực lượng tín dụng và giao dịch viên cho hệ thống 35 phòng giao dịch MSB tại TP.HCM & Đông Nam Bộ.",
+   "positions": [
+    {
+     "id": "pos-rb-hcm",
+     "courseId": "twings-qhkh-ca-nhan",
+     "positionTitle": "Chuyên viên Khách hàng Ưu tiên & Tín dụng Bán lẻ",
+     "shortName": "RM Bán Lẻ TP.HCM",
+     "department": "Khối Ngân Hàng Bán Lẻ MSB Miền Nam",
+     "targetQuota": 30,
+     "enrolledCount": 22,
+     "leadInstructorName": "GV Đặng Văn Thành",
+     "salaryRange": "14 - 25 Triệu / tháng",
+     "badgeBg": "bg-indigo-50 text-indigo-700 border-indigo-200"
+    },
+    {
+     "id": "pos-cib-hcm",
+     "courseId": "twings-qhkh-doanh-nghiep",
+     "positionTitle": "Chuyên viên Tín dụng Doanh nghiệp Vừa & Nhỏ (SME)",
+     "shortName": "RM SME Sài Gòn",
+     "department": "Khối Khách Hàng Doanh Nghiệp MSB Miền Nam",
+     "targetQuota": 30,
+     "enrolledCount": 20,
+     "leadInstructorName": "GV Vũ Thu Phương",
+     "salaryRange": "16 - 30 Triệu / tháng",
+     "badgeBg": "bg-blue-50 text-blue-700 border-blue-200"
+    }
+   ]
+  },
+  {
+   "id": "camp-2027-q1-fresher",
+   "code": "CAMP-2027-Q1-EARLY",
+   "name": "Chiến Dịch Tuyển Sinh Sớm Mùa Tốt Nghiệp Q1/2027 (Early Bird)",
+   "timeRange": "15/11/2026 - 15/02/2027",
+   "startDate": "15/11/2026",
+   "deadline": "10/01/2027",
+   "status": "planning",
+   "targetHeadcount": 120,
+   "totalEnrolled": 18,
+   "leadRecruiter": "Hội đồng Tuyển sinh TWings Academy",
+   "scholarshipBudget": 300000000,
+   "location": "Hà Nội & TP.HCM (Hybrid)",
+   "description": "Chương trình nhận hồ sơ sớm dành riêng cho sinh viên năm cuối các trường ĐH Kinh Tế Quốc Dân, Ngoại Thương, Học viện Ngân hàng, Ngân hàng TP.HCM.",
+   "positions": [
+    {
+     "id": "pos-cib-2027",
+     "courseId": "twings-qhkh-doanh-nghiep",
+     "positionTitle": "Quản trị Viên Tập sự Ngân hàng Doanh nghiệp (CIB MT)",
+     "shortName": "CIB Management Trainee",
+     "department": "Khối KHDN MSB",
+     "targetQuota": 40,
+     "enrolledCount": 6,
+     "salaryRange": "15 - 32 Triệu / tháng",
+     "badgeBg": "bg-blue-50 text-blue-700 border-blue-200"
+    },
+    {
+     "id": "pos-ai-2027",
+     "courseId": "deeplearning-ai-agents",
+     "positionTitle": "Chuyên viên Phân tích Dữ liệu & AI Tín dụng",
+     "shortName": "AI & Data Analyst",
+     "department": "Trung tâm Phân tích Dữ liệu MSB",
+     "targetQuota": 40,
+     "enrolledCount": 7,
+     "salaryRange": "20 - 40 Triệu / tháng",
+     "badgeBg": "bg-purple-50 text-purple-700 border-purple-200"
+    },
+    {
+     "id": "pos-rb-2027",
+     "courseId": "twings-qhkh-ca-nhan",
+     "positionTitle": "Chuyên viên Tư vấn Tài chính Cá nhân Fresher",
+     "shortName": "Fresh Retail Banker",
+     "department": "Khối Bán Lẻ MSB",
+     "targetQuota": 40,
+     "enrolledCount": 5,
+     "salaryRange": "12 - 20 Triệu / tháng",
+     "badgeBg": "bg-indigo-50 text-indigo-700 border-indigo-200"
+    }
+   ]
+  }
+ ],
+ "coupons": [
+  {
+   "code": "TWINGS2026",
+   "discountPercent": 20,
+   "description": "Ưu đãi bứt phá sự nghiệp ngân hàng - Giảm 20% toàn bộ khóa học",
+   "validUntil": "2026-12-31",
+   "usageCount": 142,
+   "maxUsage": 500,
+   "isActive": true
+  },
+  {
+   "code": "BANKERPRO",
+   "discountPercent": 15,
+   "description": "Giảm 15% khóa học Nghiệp vụ Tín dụng & OKR",
+   "validUntil": "2026-11-30",
+   "usageCount": 88,
+   "maxUsage": 200,
+   "isActive": true
+  }
+ ],
+ "banners": [
+  {
+   "id": "banner-ai-frontier",
+   "title": "Learn AI from the companies building it",
+   "subtitle": "Courses and certificates from Google, OpenAI, Anthropic, and IBM - for every level and role.",
+   "bgGradient": "from-[#071328] via-[#0E2042] to-[#0B1936]",
+   "buttonText": "Explore AI courses",
+   "buttonAction": "explore_ai",
+   "buttonStyle": "link",
+   "partnerBadges": [
+    {
+     "name": "Google",
+     "color": "#4285F4"
+    },
+    {
+     "name": "OpenAI",
+     "color": "#10A37F"
+    },
+    {
+     "name": "Anthropic",
+     "color": "#D97757"
+    },
+    {
+     "name": "IBM",
+     "color": "#60A5FA"
+    }
+   ],
+   "imageUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+   "floatingBadges": [
+    {
+     "text": "Google",
+     "iconColor": "#4285F4",
+     "position": "top-left"
+    },
+    {
+     "text": "OpenAI",
+     "iconColor": "#10A37F",
+     "position": "bottom-right"
+    }
+   ]
+  },
+  {
+   "id": "banner-career-advance",
+   "title": "Start, switch, or advance your career",
+   "subtitle": "Grow with courses, certificates, and degrees from world-class universities and top organizations.",
+   "bgGradient": "from-[#0048C8] via-[#0056D2] to-[#0073C1]",
+   "buttonText": "Join for Free",
+   "buttonAction": "browse_catalog",
+   "buttonStyle": "primary",
+   "partnerBadges": [
+    {
+     "name": "Stanford",
+     "color": "#EF4444"
+    },
+    {
+     "name": "IBM",
+     "color": "#93C5FD"
+    },
+    {
+     "name": "Penn",
+     "color": "#FCD34D"
+    }
+   ],
+   "imageUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+   "floatingBadges": [
+    {
+     "text": "IBM",
+     "position": "top-right"
+    },
+    {
+     "text": "Stanford",
+     "iconColor": "#EF4444",
+     "position": "bottom-left"
+    }
+   ]
+  },
+  {
+   "id": "banner-twings-banking",
+   "title": "Đột phá Sự nghiệp Ngân hàng Thực chiến",
+   "subtitle": "Đào tạo trực tiếp cùng Giám đốc khối & Chuyên gia MSB, ROX Group. Cam kết kết nối việc làm và bảo lãnh tuyển dụng.",
+   "bgGradient": "from-[#0F294D] via-[#1E3A8A] to-[#0073C1]",
+   "buttonText": "Đăng ký tư vấn trực tiếp",
+   "buttonAction": "consultation",
+   "buttonStyle": "primary",
+   "partnerBadges": [
+    {
+     "name": "TWINGS ACADEMY",
+     "color": "#0073C1"
+    },
+    {
+     "name": "MSB Bank",
+     "color": "#EA580C"
+    }
+   ],
+   "imageUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
+   "floatingBadges": [
+    {
+     "text": "TWINGS",
+     "iconColor": "#0073C1",
+     "position": "top-left"
+    },
+    {
+     "text": "MSB Bank",
+     "iconColor": "#EA580C",
+     "position": "bottom-right"
+    }
+   ]
+  },
+  {
+   "id": "banner-genai-mastery",
+   "title": "Xây dựng & Triển khai các AI Agents",
+   "subtitle": "Chuyên môn hóa với DeepLearning.AI và Andrew Ng. Học cách xây dựng hệ thống tác nhân AI đa luồng thế hệ mới.",
+   "bgGradient": "from-[#172554] via-[#1E3A8A] to-[#3B82F6]",
+   "buttonText": "Học thử Video YouTube",
+   "buttonAction": "youtube_trial",
+   "buttonStyle": "link",
+   "partnerBadges": [
+    {
+     "name": "DeepLearning.AI",
+     "color": "#FF6F00"
+    },
+    {
+     "name": "Stanford",
+     "color": "#8C1515"
+    }
+   ],
+   "imageUrl": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80",
+   "floatingBadges": [
+    {
+     "text": "DeepLearning.AI",
+     "iconColor": "#FF6F00",
+     "position": "top-left"
+    },
+    {
+     "text": "Agentic AI",
+     "iconColor": "#60A5FA",
+     "position": "bottom-right"
+    }
+   ]
+  },
+  {
+   "id": "banner-online-degrees",
+   "title": "Tốt nghiệp Cử nhân & Thạc sĩ Quốc tế",
+   "subtitle": "Chương trình đào tạo đại học 100% trực tuyến từ University of Illinois và University of London.",
+   "bgGradient": "from-[#311042] via-[#4C1D95] to-[#6D28D9]",
+   "buttonText": "Khám phá bằng cấp trực tuyến",
+   "buttonAction": "browse_catalog",
+   "buttonStyle": "primary",
+   "partnerBadges": [
+    {
+     "name": "Illinois iMBA",
+     "color": "#F97316"
+    },
+    {
+     "name": "London CS",
+     "color": "#A78BFA"
+    }
+   ],
+   "imageUrl": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=400&q=80",
+   "floatingBadges": [
+    {
+     "text": "Illinois",
+     "iconColor": "#F97316",
+     "position": "top-right"
+    },
+    {
+     "text": "Degree",
+     "iconColor": "#C084FC",
+     "position": "bottom-left"
+    }
+   ]
+  }
+ ],
+ "articles": [
+  {
+   "id": "art-1",
+   "slug": "lo-trinh-chuyen-vien-quan-he-khach-hang-ngan-hang-2026",
+   "title": "Lộ Trình Trở Thành Chuyên Viên Quan Hệ Khách Hàng Ngân Hàng Năm 2026",
+   "excerpt": "Hướng dẫn toàn diện từ yêu cầu tuyển dụng, kỹ năng thẩm định tín dụng, chỉ tiêu KPI đến cơ hội thăng tiến tại các ngân hàng thương mại lớn.",
+   "content": "## 1. Chân Dung Chuyên Viên Quan Hệ Khách Hàng (RM)\n\nChuyên viên Quan hệ Khách hàng (Relationship Manager - RM) là vị trí nòng cốt đóng góp trực tiếp vào doanh số và dư nợ tín dụng của mọi ngân hàng thương mại.\n\n### Vai trò chính của RM Cá nhân và Doanh nghiệp\n- Tiếp cận, tìm kiếm và khai thác nhu cầu tài chính của khách hàng\n- Thu thập hồ sơ pháp lý, tài chính và tiến hành thẩm định thực địa\n- Phân tích báo cáo tín dụng CIC, bóc tách dòng tiền và đánh giá năng lực trả nợ\n- Lập tờ trình cấp tín dụng và bảo vệ phương án vay trước Hội đồng Thẩm định\n\n## 2. Các Kỹ Năng Bắt Buộc Để Vượt Qua Vòng Phỏng Vấn\n1. **Kỹ năng đọc báo cáo tài chính**: Nhận diện các dấu hiệu làm đẹp sổ sách kế toán.\n2. **Kỹ năng giao tiếp và tạo dựng thương hiệu cá nhân**: Xây dựng lòng tin tuyệt đối với khách hàng VIP.\n3. **Thấu hiểu chính sách sản phẩm**: Nắm vững hạn mức cho vay mua nhà, thấu chi, bảo lãnh và L/C.",
+   "featuredImage": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=80",
+   "category": "Cẩm nang Nghề Ngân hàng",
+   "author": "GV Vũ Thu Phương (MSB)",
+   "publishedAt": "2026-09-20",
+   "status": "published",
+   "tags": [
+    "Nghiệp vụ Tín dụng",
+    "Phỏng vấn Ngân hàng",
+    "Quan hệ khách hàng"
+   ],
+   "viewsCount": 3840,
+   "metaTitle": "Lộ Trình Chuyên Viên Quan Hệ Khách Hàng Ngân Hàng 2026 | Twings",
+   "metaDescription": "Cẩm nang toàn diện về lộ trình thăng tiến, kỹ năng thẩm định tín dụng và bí quyết phỏng vấn RM ngân hàng thành công năm 2026.",
+   "focusKeyword": "quan hệ khách hàng ngân hàng",
+   "canonicalUrl": "https://twings.edu.vn/tin-tuc/lo-trinh-chuyen-vien-quan-he-khach-hang-ngan-hang-2026",
+   "seoScore": 92,
+   "seoChecks": {
+    "titleLength": true,
+    "metaDescLength": true,
+    "keywordInTitle": true,
+    "keywordInMeta": true,
+    "keywordInContent": true,
+    "keywordDensity": 1.8,
+    "hasHeadings": true,
+    "hasFeaturedImage": true,
+    "contentWordCount": 850,
+    "wordCountPassed": true
+   }
+  },
+  {
+   "id": "art-2",
+   "slug": "ung-dung-tri-tue-nhan-tao-ai-trong-tham-dinh-tin-dung",
+   "title": "Ứng Dụng Trí Tuệ Nhân Tạo (AI) Trong Thẩm Định Tín Dụng & Quản Trị Rủi Ro",
+   "excerpt": "Cách các ngân hàng số hóa quy trình chấm điểm tín dụng tự động, phát hiện gian lận và tối ưu hóa thời gian phê duyệt khoản vay.",
+   "content": "## Cuộc Cách Mạng AI Trong Ngành Ngân Hàng Số\n\nTrí tuệ nhân tạo và Machine Learning đang định hình lại phương thức các tổ chức tài chính đánh giá rủi ro tín dụng.\n\n### Những ứng dụng đột phá:\n- **Chấm điểm tín dụng phi truyền thống**: Phân tích hành vi chi tiêu số và hóa đơn dịch vụ\n- **Phát hiện gian lận thời gian thực**: Sử dụng mô hình Deep Learning để ngăn chặn rửa tiền\n- **Tự động hóa bóc tách hồ sơ**: OCR và LLMs trích xuất số liệu từ hàng nghìn trang báo cáo tài chính chỉ trong vài giây.",
+   "featuredImage": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80",
+   "category": "Công nghệ Tài chính (Fintech)",
+   "author": "Nguyễn Kim Chi (Chuyên gia Chuyển đổi số)",
+   "publishedAt": "2026-09-25",
+   "status": "published",
+   "tags": [
+    "AI Ngân hàng",
+    "Fintech",
+    "Quản trị rủi ro"
+   ],
+   "viewsCount": 2950,
+   "metaTitle": "Ứng Dụng AI Trong Thẩm Định Tín Dụng & Rủi Ro Ngân Hàng | Twings",
+   "metaDescription": "Khám phá cách AI và Machine Learning tự động hóa chấm điểm tín dụng, phát hiện gian lận và nâng cao năng lực cạnh tranh ngân hàng.",
+   "focusKeyword": "ai trong thẩm định tín dụng",
+   "canonicalUrl": "https://twings.edu.vn/tin-tuc/ung-dung-tri-tue-nhan-tao-ai-trong-tham-dinh-tin-dung",
+   "seoScore": 88,
+   "seoChecks": {
+    "titleLength": true,
+    "metaDescLength": true,
+    "keywordInTitle": true,
+    "keywordInMeta": true,
+    "keywordInContent": true,
+    "keywordDensity": 1.6,
+    "hasHeadings": true,
+    "hasFeaturedImage": true,
+    "contentWordCount": 720,
+    "wordCountPassed": true
+   }
+  }
+ ],
+ "siteSeo": {
+  "siteName": "TWINGS ACADEMY - Học Viện Đào Tạo Thực Chiến",
+  "siteSlogan": "Nâng tầm năng lực, kiến tạo tương lai",
+  "faviconUrl": "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=64&q=80",
+  "logoUrl": "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=200&q=80",
+  "defaultMetaTitle": "Twings Academy - Đào Tạo Nghiệp Vụ Ngân Hàng & Khóa Học Chuyên Nghiệp",
+  "defaultMetaDescription": "Học viện tiên phong đào tạo thực chiến ngành tài chính ngân hàng, công nghệ AI và chứng chỉ quốc tế. Kết nối việc làm trực tiếp tại MSB, ROX Group.",
+  "defaultKeywords": [
+   "Twings Academy",
+   "học nghiệp vụ ngân hàng",
+   "quan hệ khách hàng doanh nghiệp",
+   "thẩm định tín dụng",
+   "chứng chỉ Coursera",
+   "AI ngân hàng"
+  ],
+  "ogImageUrl": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80",
+  "canonicalDomain": "https://twings.edu.vn",
+  "googleAnalyticsId": "G-TWINGS2026",
+  "facebookPixelId": "1098245582910",
+  "robotsTxt": "User-agent: *\nAllow: /\nDisallow: /cms/\nDisallow: /api/\nSitemap: https://twings.edu.vn/sitemap.xml",
+  "hotline": "0843 314 382 (Ms. Hường)",
+  "email": "hello@twings.edu.vn",
+  "address": "Tòa ROX Tower, 54A Nguyễn Chí Thanh, Phường Láng, Hà Nội"
+ },
+ "homepageSections": {
+  "hero": {
+   "enabled": true,
+   "title": "Cùng TWINGS ACADEMY Chắp cánh SỰ NGHIỆP NGÂN HÀNG",
+   "subSlogan": "HỌC VIỆN ĐÀO TẠO NGHIỆP VỤ NGÂN HÀNG THỰC CHIẾN",
+   "description": "TWings Academy giúp bạn phát triển nhanh những năng lực thực tiễn, thích ứng với thị trường lao động không ngừng thay đổi và chủ động tiến xa trên hành trình sự nghiệp.",
+   "formTitle": "ĐĂNG KÝ TƯ VẤN KHÓA HỌC"
+  },
+  "intro": {
+   "enabled": true,
+   "eyebrow": "TWINGS ACADEMY",
+   "headline": "NÂNG TẦM NĂNG LỰC, KIẾN TẠO TƯƠNG LAI",
+   "description": "TWings Academy giúp bạn phát triển nhanh những năng lực thực tiễn, thích ứng với thị trường lao động không ngừng thay đổi và chủ động tiến xa trên hành trình sự nghiệp."
+  },
+  "bestsellers": {
+   "enabled": true,
+   "title": "KHÓA HỌC BÁN CHẠY NHẤT",
+   "bgColor": "#FF5722"
+  },
+  "recommended": {
+   "enabled": true,
+   "title": "ĐƯỢC ĐỀ XUẤT CHO BẠN",
+   "bgColor": "#0050D8"
+  },
+  "newReleases": {
+   "enabled": true,
+   "title": "KHÓA HỌC MỚI RA MẮT",
+   "bgColor": "#FF5722"
+  },
+  "mostUseful": {
+   "enabled": true,
+   "title": "KHÓA HỌC HỮU ÍCH NHẤT",
+   "bgColor": "#0050D8"
+  },
+  "partners": {
+   "enabled": true,
+   "title": "ĐỐI TÁC ĐỒNG HÀNH CÙNG TWINGS ACADEMY",
+   "items": [
+    {
+     "id": "p-msb",
+     "name": "MSB",
+     "slogan": "Ngân hàng TMCP Hàng Hải Việt Nam - cùng vươn tầm",
+     "themeColor": "#EA580C"
+    },
+    {
+     "id": "p-rox",
+     "name": "ROX GROUP",
+     "slogan": "Tập đoàn Đầu tư & Phát triển Bất động sản, Dịch vụ ROX",
+     "themeColor": "#E65100"
+    },
+    {
+     "id": "p-tntalent",
+     "name": "TNTalent",
+     "slogan": "Tư vấn & Cung ứng Giải pháp Nhân sự Chiến lược",
+     "themeColor": "#DC2626"
+    }
+   ]
+  },
+  "instructors": {
+   "enabled": true,
+   "title": "ĐỘI NGŨ GIẢNG VIÊN TẠI TWINGS",
+   "items": [
+    {
+     "id": "inst-vu-thu-phuong",
+     "name": "GV Vũ Thu Phương",
+     "title": "Giám đốc Phân khúc KH Doanh nghiệp MSB",
+     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+     "credential": "Giám đốc Phân khúc KH Doanh nghiệp MSB · 25+ năm KN",
+     "bio": "Với hơn 25 năm kinh nghiệm tại các tập đoàn đa quốc gia hàng đầu trong các lĩnh vực dịch vụ cao cấp, tài chính, bất động sản và đầu tư, chị Vũ Phương đã khẳng định vị thế của mình qua nhiều vai trò cấp cao, dẫn dắt đội ngũ lãnh đạo và xây dựng thành công hình ảnh thương hiệu cho doanh nghiệp. Không chỉ là một nhà lãnh đạo xuất sắc, chị còn là chuyên gia hàng đầu trong lĩnh vực xây dựng thương hiệu cá nhân và quản trị hình ảnh chuyên nghiệp. Chị Phương sẽ đồng hành cùng các bạn học viên của TWings trong các học phần nội dung về \"Xây dựng Thương hiệu cá nhân\" giúp học viên: Nhận thức được giá trị Thương hiệu cá nhân, định vị bản thân & tạo dấu ấn khác biệt, Kĩ năng giao tiếp & Quản trị hình ảnh cá nhân.",
+     "rating": 5,
+     "studentsCount": 3400
+    },
+    {
+     "id": "inst-dang-van-thanh",
+     "name": "GV Đặng Văn Thành",
+     "title": "Giám đốc Giám sát, Thúc đẩy và Nâng cao năng lực bán Ngân hàng Doanh nghiệp",
+     "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
+     "credential": "Giám đốc Bán hàng Toàn quốc · 20 năm KN Tài chính Ngân hàng",
+     "bio": "Anh Thành có gần 20 năm kinh nghiệm trong lĩnh vực tài chính - ngân hàng, từng đảm nhiệm các vị trí chiến lược như Giám đốc Chi nhánh, Giám đốc Vùng, và Giám đốc Quản trị Bán hàng toàn quốc. Anh đã gặt hái nhiều thành công nổi bật trong triển khai, quản trị bán hàng và phát triển năng lực đội ngũ. Anh Thành sẽ đồng hành cùng học viên TWings trong các học phần chuyên sâu về Tín dụng cũng như kỹ năng khai thác nhu cầu, xây dựng chiến lược tiếp cận, thuyết phục và duy trì mối quan hệ khách hàng lâu dài, giúp tối ưu hóa giá trị vòng đời khách hàng.",
+     "rating": 5,
+     "studentsCount": 4200
+    },
+    {
+     "id": "inst-nguyen-kim-chi",
+     "name": "GV Nguyễn Kim Chi",
+     "title": "Giám đốc Quản trị dự án chiến lược MSB",
+     "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80",
+     "credential": "Chuyên gia Chuyển đổi số Ngân hàng · Techcombank, VPBank, MSB",
+     "bio": "Với 20 năm kinh nghiệm trong ngành tài chính ngân hàng, chị Kim Chi đã và đang đảm nhiệm những vị trí quan trọng trong các dự án chuyển đổi số tại các ngân hàng lớn nhất Việt Nam như: Techcombank, VPBank. Hiện nay, chị Chi đang là Giám đốc quản trị chuyển đổi tại Khối Chiến lược và sáng tạo đổi mới với vai trò dẫn dắt sự chuyển đổi và hành trình số hóa ngân hàng tại MSB. Ngoài ra, chị Kim Chi còn là một trong những giảng viên nội bộ xuất sắc đang giảng dạy các nội dung liên quan đến tư duy chuyển đổi số và phương pháp làm việc Agile nhằm thúc đẩy văn hóa chuyển đổi số tại ngân hàng.",
+     "rating": 4.98,
+     "studentsCount": 3900
+    }
+   ]
+  },
+  "gallery": {
+   "enabled": true,
+   "title": "HÌNH ẢNH HỌC VIÊN TWINGS",
+   "photos": [
+    {
+     "id": "g1",
+     "url": "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=80",
+     "caption": "Lễ khai giảng Khóa Đào tạo Nghiệp vụ Ngân hàng Thực chiến tại Hội trường Twings Academy"
+    },
+    {
+     "id": "g2",
+     "url": "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80",
+     "caption": "Học viên thuyết trình phương án tín dụng trước Hội đồng Giám khảo Giám đốc MSB"
+    },
+    {
+     "id": "g3",
+     "url": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80",
+     "caption": "Trao chứng chỉ tốt nghiệp xuất sắc cho các Tân Banker chuẩn bị gia nhập ngân hàng"
+    },
+    {
+     "id": "g4",
+     "url": "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=800&q=80",
+     "caption": "Workshop thực hành triển khai mô hình OKR và quản trị thực thi cho cán bộ quản lý"
+    },
+    {
+     "id": "g5",
+     "url": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80",
+     "caption": "Sinh viên các trường Đại học Kinh tế Quốc dân, Học viện Ngân hàng tham gia trải nghiệm"
+    },
+    {
+     "id": "g6",
+     "url": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80",
+     "caption": "Buổi thảo luận nhóm chuyên sâu về phương pháp thẩm định dòng tiền dự án"
+    }
+   ]
+  },
+  "about": {
+   "enabled": true,
+   "title": "TWINGS ACADEMY",
+   "subtitle": "HỌC VIỆN TIÊN PHONG TRONG MÔ HÌNH ĐÀO TẠO THỰC CHIẾN",
+   "lead": "TWings Academy - Học viện tiên phong với mô hình đào tạo thực chiến trong lĩnh vực tài chính - ngân hàng, nay mở rộng hệ sinh thái học tập với các khóa học Short course: chương trình đào tạo ngắn hạn, tập trung, ứng dụng cao, giúp học viên nhanh chóng nắm bắt kiến thức trọng tâm và nâng cấp kỹ năng cần thiết cho học tập, công việc và định hướng nghề nghiệp.\n\nBên cạnh các khóa đào tạo thực chiến chuyên sâu, TWings Academy phát triển các khóa học Short course nhằm đáp ứng nhu cầu học nhanh, học đúng trọng tâm, học để ứng dụng ngay. Với triết lý \"Học đi đôi với hành\", các chương trình được thiết kế tinh gọn nhưng thực tiễn, cập nhật xu hướng mới trong ngành tài chính - ngân hàng và các kỹ năng nghề nghiệp hiện đại, giúp học viên rút ngắn thời gian học tập nhưng vẫn đạt được hiệu quả rõ ràng.",
+   "vision": "Trở thành học viện hàng đầu Việt Nam về đào tạo thực chiến và đào tạo ngắn hạn trong lĩnh vực tài chính - ngân hàng, là cầu nối uy tín giúp học viên, sinh viên và người đi làm nâng cao năng lực nghề nghiệp, sẵn sàng thích ứng với nhu cầu ngày càng khắt khe của thị trường lao động.",
+   "mission": [
+    "Cung cấp các chương trình đào tạo thực chiến và khóa học Short course ngắn hạn, tập trung vào kiến thức cốt lõi, kỹ năng thực tiễn và khả năng ứng dụng ngay sau học.",
+    "Xây dựng môi trường học tập năng động, linh hoạt, phù hợp với học viên, sinh viên và người đi làm có nhu cầu nâng cấp năng lực trong thời gian ngắn.",
+    "Đồng hành cùng học viên trong quá trình định hướng nghề nghiệp, phát triển kỹ năng và gia tăng lợi thế cạnh tranh trên thị trường tài chính - ngân hàng.",
+    "Liên tục cập nhật nội dung đào tạo theo xu hướng mới, kết hợp phương pháp giảng dạy hiện đại để mang đến trải nghiệm học tập hiệu quả, thực tế và khác biệt."
+   ],
+   "coreValues": [
+    "Thấu hiểu: Lắng nghe nhu cầu học tập, phát triển kỹ năng và định hướng nghề nghiệp của học viên để thiết kế chương trình phù hợp, thiết thực.",
+    "Thực tiễn: Tập trung vào kiến thức và kỹ năng có thể áp dụng ngay trong học tập, công việc và môi trường nghề nghiệp thực tế.",
+    "Tinh gọn: Thiết kế nội dung ngắn hạn, cô đọng, đúng trọng tâm, giúp học viên tiết kiệm thời gian nhưng vẫn đạt hiệu quả học tập cao.",
+    "Sáng tạo: Không ngừng đổi mới nội dung, phương pháp đào tạo và trải nghiệm học tập để bắt kịp xu hướng hiện đại.",
+    "Nâng tầm: Đồng hành cùng học viên trong quá trình phát triển năng lực, mở rộng cơ hội nghề nghiệp và đạt được những mục tiêu vượt trội."
+   ]
+  },
+  "contact": {
+   "address": "Tòa ROX Tower, 54A Nguyễn Chí Thanh, Phường Láng, Hà Nội",
+   "hotline": "0843 314 382 (Ms. Hường)",
+   "email": "hello@twings.edu.vn",
+   "facebook": "https://www.facebook.com/twings.academy",
+   "copyright": "©2024 Allrights reserved TNTalent"
+  }
+ },
+ "emailTemplates": [
+  {
+   "id": "tmpl-welcome",
+   "code": "admission_welcome",
+   "name": "Giấy Báo Nhập Học & Lịch Đào Tạo Chuẩn MSB",
+   "category": "admission",
+   "subject": "[TWings x MSB] Giấy Báo Nhập Học: Chúc mừng {{customerName}} - Khóa {{courseTitle}}",
+   "description": "Gửi tự động khi học viên đăng ký hoặc được xác nhận xếp vào lớp học mới.",
+   "variables": [
+    "customerName",
+    "courseTitle",
+    "batchCohort",
+    "startDate",
+    "location",
+    "pic",
+    "customerPhone",
+    "instructorName",
+    "orderCode"
+   ],
+   "isDefault": true,
+   "updatedAt": "02/10/2026",
+   "body": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>\n  <title>Giay Bao Nhap Hoc TWings x MSB</title>\n</head>\n<body style=\"margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;\">\n  <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f1f5f9; padding: 30px 10px;\">\n    <tr>\n      <td align=\"center\">\n        <!-- Main Email Container (Max 600px) -->\n        <table width=\"600\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;\">\n          \n          <!-- Header Banner with Brand Identity -->\n          <tr>\n            <td style=\"background: linear-gradient(135deg, #002D62 0%, #0073C1 100%); padding: 36px 30px; text-align: center;\">\n              <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\">\n                <tr>\n                  <td align=\"center\">\n                    <span style=\"display: inline-block; background-color: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25); color: #ffffff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; padding: 4px 14px; border-radius: 30px; margin-bottom: 12px;\">\n                      TWings Academy &bull; Ngân Hàng MSB &bull; Coursera\n                    </span>\n                    <h1 style=\"color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.3;\">\n                      GIẤY BÁO NHẬP HỌC CHÍNH THỨC\n                    </h1>\n                    <p style=\"color: #93c5fd; margin: 8px 0 0 0; font-size: 13px; font-weight: 500;\">\n                      Chương Trình Đào Tạo Thực Chiến & Tiếp Nhận Việc Làm MSB\n                    </p>\n                  </td>\n                </tr>\n              </table>\n            </td>\n          </tr>\n\n          <!-- Gold Accent Separator -->\n          <tr>\n            <td height=\"4\" style=\"background: linear-gradient(90deg, #F59E0B 0%, #FBBF24 50%, #F59E0B 100%); font-size: 0; line-height: 0;\">&nbsp;</td>\n          </tr>\n\n          <!-- Body Content Area -->\n          <tr>\n            <td style=\"padding: 36px 30px 24px 30px;\">\n              <p style=\"margin: 0 0 16px 0; font-size: 16px; color: #0f172a; line-height: 1.6;\">\n                Kính gửi Bạn <strong>{{customerName}}</strong>,\n              </p>\n              <p style=\"margin: 0 0 20px 0; font-size: 14px; color: #475569; line-height: 1.6;\">\n                Hội đồng Tuyển sinh TWings Academy và Ban Đào tạo & Phát triển Nguồn Nhân lực <strong>Ngân hàng TMCP Hàng Hải Việt Nam (MSB)</strong> trân trọng chúc mừng Bạn đã hoàn tất thủ tục đăng ký và chính thức đủ điều kiện tham gia khóa học:\n              </p>\n\n              <!-- Highlight Information Card -->\n              <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f8fafc; border: 1px solid #cbd5e1; border-left: 5px solid #0073C1; border-radius: 12px; margin: 24px 0;\">\n                <tr>\n                  <td style=\"padding: 20px;\">\n                    <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\">\n                      <tr>\n                        <td style=\"padding: 6px 0; font-size: 13px; color: #64748b; width: 140px;\">Khóa đào tạo:</td>\n                        <td style=\"padding: 6px 0; font-size: 14px; font-weight: 700; color: #0073C1;\">{{courseTitle}}</td>\n                      </tr>\n                      <tr>\n                        <td style=\"padding: 6px 0; font-size: 13px; color: #64748b;\">Lớp / Đợt khai giảng:</td>\n                        <td style=\"padding: 6px 0; font-size: 13px; font-weight: 700; color: #0f172a;\">{{batchCohort}}</td>\n                      </tr>\n                      <tr>\n                        <td style=\"padding: 6px 0; font-size: 13px; color: #64748b;\">Lịch khai giảng:</td>\n                        <td style=\"padding: 6px 0; font-size: 13px; font-weight: 700; color: #b45309;\">{{startDate}} (19h00 - 21h30)</td>\n                      </tr>\n                      <tr>\n                        <td style=\"padding: 6px 0; font-size: 13px; color: #64748b;\">Giảng viên phụ trách:</td>\n                        <td style=\"padding: 6px 0; font-size: 13px; font-weight: 700; color: #0f172a;\">{{instructorName}}</td>\n                      </tr>\n                      <tr>\n                        <td style=\"padding: 6px 0; font-size: 13px; color: #64748b;\">Địa điểm học tập:</td>\n                        <td style=\"padding: 6px 0; font-size: 13px; color: #334155;\">{{location}}</td>\n                      </tr>\n                      <tr>\n                        <td style=\"padding: 6px 0; font-size: 13px; color: #64748b;\">Mã hồ sơ học viên:</td>\n                        <td style=\"padding: 6px 0; font-size: 13px; font-family: monospace; font-weight: 700; color: #0284c7;\">{{orderCode}}</td>\n                      </tr>\n                    </table>\n                  </td>\n                </tr>\n              </table>\n\n              <!-- Privilege & Benefits Box -->\n              <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #eff6ff; border-radius: 12px; margin-bottom: 24px;\">\n                <tr>\n                  <td style=\"padding: 16px 20px;\">\n                    <p style=\"margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1e40af;\">\n                      Quyền Lợi Độc Quyền Dành Cho Học Viên Lớp Này:\n                    </p>\n                    <ul style=\"margin: 0; padding-left: 18px; font-size: 13px; color: #1e3a8a; line-height: 1.6;\">\n                      <li>Được cấp tài khoản <strong>Coursera Enterprise LMS</strong> không giới hạn môn học.</li>\n                      <li>Cố vấn 1-1 cùng Giám đốc Khối ngân hàng MSB suốt thời gian thực chiến.</li>\n                      <li>Tham gia chương trình <strong>Bank Tour Hội sở MSB</strong> và cam kết phỏng vấn tiếp nhận việc làm sau tốt nghiệp.</li>\n                    </ul>\n                  </td>\n                </tr>\n              </table>\n\n              <!-- Call to Action Button (Bulletproof Table-Based) -->\n              <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"margin: 28px 0 20px 0;\">\n                <tr>\n                  <td align=\"center\">\n                    <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\">\n                      <tr>\n                        <td align=\"center\" style=\"border-radius: 12px; background: linear-gradient(135deg, #0073C1 0%, #005fa3 100%);\">\n                          <a href=\"https://twings.edu.vn\" target=\"_blank\" style=\"font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; display: inline-block; letter-spacing: 0.2px;\">\n                            Xác Nhận Tham Gia & Nhận Tài Khoản LMS &rarr;\n                          </a>\n                        </td>\n                      </tr>\n                    </table>\n                  </td>\n                </tr>\n              </table>\n\n              <p style=\"margin: 20px 0 0 0; font-size: 13px; color: #64748b; line-height: 1.6;\">\n                Chuyên viên tư vấn phụ trách hỗ trợ Bạn: <strong>{{pic}}</strong> &bull; Hotline: <strong>1900 633 898</strong>.\n              </p>\n            </td>\n          </tr>\n\n          <!-- Footer Area -->\n          <tr>\n            <td style=\"background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 24px 30px; text-align: center;\">\n              <p style=\"margin: 0 0 6px 0; font-size: 12px; font-weight: 700; color: #475569;\">\n                TWINGS ACADEMY &bull; HỌC VIỆN ĐÀO TẠO NHÂN LỰC TÀI CHÍNH NGÂN HÀNG\n              </p>\n              <p style=\"margin: 0 0 8px 0; font-size: 11px; color: #94a3b8; line-height: 1.5;\">\n                Trụ sở: Tòa nhà ROX Tower, 54A Nguyễn Chí Thanh, Q. Đống Đa, TP. Hà Nội<br/>\n                Email: tuyensinh@twings.edu.vn &bull; Hotline: 1900 633 898 &bull; Website: twings.edu.vn\n              </p>\n              <p style=\"margin: 0; font-size: 10px; color: #cbd5e1;\">\n                &copy; 2026 TWings Academy. Đối tác chiến lược phát triển nhân tài Ngân hàng MSB.\n              </p>\n            </td>\n          </tr>\n\n        </table>\n      </td>\n    </tr>\n  </table>\n</body>\n</html>"
+  },
+  {
+   "id": "tmpl-invoice",
+   "code": "vietqr_tuition_invoice",
+   "name": "Thông Báo Học Phí & Mã Chuyển Khoản VietQR 24/7",
+   "category": "payment",
+   "subject": "[Học Phí TWings] Hướng dẫn quét mã VietQR khóa {{courseTitle}} - Đơn {{orderCode}}",
+   "description": "Gửi tự động kèm mã VietQR NAPAS 247 và cú pháp chuyển tiền cho học viên.",
+   "variables": [
+    "customerName",
+    "courseTitle",
+    "amount",
+    "orderCode",
+    "bankAccount",
+    "batchCohort",
+    "pic"
+   ],
+   "isDefault": true,
+   "updatedAt": "02/10/2026",
+   "body": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>\n  <title>Thong Bao Hoc Phi VietQR</title>\n</head>\n<body style=\"margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;\">\n  <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f1f5f9; padding: 30px 10px;\">\n    <tr>\n      <td align=\"center\">\n        <table width=\"600\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;\">\n          \n          <!-- Header -->\n          <tr>\n            <td style=\"background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 32px 30px; text-align: center;\">\n              <span style=\"display: inline-block; background-color: #0073C1; color: #ffffff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 4px 12px; border-radius: 20px; margin-bottom: 10px;\">\n                Thanh Toán Tức Thì &bull; Gạch Nợ Tự Động 60s\n              </span>\n              <h1 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 800;\">\n                THÔNG BÁO HỌC PHÍ &amp; MÃ VIETQR\n              </h1>\n              <p style=\"color: #38bdf8; margin: 6px 0 0 0; font-size: 13px;\">\n                Cổng thanh toán liên ngân hàng NAPAS 247 &bull; Ngân hàng MSB\n              </p>\n            </td>\n          </tr>\n\n          <!-- Content -->\n          <tr>\n            <td style=\"padding: 32px 30px 24px 30px;\">\n              <p style=\"margin: 0 0 14px 0; font-size: 15px; color: #0f172a;\">\n                Chào Bạn <strong>{{customerName}}</strong>,\n              </p>\n              <p style=\"margin: 0 0 20px 0; font-size: 14px; color: #475569; line-height: 1.6;\">\n                Hệ thống tuyển sinh gửi Bạn thông tin nộp học phí hoàn tất thủ tục nhập học chương trình <strong>{{courseTitle}}</strong> ({{batchCohort}}):\n              </p>\n\n              <!-- Payment Voucher Box with Dynamic VietQR -->\n              <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f0fdf4; border: 2px dashed #22c55e; border-radius: 16px; margin: 20px 0;\">\n                <tr>\n                  <td style=\"padding: 24px; text-align: center;\">\n                    <p style=\"margin: 0 0 4px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #166534; letter-spacing: 1px;\">\n                      Số Tiền Cần Thanh Toán:\n                    </p>\n                    <p style=\"margin: 0 0 16px 0; font-size: 28px; font-weight: 800; color: #15803d; font-family: monospace;\">\n                      {{amount}}\n                    </p>\n\n                    <!-- Dynamic VietQR Image -->\n                    <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"margin: 0 auto 16px auto;\">\n                      <tr>\n                        <td style=\"background-color: #ffffff; padding: 12px; border-radius: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.06); border: 1px solid #dcfce7;\">\n                          <img src=\"https://img.vietqr.io/image/MSB-03001010099999-compact2.png?amount=8490000&addInfo=TW3%20{{orderCode}}&accountName=CONG%20TY%20CP%20TWINGS%20ACADEMY\" alt=\"Ma VietQR Napas 247\" width=\"220\" style=\"display: block; border-radius: 8px; margin: 0 auto;\" />\n                          <p style=\"margin: 8px 0 0 0; font-size: 11px; color: #15803d; font-weight: 700;\">\n                            Mở ứng dụng Mobile Banking &bull; Quét mã VietQR\n                          </p>\n                        </td>\n                      </tr>\n                    </table>\n\n                    <!-- Bank Details Table -->\n                    <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #ffffff; border-radius: 10px; border: 1px solid #dcfce7; text-align: left; max-width: 440px; margin: 0 auto;\">\n                      <tr>\n                        <td style=\"padding: 12px 16px;\">\n                          <p style=\"margin: 4px 0; font-size: 13px; color: #334155;\"><strong>Ngân hàng:</strong> Ngân hàng TMCP Hàng Hải Việt Nam (MSB)</p>\n                          <p style=\"margin: 4px 0; font-size: 13px; color: #334155;\"><strong>Số tài khoản:</strong> <span style=\"font-family: monospace; font-weight: 800; color: #0f172a; font-size: 14px;\">03001010099999</span></p>\n                          <p style=\"margin: 4px 0; font-size: 13px; color: #334155;\"><strong>Chủ tài khoản:</strong> CONG TY CP TWINGS ACADEMY</p>\n                          <p style=\"margin: 4px 0; font-size: 13px; color: #b45309; background-color: #fef3c7; padding: 6px 8px; border-radius: 6px; font-weight: 700;\">\n                            Nội dung CK: <span style=\"font-family: monospace;\">TW3 {{orderCode}} {{customerName}}</span>\n                          </p>\n                        </td>\n                      </tr>\n                    </table>\n                  </td>\n                </tr>\n              </table>\n\n              <p style=\"margin: 16px 0 0 0; font-size: 13px; color: #64748b; line-height: 1.5;\">\n                <em>* Lưu ý: Hệ thống Webhook của ngân hàng MSB sẽ tự động nhận diện cú pháp chuyển khoản và kích hoạt tài khoản LMS ngay trong 60 giây.</em>\n              </p>\n            </td>\n          </tr>\n\n          <!-- Footer -->\n          <tr>\n            <td style=\"background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 30px; text-align: center;\">\n              <p style=\"margin: 0; font-size: 11px; color: #94a3b8;\">\n                Bộ phận Thu ngân TWings Academy &bull; Hotline hỗ trợ tài chính: 1900 633 898\n              </p>\n            </td>\n          </tr>\n        </table>\n      </td>\n    </tr>\n  </table>\n</body>\n</html>"
+  },
+  {
+   "id": "tmpl-receipt",
+   "code": "payment_receipt",
+   "name": "Biên Lai Điện Tử Xác Nhận Thu Học Phí Thành Công",
+   "category": "payment",
+   "subject": "[Biên Lai Điện Tử] Xác nhận thanh toán thành công khóa {{courseTitle}} - Đơn {{orderCode}}",
+   "description": "Kích hoạt ngay khi học viên chuyển khoản thành công hoặc được gạch nợ.",
+   "variables": [
+    "customerName",
+    "courseTitle",
+    "amount",
+    "orderCode",
+    "batchCohort",
+    "pic"
+   ],
+   "isDefault": true,
+   "updatedAt": "02/10/2026",
+   "body": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>\n  <title>Bien Lai Dien Tu</title>\n</head>\n<body style=\"margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;\">\n  <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f1f5f9; padding: 30px 10px;\">\n    <tr>\n      <td align=\"center\">\n        <table width=\"600\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;\">\n          <tr>\n            <td style=\"background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 32px 30px; text-align: center;\">\n              <span style=\"display: inline-block; background-color: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 4px 12px; border-radius: 20px; margin-bottom: 8px;\">\n                Đã Đối Soát &bull; Xác Thực 100%\n              </span>\n              <h1 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 800;\">\n                BIÊN LAI THU PHÍ ĐIỆN TỬ\n              </h1>\n              <p style=\"color: #a7f3d0; margin: 6px 0 0 0; font-size: 13px;\">\n                TWings Academy &bull; Ngân Hàng TMCP Hàng Hải Việt Nam (MSB)\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"padding: 32px 30px 24px 30px;\">\n              <p style=\"margin: 0 0 14px 0; font-size: 15px; color: #0f172a;\">\n                Kính gửi Bạn <strong>{{customerName}}</strong>,\n              </p>\n              <p style=\"margin: 0 0 20px 0; font-size: 14px; color: #475569; line-height: 1.6;\">\n                Hệ thống xác nhận đã nhận đủ số tiền học phí cho đơn hàng mã <strong>{{orderCode}}</strong> khóa học <strong>{{courseTitle}}</strong> ({{batchCohort}}).\n              </p>\n\n              <!-- Electronic Voucher Receipt Table -->\n              <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f8fafc; border-radius: 12px; border: 1px solid #cbd5e1; margin: 20px 0;\">\n                <tr>\n                  <td style=\"padding: 20px;\">\n                    <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\">\n                      <tr>\n                        <td style=\"padding: 6px 0; font-size: 13px; color: #64748b;\">Mã chứng từ:</td>\n                        <td style=\"padding: 6px 0; font-size: 13px; font-weight: 700; font-family: monospace; color: #0f172a;\">REC-{{orderCode}}</td>\n                      </tr>\n                      <tr>\n                        <td style=\"padding: 6px 0; font-size: 13px; color: #64748b;\">Số tiền đã thanh toán:</td>\n                        <td style=\"padding: 6px 0; font-size: 16px; font-weight: 800; color: #059669; font-family: monospace;\">{{amount}}</td>\n                      </tr>\n                      <tr>\n                        <td style=\"padding: 6px 0; font-size: 13px; color: #64748b;\">Hình thức thanh toán:</td>\n                        <td style=\"padding: 6px 0; font-size: 13px; font-weight: 600; color: #0f172a;\">VietQR Napas 247</td>\n                      </tr>\n                      <tr>\n                        <td style=\"padding: 6px 0; font-size: 13px; color: #64748b;\">Tình trạng:</td>\n                        <td style=\"padding: 6px 0; font-size: 13px; font-weight: 700; color: #059669;\">Hoàn tất 100%</td>\n                      </tr>\n                    </table>\n                  </td>\n                </tr>\n              </table>\n\n              <p style=\"margin: 0; font-size: 13px; color: #475569; line-height: 1.6;\">\n                Tài khoản học tập trên Coursera LMS đã được cấp quyền truy cập. Bạn có thể đăng nhập ngay bằng email này để xem trước tài liệu và video bài giảng.\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 30px; text-align: center;\">\n              <p style=\"margin: 0; font-size: 11px; color: #94a3b8;\">\n                &copy; 2026 TWings Academy. Biên lai điện tử có giá trị đối soát và xác thực thuế.\n              </p>\n            </td>\n          </tr>\n        </table>\n      </td>\n    </tr>\n  </table>\n</body>\n</html>"
+  },
+  {
+   "id": "tmpl-bank-tour",
+   "code": "bank_tour_invite",
+   "name": "Thư Mời Trải Nghiệm Thực Tế Bank Tour Hội Sở MSB",
+   "category": "scheduling",
+   "subject": "[Thư Mời VIP] Trải nghiệm 1 ngày làm việc tại Hội sở Ngân hàng MSB",
+   "description": "Gửi cho ứng viên tiềm năng tham gia sự kiện tham quan Hội sở và phỏng vấn thử.",
+   "variables": [
+    "customerName",
+    "courseTitle",
+    "pic"
+   ],
+   "isDefault": true,
+   "updatedAt": "02/10/2026",
+   "body": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>\n  <title>Thu Moi Bank Tour MSB</title>\n</head>\n<body style=\"margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;\">\n  <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f1f5f9; padding: 30px 10px;\">\n    <tr>\n      <td align=\"center\">\n        <table width=\"600\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;\">\n          <tr>\n            <td style=\"background: linear-gradient(135deg, #312e81 0%, #4338ca 100%); padding: 32px 30px; text-align: center;\">\n              <span style=\"display: inline-block; background-color: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 4px 12px; border-radius: 20px; margin-bottom: 8px;\">\n                Vé Mời Đặc Biệt &bull; VIP Banker Pass\n              </span>\n              <h1 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 800;\">\n                TRẢI NGHIỆM BANK TOUR HỘI SỞ MSB\n              </h1>\n              <p style=\"color: #c7d2fe; margin: 6px 0 0 0; font-size: 13px;\">\n                Khám phá thực tế môi trường làm việc chuyên nghiệp tại Ngân hàng TMCP Hàng Hải\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"padding: 32px 30px 24px 30px;\">\n              <p style=\"margin: 0 0 14px 0; font-size: 15px; color: #0f172a;\">\n                Thân gửi Bạn <strong>{{customerName}}</strong>,\n              </p>\n              <p style=\"margin: 0 0 18px 0; font-size: 14px; color: #475569; line-height: 1.6;\">\n                Ban Giám đốc Khối Khách hàng Doanh nghiệp &amp; Bán lẻ MSB trân trọng kính mời Bạn tham dự chương trình <strong>Bank Tour - Một Ngày Làm Banker Thực Chiến</strong>:\n              </p>\n\n              <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f8fafc; border-left: 4px solid #4338ca; border-radius: 0 12px 12px 0; padding: 18px; margin: 20px 0;\">\n                <tr>\n                  <td>\n                    <p style=\"margin: 4px 0; font-size: 13px; color: #334155;\"><strong>Thời gian:</strong> 14h30 - 17h00 Chiều Thứ 6 tuần này</p>\n                    <p style=\"margin: 4px 0; font-size: 13px; color: #334155;\"><strong>Địa điểm:</strong> Tầng 18, Tòa nhà ROX Tower, 54A Nguyễn Chí Thanh, Đống Đa, Hà Nội</p>\n                    <p style=\"margin: 4px 0; font-size: 13px; color: #334155;\"><strong>Nội dung:</strong> Gặp gỡ Ban Giám đốc Khối, tìm hiểu quy trình thẩm định tín dụng và nhận học bổng 2.000.000 ₫ từ TWings Academy.</p>\n                  </td>\n                </tr>\n              </table>\n\n              <p style=\"margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;\">\n                Chuyên viên đồng hành tiếp đón Bạn tại sảnh Hội sở: <strong>{{pic}}</strong>.\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 30px; text-align: center;\">\n              <p style=\"margin: 0; font-size: 11px; color: #94a3b8;\">\n                TWings Academy &bull; Ngân hàng TMCP Hàng Hải Việt Nam (MSB)\n              </p>\n            </td>\n          </tr>\n        </table>\n      </td>\n    </tr>\n  </table>\n</body>\n</html>"
+  },
+  {
+   "id": "tmpl-rollover",
+   "code": "class_rollover_notice",
+   "name": "Thông Báo Điều Chuyển Lớp Khai Giảng Sang Đợt Mới",
+   "category": "scheduling",
+   "subject": "[Thông Báo] Cập nhật lịch khai giảng lớp {{courseTitle}} sang {{batchCohort}}",
+   "description": "Gửi khi lớp cũ đóng tuyển sinh và học viên được tự động chuyển sang lớp mới.",
+   "variables": [
+    "customerName",
+    "courseTitle",
+    "batchCohort",
+    "startDate",
+    "pic"
+   ],
+   "isDefault": true,
+   "updatedAt": "02/10/2026",
+   "body": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>\n  <title>Dieu Chuyen Dot Khai Giang</title>\n</head>\n<body style=\"margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;\">\n  <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f1f5f9; padding: 30px 10px;\">\n    <tr>\n      <td align=\"center\">\n        <table width=\"600\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;\">\n          <tr>\n            <td style=\"background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 32px 30px; text-align: center;\">\n              <span style=\"display: inline-block; background-color: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 4px 12px; border-radius: 20px; margin-bottom: 8px;\">\n                Bảo Lưu 100% Quyền Lợi\n              </span>\n              <h1 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 800;\">\n                THÔNG BÁO ĐIỀU CHUYỂN ĐỢT KHAI GIẢNG\n              </h1>\n              <p style=\"color: #bae6fd; margin: 6px 0 0 0; font-size: 13px;\">\n                Chuyển tiếp tự động sang Lớp Kế Nhiệm đạt chuẩn sĩ số\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"padding: 32px 30px 24px 30px;\">\n              <p style=\"margin: 0 0 14px 0; font-size: 15px; color: #0f172a;\">\n                Chào Bạn <strong>{{customerName}}</strong>,\n              </p>\n              <p style=\"margin: 0 0 18px 0; font-size: 14px; color: #475569; line-height: 1.6;\">\n                Do lớp đào tạo đợt trước đã đạt chỉ tiêu sĩ số tối đa (25/25 học viên), để đảm bảo chất lượng giảng dạy và cố vấn 1-1 tốt nhất từ các Giám đốc Khối ngân hàng MSB, Ban Tuyển sinh đã tự động bảo lưu quyền lợi và chuyển Bạn sang lớp kế nhiệm:\n              </p>\n\n              <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 0 12px 12px 0; padding: 18px; margin: 20px 0;\">\n                <tr>\n                  <td>\n                    <p style=\"margin: 4px 0; font-size: 13px; color: #0369a1;\"><strong>Lớp tiếp nhận mới:</strong> {{batchCohort}}</p>\n                    <p style=\"margin: 4px 0; font-size: 13px; color: #0369a1;\"><strong>Lịch khai giảng:</strong> {{startDate}}</p>\n                    <p style=\"margin: 4px 0; font-size: 13px; color: #0369a1;\"><strong>Chính sách học bổng:</strong> Được giữ nguyên 100% mọi ưu đãi đã đăng ký.</p>\n                  </td>\n                </tr>\n              </table>\n\n              <p style=\"margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;\">\n                Mọi thắc mắc cần giải đáp, Bạn vui lòng liên hệ chuyên viên phụ trách: <strong>{{pic}}</strong> qua Hotline: <strong>1900 633 898</strong>.\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 30px; text-align: center;\">\n              <p style=\"margin: 0; font-size: 11px; color: #94a3b8;\">\n                TWings Academy &bull; Đối tác Đào tạo Ngân hàng MSB\n              </p>\n            </td>\n          </tr>\n        </table>\n      </td>\n    </tr>\n  </table>\n</body>\n</html>"
+  },
+  {
+   "id": "tmpl-msb-placement",
+   "code": "placement_offer",
+   "name": "Thư Chúc Mừng & Giấy Tiếp Nhận Nhân Sự Chính Thức MSB",
+   "category": "admission",
+   "subject": "[Chúc Mừng Tuyển Dụng] Thông báo tiếp nhận nhân sự tại Ngân hàng MSB",
+   "description": "Gửi cho học viên sau khi tốt nghiệp và vượt qua vòng thẩm định tuyển dụng MSB.",
+   "variables": [
+    "customerName",
+    "courseTitle",
+    "batchCohort",
+    "pic"
+   ],
+   "isDefault": true,
+   "updatedAt": "02/10/2026",
+   "body": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>\n  <title>Tiep Nhan Nhan Su MSB</title>\n</head>\n<body style=\"margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;\">\n  <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f1f5f9; padding: 30px 10px;\">\n    <tr>\n      <td align=\"center\">\n        <table width=\"600\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;\">\n          <tr>\n            <td style=\"background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); padding: 32px 30px; text-align: center;\">\n              <span style=\"display: inline-block; background-color: #f59e0b; color: #0f172a; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; padding: 4px 14px; border-radius: 20px; margin-bottom: 8px;\">\n                Quyết Định Tuyển Dụng Nhân Sự\n              </span>\n              <h1 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 800;\">\n                THƯ CHÚC MỪNG TIẾP NHẬN LÀM VIỆC MSB\n              </h1>\n              <p style=\"color: #93c5fd; margin: 6px 0 0 0; font-size: 13px;\">\n                Khối Quản trị Nguồn Nhân Lực &bull; Ngân hàng TMCP Hàng Hải Việt Nam\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"padding: 32px 30px 24px 30px;\">\n              <p style=\"margin: 0 0 14px 0; font-size: 15px; color: #0f172a;\">\n                Kính gửi Bạn <strong>{{customerName}}</strong>,\n              </p>\n              <p style=\"margin: 0 0 18px 0; font-size: 14px; color: #475569; line-height: 1.6;\">\n                Hội đồng Đánh giá Năng lực Ngân hàng TMCP Hàng Hải Việt Nam (MSB) trân trọng chúc mừng Bạn đã hoàn thành xuất sắc chương trình đào tạo chuẩn quốc tế <strong>{{courseTitle}}</strong> ({{batchCohort}}) và vượt qua kỳ phỏng vấn nghiệp vụ chuyên sâu.\n              </p>\n\n              <table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background-color: #f8fafc; border-left: 4px solid #1e3a8a; border-radius: 0 12px 12px 0; padding: 18px; margin: 20px 0;\">\n                <tr>\n                  <td>\n                    <p style=\"margin: 4px 0; font-size: 13px; color: #1e3a8a;\"><strong>Vị trí tiếp nhận:</strong> Chuyên viên Quan hệ Khách hàng (Fresh RM)</p>\n                    <p style=\"margin: 4px 0; font-size: 13px; color: #1e3a8a;\"><strong>Đơn vị công tác:</strong> MSB Chi nhánh Trung tâm Hà Nội</p>\n                    <p style=\"margin: 4px 0; font-size: 13px; color: #1e3a8a;\"><strong>Chế độ đãi ngộ:</strong> Lương cứng + Thưởng hiệu quả kinh doanh + Thẻ bảo hiểm MSB Care</p>\n                  </td>\n                </tr>\n              </table>\n\n              <p style=\"margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;\">\n                Bạn vui lòng có mặt tại Ban Nhân sự MSB vào ngày đầu tuần tới để hoàn tất thủ tục ký hợp đồng chính thức.\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 30px; text-align: center;\">\n              <p style=\"margin: 0; font-size: 11px; color: #94a3b8;\">\n                Khối Quản trị Nguồn Nhân Lực Ngân hàng MSB &bull; Đối tác Đào tạo TWings Academy\n              </p>\n            </td>\n          </tr>\n        </table>\n      </td>\n    </tr>\n  </table>\n</body>\n</html>"
+  }
+ ]
+}
