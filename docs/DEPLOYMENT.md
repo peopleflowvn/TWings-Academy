@@ -184,6 +184,17 @@ Nếu VPS đã chạy sản phẩm khác và cổng 80/443 do một gateway Cadd
   cấu hình rồi reload êm; nếu lỗi thì tự khôi phục file cũ. Script chỉ chạy khi DNS đã trỏ về VPS, và chỉ
   chạy khi chủ gateway đồng ý. Nếu sản phẩm kia deploy và ghi đè Caddyfile, chạy lại script này.
 
+### Tên miền test và API cùng origin
+
+Frontend được build với `VITE_API_BASE_URL=same-origin`, nên trang gọi `/api/...` trên chính tên miền
+đang mở. Container `web` chuyển các request đó vào backend. Nhờ vậy cùng một bản build chạy được trên mọi
+tên miền mà không cần CORS, và cookie đăng nhập luôn là cookie của chính tên miền đó.
+
+`TEST_DOMAIN` (trong `caddy.env`) phục vụ y hệt trang chính trên một tên miền phụ. Dùng khi một mạng nào
+đó chặn tên miền chính. Tên miền này trả header `X-Robots-Tag: noindex` và `robots.txt` chặn toàn bộ, nên
+không bị Google index. Nhớ thêm tên miền này vào `DJANGO_ALLOWED_HOSTS` và `DJANGO_CSRF_TRUSTED_ORIGINS`.
+`api-tuyensinh.…` vẫn được giữ cho webhook (SePay, Resend) và trang admin Django.
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị

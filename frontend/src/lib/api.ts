@@ -5,13 +5,16 @@
  * (HttpOnly, Secure, SameSite) and every unsafe request carries the CSRF token obtained from
  * /auth/csrf/. VITE_API_BASE_URL is a public URL, not a secret.
  *
+ * VITE_API_BASE_URL="same-origin" (production): the API is reached at /api on whichever host serves
+ * the site, so every published domain works without CORS and the session cookie stays first-party.
  * When VITE_API_BASE_URL is empty (local UI-only development), callers fall back to the bundled
  * demo data and sandbox simulators.
  */
 
 const RAW_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '';
-export const API_BASE_URL = RAW_BASE.replace(/\/+$/, '');
-export const API_ROOT = API_BASE_URL ? `${API_BASE_URL}/api/v1` : '';
+const SAME_ORIGIN = RAW_BASE === 'same-origin';
+export const API_BASE_URL = SAME_ORIGIN ? '' : RAW_BASE.replace(/\/+$/, '');
+export const API_ROOT = SAME_ORIGIN ? '/api/v1' : API_BASE_URL ? `${API_BASE_URL}/api/v1` : '';
 
 export const isBackendEnabled = (): boolean => API_ROOT !== '';
 

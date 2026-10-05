@@ -652,7 +652,9 @@ export const INITIAL_EMAIL_SEND_LOGS: EmailSendLog[] = [
 ];
 
 export const INITIAL_WEBHOOK_CONFIG: ResendWebhookConfig = {
-  webhookUrl: API_ROOT ? `${API_ROOT}/webhooks/resend/` : '(chưa cấu hình VITE_API_BASE_URL)',
+  webhookUrl: API_ROOT
+    ? `${API_ROOT.startsWith('/') ? window.location.origin : ''}${API_ROOT}/webhooks/resend/`
+    : '(chưa cấu hình VITE_API_BASE_URL)',
   // The real signing secret (whsec_...) lives only on the server as RESEND_WEBHOOK_SECRET.
   signingSecret: '',
   enabledEvents: ['email.sent', 'email.delivered', 'email.opened', 'email.clicked', 'email.bounced'],

@@ -76,9 +76,13 @@ case "$TASK" in
     echo "--- CORS preflight from the site"
     curl -s -o /dev/null -D - -m 30 -X OPTIONS -H "Origin: $web" -H "Access-Control-Request-Method: POST" \
       "$api/api/v1/auth/login/" | grep -i -E "^HTTP|access-control-allow-(origin|credentials)"
-    echo "--- redirect domain"
-    curl -s -o /dev/null -m 30 -w "%{http_code} https://twings.tunghr.io.vn/x?y=1 -> %{redirect_url}
-" "https://twings.tunghr.io.vn/x?y=1" || echo "FAIL redirect"
+    echo "--- test domain (same site, same-origin API, not indexed)"
+    test=https://twings.tunghr.io.vn
+    for u in "$test/" "$test/api/v1/health/" "$web/api/v1/public/courses/" "$test/robots.txt"; do
+      curl -s -o /tmp/body -m 30 -w "%{http_code} $u
+" "$u" || echo "FAIL $u"; head -c 80 /tmp/body; echo
+    done
+    curl -sI -m 30 "$test/" | grep -i "x-robots-tag" || echo "MISSING x-robots-tag"
     echo "--- nothing but the gateway is reachable from the internet"
     for port in 5432 8000 8080 8081 2019; do
       timeout 5 bash -c "</dev/tcp/$VPS_HOST/$port" 2>/dev/null && echo "OPEN $port" || echo "closed $port"

@@ -20,27 +20,49 @@
 	encode zstd gzip
 	header -Server
 
-	# ------------------------------------------------------------ React site
-	@web host {$WEB_DOMAIN}
+	# ------------------------------------------------------------ React site (+ same-origin API)
+	# WEB_DOMAIN is the public site. TEST_DOMAIN (optional) serves the very same site for testing
+	# from networks that cannot reach WEB_DOMAIN; it is kept out of search engines.
+	@web host {$WEB_DOMAIN} {$TEST_DOMAIN:test.invalid}
 	handle @web {
-		root * /srv/web
-		header {
-			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self' https://{$API_DOMAIN}; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
-			Strict-Transport-Security "max-age=31536000"
-			X-Content-Type-Options nosniff
-			X-Frame-Options DENY
-			Referrer-Policy strict-origin-when-cross-origin
-			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
-			Cross-Origin-Opener-Policy same-origin
+		@test host {$TEST_DOMAIN:test.invalid}
+		header @test X-Robots-Tag "noindex, nofollow"
+		@testRobots {
+			host {$TEST_DOMAIN:test.invalid}
+			path /robots.txt
 		}
-		@assets path /assets/*
-		header @assets Cache-Control "public, max-age=31536000, immutable"
-		@pages not path /assets/*
-		header @pages Cache-Control "no-cache"
+		respond @testRobots "User-agent: *
+Disallow: /
+" 200
 
-		# Client-side routing: unknown paths get the SPA shell.
-		try_files {path} /index.html
-		file_server
+		# The SPA calls the API on its own origin (VITE_API_BASE_URL=same-origin): no CORS, and the
+		# session cookie stays first-party on every domain the site is served from.
+		handle /api/* {
+			reverse_proxy backend:8000 {
+				header_up X-Real-IP {client_ip}
+			}
+		}
+
+		handle {
+			root * /srv/web
+			header {
+				Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+				Strict-Transport-Security "max-age=31536000"
+				X-Content-Type-Options nosniff
+				X-Frame-Options DENY
+				Referrer-Policy strict-origin-when-cross-origin
+				Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+				Cross-Origin-Opener-Policy same-origin
+			}
+			@assets path /assets/*
+			header @assets Cache-Control "public, max-age=31536000, immutable"
+			@pages not path /assets/*
+			header @pages Cache-Control "no-cache"
+
+			# Client-side routing: unknown paths get the SPA shell.
+			try_files {path} /index.html
+			file_server
+		}
 	}
 
 	# ------------------------------------------------------------ API

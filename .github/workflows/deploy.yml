@@ -90,8 +90,9 @@ jobs:
           push: true
           provenance: mode=max
           sbom: true
-          # Public configuration (repository variable), embedded in the JS bundle.
-          build-args: VITE_API_BASE_URL=${{ vars.API_BASE_URL || 'https://api-tuyensinh.twings.edu.vn' }}
+          # Public configuration (repository variable), embedded in the JS bundle. "same-origin":
+          # the site calls /api on its own host (served by the web container).
+          build-args: VITE_API_BASE_URL=${{ vars.API_BASE_URL || 'same-origin' }}
           tags: |
             ${{ env.WEB_IMAGE }}:${{ env.SHA }}
             ${{ env.WEB_IMAGE }}:main

@@ -25,6 +25,9 @@ points_here() {
   return 1
 }
 points_here "$WEB_DOMAIN" && points_here "$API_DOMAIN" || exit 0
+# TEST_DOMAIN serves the same site (e.g. for networks that block WEB_DOMAIN); added once it resolves.
+served="${WEB_DOMAIN}, ${API_DOMAIN}"
+[[ -n "${TEST_DOMAIN:-}" ]] && points_here "$TEST_DOMAIN" && served+=", ${TEST_DOMAIN}"
 # Extra hostnames (REDIRECT_DOMAINS, comma separated) answer with a permanent redirect to WEB_DOMAIN,
 # so sessions/cookies and SEO stay on one origin. Not-yet-pointed ones are left out for now.
 redirects=()
@@ -33,7 +36,7 @@ for host in ${REDIRECT_DOMAINS//,/ }; do points_here "$host" && redirects+=("$ho
 BEGIN="# >>> twings (managed by /opt/twings/bin/gateway-sync.sh - do not edit)"
 END="# <<< twings"
 BLOCK="$BEGIN
-${WEB_DOMAIN}, ${API_DOMAIN} {
+${served} {
     request_body {
         max_size 10MB
     }
