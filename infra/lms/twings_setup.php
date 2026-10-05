@@ -80,6 +80,9 @@ $capabilities = [
     // Learning overview and management from the TWings CMS (/app):
     'enrol/manual:unenrol', 'moodle/user:update', 'moodle/course:viewparticipants',
     'report/completion:view', 'moodle/grade:viewall', 'gradereport/overview:view',
+    // Learners' e-mail must be visible to the integration: users are looked up by e-mail (an existing
+    // account must be reused, never duplicated) and the CMS lists learners with their e-mail.
+    'moodle/site:viewuseridentity', 'moodle/course:useremail', 'moodle/site:viewfullnames',
 ];
 $role = $DB->get_record('role', ['shortname' => 'twingsintegration']);
 $roleid = $role ? $role->id : create_role(
