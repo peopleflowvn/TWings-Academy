@@ -136,6 +136,31 @@ print(\"functions:\", sorted(f[\"name\"] for f in info[\"functions\"]))
 '"
     ;;
 
+  lms-e2e)
+    # End-to-end: a throwaway paid order must yield a Moodle account + enrolment; everything test-only
+    # is removed afterwards (the course shell stays: it is the real course's LMS space).
+    remote "cd $APP && sudo docker compose exec -T backend python manage.py shell -c '
+from django.db import transaction
+from apps.catalog.models import Course
+from apps.crm.models import Order
+from apps.lms.models import LmsEnrollment
+course = Course.objects.order_by(\"title\").first()
+with transaction.atomic():
+    order = Order.objects.create(customer_name=\"Kiểm Thử LMS\", customer_email=\"lms-e2e@example.invalid\", course=course, amount=1)
+    order.status = \"paid\"
+    order.save()
+e = LmsEnrollment.objects.get(order=order)
+print(\"course:\", course.slug, \"| enrollment:\", e.status, \"| moodle user:\", e.moodle_user_id, \"| moodle course:\", e.moodle_course_id, \"| error:\", e.last_error or \"-\")
+order.delete()
+print(\"test order removed\")
+' && sudo docker compose exec -T lms php -r '
+define(\"CLI_SCRIPT\", true);
+require \"/var/www/moodle/config.php\";
+\$u = \$DB->get_record(\"user\", [\"email\" => \"lms-e2e@example.invalid\", \"deleted\" => 0]);
+if (\$u) { \$n = count(enrol_get_users_courses(\$u->id)); delete_user(\$u); echo \"moodle: test user had \$n course(s), deleted\n\"; } else { echo \"moodle: test user NOT found\n\"; }
+'"
+    ;;
+
   logs)
     remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
     ;;
