@@ -64,6 +64,23 @@ case "$TASK" in
     remote "sudo $APP/bin/gateway-sync.sh && sudo docker logs --since 2m \$(sudo sed -n 's/^GATEWAY_CONTAINER=//p' $APP/env/gateway.env) 2>&1 | grep -i -E 'twings|tuyensinh|certificate|error' | tail -30"
     ;;
 
+  smoke)
+    # From the GitHub runner (public internet), not the VPS: what a visitor sees.
+    web=https://tuyensinh.twings.edu.vn api=https://api-tuyensinh.twings.edu.vn
+    for u in "$api/api/v1/health/" "$web/" "$web/some/client/route" "$api/api/v1/courses/" "http://tuyensinh.twings.edu.vn/"; do
+      curl -s -o /tmp/body -m 30 -w "%{http_code} $u -> %{redirect_url}\n" "$u" || echo "FAIL $u"
+      head -c 200 /tmp/body; echo
+    done
+    echo "--- web headers"; curl -sI -m 30 "$web/" | grep -i -E "strict|content-security|x-frame|cache-control|^server"
+    echo "--- CORS preflight from the site"
+    curl -s -o /dev/null -D - -m 30 -X OPTIONS -H "Origin: $web" -H "Access-Control-Request-Method: POST" \
+      "$api/api/v1/auth/login/" | grep -i -E "^HTTP|access-control-allow-(origin|credentials)"
+    echo "--- certificates"
+    for h in tuyensinh.twings.edu.vn api-tuyensinh.twings.edu.vn; do
+      echo | openssl s_client -connect "$h:443" -servername "$h" 2>/dev/null | openssl x509 -noout -issuer -subject -enddate
+    done
+    ;;
+
   logs)
     remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
     ;;

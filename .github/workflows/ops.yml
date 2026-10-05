@@ -11,7 +11,7 @@ on:
       task:
         description: What to run on the VPS
         type: choice
-        options: [status, setup-shared, sync-env, gateway-sync, logs, seed-content, create-admin, restart, bootstrap]
+        options: [status, setup-shared, sync-env, gateway-sync, smoke, logs, seed-content, create-admin, restart, bootstrap]
       arg:
         description: "create-admin: e-mail of the new superuser"
         required: false
