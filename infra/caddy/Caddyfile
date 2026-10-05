@@ -31,9 +31,12 @@
 			host {$TEST_DOMAIN:test.invalid}
 			path /robots.txt
 		}
-		respond @testRobots "User-agent: *
+		# Inside its own handle: a bare respond would run after the catch-all handle below.
+		handle @testRobots {
+			respond "User-agent: *
 Disallow: /
 " 200
+		}
 
 		# The SPA calls the API on its own origin (VITE_API_BASE_URL=same-origin): no CORS, and the
 		# session cookie stays first-party on every domain the site is served from.
