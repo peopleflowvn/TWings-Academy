@@ -44,6 +44,8 @@ import { Course, Order, CMSSectionsConfig, HeroBannerItem, PartnerItem, AdminUse
 import { HERO_BANNERS, DEFAULT_PARTNERS, INITIAL_ADMIN_USERS } from '../data/courseraData';
 import { CMSCRMOrdersTab } from './cms/CMSCRMOrdersTab';
 import { CMSLmsTab } from './cms/CMSLmsTab';
+import { useServerCollection } from '../lib/serverCollection';
+import { BANNERS } from '../lib/cmsCollections';
 import { openInMoodle, StaffUserContext } from '../lib/lms';
 import { checkUserHasPermission as canUser } from '../utils/rbac';
 import { CMSUsersTab } from './cms/CMSUsersTab';
@@ -102,7 +104,8 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [sectionsState, setSectionsState] = useState<CMSSectionsConfig>(cmsSections);
-  const [bannersState, setBannersState] = useState<HeroBannerItem[]>(HERO_BANNERS);
+  // Saved through /staff/banners/ in live mode (debounced; demo: local sample data).
+  const { items: bannersState, update: setBannersState } = useServerCollection<HeroBannerItem>(BANNERS, HERO_BANNERS);
 
   // RBAC Global State
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>(INITIAL_ADMIN_USERS);

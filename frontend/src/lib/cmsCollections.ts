@@ -2,7 +2,7 @@
  * API mappings for the CMS lists persisted through useServerCollection (UI shape <-> DRF camelCase).
  * Fields only the UI knows about are dropped on the way out and given defaults on the way in.
  */
-import { AdmissionCampaign, CourseCohort } from '../types';
+import { AdmissionCampaign, Article, CourseCohort, HeroBannerItem, Instructor } from '../types';
 import { CollectionOptions, isoToViDate, viDateToIso } from './serverCollection';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -95,5 +95,130 @@ export const CAMPAIGNS: CollectionOptions<AdmissionCampaign> = {
       badgeBg: p.badgeBg || '',
       iconName: p.iconName || ''
     }))
+  })
+};
+
+// ---------------------------------------------------------------- content
+function toIsoDateTime(value?: string | null): string | null {
+  if (!value) return null;
+  const date = viDateToIso(value);
+  if (date && !/T/.test(value)) return `${date}T00:00:00+07:00`;
+  return /^\d{4}-\d{2}-\d{2}T/.test(value) ? value : null;
+}
+
+export const ARTICLES: CollectionOptions<Article> = {
+  endpoint: '/staff/articles/',
+  debounceMs: 1200,
+  fromServer: (d: any) => ({
+    id: d.id,
+    slug: d.slug,
+    title: d.title,
+    excerpt: d.excerpt || '',
+    content: d.content || '',
+    featuredImage: d.featuredImage || '',
+    category: d.category || '',
+    author: d.author || '',
+    publishedAt: d.publishedAt ? isoToViDate(d.publishedAt) : '',
+    status: d.status,
+    tags: d.tags || [],
+    viewsCount: d.viewsCount || 0,
+    metaTitle: d.metaTitle || '',
+    metaDescription: d.metaDescription || '',
+    focusKeyword: d.focusKeyword || '',
+    canonicalUrl: d.canonicalUrl || '',
+    seoScore: d.seoScore || 0,
+    seoChecks: d.seoChecks || {}
+  }),
+  toServer: (a) => ({
+    slug: a.slug,
+    title: a.title,
+    excerpt: a.excerpt || '',
+    content: a.content || '',
+    featuredImage: a.featuredImage || '',
+    category: a.category || '',
+    author: a.author || '',
+    status: a.status,
+    publishedAt: toIsoDateTime(a.publishedAt),
+    tags: a.tags || [],
+    metaTitle: a.metaTitle || '',
+    metaDescription: a.metaDescription || '',
+    focusKeyword: a.focusKeyword || '',
+    canonicalUrl: /^https?:\/\//.test(a.canonicalUrl || '') ? a.canonicalUrl : '',
+    seoScore: Math.round(a.seoScore || 0),
+    seoChecks: a.seoChecks || {}
+  })
+};
+
+export const INSTRUCTORS: CollectionOptions<Instructor> = {
+  endpoint: '/staff/instructors/',
+  fromServer: (d: any) => ({
+    id: d.id,
+    name: d.name,
+    title: d.title,
+    organization: d.organization || '',
+    avatar: d.avatar || '',
+    bio: d.bio || '',
+    credential: d.credential || '',
+    rating: d.rating !== null && d.rating !== undefined ? Number(d.rating) : undefined,
+    studentsCount: d.studentsCount || 0,
+    email: d.email || '',
+    phone: d.phone || '',
+    yearsOfExperience: d.yearsOfExperience ?? undefined,
+    status: d.status,
+    bankPosition: d.bankPosition || '',
+    linkedinUrl: d.linkedinUrl || ''
+  }),
+  toServer: (i) => ({
+    name: i.name,
+    title: i.title,
+    organization: i.organization || '',
+    avatar: i.avatar || '',
+    bio: i.bio || '',
+    credential: i.credential || '',
+    rating: i.rating ?? null,
+    studentsCount: i.studentsCount || 0,
+    email: i.email || '',
+    phone: i.phone || '',
+    yearsOfExperience: i.yearsOfExperience ?? null,
+    status: i.status || 'active',
+    bankPosition: i.bankPosition || '',
+    linkedinUrl: /^https?:\/\//.test(i.linkedinUrl || '') ? i.linkedinUrl : ''
+  })
+};
+
+export const BANNERS: CollectionOptions<HeroBannerItem> = {
+  endpoint: '/staff/banners/',
+  debounceMs: 1200,
+  fromServer: (d: any) => ({
+    id: d.id,
+    title: d.title,
+    subtitle: d.subtitle || '',
+    bgGradient: d.bgGradient || '',
+    buttonText: d.buttonText || '',
+    buttonAction: d.buttonAction || 'browse_catalog',
+    buttonStyle: d.buttonStyle || 'primary',
+    partnerBadges: d.partnerBadges || [],
+    imageUrl: d.imageUrl || '',
+    floatingBadges: d.floatingBadges || [],
+    displayType: d.displayType || 'card',
+    fullBannerImageUrl: d.fullBannerImageUrl || '',
+    linkUrl: d.linkUrl || '',
+    targetBlank: !!d.targetBlank
+  }),
+  toServer: (b) => ({
+    title: b.title,
+    subtitle: b.subtitle || '',
+    bgGradient: b.bgGradient || '',
+    buttonText: b.buttonText || '',
+    buttonAction: b.buttonAction || '',
+    buttonStyle: b.buttonStyle || 'primary',
+    partnerBadges: b.partnerBadges || [],
+    imageUrl: b.imageUrl || '',
+    floatingBadges: b.floatingBadges || [],
+    displayType: b.displayType || 'card',
+    fullBannerImageUrl: b.fullBannerImageUrl || '',
+    linkUrl: b.linkUrl || '',
+    targetBlank: !!b.targetBlank,
+    isActive: true
   })
 };

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useServerCollection } from '../../lib/serverCollection';
+import { INSTRUCTORS } from '../../lib/cmsCollections';
 import {
   Users,
   Award,
@@ -64,7 +66,11 @@ export const INITIAL_EXTENDED_INSTRUCTORS: Instructor[] = [
 ];
 
 export const CMSInstructorsTab: React.FC = () => {
-  const [instructors, setInstructors] = useState<Instructor[]>(INITIAL_EXTENDED_INSTRUCTORS);
+  // Saved through /staff/instructors/ in live mode (demo: local sample data).
+  const { items: instructors, update: setInstructors } = useServerCollection<Instructor>(
+    INSTRUCTORS,
+    INITIAL_EXTENDED_INSTRUCTORS
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourseFilter, setSelectedCourseFilter] = useState('all');
   const [editingInstructor, setEditingInstructor] = useState<Instructor | null>(null);

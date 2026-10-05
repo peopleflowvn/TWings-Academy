@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useServerCollection } from '../../lib/serverCollection';
+import { ARTICLES } from '../../lib/cmsCollections';
 import { 
   FileText, 
   Sparkles, 
@@ -21,7 +23,8 @@ import { Article } from '../../types';
 import { INITIAL_ARTICLES } from '../../data/courseraData';
 
 export const CMSArticlesSEOTab: React.FC = () => {
-  const [articles, setArticles] = useState<Article[]>(INITIAL_ARTICLES);
+  // Saved through /staff/articles/ in live mode (demo: local sample data).
+  const { items: articles, update: setArticles } = useServerCollection<Article>(ARTICLES, INITIAL_ARTICLES);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);

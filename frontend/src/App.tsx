@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { 
   Course, 
   Order, 
@@ -259,6 +259,18 @@ export default function App() {
     setOrders(orders.map((o) => (o.id === id ? { ...o, status } : o)));
   };
 
+  // Homepage content, section toggles and partners are one 'homepage_sections' document: save it a
+  // moment after the last edit (the editors update on every keystroke).
+  const sectionsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleUpdateCMSSections = (sections: CMSSectionsConfig) => {
+    setCmsSections(sections);
+    if (!live) return;
+    if (sectionsTimer.current) clearTimeout(sectionsTimer.current);
+    sectionsTimer.current = setTimeout(() => {
+      api.patch('/staff/site-config/homepage_sections/', { data: sections }).catch(reportError);
+    }, 800);
+  };
+
   // Shelves
   const mostPopularCourses = courses.filter((c) => c.badgeSection === 'most_popular' || c.reviewsCount > 50000);
   const trendingAICourses = courses.filter((c) => c.category === 'Trí tuệ nhân tạo (AI)' || c.badgeSection === 'trending_ai');
@@ -304,7 +316,7 @@ export default function App() {
           courses={courses}
           orders={orders}
           cmsSections={cmsSections}
-          onUpdateCMSSections={setCmsSections}
+          onUpdateCMSSections={handleUpdateCMSSections}
           onAddCourse={handleAddCourse}
           onUpdateCourse={handleUpdateCourse}
           onDeleteCourse={handleDeleteCourse}

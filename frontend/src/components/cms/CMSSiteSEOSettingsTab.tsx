@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useServerDocument } from '../../lib/serverCollection';
 import { 
   Globe, 
   Sparkles, 
@@ -15,7 +16,8 @@ import { SiteSEOSettings } from '../../types';
 import { INITIAL_SEO_SETTINGS } from '../../data/courseraData';
 
 export const CMSSiteSEOSettingsTab: React.FC = () => {
-  const [settings, setSettings] = useState<SiteSEOSettings>(INITIAL_SEO_SETTINGS);
+  // Saved as the 'site_seo' site config in live mode (debounced; demo: local sample data).
+  const { doc: settings, update: setSettings } = useServerDocument<SiteSEOSettings>('site_seo', INITIAL_SEO_SETTINGS);
   const [saveToast, setSaveToast] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
