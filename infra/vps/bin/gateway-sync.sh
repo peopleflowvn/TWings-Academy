@@ -38,7 +38,7 @@ END="# <<< twings"
 BLOCK="$BEGIN
 ${served} {
     request_body {
-        max_size 10MB
+        max_size 260MB
     }
     reverse_proxy twings-web:8080
 }"

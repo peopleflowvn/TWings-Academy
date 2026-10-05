@@ -44,9 +44,24 @@ Disallow: /
 		# The SPA calls the API on its own origin (VITE_API_BASE_URL=same-origin): no CORS, and the
 		# session cookie stays first-party on every domain the site is served from.
 		handle /api/* {
+			request_body {
+				max_size 10MB
+			}
 			reverse_proxy backend:8000 {
 				header_up X-Real-IP {client_ip}
 			}
+		}
+
+		# Moodle LMS. Its web service API is for the TWings backend only (internal network): never
+		# reachable from the internet, so a leaked token is useless from outside.
+		handle /learn* {
+			@moodleWs path /learn/webservice/*
+			respond @moodleWs 404
+			header X-Robots-Tag "noindex, nofollow"
+			request_body {
+				max_size 256MB
+			}
+			reverse_proxy lms:8080
 		}
 
 		handle {

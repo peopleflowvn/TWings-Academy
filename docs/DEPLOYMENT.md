@@ -195,6 +195,27 @@ tên miền mà không cần CORS, và cookie đăng nhập luôn là cookie c�
 không bị Google index. Nhớ thêm tên miền này vào `DJANGO_ALLOWED_HOSTS` và `DJANGO_CSRF_TRUSTED_ORIGINS`.
 `api-tuyensinh.…` vẫn được giữ cho webhook (SePay, Resend) và trang admin Django.
 
+## LMS (Moodle)
+
+Moodle 5.2 (image `twings-academy-lms`, `infra/lms/`) chạy tại `<tên miền>/learn` trên mọi tên miền của trang. Moodle
+dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle nằm trong volume `moodledata`.
+
+- **Luồng học viên:** đơn chuyển sang "đã thanh toán" (webhook ngân hàng, kế toán xác nhận, hoặc CMS) → backend gọi
+  Web Service của Moodle: tìm/tạo khóa (theo `idnumber` = id khóa TWings, hoặc `shortname` = slug khóa, nên có thể
+  soạn sẵn khóa trên Moodle), tìm/tạo tài khoản theo email (Moodle tự gửi email mật khẩu), rồi ghi danh vai trò
+  *student*. Lỗi được ghi ở `LmsEnrollment` và cron thử lại mỗi 10 phút (`sync_lms_enrollments`).
+- **Soạn nội dung:** đăng nhập `/learn` bằng `admin` (mật khẩu `PROD_LMS__MOODLE_ADMIN_PASSWORD` trong `.env`). Dùng
+  các tính năng sẵn có của Moodle: bài giảng, video YouTube, quiz, bài tập, hoàn thành khóa học, huy hiệu.
+- **Bảo mật:** `/learn/webservice/*` bị chặn từ Internet, chỉ backend gọi được qua mạng nội bộ. Token có giới hạn IP
+  nội bộ và một vai trò quyền tối thiểu. Không ai tự đăng ký được (`registerauth` tắt, `forcelogin` bật). Cài đặt hoặc
+  nâng cấp qua web cần `MOODLE_UPGRADE_KEY`; `deploy.sh` làm việc này bằng CLI. Thư mục code chỉ đọc nên không cài
+  plugin qua web được.
+- **Email:** cần SMTP (ví dụ Resend: `smtp.resend.com:587`, user `resend`, password = API key) trong
+  `PROD_LMS__MOODLE_SMTP_*`. Thiếu SMTP thì học viên không nhận được email mật khẩu.
+- **Nâng cấp Moodle:** đổi `MOODLE_COMMIT` trong `infra/lms/Dockerfile` sang commit của tag mới. Giống migration, bước
+  nâng cấp DB của Moodle không đảo ngược được khi rollback.
+- **Backup:** `backup.sh` sao lưu DB `twings`, DB `moodle` và `moodledata` (bỏ cache), mã hóa `age`, đẩy lên R2.
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị

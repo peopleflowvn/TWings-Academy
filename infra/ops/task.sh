@@ -57,7 +57,8 @@ case "$TASK" in
       tar -C \$t -xzf -
       for f in \$t/*.env; do sudo install -m 600 -o root -g root \"\$f\" $APP/env/; done
       sudo ls -l $APP/env/
-      if [ -f $APP/.env ]; then cd $APP && sudo docker compose up -d; fi"
+      # Recreate only what already runs (picks up the new env): never start Moodle before deploy.sh installed it.
+      if [ -f $APP/.env ]; then cd $APP && running=\$(sudo docker compose ps --services --status running | tr '\n' ' ') && [ -n \"\$running\" ] && sudo docker compose up -d \$running; fi"
     ;;
 
   gateway-sync)

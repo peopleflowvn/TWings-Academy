@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "apps.crm",
     "apps.payments",
     "apps.notifications",
+    "apps.lms",
 ]
 
 MIDDLEWARE = [
@@ -249,6 +250,15 @@ VIETQR_BANK_NAME = env("VIETQR_BANK_NAME", default="MSB")
 VIETQR_ACCOUNT_NUMBER = env("VIETQR_ACCOUNT_NUMBER", default="")
 VIETQR_ACCOUNT_NAME = env("VIETQR_ACCOUNT_NAME", default="CONG TY CP TWINGS ACADEMY")
 VIETQR_TEMPLATE = env("VIETQR_TEMPLATE", default="compact2")
+
+# ---------------------------------------------------------------------------
+# Moodle LMS: paid orders get a Moodle account + enrolment through Moodle's REST web services.
+# Internal URL only (Docker network); empty = LMS integration disabled.
+# ---------------------------------------------------------------------------
+MOODLE_INTERNAL_URL = env("MOODLE_INTERNAL_URL", default="")  # e.g. http://lms:8080/learn
+MOODLE_WS_TOKEN = env("MOODLE_WS_TOKEN", default="")
+MOODLE_HOST = env("MOODLE_HOST", default="")  # Moodle's canonical site hostname (Host header)
+MOODLE_STUDENT_ROLE_ID = env.int("MOODLE_STUDENT_ROLE_ID", default=5)  # Moodle's built-in "student"
 
 # ---------------------------------------------------------------------------
 # Logging: structured to stdout, never log request bodies or secrets.

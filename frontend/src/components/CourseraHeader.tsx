@@ -160,6 +160,15 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             <span>Tin tức & SEO</span>
           </button>
 
+          {/* Learners: the Moodle LMS (full page, served at /learn on the same domain) */}
+          <a
+            href="/learn/"
+            className="flex items-center gap-1.5 hover:text-[#0073C1] transition-colors"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+            <span>Vào học</span>
+          </a>
+
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
 
           {/* Quick Consultation CTA */}
@@ -249,6 +258,9 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           >
             Đăng Ký Tư Vấn Khóa Học
           </button>
+          <a href="/learn/" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-slate-800 font-bold">
+            Vào Học (TWings LMS)
+          </a>
         </div>
       )}
     </header>

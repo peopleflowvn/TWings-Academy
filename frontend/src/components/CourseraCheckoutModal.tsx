@@ -250,7 +250,17 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                   Thanh Toán Thành Công!
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
-                  Khóa học <strong className="text-slate-900">{course.title}</strong> đã được kích hoạt ngay lập tức vào tài khoản học của bạn.
+                  {liveMode ? (
+                    <>
+                      Khóa học <strong className="text-slate-900">{course.title}</strong> đã được mở trên hệ thống học
+                      TWings LMS. Thông tin đăng nhập được gửi tới email bạn đã đăng ký trong ít phút (kiểm tra cả
+                      thư mục Spam).
+                    </>
+                  ) : (
+                    <>
+                      Khóa học <strong className="text-slate-900">{course.title}</strong> đã được kích hoạt ngay lập tức vào tài khoản học của bạn.
+                    </>
+                  )}
                 </p>
                 <div className="text-xs font-mono font-bold text-slate-500">
                   Mã đơn hàng: {orderCode}
@@ -258,13 +268,23 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
               </div>
 
               <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
-                <button
-                  onClick={onClose}
-                  className="w-full sm:w-auto px-6 py-3 bg-[#0056D2] hover:bg-[#00419E] text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Vào Bàn Học Của Tôi Ngay</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                {liveMode ? (
+                  <a
+                    href="/learn/"
+                    className="w-full sm:w-auto px-6 py-3 bg-[#0056D2] hover:bg-[#00419E] text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                  >
+                    <span>Vào Học Ngay (TWings LMS)</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+                ) : (
+                  <button
+                    onClick={onClose}
+                    className="w-full sm:w-auto px-6 py-3 bg-[#0056D2] hover:bg-[#00419E] text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Vào Bàn Học Của Tôi Ngay</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           ) : (

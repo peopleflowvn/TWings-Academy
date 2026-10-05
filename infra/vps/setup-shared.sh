@@ -54,7 +54,7 @@ install -m 644 -o root -g root "$SRC/docker-compose.prod.yml" "$APP/docker-compo
 install -m 755 -o root -g root "$SRC/postgres/init/01-app-role.sh" "$APP/postgres/init/01-app-role.sh"
 install -m 755 -o root -g root "$SRC/vps/bin/deploy-gate" "$SRC/vps/bin/deploy.sh" \
   "$SRC/vps/bin/backup.sh" "$SRC/vps/bin/gateway-sync.sh" "$APP/bin/"
-for f in db caddy backup gateway; do
+for f in db caddy backup gateway lms; do
   [[ -f "$APP/env/$f.env" ]] || install -m 600 -o root -g root "$SRC/env/$f.env.example" "$APP/env/$f.env"
 done
 [[ -f "$APP/env/backend.env" ]] || install -m 600 -o root -g root /dev/null "$APP/env/backend.env"
@@ -65,5 +65,11 @@ CRON_TZ=Asia/Ho_Chi_Minh
 30 2 * * * root ${APP}/bin/backup.sh >/var/log/twings-backup.log 2>&1
 EOF
 chmod 644 /etc/cron.d/twings-backup
+
+echo "==> LMS enrollment retries every 10 minutes (paid orders whose Moodle enrolment failed)"
+cat > /etc/cron.d/twings-lms <<EOF
+*/10 * * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py sync_lms_enrollments >/dev/null 2>&1
+EOF
+chmod 644 /etc/cron.d/twings-lms
 
 echo "Done. Next: Ops 'sync-env', then run the Deploy workflow."

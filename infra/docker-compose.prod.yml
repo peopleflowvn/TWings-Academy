@@ -8,7 +8,8 @@
 #   gateway  (external)  web only     – what the shared gateway can reach
 #   app      (internal)  web, backend – no internet
 #   data     (internal)  backend, db  – no internet; web and other products cannot reach the DB
-#   egress               backend      – Resend, R2
+#   egress               backend, lms – Resend, R2, Moodle language packs and mail
+#   lms: Moodle at <site>/learn, reached through web (app network); its DB lives in the same Postgres
 # Secrets live in /opt/twings/env/*.env (root-owned, chmod 600), never in this file or the images.
 # IMAGE_TAG is written to /opt/twings/.env by bin/deploy.sh.
 
@@ -31,7 +32,7 @@ services:
     # Small-footprint tuning for a shared 6 GB host.
     command: >-
       postgres -c shared_buffers=64MB -c effective_cache_size=256MB -c work_mem=4MB
-      -c maintenance_work_mem=32MB -c max_connections=30
+      -c maintenance_work_mem=32MB -c max_connections=50
     volumes:
       - pgdata:/var/lib/postgresql
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -81,6 +82,39 @@ services:
     mem_limit: 64m
     pids_limit: 64
 
+  # Moodle LMS at <site>/learn (infra/lms/Dockerfile): reached only through the web container.
+  lms:
+    <<: *hardening
+    image: ghcr.io/peopleflowvn/twings-academy-lms:${IMAGE_TAG:?IMAGE_TAG is not set}
+    env_file: [./env/lms.env]
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [app, data, egress]   # egress: language packs, outgoing mail
+    read_only: true
+    tmpfs: ["/tmp", "/var/run/apache2", "/var/lock/apache2"]
+    volumes:
+      - moodledata:/var/moodledata
+    cap_drop: [ALL]
+    mem_limit: 512m
+    pids_limit: 128
+
+  # Moodle's scheduled + ad-hoc tasks (e-mails, completion, badges...), same image.
+  lms-cron:
+    <<: *hardening
+    image: ghcr.io/peopleflowvn/twings-academy-lms:${IMAGE_TAG:?IMAGE_TAG is not set}
+    env_file: [./env/lms.env]
+    command: ["sh", "-c", "while :; do php /var/www/moodle/admin/cli/cron.php --keep-alive=300; sleep 10; done"]
+    healthcheck: { disable: true }
+    depends_on: [lms]
+    networks: [data, egress]
+    read_only: true
+    tmpfs: ["/tmp"]
+    volumes:
+      - moodledata:/var/moodledata
+    cap_drop: [ALL]
+    mem_limit: 256m
+    pids_limit: 64
+
 networks:
   app:
     internal: true
@@ -95,3 +129,4 @@ networks:
 volumes:
   pgdata: {}
   appdata: {}
+  moodledata: {}
