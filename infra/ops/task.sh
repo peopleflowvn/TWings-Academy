@@ -16,6 +16,10 @@ case "$TASK" in
       sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
       sudo ss -tlnup
       command -v docker && sudo docker compose -f /opt/twings/docker-compose.yml ps -a || true
+      sudo docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}" || true
+      sudo docker compose ls || true
+      cat /etc/ssh/sshd_config.d/*.conf 2>/dev/null; getent passwd | awk -F: "\$3>=1000 && \$3<65534 {print \$1}"
+      sudo iptables -S INPUT | head -20
       sudo cat /opt/twings/.env 2>/dev/null || true
       curl -fsS -m 10 -H "Host: $(sudo sed -n "s/^API_DOMAIN=//p" /opt/twings/env/caddy.env 2>/dev/null)" \
         -k https://127.0.0.1/api/v1/health/ || true

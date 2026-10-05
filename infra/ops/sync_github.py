@@ -9,7 +9,9 @@ Re-run after changing .env; then trigger the Ops workflow task "sync-env" to upd
 
 import base64
 import io
+import os
 import re
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -19,6 +21,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "infra" / "vps"))
 import render_env
+
+
+def gh_exe() -> str:
+    """gh on PATH, else the per-user portable install (%LOCALAPPDATA%/Programs/gh)."""
+    found = shutil.which("gh")
+    if found:
+        return found
+    local = (
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "gh" / "bin" / "gh.exe"
+    )
+    if local.is_file():
+        return str(local)
+    sys.exit("GitHub CLI (gh) not found")
 
 
 def read_env() -> dict[str, str]:
@@ -44,7 +59,7 @@ def env_bundle() -> str:
 
 def gh(*args: str, value: str) -> None:
     subprocess.run(
-        ["gh", *args],
+        [gh_exe(), *args],
         input=value.encode(),
         check=True,
         cwd=ROOT,

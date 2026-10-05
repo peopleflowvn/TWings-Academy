@@ -8,7 +8,9 @@ Needs the GitHub CLI (logged in) and OPS_OUTPUT_KEY in the repo-root .env. Match
 """
 
 import hashlib
+import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -18,6 +20,19 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def gh_exe() -> str:
+    """gh on PATH, else the per-user portable install (%LOCALAPPDATA%/Programs/gh)."""
+    found = shutil.which("gh")
+    if found:
+        return found
+    local = (
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "gh" / "bin" / "gh.exe"
+    )
+    if local.is_file():
+        return str(local)
+    sys.exit("GitHub CLI (gh) not found")
 
 
 def output_key() -> bytes:
@@ -44,7 +59,7 @@ def main() -> None:
         sys.exit(__doc__)
     with tempfile.TemporaryDirectory() as tmp:
         subprocess.run(
-            ["gh", "run", "download", sys.argv[1], "-n", "ops-output", "-D", tmp],
+            [gh_exe(), "run", "download", sys.argv[1], "-n", "ops-output", "-D", tmp],
             check=True,
             cwd=ROOT,
         )
