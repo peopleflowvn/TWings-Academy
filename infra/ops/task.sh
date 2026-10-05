@@ -98,7 +98,8 @@ for name, st in ((\"default\", default_storage), (\"private\", storages[\"privat
     url = st.url(p)
     print(name, type(st).__name__, \"saved\", p, \"->\", url.split(\"?\")[0])
     if name == \"default\":
-        print(\"  public GET:\", urllib.request.urlopen(url, timeout=10).read())
+        req = urllib.request.Request(url, headers={\"User-Agent\": \"Mozilla/5.0 twings-storage-check\"})
+        print(\"  public GET:\", urllib.request.urlopen(req, timeout=10).read())
     st.delete(p)
     print(\"  deleted:\", not st.exists(p))
 '"
