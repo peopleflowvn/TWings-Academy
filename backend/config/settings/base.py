@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.payments",
     "apps.notifications",
     "apps.lms",
+    "apps.sso",
 ]
 
 MIDDLEWARE = [
@@ -259,6 +260,12 @@ MOODLE_INTERNAL_URL = env("MOODLE_INTERNAL_URL", default="")  # e.g. http://lms:
 MOODLE_WS_TOKEN = env("MOODLE_WS_TOKEN", default="")
 MOODLE_HOST = env("MOODLE_HOST", default="")  # Moodle's canonical site hostname (Host header)
 MOODLE_STUDENT_ROLE_ID = env.int("MOODLE_STUDENT_ROLE_ID", default=5)  # Moodle's built-in "student"
+
+# SSO: TWings is the OAuth 2.0 provider for Moodle's "Log in with TWings" button. Empty secret = off.
+SSO_CLIENT_ID = env("SSO_CLIENT_ID", default="moodle")
+SSO_CLIENT_SECRET = env("SSO_CLIENT_SECRET", default="")
+# Exact callback URLs, e.g. https://<site>/learn/admin/oauth2callback.php for every site hostname
+SSO_REDIRECT_URIS = env.list("SSO_REDIRECT_URIS", default=[])
 
 # ---------------------------------------------------------------------------
 # Logging: structured to stdout, never log request bodies or secrets.

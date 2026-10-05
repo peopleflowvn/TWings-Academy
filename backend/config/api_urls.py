@@ -8,4 +8,5 @@ urlpatterns = [
     path("public/", include("config.public_urls")),
     path("staff/", include("config.staff_urls")),
     path("webhooks/", include("config.webhook_urls")),
+    path("sso/", include("apps.sso.urls")),
 ]

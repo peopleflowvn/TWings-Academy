@@ -204,6 +204,11 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   Web Service của Moodle: tìm/tạo khóa (theo `idnumber` = id khóa TWings, hoặc `shortname` = slug khóa, nên có thể
   soạn sẵn khóa trên Moodle), tìm/tạo tài khoản theo email (Moodle tự gửi email mật khẩu), rồi ghi danh vai trò
   *student*. Lỗi được ghi ở `LmsEnrollment` và cron thử lại mỗi 10 phút (`sync_lms_enrollments`).
+- **SSO "Đăng nhập bằng TWings":** dùng tính năng OAuth 2 có sẵn của Moodle, TWings đóng vai nhà cung cấp danh tính
+  (`/api/v1/sso/`). Học viên nhập email, nhận mã 6 số qua Resend; chỉ email có đơn đã thanh toán mới nhận được mã.
+  Nhân sự đang đăng nhập CMS thì vào thẳng. Moodle tự liên kết theo email (`requireconfirmation` tắt), nên tài khoản
+  được tạo khi ghi danh dùng được ngay. Mỗi tên miền trong `MOODLE_HOSTS` có một issuer riêng, nên nút đăng nhập luôn
+  trỏ tới tên miền mà mạng của người dùng truy cập được. Mật khẩu Moodle vẫn dùng được, làm phương án dự phòng.
 - **Soạn nội dung:** đăng nhập `/learn` bằng `admin` (mật khẩu `PROD_LMS__MOODLE_ADMIN_PASSWORD` trong `.env`). Dùng
   các tính năng sẵn có của Moodle: bài giảng, video YouTube, quiz, bài tập, hoàn thành khóa học, huy hiệu.
 - **Bảo mật:** `/learn/webservice/*` bị chặn từ Internet, chỉ backend gọi được qua mạng nội bộ. Token có giới hạn IP

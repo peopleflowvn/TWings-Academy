@@ -164,6 +164,25 @@ if (\$u) { \$n = count(enrol_get_users_courses(\$u->id)); delete_user(\$u); echo
 '"
     ;;
 
+  test-learner)
+    # A real paid test order (amount 0) for the given e-mail: the LMS enrolment creates the Moodle
+    # account and Moodle e-mails the login. Kept until deleted from the CMS.
+    remote "cd $APP && sudo docker compose exec -T backend python manage.py shell -c '
+from django.db import transaction
+from apps.catalog.models import Course
+from apps.crm.models import Order
+from apps.lms.models import LmsEnrollment
+course = Course.objects.order_by(\"title\").first()
+with transaction.atomic():
+    order = Order.objects.create(customer_name=\"Học Viên Test\", customer_email=\"$ARG\", course=course, amount=0,
+                                 crm_status=\"1. Mới\", interested_course=\"[TEST] học thử LMS\")
+    order.status = \"paid\"
+    order.save()
+e = LmsEnrollment.objects.get(order=order)
+print(\"order:\", order.order_code, \"| course:\", course.title, \"| lms:\", e.status, \"| moodle user:\", e.moodle_user_id, \"| new account:\", e.user_created, \"| error:\", e.last_error or \"-\")
+'"
+    ;;
+
   logs)
     remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
     ;;

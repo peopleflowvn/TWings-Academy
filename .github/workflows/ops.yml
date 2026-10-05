@@ -11,9 +11,9 @@ on:
       task:
         description: What to run on the VPS
         type: choice
-        options: [status, setup-shared, sync-env, gateway-sync, smoke, backup, storage-check, lms-check, lms-e2e, logs, seed-content, create-admin, restart, bootstrap]
+        options: [status, setup-shared, sync-env, gateway-sync, smoke, backup, storage-check, lms-check, lms-e2e, test-learner, logs, seed-content, create-admin, restart, bootstrap]
       arg:
-        description: "create-admin: e-mail of the new superuser"
+        description: "create-admin / test-learner: e-mail address"
         required: false
         default: ""
 
@@ -40,10 +40,10 @@ jobs:
           TASK: ${{ inputs.task }}
           ARG: ${{ inputs.arg }}
         run: |
-          if [[ "$TASK" == create-admin ]]; then
+          if [[ "$TASK" == create-admin || "$TASK" == test-learner ]]; then
             [[ "$ARG" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "::error::arg must be an e-mail"; exit 1; }
           else
-            [[ -z "$ARG" ]] || { echo "::error::arg is only used by create-admin"; exit 1; }
+            [[ -z "$ARG" ]] || { echo "::error::arg is only used by create-admin and test-learner"; exit 1; }
           fi
 
       - name: SSH setup (pinned host key when VPS_KNOWN_HOSTS is set)

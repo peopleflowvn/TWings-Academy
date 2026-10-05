@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Đăng nhập học viên – TWings Academy</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#f1f5f9;color:#0f172a;padding:16px}
+    .card{width:100%;max-width:400px;background:#fff;border-radius:16px;padding:28px;box-shadow:0 8px 30px rgba(15,23,42,.08)}
+    h1{font-size:20px;margin:0 0 6px}
+    p{font-size:14px;line-height:1.55;color:#475569;margin:0 0 16px}
+    label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+    input{width:100%;padding:12px 14px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px}
+    input:focus{outline:2px solid #0073C1;border-color:#0073C1}
+    .code{letter-spacing:.4em;text-align:center;font-size:22px;font-weight:700}
+    button{width:100%;margin-top:14px;padding:12px;border:0;border-radius:10px;background:#0073C1;color:#fff;
+      font-size:15px;font-weight:700;cursor:pointer}
+    button:hover{background:#005FA0}
+    .link{display:block;text-align:center;margin-top:14px;font-size:13px;color:#0073C1;background:none;padding:0;width:auto}
+    .error{background:#fef2f2;color:#b91c1c;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:14px}
+    .brand{font-weight:800;color:#0073C1;font-size:13px;letter-spacing:.06em;margin-bottom:14px}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">TWINGS ACADEMY</div>
+    {% if step == "start" %}
+      <h1>Đăng nhập học viên</h1>
+      <p>Vui lòng bắt đầu từ trang học và chọn <strong>Đăng nhập bằng TWings</strong>.</p>
+      <a class="link" href="{{ learn_url }}">Đến trang học</a>
+    {% elif step == "email" %}
+      <h1>Đăng nhập vào trang học</h1>
+      <p>Nhập email bạn đã dùng khi đăng ký khóa học. Chúng tôi sẽ gửi một mã đăng nhập gồm 6 chữ số.</p>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="send">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required autofocus>
+        <button type="submit">Gửi mã đăng nhập</button>
+      </form>
+    {% else %}
+      <h1>Nhập mã đăng nhập</h1>
+      <p>Nếu <strong>{{ email }}</strong> đã đăng ký khóa học, mã 6 chữ số vừa được gửi tới email này (hiệu lực 10 phút,
+        kiểm tra cả thư mục Spam).</p>
+      {% if error %}<div class="error">{{ error }}</div>{% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="verify">
+        <label for="code">Mã đăng nhập</label>
+        <input id="code" class="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+               autocomplete="one-time-code" required autofocus>
+        <button type="submit">Đăng nhập</button>
+      </form>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="send">
+        <input type="hidden" name="email" value="{{ email }}">
+        <button class="link" type="submit">Gửi lại mã</button>
+      </form>
+    {% endif %}
+  </main>
+</body>
+</html>

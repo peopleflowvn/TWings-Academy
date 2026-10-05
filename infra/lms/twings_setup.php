@@ -147,5 +147,61 @@ if (!$DB->record_exists('external_tokens', ['token' => $token])) {
     $out('installed web service token');
 }
 
+// ---------------------------------------------------------------- SSO: "Đăng nhập bằng TWings"
+// Moodle's built-in OAuth 2 login with TWings as the provider (backend apps/sso). One issuer per site
+// hostname, so the button always sends people to a hostname their network can reach; a small footer
+// script shows only the button of the hostname being browsed.
+$ssosecret = getenv('MOODLE_SSO_CLIENT_SECRET');
+$ssohosts = array_values(array_filter(array_map('trim', explode(',', getenv('MOODLE_HOSTS') ?: ''))));
+if ($ssosecret && $ssohosts) {
+    $auths = array_filter(explode(',', get_config('core', 'auth') ?: ''));
+    if (!in_array('oauth2', $auths, true)) {
+        array_unshift($auths, 'oauth2');
+        set_config('auth', implode(',', $auths));
+    }
+    $idbyhost = [];
+    foreach ($ssohosts as $i => $host) {
+        $name = "TWings @ {$host}";
+        $issuer = \core\oauth2\issuer::get_record(['name' => $name]) ?: new \core\oauth2\issuer(0, (object) ['name' => $name]);
+        foreach ([
+            'clientid' => getenv('MOODLE_SSO_CLIENT_ID') ?: 'moodle',
+            'clientsecret' => $ssosecret,
+            'baseurl' => '',
+            'loginpagename' => 'Đăng nhập bằng TWings',
+            'enabled' => 1,
+            'showonloginpage' => \core\oauth2\issuer::LOGINONLY,
+            'requireconfirmation' => 0,   // e-mail ownership is proven by TWings (one-time code)
+            'basicauth' => 0,
+            'loginscopes' => 'openid profile email',
+            'loginscopesoffline' => 'openid profile email',
+            'sortorder' => $i,
+        ] as $field => $value) {
+            $issuer->set($field, $value);
+        }
+        $issuer->get('id') ? $issuer->update() : $issuer->create();
+        $base = "https://{$host}/api/v1/sso";
+        foreach (['authorization_endpoint' => "$base/authorize/", 'token_endpoint' => "$base/token/",
+                  'userinfo_endpoint' => "$base/userinfo/"] as $epname => $url) {
+            $ep = \core\oauth2\endpoint::get_record(['issuerid' => $issuer->get('id'), 'name' => $epname])
+                ?: new \core\oauth2\endpoint(0, (object) ['issuerid' => $issuer->get('id'), 'name' => $epname]);
+            $ep->set('url', $url);
+            $ep->get('id') ? $ep->update() : $ep->create();
+        }
+        foreach (['email' => 'email', 'given_name' => 'firstname', 'family_name' => 'lastname', 'locale' => 'lang'] as $ext => $int) {
+            if (!\core\oauth2\user_field_mapping::get_record(['issuerid' => $issuer->get('id'), 'externalfield' => $ext])) {
+                (new \core\oauth2\user_field_mapping(0, (object) [
+                    'issuerid' => $issuer->get('id'), 'externalfield' => $ext, 'internalfield' => $int,
+                ]))->create();
+            }
+        }
+        $idbyhost[$issuer->get('id')] = $host;
+    }
+    $map = json_encode($idbyhost, JSON_UNESCAPED_SLASHES);
+    set_config('additionalhtmlfooter', "<script>/* twings-sso */(function(){var m={$map};"
+        . "document.querySelectorAll('a[href*=\"/auth/oauth2/login.php\"]').forEach(function(a){"
+        . "var r=/[?&]id=(\\d+)/.exec(a.href);if(r&&m[r[1]]&&m[r[1]]!==location.host){a.style.display='none';}});})();</script>");
+    $out('SSO issuers: ' . implode(', ', $ssohosts));
+}
+
 purge_caches();
 $out('done');
