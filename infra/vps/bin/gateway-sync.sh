@@ -25,10 +25,10 @@ points_here() {
   return 1
 }
 points_here "$WEB_DOMAIN" && points_here "$API_DOMAIN" || exit 0
-# Extra hostnames (REDIRECT_DOMAINS, space separated) answer with a permanent redirect to WEB_DOMAIN,
+# Extra hostnames (REDIRECT_DOMAINS, comma separated) answer with a permanent redirect to WEB_DOMAIN,
 # so sessions/cookies and SEO stay on one origin. Not-yet-pointed ones are left out for now.
 redirects=()
-for host in ${REDIRECT_DOMAINS:-}; do points_here "$host" && redirects+=("$host"); done
+for host in ${REDIRECT_DOMAINS//,/ }; do points_here "$host" && redirects+=("$host"); done
 
 BEGIN="# >>> twings (managed by /opt/twings/bin/gateway-sync.sh - do not edit)"
 END="# <<< twings"
