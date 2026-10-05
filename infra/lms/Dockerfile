@@ -36,6 +36,10 @@ RUN : > /etc/apache2/ports.conf \
  && chmod -R a+rX,go-w /var/www/moodle
 
 USER www-data
+# The upstream entrypoint writes PHP ini files from env vars as root; our ini is baked in above, so use
+# the plain PHP image entrypoint (CMD stays apache2-foreground).
+ENTRYPOINT ["docker-php-entrypoint"]
+CMD ["apache2-foreground"]
 EXPOSE 8080
 VOLUME ["/var/moodledata"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
