@@ -59,6 +59,11 @@ case "$TASK" in
       if [ -f $APP/.env ]; then cd $APP && sudo docker compose up -d; fi"
     ;;
 
+  gateway-sync)
+    # Adds/updates the TWings block in the shared gateway's Caddyfile (approved by the owner).
+    remote "sudo $APP/bin/gateway-sync.sh && sudo docker logs --since 2m \$(sudo sed -n 's/^GATEWAY_CONTAINER=//p' $APP/env/gateway.env) 2>&1 | grep -i -E 'twings|tuyensinh|certificate|error' | tail -30"
+    ;;
+
   logs)
     remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
     ;;
