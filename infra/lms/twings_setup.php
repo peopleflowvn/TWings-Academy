@@ -32,10 +32,20 @@ $settings = [
     'cookiesecure' => 1,
     'allowuserthemes' => 0,
     'updateautocheck' => 0,
+    // Vietnamese names read family name first ("Nguyễn Văn An").
+    'fullnamedisplay' => 'lastname firstname',
+    'alternativefullnameformat' => 'lastname firstname',
+    // Mail comes from no-reply@<domain> as "TWings Academy", without a "(via ...)" suffix.
+    'emailfromvia' => 0,
 ];
 foreach ($settings as $name => $value) {
     set_config($name, $value);
 }
+// The site administrator is the sender shown on system e-mails.
+if ($admin->firstname !== 'TWings' || $admin->lastname !== 'Academy') {
+    user_update_user((object) ['id' => $admin->id, 'firstname' => 'TWings', 'lastname' => 'Academy'], false, false);
+}
+
 $auths = array_filter(explode(',', get_config('core', 'auth') ?: ''));
 if (!in_array('webservice', $auths, true)) {
     $auths[] = 'webservice';
