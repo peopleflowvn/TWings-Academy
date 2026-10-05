@@ -79,7 +79,10 @@ foreach ($capabilities as $cap) {
     }
 }
 $studentroleid = $DB->get_field('role', 'id', ['shortname' => 'student'], MUST_EXIST);
-core_role_set_assign_allowed($roleid, $studentroleid);
+// core_role_set_assign_allowed() inserts unconditionally (unique index): only call it once.
+if (!$DB->record_exists('role_allow_assign', ['roleid' => $roleid, 'allowassign' => $studentroleid])) {
+    core_role_set_assign_allowed($roleid, $studentroleid);
+}
 
 $wsuser = $DB->get_record('user', ['username' => 'twings_ws', 'mnethostid' => $CFG->mnet_localhost_id]);
 if (!$wsuser) {
