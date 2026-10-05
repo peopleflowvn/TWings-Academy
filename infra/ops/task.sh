@@ -49,6 +49,16 @@ case "$TASK" in
       if [ -f $APP/.env ]; then cd $APP && sudo docker compose up -d; fi"
     ;;
 
+  gateway-info)
+    # Read-only: how the shared caddy-gateway (other products on this host) is wired.
+    remote 'set -x
+      sudo docker inspect caddy-gateway --format "{{json .Mounts}}{{println}}{{json .NetworkSettings.Networks}}{{println}}{{json .Config.Labels}}"
+      sudo docker exec caddy-gateway cat /etc/caddy/Caddyfile
+      sudo docker exec caddy-gateway ls -la /etc/caddy
+      sudo docker network ls
+      free -m; nproc; sudo docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}"'
+    ;;
+
   logs)
     remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
     ;;
