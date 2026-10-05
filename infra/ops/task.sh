@@ -133,6 +133,9 @@ from apps.lms import moodle
 info = moodle.call(\"core_webservice_get_site_info\")
 print(\"site:\", info[\"sitename\"], \"| release:\", info[\"release\"], \"| ws user:\", info[\"username\"], \"| lang:\", info[\"lang\"])
 print(\"functions:\", sorted(f[\"name\"] for f in info[\"functions\"]))
+' && sudo docker compose exec -T lms php -r '
+\$r = @file_get_contents(\"https://tuyensinh.twings.edu.vn/api/v1/health/\", false, stream_context_create([\"http\" => [\"timeout\" => 10]]));
+echo \"lms -> public site (hairpin): \", \$r === false ? \"FAILED\" : \$r, PHP_EOL;
 '"
     ;;
 
