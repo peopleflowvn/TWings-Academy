@@ -85,6 +85,11 @@ case "$TASK" in
     done
     curl -sI -m 30 "$test/" | grep -i "x-robots-tag" || echo "MISSING x-robots-tag"
     curl -s -m 30 "$test/robots.txt" | grep -qx "Disallow: /" && echo "robots.txt disallows all" || echo "MISSING robots disallow"
+    echo "--- LMS (Moodle) at /learn; its web service API must not be reachable from the internet"
+    for u in "$web/learn/login/index.php" "$test/learn/login/index.php" "$web/learn/webservice/rest/server.php"; do
+      curl -s -o /dev/null -m 30 -w "%{http_code} $u
+" "$u" || echo "FAIL $u"
+    done
     echo "--- staff CMS at /app (SPA shell, not indexed)"
     curl -s -o /dev/null -D /tmp/h -m 30 -w "%{http_code} $web/app
 " "$web/app"; grep -i "x-robots-tag" /tmp/h || echo "MISSING x-robots-tag on /app"
@@ -118,6 +123,16 @@ for name, st in ((\"default\", default_storage), (\"private\", storages[\"privat
         print(\"  public GET:\", urllib.request.urlopen(req, timeout=10).read())
     st.delete(p)
     print(\"  deleted:\", not st.exists(p))
+'"
+    ;;
+
+  lms-check)
+    # Moodle install/setup log + a real web service call from the backend over the internal network.
+    remote "sudo tail -n 40 /var/log/twings-lms.log; cd $APP && sudo docker compose ps lms lms-cron && sudo docker compose exec -T backend python -c '
+from apps.lms import moodle
+info = moodle.call(\"core_webservice_get_site_info\")
+print(\"site:\", info[\"sitename\"], \"| release:\", info[\"release\"], \"| ws user:\", info[\"username\"], \"| lang:\", info[\"lang\"])
+print(\"functions:\", sorted(f[\"name\"] for f in info[\"functions\"]))
 '"
     ;;
 
