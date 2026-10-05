@@ -1,0 +1,158 @@
+import React, { useEffect, useState } from 'react';
+import {
+  AlertTriangle,
+  Award,
+  BookOpen,
+  CheckCircle2,
+  ClipboardList,
+  ExternalLink,
+  FileQuestion,
+  FolderTree,
+  Gauge,
+  GraduationCap,
+  History,
+  RefreshCw,
+  Upload,
+  Users,
+  XCircle
+} from 'lucide-react';
+import { api } from '../../lib/api';
+import { openInMoodle } from '../../lib/lms';
+
+// ---------------------------------------------------------------- Moodle hub
+interface MoodleLink {
+  label: string;
+  description: string;
+  path: string;
+  icon: React.ElementType;
+}
+
+const MOODLE_GROUPS: { title: string; links: MoodleLink[] }[] = [
+  {
+    title: 'Khóa học & nội dung',
+    links: [
+      { label: 'Quản lý khóa học & danh mục', description: 'Tạo khóa, sắp xếp danh mục, ẩn/hiện khóa', path: '/learn/course/management.php', icon: FolderTree },
+      { label: 'Tất cả khóa học', description: 'Danh sách khóa đang có trên LMS', path: '/learn/course/index.php', icon: BookOpen },
+      { label: 'Khôi phục / sao chép khóa', description: 'Tạo khóa cho đợt mới từ bản sao lưu khóa mẫu', path: '/learn/backup/restorefile.php?contextid=1', icon: Upload }
+    ]
+  },
+  {
+    title: 'Đề thi & đánh giá',
+    links: [
+      { label: 'Ngân hàng câu hỏi', description: 'Ngân hàng đề dùng chung của hệ thống (theo khóa: vào khóa → Ngân hàng câu hỏi)', path: '/learn/question/banks.php?courseid=1', icon: FileQuestion },
+      { label: 'Huy hiệu', description: 'Huy hiệu cấp khi hoàn thành khóa/hoạt động', path: '/learn/badges/index.php?type=1', icon: Award },
+      { label: 'Khung năng lực', description: 'Năng lực nghề nghiệp gắn với khóa học và lộ trình', path: '/learn/admin/tool/lp/competencyframeworks.php?pagecontextid=1', icon: ClipboardList }
+    ]
+  },
+  {
+    title: 'Học viên & giảng viên',
+    links: [
+      { label: 'Tài khoản người dùng', description: 'Tìm, sửa, khóa tài khoản trên LMS', path: '/learn/admin/user.php', icon: Users },
+      { label: 'Nhóm học viên toàn hệ thống (cohort)', description: 'Nhóm dùng để ghi danh hàng loạt', path: '/learn/cohort/index.php', icon: GraduationCap },
+      { label: 'Nhập học viên từ file CSV', description: 'Tạo/ghi danh hàng loạt (ngoài luồng thanh toán tự động)', path: '/learn/admin/tool/uploaduser/index.php', icon: Upload }
+    ]
+  },
+  {
+    title: 'Báo cáo & nhật ký',
+    links: [
+      { label: 'Nhật ký hoạt động', description: 'Ai làm gì, khi nào trên LMS', path: '/learn/report/log/index.php?id=1', icon: History },
+      { label: 'Quản trị Moodle', description: 'Toàn bộ cài đặt của LMS (chỉ Quản trị)', path: '/learn/admin/search.php', icon: Gauge }
+    ]
+  }
+];
+
+/** Shortcuts into Moodle's own management screens (opened with the CMS session through SSO). */
+export const MoodleHubPage: React.FC = () => (
+  <div className="space-y-6">
+    <div>
+      <h1 className="text-xl font-black text-slate-900">Trung tâm quản lý đào tạo (Moodle)</h1>
+      <p className="text-xs text-slate-500 max-w-3xl">
+        Soạn bài giảng, ngân hàng câu hỏi, đề thi, chấm điểm, điểm danh và chứng chỉ được thực hiện bằng các công cụ có sẵn
+        của Moodle. Các lối tắt dưới đây mở đúng màn hình trên Moodle bằng tài khoản CMS của bạn (“Đăng nhập bằng TWings”).
+        Theo dõi tiến độ học viên theo khóa ở mục <strong>Học viên & tiến độ</strong>.
+      </p>
+    </div>
+    {MOODLE_GROUPS.map((group) => (
+      <section key={group.title} className="space-y-2">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">{group.title}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {group.links.map(({ label, description, path, icon: Icon }) => (
+            <button key={path} type="button" onClick={() => openInMoodle(path)}
+              className="text-left bg-white rounded-2xl border border-slate-200 p-4 hover:border-[#0073C1] hover:shadow-xs transition-all flex gap-3 cursor-pointer">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0073C1] flex items-center justify-center shrink-0">
+                <Icon className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+                  {label} <ExternalLink className="w-3 h-3 text-slate-400" />
+                </div>
+                <div className="text-xs text-slate-500">{description}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+    ))}
+  </div>
+);
+
+// ---------------------------------------------------------------- integrations health
+interface HealthCheck {
+  key: string;
+  label: string;
+  status: 'ok' | 'warning' | 'error';
+  detail: string;
+}
+
+const STATUS_ICON = {
+  ok: <CheckCircle2 className="w-5 h-5 text-emerald-600" />,
+  warning: <AlertTriangle className="w-5 h-5 text-amber-600" />,
+  error: <XCircle className="w-5 h-5 text-red-600" />
+};
+
+/** Configuration and liveness of every integration (no secret values are ever shown). */
+export const HealthPage: React.FC = () => {
+  const [checks, setChecks] = useState<HealthCheck[] | null>(null);
+  const [checkedAt, setCheckedAt] = useState('');
+  const [error, setError] = useState('');
+
+  const load = () => {
+    setError('');
+    setChecks(null);
+    api
+      .get<{ checks: HealthCheck[]; checkedAt: string }>('/staff/system/health/')
+      .then((res) => {
+        setChecks(res.checks);
+        setCheckedAt(new Date(res.checkedAt).toLocaleString('vi-VN'));
+      })
+      .catch((e: Error) => setError(e.message));
+  };
+  useEffect(load, []);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-black text-slate-900">Tình trạng tích hợp</h1>
+          <p className="text-xs text-slate-500">Kiểm tra lúc {checkedAt || '…'} · Sao lưu dữ liệu chạy hằng đêm lúc 02:30 trên máy chủ.</p>
+        </div>
+        <button type="button" onClick={load} className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer">
+          <RefreshCw className="w-3.5 h-3.5" /> Kiểm tra lại
+        </button>
+      </div>
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl p-3">{error}</div>}
+      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+        {(checks || []).map((c) => (
+          <div key={c.key} className="p-4 flex items-start gap-3">
+            {STATUS_ICON[c.status]}
+            <div>
+              <div className="font-bold text-sm text-slate-900">{c.label}</div>
+              <div className="text-xs text-slate-500">{c.detail}</div>
+            </div>
+          </div>
+        ))}
+        {!checks && !error && <p className="p-4 text-xs text-slate-500">Đang kiểm tra…</p>}
+      </div>
+    </div>
+  );
+};

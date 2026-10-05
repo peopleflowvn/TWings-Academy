@@ -6,6 +6,7 @@ from rest_framework.routers import SimpleRouter
 from apps.accounts.views import StaffUserViewSet
 from apps.catalog.views import CohortViewSet, CouponViewSet, CourseViewSet, InstructorViewSet, PartnerViewSet
 from apps.cms.views import ArticleViewSet, HeroBannerViewSet, SiteConfigViewSet
+from apps.core.dashboard import DashboardView, SystemHealthView
 from apps.core.uploads import ImageUploadView
 from apps.core.views import AuditLogViewSet
 from apps.crm.views import AdmissionCampaignViewSet, CohortRolloverView, OrderViewSet
@@ -37,5 +38,7 @@ urlpatterns = [
     ),
     path("cohorts/<str:pk>/rollover/", CohortRolloverView.as_view(), name="staff-cohort-rollover"),
     path("lms/", include("apps.lms.urls")),
+    path("dashboard/", DashboardView.as_view(), name="staff-dashboard"),
+    path("system/health/", SystemHealthView.as_view(), name="staff-system-health"),
     *router.urls,
 ]

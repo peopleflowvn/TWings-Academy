@@ -142,3 +142,26 @@ def test_followup_tasks_can_be_ticked_and_removed(staff_client, course):
     )
     assert sales.delete(f"/api/v1/staff/orders/{order.id}/followups/{task['id']}/").status_code == 204
     assert order.followup_tasks.count() == 0
+
+
+def test_dashboard_sections_follow_permissions(staff_client, course):
+    from apps.crm.models import Order
+
+    Order.objects.create(customer_name="A", course=course, amount=100, total_receivable=100)
+    sales = staff_client(Role.SALES_CRM).get("/api/v1/staff/dashboard/").json()
+    assert "sales" in sales and "finance" not in sales and "training" in sales
+    assert sales["sales"]["leads30d"] == 1
+    finance = staff_client(Role.FINANCE_ACCOUNTANT).get("/api/v1/staff/dashboard/").json()
+    assert finance["finance"]["receivable"] == 100  # accountants also see leads (crm.view_leads)
+    admin = staff_client(Role.SUPER_ADMIN).get("/api/v1/staff/dashboard/").json()
+    assert {"sales", "finance", "training"} <= set(admin)
+
+
+def test_system_health_is_admin_only_and_never_leaks_secrets(staff_client, settings):
+    settings.RESEND_API_KEY = "re_secret_value"
+    res = staff_client(Role.SUPER_ADMIN).get("/api/v1/staff/system/health/")
+    assert res.status_code == 200
+    keys = {c["key"] for c in res.json()["checks"]}
+    assert {"database", "moodle", "email", "bank", "storage", "sso"} <= keys
+    assert "re_secret_value" not in res.content.decode()
+    assert staff_client(Role.SALES_CRM).get("/api/v1/staff/system/health/").status_code == 403
