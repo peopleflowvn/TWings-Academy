@@ -17,8 +17,7 @@ COPY . /app
 RUN cd /app && DJANGO_SETTINGS_MODULE=config.settings.prod \
     DJANGO_SECRET_KEY=collectstatic-only DJANGO_ADMIN_URL=build-only/ DATABASE_URL=sqlite:////tmp/x.db \
     FIELD_ENCRYPTION_KEYS=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= BLIND_INDEX_KEY=x \
-    R2_ENDPOINT_URL=https://example.invalid R2_ACCESS_KEY_ID=x R2_SECRET_ACCESS_KEY=x \
-    R2_PUBLIC_BUCKET=x R2_PUBLIC_DOMAIN=example.invalid R2_PRIVATE_BUCKET=x \
+    MEDIA_URL=https://example.invalid/media/ \
     /venv/bin/python manage.py collectstatic --noinput -v0
 
 # ---------------------------------------------------------------- runtime stage
@@ -29,7 +28,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH=/venv/bin:$PATH \
     DJANGO_SETTINGS_MODULE=config.settings.prod
 
 RUN groupadd --system --gid 10001 app \
- && useradd --system --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app
+ && useradd --system --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app \
+ && install -d -o app -g app /data /data/media /data/private
+# Uploads when R2 is not configured; a new named volume copies this ownership on first mount.
+VOLUME ["/data"]
 
 COPY --from=build /venv /venv
 COPY --from=build --chown=root:root /app /app

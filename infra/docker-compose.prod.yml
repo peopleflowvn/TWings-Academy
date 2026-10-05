@@ -1,6 +1,7 @@
 # Production stack on the Oracle VPS (/opt/twings/docker-compose.yml).
 #
-#   Internet ──HTTPS :443──▶ caddy (Let's Encrypt TLS) ──▶ backend:8000 ──▶ db
+#   Internet ──HTTPS :443──▶ caddy (Let's Encrypt TLS) ──┬─▶ React site (WEB_DOMAIN, static files)
+#                                                        └─▶ backend:8000 (API_DOMAIN) ──▶ db
 #
 # Only caddy publishes ports (80/443); backend and db are unreachable from outside. Secrets live in
 # /opt/twings/env/*.env (root-owned, chmod 600) and never in this file or the image.
@@ -40,19 +41,22 @@ services:
     networks: [internal, egress]
     read_only: true
     tmpfs: ["/tmp"]
+    volumes:
+      - appdata:/data         # uploads when R2 is not configured
     cap_drop: [ALL]
     mem_limit: 1g
     pids_limit: 256
 
+  # Caddy + built React site + Caddyfile (infra/caddy/Dockerfile), same tag as the backend.
   caddy:
     <<: *hardening
-    image: caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
-    env_file: [./env/caddy.env]  # API_DOMAIN, ACME_EMAIL
+    image: ghcr.io/peopleflowvn/twings-academy-web:${IMAGE_TAG:?IMAGE_TAG is not set}
+    env_file: [./env/caddy.env]  # WEB_DOMAIN, API_DOMAIN
     ports: ["80:80", "443:443", "443:443/udp"]
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data      # certificates: keep across restarts (Let's Encrypt rate limits)
       - caddy_config:/config
+      - appdata:/srv/appdata:ro
     depends_on: [backend]
     networks: [egress]
     read_only: true
@@ -70,5 +74,6 @@ networks:
 
 volumes:
   pgdata: {}
+  appdata: {}
   caddy_data: {}
   caddy_config: {}

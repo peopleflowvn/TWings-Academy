@@ -1,0 +1,7 @@
+# Build context for infra/caddy/Dockerfile (repository root): only the frontend and the Caddyfile.
+*
+!frontend/
+!infra/caddy/
+frontend/node_modules
+frontend/dist
+frontend/.env*

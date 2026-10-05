@@ -94,10 +94,9 @@ chmod 440 /etc/sudoers.d/twings-deploy
 visudo -cf /etc/sudoers.d/twings-deploy
 
 echo "==> application layout in ${APP}"
-install -d -m 755 -o root -g root "$APP" "$APP/bin" "$APP/postgres" "$APP/postgres/init" "$APP/caddy"
+install -d -m 755 -o root -g root "$APP" "$APP/bin" "$APP/postgres" "$APP/postgres/init"
 install -d -m 700 -o root -g root "$APP/env"
 install -m 644 -o root -g root "$SRC/docker-compose.prod.yml" "$APP/docker-compose.yml"
-install -m 644 -o root -g root "$SRC/caddy/Caddyfile" "$APP/caddy/Caddyfile"
 install -m 755 -o root -g root "$SRC/postgres/init/01-app-role.sh" "$APP/postgres/init/01-app-role.sh"
 install -m 755 -o root -g root "$SRC/vps/bin/deploy-gate" "$SRC/vps/bin/deploy.sh" "$SRC/vps/bin/backup.sh" "$APP/bin/"
 for f in db caddy backup; do

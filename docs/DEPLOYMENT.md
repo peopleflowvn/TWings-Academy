@@ -1,11 +1,11 @@
 # Hướng dẫn triển khai Production
 
-Hướng dẫn đưa hệ thống lên **Oracle Cloud VPS (Caddy + Docker) + Cloudflare (Pages, R2) + GitHub Actions**.
+Hướng dẫn đưa hệ thống lên **Oracle Cloud VPS (Caddy + Docker) + GitHub Actions**. Cloudflare (R2, Pages) là tùy chọn.
 Làm một lần theo đúng thứ tự dưới đây. Từ đó về sau, mỗi lần push lên `main` hệ thống sẽ tự triển khai.
 
 | Tên miền | Trỏ tới | Phục vụ |
 |---|---|---|
-| `tuyensinh.twings.edu.vn` | Cloudflare Pages (CNAME) | Trang tuyển sinh + CMS (React) |
+| `tuyensinh.twings.edu.vn` | IP VPS (A) | Trang tuyển sinh + CMS (React, Caddy phục vụ file tĩnh) |
 | `api-tuyensinh.twings.edu.vn` | IP VPS (A) | API Django, sau Caddy (HTTPS Let's Encrypt) |
 
 DNS của `twings.edu.vn` vẫn ở **Mắt Bão**; chỉ cần thêm 2 bản ghi trên, không đụng tới email hay bản ghi khác.
@@ -18,7 +18,10 @@ Ký hiệu dùng trong tài liệu: `<vps-ip>`, `<admin-key>` (khóa SSH quản 
 
 ---
 
-## Bước 1 – Cloudflare (không cần chuyển DNS)
+## Bước 1 – Cloudflare (tùy chọn, làm sau cũng được)
+
+Không có R2, ảnh upload được lưu trên VPS (volume `appdata`, phục vụ tại `https://api-tuyensinh.twings.edu.vn/media/`)
+và backup mã hóa được giữ 14 ngày tại `/var/backups/twings`. Bật R2 để có backup ngoài VPS.
 
 1. **R2** → tạo 3 bucket:
    - `twings-media`: ảnh công khai. *Settings → Public Development URL* → **Allow**; chép tên miền
@@ -36,7 +39,7 @@ Ký hiệu dùng trong tài liệu: `<vps-ip>`, `<admin-key>` (khóa SSH quản 
 
 | Loại | Tên | Giá trị | TTL |
 |---|---|---|---|
-| CNAME | `tuyensinh` | `twings-academy.pages.dev` | 300 |
+| A | `tuyensinh` | `<vps-ip>` | 300 |
 | A | `api-tuyensinh` | `<vps-ip>` | 300 |
 
 Kiểm tra: `nslookup api-tuyensinh.twings.edu.vn 1.1.1.1` trả về `<vps-ip>`. Caddy chỉ xin được chứng chỉ

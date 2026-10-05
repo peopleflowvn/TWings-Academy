@@ -105,6 +105,16 @@ jobs:
           R2_PUBLIC_BUCKET: x
           R2_PUBLIC_DOMAIN: media.example.invalid
           R2_PRIVATE_BUCKET: y
+      - name: Django deployment checklist (prod settings without R2, local media)
+        run: python manage.py check --deploy --fail-level WARNING
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.prod
+          DJANGO_SECRET_KEY: ci-${{ github.run_id }}-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
+          DJANGO_ADMIN_URL: ops-ci/
+          DJANGO_ALLOWED_HOSTS: api.example.invalid
+          FIELD_ENCRYPTION_KEYS: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          BLIND_INDEX_KEY: ci
+          MEDIA_URL: https://api.example.invalid/media/
       - name: Dependency vulnerabilities (pip-audit)
         run: pip-audit --strict --require-hashes --disable-pip -r requirements.txt
 
@@ -122,3 +132,18 @@ jobs:
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Web image (Caddy + React site)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/caddy/Dockerfile
+          push: false
+          load: true
+          tags: twings-web:ci
+          build-args: VITE_API_BASE_URL=https://api.example.invalid
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+      - name: Caddyfile is valid
+        run: |
+          docker run --rm -e WEB_DOMAIN=web.example.invalid -e API_DOMAIN=api.example.invalid \
+            twings-web:ci caddy validate --config /etc/caddy/Caddyfile

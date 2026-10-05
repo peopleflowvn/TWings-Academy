@@ -27,7 +27,7 @@ health() {
 
 echo "==> deploying ${TAG} (previous: ${PREV_TAG:-none})"
 set_tag "$TAG"
-docker compose pull --quiet backend
+docker compose pull --quiet backend caddy
 docker compose up -d --wait db
 # Migrations must stay backward compatible with the previous image (expand/contract), because a
 # rollback below only swaps the image; it never reverses migrations.
@@ -35,7 +35,7 @@ docker compose run --rm --no-deps backend python manage.py migrate --noinput
 docker compose run --rm --no-deps backend python manage.py createcachetable
 docker compose up -d --remove-orphans
 
-if health; then
+if health && docker compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1; then
   echo "==> healthy: ${TAG}"
   docker image prune -f --filter "until=168h" >/dev/null
   logger -t twings-deploy "deployed ${TAG}"

@@ -44,7 +44,9 @@ def main() -> int:
         print(f"wrote {name}.env ({len(lines)} vars)")
     if empty:
         print(
-            "\nstill empty (fill them in .env before going live):", *empty, sep="\n  "
+            "\nstill empty (R2/Resend optional; VIETQR_ACCOUNT_NUMBER needed for payments):",
+            *empty,
+            sep="\n  ",
         )
     return 0
 

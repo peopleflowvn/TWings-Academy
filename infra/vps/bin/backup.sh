@@ -6,16 +6,27 @@ set -euo pipefail
 
 cd /opt/twings
 set -a; . ./env/backup.env; set +a
-: "${AGE_RECIPIENT:?}" "${BACKUP_REMOTE:?}"
+: "${AGE_RECIPIENT:?}"
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-OBJECT="${BACKUP_REMOTE}/twings-${STAMP}.dump.age"
+dump() {
+  docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner' \
+    | age --encrypt --recipient "$AGE_RECIPIENT"
+}
 
-docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner' \
-  | age --encrypt --recipient "$AGE_RECIPIENT" \
-  | rclone rcat --s3-no-check-bucket "$OBJECT"
+if [[ -n "${RCLONE_CONFIG_R2_ACCESS_KEY_ID:-}" ]]; then
+  OBJECT="${BACKUP_REMOTE:?}/twings-${STAMP}.dump.age"
+  dump | rclone rcat --s3-no-check-bucket "$OBJECT"
+  SIZE="$(rclone size --json "$OBJECT" | sed -n 's/.*"bytes":\([0-9]*\).*/\1/p')"
+else
+  # No R2 yet: keep 14 days of encrypted dumps on the VPS (protects against mistakes, not VPS loss).
+  install -d -m 700 /var/backups/twings
+  OBJECT="/var/backups/twings/twings-${STAMP}.dump.age"
+  dump > "$OBJECT"
+  SIZE="$(stat -c %s "$OBJECT")"
+  find /var/backups/twings -name 'twings-*.dump.age' -mtime +14 -delete
+fi
 
-SIZE="$(rclone size --json "$OBJECT" | sed -n 's/.*"bytes":\([0-9]*\).*/\1/p')"
 if [[ -z "$SIZE" || "$SIZE" -lt 1024 ]]; then
   logger -t twings-backup "FAILED: ${OBJECT} is missing or too small (${SIZE:-0} bytes)"
   exit 1
