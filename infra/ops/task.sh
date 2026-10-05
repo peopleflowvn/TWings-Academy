@@ -84,6 +84,9 @@ case "$TASK" in
     done
     curl -sI -m 30 "$test/" | grep -i "x-robots-tag" || echo "MISSING x-robots-tag"
     curl -s -m 30 "$test/robots.txt" | grep -qx "Disallow: /" && echo "robots.txt disallows all" || echo "MISSING robots disallow"
+    echo "--- staff CMS at /app (SPA shell, not indexed)"
+    curl -s -o /dev/null -D /tmp/h -m 30 -w "%{http_code} $web/app
+" "$web/app"; grep -i "x-robots-tag" /tmp/h || echo "MISSING x-robots-tag on /app"
     echo "--- nothing but the gateway is reachable from the internet"
     for port in 5432 8000 8080 8081 2019; do
       timeout 5 bash -c "</dev/tcp/$VPS_HOST/$port" 2>/dev/null && echo "OPEN $port" || echo "closed $port"

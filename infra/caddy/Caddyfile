@@ -27,6 +27,9 @@
 	handle @web {
 		@test host {$TEST_DOMAIN:test.invalid}
 		header @test X-Robots-Tag "noindex, nofollow"
+		# Staff CMS & CRM (SPA route /app): never indexed on any domain.
+		@cms path /app /app/*
+		header @cms X-Robots-Tag "noindex, nofollow"
 		@testRobots {
 			host {$TEST_DOMAIN:test.invalid}
 			path /robots.txt

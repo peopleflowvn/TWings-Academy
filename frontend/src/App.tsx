@@ -43,9 +43,31 @@ const CourseraCMSAdmin = lazy(() =>
   import('./components/CourseraCMSAdmin').then((m) => ({ default: m.CourseraCMSAdmin }))
 );
 
+type View = 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'cms';
+
+// The staff CMS & CRM lives at /app only; the public site has no link to it.
+const CMS_PATH = '/app';
+const PUBLIC_TITLE = document.title;
+const isCmsPath = () => {
+  const path = window.location.pathname.replace(/\/+$/, '');
+  return path === CMS_PATH || path.startsWith(`${CMS_PATH}/`);
+};
+
 export default function App() {
   // Navigation View State (User: "Bỏ chế độ bàn học của tôi đi", thêm bài viết chuẩn SEO, CMS CRM)
-  const [currentView, setCurrentView] = useState<'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'cms'>('home');
+  const [currentView, setCurrentView] = useState<View>(() => (isCmsPath() ? 'cms' : 'home'));
+
+  // Keep the URL in step with the CMS: /app for staff, / for the public site (browser back/forward too).
+  useEffect(() => {
+    const onPopState = () => setCurrentView(isCmsPath() ? 'cms' : 'home');
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+  useEffect(() => {
+    const wantCms = currentView === 'cms';
+    if (wantCms !== isCmsPath()) window.history.pushState(null, '', wantCms ? CMS_PATH : '/');
+    document.title = wantCms ? 'TWings CMS Quản trị & CRM' : PUBLIC_TITLE;
+  }, [currentView]);
 
   // Core Data
   const [courses, setCourses] = useState<Course[]>(COURSES);
@@ -171,7 +193,7 @@ export default function App() {
   const degreePrograms = courses.filter((c) => c.type === 'Bằng cấp Trực tuyến' || c.badgeSection === 'hot_new');
 
   // Navigation Handler
-  const handleNavigate = (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'cms') => {
+  const handleNavigate = (view: View) => {
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

@@ -4,8 +4,7 @@ import {
   ChevronDown, 
   Menu, 
   X, 
-  BookOpen, 
-  LayoutDashboard,
+  BookOpen,
   Newspaper,
   PhoneCall,
   Sparkles
@@ -161,16 +160,6 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             <span>Tin tức & SEO</span>
           </button>
 
-          <button
-            onClick={() => onNavigate('cms')}
-            className={`flex items-center gap-1.5 hover:text-[#0073C1] transition-colors cursor-pointer ${
-              currentView === 'cms' ? 'text-[#0073C1] font-bold' : ''
-            }`}
-          >
-            <LayoutDashboard className="w-3.5 h-3.5 text-blue-600" />
-            <span>CMS Quản trị & CRM</span>
-          </button>
-
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
 
           {/* Quick Consultation CTA */}
@@ -259,15 +248,6 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             className="w-full text-left py-2 px-3 rounded-lg hover:bg-blue-50 text-[#0073C1] font-bold"
           >
             Đăng Ký Tư Vấn Khóa Học
-          </button>
-          <button
-            onClick={() => {
-              setMobileMenuOpen(false);
-              onNavigate('cms');
-            }}
-            className="w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-slate-800 font-bold"
-          >
-            Hệ Thống CMS Quản Trị & CRM
           </button>
         </div>
       )}
