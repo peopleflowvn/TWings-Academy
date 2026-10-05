@@ -67,7 +67,7 @@ case "$TASK" in
   smoke)
     # From the GitHub runner (public internet), not the VPS: what a visitor sees.
     web=https://tuyensinh.twings.edu.vn api=https://api-tuyensinh.twings.edu.vn
-    for u in "$api/api/v1/health/" "$web/" "$web/some/client/route" "$api/api/v1/courses/" "http://tuyensinh.twings.edu.vn/"; do
+    for u in "$api/api/v1/health/" "$web/" "$web/some/client/route" "$api/api/v1/public/courses/" "http://tuyensinh.twings.edu.vn/"; do
       curl -s -o /tmp/body -m 30 -w "%{http_code} $u -> %{redirect_url}\n" "$u" || echo "FAIL $u"
       head -c 200 /tmp/body; echo
     done
