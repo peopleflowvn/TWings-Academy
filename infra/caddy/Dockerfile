@@ -15,5 +15,11 @@ RUN test -n "$VITE_API_BASE_URL" && npm run build && rm -f dist/_headers
 FROM caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
 LABEL org.opencontainers.image.source="https://github.com/peopleflowvn/TWings-Academy" \
       org.opencontainers.image.description="TWings Academy web entry point (Caddy + React site)"
+# The upstream binary carries cap_net_bind_service as a file capability; with cap_drop: ALL and
+# no-new-privileges the kernel refuses to exec it. We only listen on :8080, so drop it and run
+# as an unprivileged user.
+RUN setcap -r /usr/bin/caddy
 COPY infra/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /src/dist /srv/web
+USER 65534:65534
+EXPOSE 8080

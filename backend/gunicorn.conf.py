@@ -14,6 +14,8 @@ limit_request_line = 8190
 limit_request_fields = 100
 # The Caddy reverse proxy is the only client (no published port); trust its X-Forwarded-* headers.
 forwarded_allow_ips = "*"
+# No runtime control socket: the image filesystem is read-only and deploys restart the container.
+control_socket_disable = True
 accesslog = "-"
 errorlog = "-"
 # No query strings in access logs: they could contain personal data.
