@@ -18,6 +18,7 @@ case "$TASK" in
       command -v docker && sudo docker compose -f /opt/twings/docker-compose.yml ps -a || true
       sudo docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}" || true
       sudo docker compose ls || true
+      systemctl list-units --type=service --state=running --no-legend "actions.runner.*" "ssh*" "cron*" | cut -c1-90 || true
       cat /etc/ssh/sshd_config.d/*.conf 2>/dev/null; getent passwd | awk -F: "\$3>=1000 && \$3<65534 {print \$1}"
       sudo iptables -S INPUT | head -20
       sudo cat /opt/twings/.env 2>/dev/null || true

@@ -20,9 +20,12 @@ command -v docker >/dev/null && docker compose version >/dev/null || { echo "Doc
 echo "==> packages for backups (install only, no upgrade)"
 missing=()
 for p in age rclone jq; do command -v "$p" >/dev/null || missing+=("$p"); done
+# NEEDRESTART_MODE=l: only LIST services needing a restart. Ubuntu's default under a non-interactive
+# frontend restarts them (sshd, networkd, other products' CI runners...), unacceptable on a shared host.
+export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l NEEDRESTART_SUSPEND=1
 if ((${#missing[@]})); then
-  DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-upgrade "${missing[@]}" \
-    || { apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-upgrade "${missing[@]}"; }
+  apt-get install -yq --no-upgrade "${missing[@]}" \
+    || { apt-get update -q && apt-get install -yq --no-upgrade "${missing[@]}"; }
 fi
 
 echo "==> deploy user (CI key restricted to a single forced command)"
