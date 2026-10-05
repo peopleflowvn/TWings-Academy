@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { api, Paginated } from '../../lib/api';
+import { useServerCollection } from '../../lib/serverCollection';
+import { EMAIL_TEMPLATES, emailLogFromServer } from '../../lib/cmsCollections';
 import {
   Mail,
   Send,
@@ -55,9 +58,26 @@ interface CMSEmailTemplatesTabProps {
 }
 
 export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orders }) => {
-  const [templates, setTemplates] = useState<EmailTemplate[]>(INITIAL_EMAIL_TEMPLATES);
+  // Live: templates are saved through /staff/email-templates/, history comes from /staff/email-logs/
+  // (statuses updated by Resend webhooks on the server). Demo: bundled samples.
+  const { items: templates, update: setTemplates, live } = useServerCollection<EmailTemplate>(
+    EMAIL_TEMPLATES,
+    INITIAL_EMAIL_TEMPLATES
+  );
   const [sendLogs, setSendLogs] = useState<EmailSendLog[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate>(templates[0]);
+  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate>(INITIAL_EMAIL_TEMPLATES[0]);
+  useEffect(() => {
+    if (templates.length && !templates.some((t) => t.id === selectedTemplate.id)) setSelectedTemplate(templates[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templates]);
+  const loadSendLogs = useCallback(() => {
+    if (!live) return;
+    api
+      .get<Paginated<Record<string, unknown>>>('/staff/email-logs/?pageSize=100')
+      .then((res) => setSendLogs(res.results.map(emailLogFromServer)))
+      .catch(() => undefined);
+  }, [live]);
+  useEffect(loadSendLogs, [loadSendLogs]);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -197,8 +217,10 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
       html: renderedHtml,
       templateId: selectedTemplate.id,
       templateName: selectedTemplate.name,
-      recipientName: previewOrder.customerName
+      recipientName: previewOrder.customerName,
+      templateCode: selectedTemplate.code
     });
+    loadSendLogs();
 
     setIsSending(false);
 

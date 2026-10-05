@@ -834,18 +834,22 @@ export async function sendEmailWithResend(params: {
   templateId?: string;
   templateName?: string;
   recipientName?: string;
+  /** Server template code (EmailTemplate.code) and the order the e-mail belongs to (CRM history). */
+  templateCode?: string;
+  orderId?: string;
 }): Promise<{ success: boolean; messageId: string; status: ResendEmailStatus; error?: string; isLiveApi?: boolean }> {
   // 1. Live delivery via the TWings backend (holds the Resend key server-side)
   if (isBackendEnabled()) {
     try {
       const data = await api.post<{ id: string; resendMessageId: string; status: ResendEmailStatus }>(
-        '/notifications/emails/send/',
+        '/staff/emails/send/',
         {
           to: params.to,
           subject: params.subject,
           html: params.html,
-          templateCode: params.templateId,
-          recipientName: params.recipientName
+          templateCode: params.templateCode || '',
+          recipientName: params.recipientName,
+          orderId: params.orderId || ''
         }
       );
       saveEmailSendLog({

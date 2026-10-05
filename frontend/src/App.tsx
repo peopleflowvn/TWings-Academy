@@ -221,17 +221,30 @@ export default function App() {
         if (knownActivity.has(a.id) || a.type === 'payment') continue;
         await api.post(`/staff/orders/${updated.id}/activities/`, { type: a.type, title: a.title, content: a.content });
       }
-      const knownTask = new Set((previous.followupTasks || []).map((t) => t.id));
+      // Follow-up tasks: create new ones, save edits (e.g. ticked as done), delete removed ones.
+      const prevTasks = new Map((previous.followupTasks || []).map((t) => [t.id, t]));
+      const nextTaskIds = new Set((updated.followupTasks || []).map((t) => t.id));
       for (const task of updated.followupTasks || []) {
-        if (knownTask.has(task.id)) continue;
+        const before = prevTasks.get(task.id);
+        const body = {
+          title: task.title,
+          dueDate: /^\d{4}-\d{2}-\d{2}/.test(task.dueDate) ? task.dueDate.slice(0, 10) : null,
+          priority: task.priority,
+          isCompleted: task.isCompleted,
+          assignedTo: task.assignedTo
+        };
         try {
-          await api.post(`/staff/orders/${updated.id}/followups/`, {
-            title: task.title,
-            dueDate: /^\d{4}-\d{2}-\d{2}/.test(task.dueDate) ? task.dueDate.slice(0, 10) : null,
-            priority: task.priority,
-            isCompleted: task.isCompleted,
-            assignedTo: task.assignedTo
-          });
+          if (!before) await api.post(`/staff/orders/${updated.id}/followups/`, body);
+          else if (JSON.stringify(before) !== JSON.stringify(task))
+            await api.patch(`/staff/orders/${updated.id}/followups/${task.id}/`, body);
+        } catch (err) {
+          errors.push(err instanceof Error ? err.message : String(err));
+        }
+      }
+      for (const taskId of prevTasks.keys()) {
+        if (nextTaskIds.has(taskId)) continue;
+        try {
+          await api.delete(`/staff/orders/${updated.id}/followups/${taskId}/`);
         } catch (err) {
           errors.push(err instanceof Error ? err.message : String(err));
         }

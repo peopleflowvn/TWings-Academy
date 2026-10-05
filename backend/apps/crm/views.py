@@ -95,6 +95,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         "destroy": ["crm.delete_lead"],
         "activities": ["crm.view_leads"],
         "followups": ["crm.view_leads"],
+        "followup_detail": ["crm.edit_status"],
         "export": ["crm.export_excel"],
     }
     filterset_fields = [
@@ -163,6 +164,20 @@ class OrderViewSet(viewsets.ModelViewSet):
             ser.save(order=order)
             return Response(ser.data, status=status.HTTP_201_CREATED)
         return Response(FollowupTaskSerializer(order.followup_tasks.all(), many=True).data)
+
+    @action(detail=True, methods=["patch", "delete"], url_path=r"followups/(?P<task_id>[^/.]+)")
+    def followup_detail(self, request, pk=None, task_id=None):
+        """Update (e.g. tick as done) or remove one follow-up task of the order."""
+        if not has_perm_code(request.user, "crm.edit_status"):
+            raise PermissionDenied()
+        task = get_object_or_404(self.get_object().followup_tasks, pk=task_id)
+        if request.method == "DELETE":
+            task.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        ser = FollowupTaskSerializer(task, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
 
     @action(detail=False, methods=["get"])
     def export(self, request):

@@ -120,3 +120,25 @@ def test_cohort_crud_through_the_api(staff_client, course):
         .status_code
         == 403
     )
+
+
+def test_followup_tasks_can_be_ticked_and_removed(staff_client, course):
+    from apps.crm.models import Order
+
+    order = Order.objects.create(customer_name="A", course=course, amount=1)
+    sales = staff_client(Role.SALES_CRM)
+    task = sales.post(
+        f"/api/v1/staff/orders/{order.id}/followups/", {"title": "Gọi lại", "priority": "high"}, format="json"
+    ).json()
+    res = sales.patch(
+        f"/api/v1/staff/orders/{order.id}/followups/{task['id']}/", {"isCompleted": True}, format="json"
+    )
+    assert res.status_code == 200 and res.json()["isCompleted"] is True
+    assert (
+        staff_client(Role.FINANCE_ACCOUNTANT)
+        .delete(f"/api/v1/staff/orders/{order.id}/followups/{task['id']}/")
+        .status_code
+        == 403
+    )
+    assert sales.delete(f"/api/v1/staff/orders/{order.id}/followups/{task['id']}/").status_code == 204
+    assert order.followup_tasks.count() == 0

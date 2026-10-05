@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useServerCollection } from '../../lib/serverCollection';
+import { EMAIL_TEMPLATES } from '../../lib/cmsCollections';
 import {
   X,
   Send,
@@ -59,6 +61,9 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
     ? 'tmpl-invoice'
     : 'tmpl-welcome';
 
+  // Live: templates edited in the CMS (server); demo: bundled samples.
+  const { items: serverTemplates } = useServerCollection<EmailTemplate>(EMAIL_TEMPLATES, INITIAL_EMAIL_TEMPLATES);
+  const templateList = serverTemplates.length ? serverTemplates : INITIAL_EMAIL_TEMPLATES;
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(defaultTemplateId);
   const [recipientEmail, setRecipientEmail] = useState<string>(order.customerEmail || '');
   const [subject, setSubject] = useState<string>('');
@@ -74,7 +79,7 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
 
   // Sync variables and render when template or order changes
   useEffect(() => {
-    const tmpl = INITIAL_EMAIL_TEMPLATES.find((t) => t.id === selectedTemplateId) || INITIAL_EMAIL_TEMPLATES[0];
+    const tmpl = templateList.find((t) => t.id === selectedTemplateId) || templateList[0];
     const variables = extractOrderEmailVariables(order);
     setSubject(renderEmailTemplate(tmpl.subject, variables));
     setHtmlBody(renderEmailTemplate(tmpl.body, variables));
@@ -85,7 +90,7 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentTemplate = INITIAL_EMAIL_TEMPLATES.find((t) => t.id === selectedTemplateId) || INITIAL_EMAIL_TEMPLATES[0];
+  const currentTemplate = templateList.find((t) => t.id === selectedTemplateId) || templateList[0];
   const hasLiveApiKey = isLiveEmailEnabled();
   const senderFrom = SENDER_DISPLAY;
 
@@ -105,7 +110,9 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
         html: htmlBody,
         templateId: currentTemplate.id,
         templateName: currentTemplate.name,
-        recipientName: order.customerName
+        recipientName: order.customerName,
+        templateCode: currentTemplate.code,
+        orderId: order.id
       });
 
       if (!result.success && result.error) {
@@ -265,10 +272,10 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
           {/* Template Selection Pills */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-              1. Chọn Mẫu Email Muốn Gửi ({INITIAL_EMAIL_TEMPLATES.length} mẫu)
+              1. Chọn Mẫu Email Muốn Gửi ({templateList.length} mẫu)
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {INITIAL_EMAIL_TEMPLATES.map((tmpl) => {
+              {templateList.map((tmpl) => {
                 const isSelected = tmpl.id === selectedTemplateId;
                 return (
                   <button
