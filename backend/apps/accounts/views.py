@@ -80,11 +80,24 @@ class StaffUserViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         self._guard_privileged_change(serializer)
-        serializer.save()
+        user = serializer.save()
+        self._audit("staff_user.update", user, serializer.validated_data)
 
     def perform_create(self, serializer):
         self._guard_privileged_change(serializer)
-        serializer.save()
+        user = serializer.save()
+        self._audit("staff_user.create", user, serializer.validated_data)
+
+    def _audit(self, action, user, data):
+        from apps.core.models import audit
+
+        changes = {k: v for k, v in data.items() if k != "password"}
+        if "is_active_label" in changes:
+            changes["status"] = changes.pop("is_active_label")
+        if "password" in data:
+            changes["password_changed"] = True
+        changes["email"] = user.email
+        audit(self.request, action, user, **changes)
 
     def _guard_privileged_change(self, serializer):
         from rest_framework.exceptions import PermissionDenied

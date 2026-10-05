@@ -7,6 +7,7 @@ from apps.accounts.views import StaffUserViewSet
 from apps.catalog.views import CohortViewSet, CouponViewSet, CourseViewSet, InstructorViewSet, PartnerViewSet
 from apps.cms.views import ArticleViewSet, HeroBannerViewSet, SiteConfigViewSet
 from apps.core.uploads import ImageUploadView
+from apps.core.views import AuditLogViewSet
 from apps.crm.views import AdmissionCampaignViewSet, CohortRolloverView, OrderViewSet
 from apps.notifications.views import EmailLogViewSet, EmailTemplateViewSet, SendEmailView
 from apps.payments.views import BankTransactionViewSet, ConfirmManualPaymentView
@@ -26,6 +27,7 @@ router.register("campaigns", AdmissionCampaignViewSet, basename="staff-campaign"
 router.register("email-templates", EmailTemplateViewSet, basename="staff-email-template")
 router.register("email-logs", EmailLogViewSet, basename="staff-email-log")
 router.register("transactions", BankTransactionViewSet, basename="staff-transaction")
+router.register("audit-logs", AuditLogViewSet, basename="staff-audit-log")
 
 urlpatterns = [
     path("emails/send/", SendEmailView.as_view(), name="staff-email-send"),

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { api, isBackendEnabled, Paginated } from '../../lib/api';
 import {
   Users,
   ShieldCheck,
@@ -96,6 +97,74 @@ const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
   }
 ];
 
+interface StaffUserDTO {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatar: string;
+  phone: string;
+  status: 'active' | 'suspended';
+  permissions: string[];
+  permissionOverrides: { granted?: string[]; revoked?: string[] };
+  lastLogin: string | null;
+}
+
+interface AuditLogDTO {
+  id: number;
+  at: string;
+  actorLabel: string;
+  action: string;
+  objectType: string;
+  objectId: string;
+  details: Record<string, unknown>;
+}
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  'staff_user.create': 'Tạo tài khoản nhân sự',
+  'staff_user.update': 'Cập nhật tài khoản / quyền nhân sự',
+  'payment.confirm_manual': 'Xác nhận thanh toán thủ công',
+  'order.delete': 'Xóa hồ sơ',
+  'order.export_csv': 'Xuất dữ liệu CRM',
+  'lms.open': 'Mở Moodle từ CMS'
+};
+
+const initialAvatar = (label: string) =>
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#0D2B5B"/><text x="50%" y="54%" font-family="sans-serif" font-size="26" fill="#fff" text-anchor="middle" dominant-baseline="middle">${label.trim().slice(0, 1).toUpperCase()}</text></svg>`
+  )}`;
+
+const staffFromServer = (u: StaffUserDTO): AdminUser => ({
+  id: u.id,
+  name: u.name,
+  email: u.email,
+  role: u.role,
+  avatar: u.avatar || initialAvatar(u.name || u.email),
+  phone: u.phone,
+  status: u.status,
+  lastActive: u.lastLogin ? new Date(u.lastLogin).toLocaleString('vi-VN') : 'Chưa đăng nhập',
+  permissions: u.permissions,
+  customOverrides: {
+    grantedCodes: u.permissionOverrides?.granted || [],
+    revokedCodes: u.permissionOverrides?.revoked || []
+  }
+});
+
+const auditFromServer = (a: AuditLogDTO): AuditLogEntry => {
+  const d = a.details || {};
+  const target = [d.email, d.order_code ?? d.orderCode, a.objectType && `${a.objectType} ${a.objectId}`]
+    .filter(Boolean)
+    .join(' · ');
+  return {
+    id: String(a.id),
+    timestamp: new Date(a.at).toLocaleString('vi-VN'),
+    actor: a.actorLabel,
+    action: AUDIT_ACTION_LABELS[a.action] || a.action,
+    target: target || '—',
+    status: a.action.includes('delete') || a.action.includes('export') ? 'warning' : 'info'
+  };
+};
+
 interface CMSUsersTabProps {
   users?: AdminUser[];
   onUpdateUsers?: (users: AdminUser[]) => void;
@@ -127,12 +196,55 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
   const [localRoleConfigs, setLocalRoleConfigs] = useState<Record<UserRole, RolePermissionConfig>>(DEFAULT_ROLE_CONFIGS);
   const roleConfigs = propRoleConfigs || localRoleConfigs;
   const setRoleConfigs = (newConfigs: Record<UserRole, RolePermissionConfig>) => {
+    if (isBackendEnabled()) {
+      showToast(
+        'Quyền mặc định của từng vai trò do hệ thống quy định. Hãy cấp hoặc thu hồi quyền riêng cho từng nhân sự.',
+        'info'
+      );
+      return;
+    }
     if (onUpdateRoleConfigs) onUpdateRoleConfigs(newConfigs);
     setLocalRoleConfigs(newConfigs);
   };
 
   const currentActorName = currentActorUser?.name || 'Hoàng Tùng (Super Admin)';
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(isBackendEnabled() ? [] : INITIAL_AUDIT_LOGS);
+
+  // ---- Live backend: staff accounts, per-user overrides and the audit trail are real ----
+  const live = isBackendEnabled();
+  const loadServerUsers = useCallback(async () => {
+    const res = await api.get<Paginated<StaffUserDTO>>('/staff/users/?pageSize=200');
+    setUsers(res.results.map(staffFromServer));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const loadAuditLogs = useCallback(async () => {
+    try {
+      const res = await api.get<Paginated<AuditLogDTO>>('/staff/audit-logs/?pageSize=100');
+      setAuditLogs(res.results.map(auditFromServer));
+    } catch {
+      // Needs rbac.edit_matrix: other roles simply don't see the server trail.
+    }
+  }, []);
+  useEffect(() => {
+    if (!live) return;
+    loadServerUsers().catch((e) => showToast(e instanceof Error ? e.message : 'Không tải được danh sách nhân sự', 'warning'));
+    loadAuditLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /** Run an API change, then reload from the server (the source of truth) whatever happened. */
+  const persist = async (call: () => Promise<unknown>, okMessage: string): Promise<boolean> => {
+    try {
+      await call();
+      showToast(okMessage, 'success');
+      return true;
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Thao tác thất bại', 'warning');
+      return false;
+    } finally {
+      await loadServerUsers().catch(() => undefined);
+      loadAuditLogs();
+    }
+  };
 
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -166,6 +278,7 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState<UserRole>('sales_crm');
 
   // Filtered users
@@ -192,6 +305,13 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
   const handleToggleStatus = (userId: string) => {
     const targetUser = users.find((u) => u.id === userId);
     const nextStatus: 'active' | 'suspended' = targetUser?.status === 'active' ? 'suspended' : 'active';
+    if (live) {
+      persist(
+        () => api.patch(`/staff/users/${userId}/`, { status: nextStatus }),
+        nextStatus === 'active' ? `Đã mở khóa tài khoản ${targetUser?.name}.` : `Đã tạm khóa tài khoản ${targetUser?.name}.`
+      );
+      return;
+    }
     const updatedUsers = users.map((u) => (u.id === userId ? { ...u, status: nextStatus } : u));
     setUsers(updatedUsers);
 
@@ -218,6 +338,13 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
   // Change user role
   const handleRoleChange = (userId: string, newRole: UserRole) => {
     const targetUser = users.find((u) => u.id === userId);
+    if (live) {
+      persist(
+        () => api.patch(`/staff/users/${userId}/`, { role: newRole }),
+        `Đã chuyển ${targetUser?.name} sang vai trò ${roleConfigs[newRole].roleName}.`
+      );
+      return;
+    }
     const updatedUsers = users.map((u) => (u.id === userId ? { ...u, role: newRole } : u));
     setUsers(updatedUsers);
 
@@ -298,6 +425,32 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim()) return;
+    if (live) {
+      if (newUserPassword.length < 12) {
+        showToast('Mật khẩu ban đầu cần tối thiểu 12 ký tự.', 'warning');
+        return;
+      }
+      persist(
+        () =>
+          api.post('/staff/users/', {
+            name: newUserName.trim(),
+            email: newUserEmail.trim().toLowerCase(),
+            phone: newUserPhone.trim(),
+            role: newUserRole,
+            status: 'active',
+            password: newUserPassword
+          }),
+        `Đã tạo tài khoản cho "${newUserName}". Gửi mật khẩu ban đầu qua kênh riêng và đề nghị đổi sau lần đăng nhập đầu.`
+      ).then((ok) => {
+        if (!ok) return;
+        setShowAddModal(false);
+        setNewUserName('');
+        setNewUserEmail('');
+        setNewUserPhone('');
+        setNewUserPassword('');
+      });
+      return;
+    }
 
     const newUser: AdminUser = {
       id: `usr-${Date.now()}`,
@@ -360,6 +513,15 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
 
     setEditingUserOverrides(updatedUser);
     setUsers(users.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+    if (live) {
+      persist(
+        () =>
+          api.patch(`/staff/users/${user.id}/`, {
+            permissionOverrides: { granted: updatedGranted, revoked: updatedRevoked }
+          }),
+        `Đã cập nhật quyền riêng của ${user.name}.`
+      );
+    }
   };
 
   return (
@@ -1316,6 +1478,21 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
                   className="w-full p-2.5 border border-slate-300 rounded-xl font-mono"
                 />
               </div>
+
+              {live && (
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Mật khẩu ban đầu * (tối thiểu 12 ký tự)</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    minLength={12}
+                    required
+                    className="w-full p-2.5 border border-slate-300 rounded-xl font-mono"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Vai trò vận hành (RBAC) *</label>
