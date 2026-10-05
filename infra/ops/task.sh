@@ -28,6 +28,9 @@ case "$TASK" in
 
   bootstrap)
     [[ "$CI_DEPLOY_PUBKEY" =~ ^ssh-ed25519\  ]] || { echo "repository variable CI_DEPLOY_PUBKEY missing"; exit 1; }
+    # bootstrap.sh restarts Docker and rewrites sshd/firewall: only for a host that runs nothing else.
+    foreign=$(remote 'sudo docker ps --format "{{.Names}}" 2>/dev/null | grep -v "^twings-" || true')
+    [[ -z "$foreign" ]] || { echo "refusing: host runs other containers:"; echo "$foreign"; exit 1; }
     remote 'rm -rf /tmp/twings-infra && mkdir -p /tmp/twings-infra'
     tar -C infra -czf - . | remote 'tar -C /tmp/twings-infra -xzf -'
     printf '%s\n' "$CI_DEPLOY_PUBKEY" | remote 'cat > /tmp/ci-deploy.pub'
