@@ -76,6 +76,13 @@ case "$TASK" in
     echo "--- CORS preflight from the site"
     curl -s -o /dev/null -D - -m 30 -X OPTIONS -H "Origin: $web" -H "Access-Control-Request-Method: POST" \
       "$api/api/v1/auth/login/" | grep -i -E "^HTTP|access-control-allow-(origin|credentials)"
+    echo "--- redirect domain"
+    curl -s -o /dev/null -m 30 -w "%{http_code} https://twings.tunghr.io.vn/x?y=1 -> %{redirect_url}
+" "https://twings.tunghr.io.vn/x?y=1" || echo "FAIL redirect"
+    echo "--- nothing but the gateway is reachable from the internet"
+    for port in 5432 8000 8080 8081 2019; do
+      timeout 5 bash -c "</dev/tcp/$VPS_HOST/$port" 2>/dev/null && echo "OPEN $port" || echo "closed $port"
+    done
     echo "--- certificates"
     for h in tuyensinh.twings.edu.vn api-tuyensinh.twings.edu.vn; do
       echo | openssl s_client -connect "$h:443" -servername "$h" 2>/dev/null | openssl x509 -noout -issuer -subject -enddate

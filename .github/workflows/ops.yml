@@ -81,6 +81,7 @@ jobs:
           ARG: ${{ inputs.arg }}
           ENV_BUNDLE: ${{ secrets.VPS_ENV_BUNDLE }}
           CI_DEPLOY_PUBKEY: ${{ vars.CI_DEPLOY_PUBKEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
           set -o pipefail
           rc=0
