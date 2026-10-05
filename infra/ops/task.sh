@@ -55,7 +55,7 @@ case "$TASK" in
       t=\$(mktemp -d); trap 'rm -rf \$t' EXIT
       tar -C \$t -xzf -
       for f in \$t/*.env; do sudo install -m 600 -o root -g root \"\$f\" $APP/env/; done
-      ls -l $APP/env/
+      sudo ls -l $APP/env/
       if [ -f $APP/.env ]; then cd $APP && sudo docker compose up -d; fi"
     ;;
 
