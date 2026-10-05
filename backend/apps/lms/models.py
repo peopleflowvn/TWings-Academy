@@ -14,6 +14,7 @@ class LmsEnrollment(BaseModel):
         ("done", "Đã ghi danh"),
         ("failed", "Lỗi – sẽ thử lại"),
         ("skipped", "Bỏ qua"),
+        ("removed", "Đã hủy ghi danh"),
     ]
 
     order = models.OneToOneField("crm.Order", on_delete=models.CASCADE, related_name="lms_enrollment")
@@ -24,6 +25,7 @@ class LmsEnrollment(BaseModel):
     attempts = models.PositiveSmallIntegerField(default=0)
     last_error = models.TextField(blank=True)
     enrolled_at = models.DateTimeField(null=True, blank=True)
+    access_emailed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

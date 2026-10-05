@@ -1,6 +1,6 @@
 """Authenticated staff (CMS) endpoints. Every view enforces RBAC permission codes."""
 
-from django.urls import path
+from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
 from apps.accounts.views import StaffUserViewSet
@@ -34,5 +34,6 @@ urlpatterns = [
         "orders/<str:pk>/confirm-payment/", ConfirmManualPaymentView.as_view(), name="staff-confirm-payment"
     ),
     path("cohorts/<str:pk>/rollover/", CohortRolloverView.as_view(), name="staff-cohort-rollover"),
+    path("lms/", include("apps.lms.urls")),
     *router.urls,
 ]

@@ -77,6 +77,9 @@ $capabilities = [
     'moodle/user:create', 'moodle/user:viewdetails', 'moodle/user:viewalldetails',
     'moodle/user:viewhiddendetails',
     'enrol/manual:enrol', 'moodle/role:assign', 'moodle/course:enrolreview',
+    // Learning overview and management from the TWings CMS (/app):
+    'enrol/manual:unenrol', 'moodle/user:update', 'moodle/course:viewparticipants',
+    'report/completion:view', 'moodle/grade:viewall', 'gradereport/overview:view',
 ];
 $role = $DB->get_record('role', ['shortname' => 'twingsintegration']);
 $roleid = $role ? $role->id : create_role(
@@ -89,9 +92,13 @@ foreach ($capabilities as $cap) {
     }
 }
 $studentroleid = $DB->get_field('role', 'id', ['shortname' => 'student'], MUST_EXIST);
+// Roles the integration may hand out: student (enrolment) and manager (TWings training staff).
 // core_role_set_assign_allowed() inserts unconditionally (unique index): only call it once.
-if (!$DB->record_exists('role_allow_assign', ['roleid' => $roleid, 'allowassign' => $studentroleid])) {
-    core_role_set_assign_allowed($roleid, $studentroleid);
+$managerroleid = $DB->get_field('role', 'id', ['shortname' => 'manager'], MUST_EXIST);
+foreach ([$studentroleid, $managerroleid] as $target) {
+    if (!$DB->record_exists('role_allow_assign', ['roleid' => $roleid, 'allowassign' => $target])) {
+        core_role_set_assign_allowed($roleid, $target);
+    }
 }
 
 $wsuser = $DB->get_record('user', ['username' => 'twings_ws', 'mnethostid' => $CFG->mnet_localhost_id]);
@@ -118,6 +125,10 @@ $functions = [
     'core_course_get_courses_by_field', 'core_course_create_courses',
     'core_user_get_users_by_field', 'core_user_create_users',
     'enrol_manual_enrol_users',
+    // /app learning overview and actions
+    'core_enrol_get_users_courses', 'core_enrol_get_enrolled_users',
+    'core_completion_get_course_completion_status', 'gradereport_overview_get_course_grades',
+    'enrol_manual_unenrol_users', 'core_user_update_users', 'core_role_assign_roles',
 ];
 $service = $DB->get_record('external_services', ['shortname' => 'twings']);
 if (!$service) {

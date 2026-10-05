@@ -209,6 +209,12 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   Nhân sự đang đăng nhập CMS thì vào thẳng. Moodle tự liên kết theo email (`requireconfirmation` tắt), nên tài khoản
   được tạo khi ghi danh dùng được ngay. Mỗi tên miền trong `MOODLE_HOSTS` có một issuer riêng, nên nút đăng nhập luôn
   trỏ tới tên miền mà mạng của người dùng truy cập được. Mật khẩu Moodle vẫn dùng được, làm phương án dự phòng.
+- **Quản lý từ /app:** tab **Học Tập Trực Tuyến (LMS)** liệt kê từng khóa, đối chiếu đơn đã thanh toán với học viên
+  thực có trên Moodle, cho xem tiến độ từng học viên và đánh dấu người chưa vào học quá 7 ngày. Trong chi tiết đơn,
+  tab **Học Tập (LMS)** hiện tài khoản, % hoàn thành, điểm và lần truy cập; các thao tác gồm ghi danh lại, hủy ghi danh,
+  tạm khóa/mở khóa, gửi email hướng dẫn vào học. Nút **Mở Moodle** đăng nhập bằng tài khoản CMS; nhân sự Đào tạo
+  được gán vai trò *manager* của Moodle. Quyền: `lms.view` (Sales, Đào tạo), `lms.manage` (Đào tạo). Dữ liệu đọc
+  trực tiếp từ Moodle, không lưu bản sao. Học viên đã bị hủy ghi danh sẽ không bị ghi danh lại khi có người sửa đơn.
 - **Soạn nội dung:** đăng nhập `/learn` bằng `admin` (mật khẩu `PROD_LMS__MOODLE_ADMIN_PASSWORD` trong `.env`). Dùng
   các tính năng sẵn có của Moodle: bài giảng, video YouTube, quiz, bài tập, hoàn thành khóa học, huy hiệu.
 - **Bảo mật:** `/learn/webservice/*` bị chặn từ Internet, chỉ backend gọi được qua mạng nội bộ. Token có giới hạn IP

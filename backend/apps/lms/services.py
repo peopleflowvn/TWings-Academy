@@ -132,6 +132,8 @@ def process(enrollment: LmsEnrollment) -> LmsEnrollment:
     enrollment.user_created = enrollment.user_created or created
     enrollment.enrolled_at = timezone.now()
     enrollment.save()
+    if enrollment.access_emailed_at is None:
+        _email_access(enrollment)
     Activity.objects.create(
         order=order,
         type="note",
@@ -146,6 +148,21 @@ def process(enrollment: LmsEnrollment) -> LmsEnrollment:
     return enrollment
 
 
+def _email_access(enrollment: LmsEnrollment) -> None:
+    """TWings 'your course is open' e-mail (link + SSO steps); never blocks the enrolment."""
+    from apps.notifications.resend import ResendError
+
+    from .emails import send_access_email
+
+    try:
+        send_access_email(enrollment.order)
+    except ResendError:
+        logger.warning("Access e-mail for order %s could not be sent", enrollment.order.order_code)
+        return
+    enrollment.access_emailed_at = timezone.now()
+    enrollment.save(update_fields=["access_emailed_at", "updated_at"])
+
+
 def enroll_paid_order(order_id: str) -> None:
     """Create (or reuse) the enrollment record and try once; failures are retried by the command."""
     if not moodle.is_configured():
@@ -153,7 +170,7 @@ def enroll_paid_order(order_id: str) -> None:
     with transaction.atomic():
         order = Order.objects.select_for_update().get(pk=order_id)
         enrollment, _ = LmsEnrollment.objects.get_or_create(order=order)
-        if enrollment.status != "done":
+        if enrollment.status not in ("done", "removed"):
             process(enrollment)
 
 

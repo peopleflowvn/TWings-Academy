@@ -115,6 +115,24 @@ export const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
     categoryLabel: '2. Khóa Học & Nhúng YouTube',
     riskLevel: 'high'
   },
+  {
+    id: 'perm-lms-1',
+    code: 'lms.view',
+    name: 'Xem tiến độ học tập (LMS)',
+    description: 'Xem tài khoản, khóa đã ghi danh, % hoàn thành, điểm và lần truy cập của học viên trên Moodle',
+    category: 'courses',
+    categoryLabel: '2. Khóa Học & Nhúng YouTube',
+    riskLevel: 'low'
+  },
+  {
+    id: 'perm-lms-2',
+    code: 'lms.manage',
+    name: 'Quản lý học viên trên LMS',
+    description: 'Ghi danh / hủy ghi danh, tạm khóa tài khoản, gửi email hướng dẫn vào học',
+    category: 'courses',
+    categoryLabel: '2. Khóa Học & Nhúng YouTube',
+    riskLevel: 'medium'
+  },
 
   // Category 3: Banner & Trang chủ
   {
@@ -282,7 +300,9 @@ export const DEFAULT_ROLE_CONFIGS: Record<UserRole, RolePermissionConfig> = {
       'courses.reviews',
       'crm.view_leads',
       'crm.edit_status',
-      'rbac.view_users'
+      'rbac.view_users',
+      'lms.view',
+      'lms.manage'
     ]
   },
   sales_crm: {
@@ -297,7 +317,8 @@ export const DEFAULT_ROLE_CONFIGS: Record<UserRole, RolePermissionConfig> = {
       'crm.edit_status',
       'crm.assign_pic',
       'crm.export_excel',
-      'courses.view'
+      'courses.view',
+      'lms.view'
     ]
   },
   content_seo: {
@@ -343,6 +364,11 @@ export const TAB_PERMISSION_MAP: Record<string, { codes: string[]; label: string
     codes: ['crm.view_leads', 'finance.transactions'],
     label: 'CRM & Quản Lý Đơn Hàng',
     minRoleDesc: 'Tư vấn Tuyển sinh, Kế toán hoặc Super Admin'
+  },
+  lms: {
+    codes: ['lms.view'],
+    label: 'Học Tập Trực Tuyến (LMS)',
+    minRoleDesc: 'Vận hành Đào tạo, Tư vấn Tuyển sinh hoặc Super Admin'
   },
   courses: {
     codes: ['courses.view'],

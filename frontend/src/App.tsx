@@ -175,6 +175,79 @@ export default function App() {
     setCourses(courses.filter((c) => c.id !== id));
   };
 
+  // Fields the server owns or that have their own endpoints: never sent in a PATCH.
+  const ORDER_READ_ONLY = new Set([
+    'id', 'orderCode', 'totalPaidAmount', 'paidAt', 'isDuplicate', 'duplicateCount', 'createdAt', 'updatedAt',
+    'privacyConsentAt', 'privacyConsentVersion', 'timelineActivities', 'followupTasks', 'agentResearch'
+  ]);
+  // Set by the UI when it marks an order paid; the server derives them from the recorded payment.
+  const PAYMENT_DERIVED = new Set(['status', 'paymentStatusDetail', 'crmStatus', 'paymentDate']);
+
+  /**
+   * Persist a CRM edit made anywhere in the CMS. Only changed fields are sent (so a sales user editing
+   * notes never trips the finance-field guard), "mark as paid" becomes a real recorded payment (audit
+   * log, totals, LMS enrolment), and new activities / follow-ups go to their endpoints. The order is
+   * then reloaded from the server, which stays the source of truth.
+   */
+  const handleUpdateOrderCRM = async (updated: Order) => {
+    const previous = orders.find((o) => o.id === updated.id);
+    setOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)));
+    if (!live || !previous) return;
+    const prev = previous as unknown as Record<string, unknown>;
+    const next = updated as unknown as Record<string, unknown>;
+    const changed: Record<string, unknown> = {};
+    for (const key of Object.keys(next)) {
+      if (!ORDER_READ_ONLY.has(key) && JSON.stringify(next[key]) !== JSON.stringify(prev[key])) changed[key] = next[key];
+    }
+    const errors: string[] = [];
+    try {
+      if (updated.status === 'paid' && previous.status !== 'paid') {
+        PAYMENT_DERIVED.forEach((k) => delete changed[k]);
+        const outstanding = (previous.totalReceivable || previous.amount || 0) - (previous.totalPaidAmount || 0);
+        if (outstanding > 0) {
+          await api.post(`/staff/orders/${updated.id}/confirm-payment/`, {
+            amount: outstanding,
+            note: 'Xác nhận thanh toán từ CMS'
+          });
+        } else {
+          await api.patch(`/staff/orders/${updated.id}/`, { status: 'paid' });
+        }
+      }
+      if (Object.keys(changed).length) await api.patch(`/staff/orders/${updated.id}/`, changed);
+
+      const knownActivity = new Set((previous.timelineActivities || []).map((a) => a.id));
+      for (const a of updated.timelineActivities || []) {
+        // Payment entries are written by the server when it records the payment.
+        if (knownActivity.has(a.id) || a.type === 'payment') continue;
+        await api.post(`/staff/orders/${updated.id}/activities/`, { type: a.type, title: a.title, content: a.content });
+      }
+      const knownTask = new Set((previous.followupTasks || []).map((t) => t.id));
+      for (const task of updated.followupTasks || []) {
+        if (knownTask.has(task.id)) continue;
+        try {
+          await api.post(`/staff/orders/${updated.id}/followups/`, {
+            title: task.title,
+            dueDate: /^\d{4}-\d{2}-\d{2}/.test(task.dueDate) ? task.dueDate.slice(0, 10) : null,
+            priority: task.priority,
+            isCompleted: task.isCompleted,
+            assignedTo: task.assignedTo
+          });
+        } catch (err) {
+          errors.push(err instanceof Error ? err.message : String(err));
+        }
+      }
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : String(err));
+    }
+    try {
+      const fresh = await api.get<Order>(`/staff/orders/${updated.id}/`);
+      setOrders((list) => list.map((o) => (o.id === fresh.id ? fresh : o)));
+    } catch {
+      setOrders((list) => list.map((o) => (o.id === previous.id ? previous : o)));
+    }
+    if (errors.length) reportError(new Error(`Chưa lưu được một phần thay đổi: ${errors.join('; ')}`));
+  };
+
   const handleUpdateOrderStatus = async (id: string, status: Order['status']) => {
     if (live) {
       try {
@@ -236,6 +309,7 @@ export default function App() {
           onUpdateCourse={handleUpdateCourse}
           onDeleteCourse={handleDeleteCourse}
           onUpdateOrderStatus={handleUpdateOrderStatus}
+          onUpdateOrderCRM={handleUpdateOrderCRM}
           onPreviewCourse={(course) => {
             setSelectedCourse(course);
             setCurrentView('course-detail');

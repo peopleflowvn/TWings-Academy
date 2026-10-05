@@ -17,7 +17,9 @@ def enroll_when_paid(sender, instance: Order, **kwargs):
     """Any path that marks an order paid (bank webhook, manual confirmation, CMS) grants LMS access."""
     if instance.status != "paid" or not moodle.is_configured():
         return
-    if getattr(instance, "lms_enrollment", None) is not None and instance.lms_enrollment.status == "done":
+    enrollment = getattr(instance, "lms_enrollment", None)
+    # Done already, or deliberately removed by staff: later edits of the order must not re-enrol.
+    if enrollment is not None and enrollment.status in ("done", "removed"):
         return
     # After commit: never hold the payment transaction open on a network call, and a Moodle outage
     # must not roll back the payment (the retry command picks failures up).

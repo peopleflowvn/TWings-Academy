@@ -36,11 +36,16 @@ import {
   ChevronDown,
   UserCheck,
   Mail,
-  Award
+  Award,
+  GraduationCap,
+  ExternalLink
 } from 'lucide-react';
 import { Course, Order, CMSSectionsConfig, HeroBannerItem, PartnerItem, AdminUser, UserRole, RolePermissionConfig } from '../types';
 import { HERO_BANNERS, DEFAULT_PARTNERS, INITIAL_ADMIN_USERS } from '../data/courseraData';
 import { CMSCRMOrdersTab } from './cms/CMSCRMOrdersTab';
+import { CMSLmsTab } from './cms/CMSLmsTab';
+import { openInMoodle, StaffUserContext } from '../lib/lms';
+import { checkUserHasPermission as canUser } from '../utils/rbac';
 import { CMSUsersTab } from './cms/CMSUsersTab';
 import { CMSArchitectureTab } from './cms/CMSArchitectureTab';
 import { CMSArticlesSEOTab } from './cms/CMSArticlesSEOTab';
@@ -66,6 +71,8 @@ interface CourseraCMSAdminProps {
   onUpdateCourse: (updatedCourse: Course) => void;
   onDeleteCourse: (courseId: string) => void;
   onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
+  /** Persist CRM edits of an order (pipeline, PIC, notes, payment marking...). */
+  onUpdateOrderCRM?: (updatedOrder: Order) => void;
   onPreviewCourse?: (course: Course) => void;
   onBackToHome: () => void;
   /** Authenticated staff account (live backend). When absent, the CMS runs in demo-persona mode. */
@@ -82,6 +89,7 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
   onUpdateCourse,
   onDeleteCourse,
   onUpdateOrderStatus,
+  onUpdateOrderCRM,
   onPreviewCourse,
   onBackToHome,
   staffUser,
@@ -89,7 +97,7 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
 }) => {
   const isLiveSession = !!staffUser;
   const [activeTab, setActiveTab] = useState<
-    'crm_orders' | 'courses' | 'instructors' | 'email_templates' | 'banners' | 'partners' | 'homepage_content' | 'articles' | 'users' | 'seo_settings' | 'architecture' | 'sections'
+    'crm_orders' | 'lms' | 'courses' | 'instructors' | 'email_templates' | 'banners' | 'partners' | 'homepage_content' | 'articles' | 'users' | 'seo_settings' | 'architecture' | 'sections'
   >('crm_orders');
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -171,6 +179,11 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
           icon: DollarSign,
           badge: orders.length,
           badgeColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+        },
+        {
+          id: 'lms',
+          label: 'Học Tập Trực Tuyến (LMS)',
+          icon: GraduationCap
         },
         {
           id: 'courses',
@@ -260,6 +273,7 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
   const canAccessActiveTab = checkUserCanAccessTab(currentActorUser, activeTab, roleConfigs);
 
   return (
+    <StaffUserContext.Provider value={staffUser ?? currentActorUser}>
     <div className="flex h-screen bg-slate-100 overflow-hidden font-sans text-slate-800">
       {/* 1. COLLAPSIBLE SIDEBAR ON THE LEFT */}
       <aside
@@ -438,6 +452,16 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
           <div className="flex items-center gap-3 text-xs">
             {isLiveSession ? (
               <div className="flex items-center gap-2">
+                {(currentActorUser.permissions?.includes('lms.view') || canUser(currentActorUser, 'lms.view')) && (
+                  <button
+                    type="button"
+                    onClick={() => openInMoodle()}
+                    className="px-3 py-1.5 rounded-xl border border-[#0073C1] text-[#0073C1] hover:bg-blue-50 font-bold flex items-center gap-1.5 cursor-pointer"
+                    title="Mở TWings LMS (Moodle) bằng tài khoản CMS"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> Mở Moodle
+                  </button>
+                )}
                 <span className="font-bold text-slate-800">{currentActorUser.name}</span>
                 <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold border ${roleConfigs[currentActorUser.role]?.color || 'bg-slate-100'}`}>
                   {getRoleShortLabel(currentActorUser.role)}
@@ -564,9 +588,12 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
                 <CMSCRMOrdersTab
                   orders={orders}
                   onUpdateOrderStatus={onUpdateOrderStatus}
-                  onUpdateOrderCRM={(upd) => onUpdateOrderStatus(upd.id, upd.status)}
+                  onUpdateOrderCRM={onUpdateOrderCRM ?? ((upd) => onUpdateOrderStatus(upd.id, upd.status))}
                 />
               )}
+
+              {/* TAB: Learning on the Moodle LMS */}
+              {activeTab === 'lms' && <CMSLmsTab />}
 
               {/* TAB 2: Courses & YouTube Video Embeds (Dedicated Professional Full-Page Editor) */}
               {activeTab === 'courses' && (
@@ -872,5 +899,6 @@ export const CourseraCMSAdmin: React.FC<CourseraCMSAdminProps> = ({
         </main>
       </div>
     </div>
+    </StaffUserContext.Provider>
   );
 };
