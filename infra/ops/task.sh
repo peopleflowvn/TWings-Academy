@@ -183,6 +183,24 @@ print(\"order:\", order.order_code, \"| course:\", course.title, \"| lms:\", e.s
 '"
     ;;
 
+  lms-admin-check)
+    # Exercise the CMS LMS features against the real Moodle (read-only, except preparing the
+    # super admin's own Moodle access exactly like the "Mở Moodle" button does).
+    remote "cd $APP && sudo docker compose exec -T backend python manage.py shell -c '
+from apps.accounts.models import User
+from apps.lms import overview
+o = overview.learner_overview(\"tunglh.com@gmail.com\")
+print(\"learner:\", o[\"user\"] and o[\"user\"][\"email\"], \"| courses:\", [(c[\"fullname\"][:30], c[\"progress\"], c[\"completed\"], c[\"grade\"]) for c in o[\"courses\"]])
+rows = overview.course_catalog()
+print(\"catalog:\", [(r[\"slug\"][:28], r[\"paidOrders\"], r[\"moodle\"] and r[\"moodle\"][\"students\"]) for r in rows])
+mapped = [r for r in rows if r[\"moodle\"]]
+if mapped:
+    print(\"learners:\", [(l[\"email\"], l[\"progress\"], l[\"inactive\"], l[\"order\"] and l[\"order\"][\"orderCode\"]) for l in overview.course_learners(mapped[0][\"moodle\"][\"id\"])])
+admin = User.objects.filter(role=\"super_admin\").order_by(\"date_joined\").first()
+print(\"staff access:\", overview.ensure_staff_access(admin))
+'"
+    ;;
+
   logs)
     remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
     ;;
