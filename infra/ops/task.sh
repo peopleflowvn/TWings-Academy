@@ -81,6 +81,11 @@ case "$TASK" in
     done
     ;;
 
+  backup)
+    # Run the nightly backup now and show where it went (R2 when configured, else /var/backups/twings).
+    remote "sudo $APP/bin/backup.sh && sudo journalctl -t twings-backup -n 3 --no-pager"
+    ;;
+
   logs)
     remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
     ;;

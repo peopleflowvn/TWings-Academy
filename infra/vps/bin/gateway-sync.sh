@@ -13,6 +13,23 @@ APP=/opt/twings
 set -a; . "$APP/env/caddy.env"; . "$APP/env/gateway.env"; set +a
 : "${WEB_DOMAIN:?}" "${API_DOMAIN:?}" "${GATEWAY_CONTAINER:?}" "${GATEWAY_FILE:?}"
 
+log() { echo "gateway-sync: $*"; logger -t twings-deploy "gateway-sync: $*"; }
+
+# 1. DNS must already point here, otherwise Caddy would hammer Let's Encrypt with failing challenges.
+public_ip="$(curl -fsS -m 5 https://checkip.amazonaws.com 2>/dev/null | tr -d '[:space:]' || true)"
+points_here() {
+  local resolved
+  resolved="$(getent ahostsv4 "$1" | awk 'NR==1 {print $1}')"
+  [[ -n "$public_ip" && "$resolved" == "$public_ip" ]] && return 0
+  log "skip: $1 resolves to '${resolved:-nothing}', expected '${public_ip:-?}' (create the DNS A record first)"
+  return 1
+}
+points_here "$WEB_DOMAIN" && points_here "$API_DOMAIN" || exit 0
+# Extra hostnames (REDIRECT_DOMAINS, space separated) answer with a permanent redirect to WEB_DOMAIN,
+# so sessions/cookies and SEO stay on one origin. Not-yet-pointed ones are left out for now.
+redirects=()
+for host in ${REDIRECT_DOMAINS:-}; do points_here "$host" && redirects+=("$host"); done
+
 BEGIN="# >>> twings (managed by /opt/twings/bin/gateway-sync.sh - do not edit)"
 END="# <<< twings"
 BLOCK="$BEGIN
@@ -21,20 +38,16 @@ ${WEB_DOMAIN}, ${API_DOMAIN} {
         max_size 10MB
     }
     reverse_proxy twings-web:8080
-}
+}"
+if ((${#redirects[@]})); then
+  BLOCK+="
+
+$(IFS=,; echo "${redirects[*]}" | sed 's/,/, /g') {
+    redir https://${WEB_DOMAIN}{uri} permanent
+}"
+fi
+BLOCK+="
 $END"
-
-log() { echo "gateway-sync: $*"; logger -t twings-deploy "gateway-sync: $*"; }
-
-# 1. DNS must already point here, otherwise Caddy would hammer Let's Encrypt with failing challenges.
-public_ip="$(curl -fsS -m 5 https://checkip.amazonaws.com 2>/dev/null | tr -d '[:space:]' || true)"
-for host in "$WEB_DOMAIN" "$API_DOMAIN"; do
-  resolved="$(getent ahostsv4 "$host" | awk 'NR==1 {print $1}')"
-  if [[ -z "$public_ip" || "$resolved" != "$public_ip" ]]; then
-    log "skip: $host resolves to '${resolved:-nothing}', expected '${public_ip:-?}' (create the DNS A record first)"
-    exit 0
-  fi
-done
 
 # 2. Build the desired file: existing content minus our old block, plus the current block.
 current="$(cat "$GATEWAY_FILE")"
