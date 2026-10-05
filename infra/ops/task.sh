@@ -87,6 +87,23 @@ case "$TASK" in
     remote "sudo $APP/bin/backup.sh && sudo journalctl -t twings-backup -n 3 --no-pager"
     ;;
 
+  storage-check)
+    # Write, read back and delete a probe file through Django's storages (R2 or local volume).
+    remote "cd $APP && sudo docker compose exec -T backend python -c '
+import urllib.request
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage, storages
+for name, st in ((\"default\", default_storage), (\"private\", storages[\"private\"])):
+    p = st.save(\"healthcheck/probe.txt\", ContentFile(b\"ok\"))
+    url = st.url(p)
+    print(name, type(st).__name__, \"saved\", p, \"->\", url.split(\"?\")[0])
+    if name == \"default\":
+        print(\"  public GET:\", urllib.request.urlopen(url, timeout=10).read())
+    st.delete(p)
+    print(\"  deleted:\", not st.exists(p))
+'"
+    ;;
+
   logs)
     remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
     ;;
