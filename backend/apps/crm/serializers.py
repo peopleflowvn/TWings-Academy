@@ -127,6 +127,8 @@ class PublicRegistrationSerializer(serializers.Serializer):
 
 
 class CampaignPositionSerializer(serializers.ModelSerializer):
+    # Writable so the CMS can send back existing positions (kept) next to new ones (created).
+    id = serializers.CharField(required=False)
     course_id = serializers.PrimaryKeyRelatedField(source="course", queryset=Course.objects.all())
     enrolled_count = serializers.IntegerField(read_only=True, default=0)
 
@@ -136,9 +138,38 @@ class CampaignPositionSerializer(serializers.ModelSerializer):
 
 
 class AdmissionCampaignSerializer(serializers.ModelSerializer):
-    positions = CampaignPositionSerializer(many=True, read_only=True)
+    positions = CampaignPositionSerializer(many=True, required=False)
     total_enrolled = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = AdmissionCampaign
         exclude = ["created_at", "updated_at"]
+
+    def create(self, validated_data):
+        positions = validated_data.pop("positions", [])
+        campaign = super().create(validated_data)
+        self._save_positions(campaign, positions)
+        return campaign
+
+    def update(self, instance, validated_data):
+        positions = validated_data.pop("positions", None)
+        campaign = super().update(instance, validated_data)
+        if positions is not None:
+            self._save_positions(campaign, positions)
+        return campaign
+
+    @staticmethod
+    def _save_positions(campaign, positions):
+        """The list sent is the new truth: known ids are updated, others created, missing ones removed."""
+        keep = []
+        for data in positions:
+            pid = data.pop("id", None)
+            position = campaign.positions.filter(pk=pid).first() if pid else None
+            if position is None:
+                position = CampaignPosition.objects.create(campaign=campaign, **data)
+            else:
+                for field, value in data.items():
+                    setattr(position, field, value)
+                position.save()
+            keep.append(position.pk)
+        campaign.positions.exclude(pk__in=keep).delete()

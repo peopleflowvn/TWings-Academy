@@ -66,6 +66,8 @@ import { CMSCohortLifecycleModal } from './CMSCohortLifecycleModal';
 import { CMSVietQRWebhookModal } from './CMSVietQRWebhookModal';
 import { SendResendEmailModal } from './SendResendEmailModal';
 import { CMSCampaignManagementModal } from './CMSCampaignManagementModal';
+import { useServerCollection } from '../../lib/serverCollection';
+import { CAMPAIGNS, COHORTS } from '../../lib/cmsCollections';
 import { INITIAL_COHORTS, COHORT_STATUS_CONFIG } from '../../utils/cohortRouting';
 import {
   INITIAL_CAMPAIGNS,
@@ -147,7 +149,8 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
   const [selectedTierFilter, setSelectedTierFilter] = useState<string>('all');
 
   // TalentFlow Recruitment Campaign Hub state (ATS Architecture)
-  const [campaigns, setCampaigns] = useState<AdmissionCampaign[]>(getSavedCampaigns());
+  // Persisted through the API in live mode (demo: browser storage as before).
+  const { items: campaigns, update: setCampaigns } = useServerCollection<AdmissionCampaign>(CAMPAIGNS, getSavedCampaigns());
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('camp-2026-q4-hn');
   const [selectedPositionId, setSelectedPositionId] = useState<string>('all');
   const [showCampaignModal, setShowCampaignModal] = useState(false);
@@ -157,7 +160,7 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
   const [showCohortBoard, setShowCohortBoard] = useState(true);
 
   // Cohort & Class Lifecycle Management with Auto-Routing
-  const [cohorts, setCohorts] = useState<CourseCohort[]>(INITIAL_COHORTS);
+  const { items: cohorts, update: setCohorts } = useServerCollection<CourseCohort>(COHORTS, INITIAL_COHORTS);
   const [showCohortManager, setShowCohortManager] = useState(false);
 
   // VietQR Realtime Webhook Simulator Modal

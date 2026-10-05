@@ -58,3 +58,65 @@ def test_sales_cannot_promote_or_edit_overrides(staff_client):
         ).status_code
         == 403
     )
+
+
+def test_campaign_positions_are_saved_as_a_nested_list(staff_client, course):
+    admin = staff_client(Role.SUPER_ADMIN)
+    res = admin.post(
+        "/api/v1/staff/campaigns/",
+        {
+            "code": "CAMP-T1",
+            "name": "Chiến dịch test",
+            "status": "active",
+            "positions": [
+                {"courseId": course.id, "positionTitle": "RM", "shortName": "RM", "targetQuota": 10}
+            ],
+        },
+        format="json",
+    )
+    assert res.status_code == 201, res.content
+    camp = res.json()
+    kept = camp["positions"][0]["id"]
+    res = admin.patch(
+        f"/api/v1/staff/campaigns/{camp['id']}/",
+        {
+            "positions": [
+                {
+                    "id": kept,
+                    "courseId": course.id,
+                    "positionTitle": "RM",
+                    "shortName": "RM",
+                    "targetQuota": 20,
+                },
+                {"id": "local-123", "courseId": course.id, "positionTitle": "GDV", "shortName": "GDV"},
+            ]
+        },
+        format="json",
+    )
+    assert res.status_code == 200, res.content
+    positions = {p["shortName"]: p for p in res.json()["positions"]}
+    assert positions["RM"]["id"] == kept and positions["RM"]["targetQuota"] == 20
+    assert positions["GDV"]["id"] != "local-123"
+    res = admin.patch(f"/api/v1/staff/campaigns/{camp['id']}/", {"positions": []}, format="json")
+    assert res.json()["positions"] == []
+
+
+def test_cohort_crud_through_the_api(staff_client, course):
+    admin = staff_client(Role.ACADEMIC_MANAGEMENT)
+    res = admin.post(
+        "/api/v1/staff/cohorts/",
+        {"course": course.id, "name": "K10", "startDate": "2026-11-15", "capacity": 30, "status": "opening"},
+        format="json",
+    )
+    assert res.status_code == 201, res.content
+    cid = res.json()["id"]
+    assert (
+        admin.patch(f"/api/v1/staff/cohorts/{cid}/", {"status": "full"}, format="json").json()["status"]
+        == "full"
+    )
+    assert (
+        staff_client(Role.SALES_CRM)
+        .patch(f"/api/v1/staff/cohorts/{cid}/", {"status": "opening"}, format="json")
+        .status_code
+        == 403
+    )
