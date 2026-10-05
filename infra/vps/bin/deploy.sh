@@ -51,8 +51,8 @@ ensure_moodle_db() {
   local pw
   pw="$(sed -n 's/^MOODLE_DB_PASSWORD=//p' env/lms.env)"
   [[ "$pw" =~ ^[A-Za-z0-9_-]{20,}$ ]] || { echo "!! MOODLE_DB_PASSWORD missing or not URL-safe" >&2; return 1; }
-  { printf "\\set pw '%s'\n" "$pw"; cat <<'SQL'; } \
-    | docker compose exec -T db sh -c 'psql -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres' >/dev/null
+  # The pipe must stay on this line: anything on the next line would become part of the heredoc.
+  { printf "\\set pw '%s'\n" "$pw"; cat <<'SQL'; } | docker compose exec -T db sh -c 'psql -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres' >/dev/null 2>&1     || { echo "!! could not create the Moodle role/database (details are not printed: CI logs are public)" >&2; return 1; }
 SELECT 'CREATE ROLE moodle LOGIN' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'moodle')\gexec
 ALTER ROLE moodle WITH LOGIN PASSWORD :'pw';
 SELECT 'CREATE DATABASE moodle OWNER moodle ENCODING ''UTF8'' TEMPLATE template0' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'moodle')\gexec
