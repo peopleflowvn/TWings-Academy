@@ -21,8 +21,9 @@ case "$TASK" in
       cat /etc/ssh/sshd_config.d/*.conf 2>/dev/null; getent passwd | awk -F: "\$3>=1000 && \$3<65534 {print \$1}"
       sudo iptables -S INPUT | head -20
       sudo cat /opt/twings/.env 2>/dev/null || true
-      curl -fsS -m 10 -H "Host: $(sudo sed -n "s/^API_DOMAIN=//p" /opt/twings/env/caddy.env 2>/dev/null)" \
-        -k https://127.0.0.1/api/v1/health/ || true
+      cd /opt/twings 2>/dev/null && sudo docker compose exec -T web wget -qO- \
+        --header "Host: $(sudo sed -n "s/^API_DOMAIN=//p" /opt/twings/env/caddy.env)" \
+        http://127.0.0.1:8080/api/v1/health/ || true
       sudo journalctl -t twings-deploy -n 20 --no-pager || true'
     ;;
 
@@ -39,6 +40,14 @@ case "$TASK" in
     remote 'echo "admin SSH still OK after hardening"'
     ;;
 
+  setup-shared)
+    [[ "$CI_DEPLOY_PUBKEY" =~ ^ssh-ed25519\  ]] || { echo "repository variable CI_DEPLOY_PUBKEY missing"; exit 1; }
+    remote 'rm -rf /tmp/twings-infra && mkdir -p /tmp/twings-infra'
+    tar -C infra -czf - . | remote 'tar -C /tmp/twings-infra -xzf -'
+    printf '%s\n' "$CI_DEPLOY_PUBKEY" | remote 'cat > /tmp/ci-deploy.pub'
+    remote 'sudo bash /tmp/twings-infra/vps/setup-shared.sh /tmp/ci-deploy.pub; rc=$?; rm -rf /tmp/twings-infra /tmp/ci-deploy.pub; exit $rc'
+    ;;
+
   sync-env)
     [[ -n "$ENV_BUNDLE" ]] || { echo "secret VPS_ENV_BUNDLE missing"; exit 1; }
     printf '%s' "$ENV_BUNDLE" | base64 -d | remote "set -e
@@ -47,16 +56,6 @@ case "$TASK" in
       for f in \$t/*.env; do sudo install -m 600 -o root -g root \"\$f\" $APP/env/; done
       ls -l $APP/env/
       if [ -f $APP/.env ]; then cd $APP && sudo docker compose up -d; fi"
-    ;;
-
-  gateway-info)
-    # Read-only: how the shared caddy-gateway (other products on this host) is wired.
-    remote 'set -x
-      sudo docker inspect caddy-gateway --format "{{json .Mounts}}{{println}}{{json .NetworkSettings.Networks}}{{println}}{{json .Config.Labels}}"
-      sudo docker exec caddy-gateway cat /etc/caddy/Caddyfile
-      sudo docker exec caddy-gateway ls -la /etc/caddy
-      sudo docker network ls
-      free -m; nproc; sudo docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}"'
     ;;
 
   logs)

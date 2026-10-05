@@ -167,6 +167,23 @@ sudo docker compose exec backend python manage.py seed_content
 
 ---
 
+## Chế độ máy dùng chung
+
+Nếu VPS đã chạy sản phẩm khác và cổng 80/443 do một gateway Caddy dùng chung giữ, thì:
+
+- **Không** chạy `bootstrap.sh`. Thay vào đó chạy Ops task `setup-shared` (`infra/vps/setup-shared.sh`).
+  Task này chỉ cài age/rclone/jq, tạo user `deploy` và thư mục `/opt/twings`, không đụng tới Docker daemon,
+  sshd, firewall hay timezone.
+- Stack không publish cổng nào. Chỉ container `web` vào mạng Docker của gateway (alias `twings-web`).
+  Backend và DB nằm trong mạng nội bộ, nên container của sản phẩm khác không truy cập được.
+- Giới hạn tài nguyên: DB 320 MB, backend 448 MB (2 worker), web 64 MB. Cả ba có `cpu_shares` 512, tức
+  sản phẩm khác được ưu tiên CPU khi máy bận.
+- Thông tin riêng của máy (mạng, container và đường dẫn Caddyfile của gateway) nằm trong
+  `/opt/twings/env/gateway.env`, được sinh từ `PROD_GATEWAY__*` trong `.env`. Các giá trị này **không** đưa vào git.
+- Định tuyến: `infra/vps/bin/gateway-sync.sh` thêm một khối có đánh dấu vào Caddyfile của gateway, kiểm tra
+  cấu hình rồi reload êm; nếu lỗi thì tự khôi phục file cũ. Script chỉ chạy khi DNS đã trỏ về VPS, và chỉ
+  chạy khi chủ gateway đồng ý. Nếu sản phẩm kia deploy và ghi đè Caddyfile, chạy lại script này.
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị

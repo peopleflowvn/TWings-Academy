@@ -1,60 +1,78 @@
-# Public entry point (baked into the web image, see infra/caddy/Dockerfile). Caddy obtains and
-# renews Let's Encrypt certificates itself and redirects HTTP to HTTPS.
-# WEB_DOMAIN and API_DOMAIN come from /opt/twings/env/caddy.env.
-
-# ---------------------------------------------------------------- React site
-{$WEB_DOMAIN} {
-	encode zstd gzip
-	root * /srv/web
-
-	header {
-		-Server
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self' https://{$API_DOMAIN}; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		X-Content-Type-Options nosniff
-		X-Frame-Options DENY
-		Referrer-Policy strict-origin-when-cross-origin
-		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
-		Cross-Origin-Opener-Policy same-origin
+# TWings web container (baked into the web image, see infra/caddy/Dockerfile).
+#
+#   Internet ─HTTPS─▶ shared gateway (TLS) ─HTTP─▶ this container :8080 ─┬─▶ React site (WEB_DOMAIN)
+#                                                                        └─▶ backend:8000 (API_DOMAIN)
+#
+# TLS terminates at the shared gateway on the VPS. WEB_DOMAIN and API_DOMAIN come from
+# /opt/twings/env/caddy.env.
+{
+	auto_https off
+	admin off
+	servers {
+		# Only the gateway (Docker private network) may supply X-Forwarded-For/Proto; anything a
+		# visitor sends is replaced by the gateway, so {client_ip} below is the real visitor.
+		trusted_proxies static private_ranges
+		client_ip_headers X-Forwarded-For
 	}
-
-	@assets path /assets/*
-	header @assets Cache-Control "public, max-age=31536000, immutable"
-	@pages not path /assets/*
-	header @pages Cache-Control "no-cache"
-
-	# Client-side routing: unknown paths get the SPA shell.
-	try_files {path} /index.html
-	file_server
 }
 
-# ---------------------------------------------------------------- API
-{$API_DOMAIN} {
+:8080 {
 	encode zstd gzip
-
-	request_body {
-		max_size 10MB
-	}
-
 	header -Server
 
-	# Uploaded images when R2 is not configured (shared read-only volume with the backend).
-	handle_path /media/* {
-		root * /srv/appdata/media
+	# ------------------------------------------------------------ React site
+	@web host {$WEB_DOMAIN}
+	handle @web {
+		root * /srv/web
 		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self' https://{$API_DOMAIN}; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+			Strict-Transport-Security "max-age=31536000"
 			X-Content-Type-Options nosniff
-			Content-Security-Policy "default-src 'none'; sandbox"
-			Cache-Control "public, max-age=86400"
+			X-Frame-Options DENY
+			Referrer-Policy strict-origin-when-cross-origin
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+			Cross-Origin-Opener-Policy same-origin
 		}
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@pages not path /assets/*
+		header @pages Cache-Control "no-cache"
+
+		# Client-side routing: unknown paths get the SPA shell.
+		try_files {path} /index.html
 		file_server
 	}
 
-	handle {
-		reverse_proxy backend:8000 {
-			# Overwrite (never append) so visitors cannot spoof their address; Django reads it via
-			# REAL_IP_HEADER=X-Real-IP for throttling and login lockouts.
-			header_up X-Real-IP {remote_host}
+	# ------------------------------------------------------------ API
+	@api host {$API_DOMAIN}
+	handle @api {
+		request_body {
+			max_size 10MB
 		}
+
+		# Uploaded images when R2 is not configured (shared read-only volume with the backend).
+		handle_path /media/* {
+			root * /srv/appdata/media
+			header {
+				X-Content-Type-Options nosniff
+				Content-Security-Policy "default-src 'none'; sandbox"
+				Cache-Control "public, max-age=86400"
+			}
+			file_server
+		}
+
+		handle {
+			reverse_proxy backend:8000 {
+				# Overwrite (never append): Django reads it via REAL_IP_HEADER=X-Real-IP for
+				# throttling and login lockouts.
+				header_up X-Real-IP {client_ip}
+			}
+		}
+	}
+
+	# Any other Host header: nothing here.
+	handle {
+		respond 404
 	}
 
 	# No access log here: gunicorn already logs requests without query strings (personal data).
