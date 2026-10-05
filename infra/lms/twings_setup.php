@@ -6,6 +6,9 @@ define('CLI_SCRIPT', true);
 require(__DIR__ . '/config.php');
 require_once($CFG->libdir . '/clilib.php');
 require_once($CFG->dirroot . '/user/lib.php');
+// Full error details in the (root-only) deploy log on the VPS if anything below fails.
+$CFG->debug = DEBUG_DEVELOPER;
+$CFG->debugdisplay = 1;
 
 $syscontext = context_system::instance();
 $admin = get_admin();
