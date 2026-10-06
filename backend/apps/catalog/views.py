@@ -61,7 +61,8 @@ class PublicInstructorViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     authentication_classes = []
     serializer_class = PublicInstructorSerializer
     pagination_class = None
-    queryset = Instructor.objects.exclude(status="on_leave")
+    # Only people who teach a course on sale: no placeholder or foreign-brand "instructors".
+    queryset = Instructor.objects.exclude(status="on_leave").filter(courses__is_published=True).distinct()
 
 
 class PublicPartnerViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):

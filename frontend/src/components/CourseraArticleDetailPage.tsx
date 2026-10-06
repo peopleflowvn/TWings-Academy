@@ -111,7 +111,7 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
 
         {/* Featured Image */}
         <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200 bg-slate-100 max-h-[460px]">
-          <img
+          <img fetchPriority="high"
             src={article.featuredImage}
             alt={article.title}
             className="w-full h-full object-cover"
@@ -176,7 +176,7 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
               >
                 <div className="space-y-2">
                   <div className="h-32 rounded-xl overflow-hidden bg-slate-200 relative">
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={c.thumbnail}
                       alt={c.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

@@ -193,3 +193,22 @@ class OpenMoodleView(_LmsView):
         result = overview.ensure_staff_access(request.user)
         audit(request, "lms.open", None, manager=result["manager"])
         return Response(result)
+
+
+class ImportOutlineView(_LmsView):
+    """Course syllabus on the website from the Moodle template course (section / activity names)."""
+
+    permission_classes = [require_perms("courses.curriculum", "lms.manage")]
+
+    def post(self, request, pk):
+        from apps.catalog.models import Course
+
+        from .outline import OutlineError, import_outline
+
+        course = get_object_or_404(Course, pk=pk)
+        try:
+            result = import_outline(course)
+        except OutlineError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        audit(request, "lms.import_outline", course, **result)
+        return Response(result)

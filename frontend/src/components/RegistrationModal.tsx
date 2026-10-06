@@ -63,7 +63,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
     if (!fullName.trim()) errs.fullName = 'Vui lòng nhập họ và tên';
     if (!email.trim() || !email.includes('@')) errs.email = 'Vui lòng nhập email hợp lệ';
     if (!phone.trim() || phone.length < 9) errs.phone = 'Vui lòng nhập số điện thoại chính xác';
-    if (!birthDate.trim()) errs.birthDate = 'Vui lòng nhập ngày sinh (dd/mm/yyyy)';
+    if (birthDate.trim() && !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(birthDate.trim())) errs.birthDate = 'Ngày sinh theo dạng dd/mm/yyyy';
     if (!area) errs.area = 'Vui lòng chọn khu vực';
     if (!privacyConsent) errs.privacyConsent = 'Vui lòng đồng ý với chính sách xử lý dữ liệu cá nhân';
     setErrors(errs);
@@ -91,7 +91,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
           customerName: fullName.trim(),
           customerEmail: email.trim(),
           customerPhone: phone.trim(),
-          birthDate,
+          birthDate: birthDate.trim() || null,
           area,
           educationLevel,
           major,
@@ -302,7 +302,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                     type="text"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
-                    placeholder="Ngày sinh * (dd/mm/yyyy)"
+                    placeholder="Ngày sinh – không bắt buộc (dd/mm/yyyy)"
                     className={`w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 ${
                       errors.birthDate ? 'border-red-500' : 'border-slate-300 focus:border-[#0073C1]'
                     }`}
@@ -384,7 +384,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 />
                 <span>
                   Tôi đồng ý để TWings Academy xử lý dữ liệu cá nhân đã cung cấp nhằm tư vấn, xét tuyển và ghi danh
-                  khóa học theo Nghị định 13/2023/NĐ-CP. Tôi có thể yêu cầu xem, sửa hoặc xóa dữ liệu bất kỳ lúc nào.
+                  khóa học theo{' '}<a href="/chinh-sach-bao-mat" target="_blank" rel="noopener" className="text-[#0056D2] underline">Chính sách bảo mật</a>. Tôi có thể yêu cầu xem, sửa hoặc xóa dữ liệu bất kỳ lúc nào.
                 </span>
               </label>
               {errors.privacyConsent && <p className="text-[11px] text-red-600">{errors.privacyConsent}</p>}

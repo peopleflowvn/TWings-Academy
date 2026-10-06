@@ -250,6 +250,15 @@ export interface Course {
   /** Pay-in-installments plan offered at checkout (1 = pay in full only). */
   installmentCount?: number;
   installmentIntervalDays?: number;
+  /** Intakes still open for registration (public API). */
+  upcomingCohorts?: {
+    name: string;
+    startDate: string | null;
+    registrationDeadline: string | null;
+    location: string;
+    status: 'opening' | 'upcoming';
+    seatsLeft: number;
+  }[];
   isFreeEnrollmentAvailable?: boolean;
   youtubeTrialUrl?: string; // e.g. "https://www.youtube.com/watch?v=sal78ACtGTc"
   youtubeVideoId?: string;  // e.g. "sal78ACtGTc"
@@ -587,6 +596,15 @@ export interface AdminUser {
 // -------------------------------------------------------------
 export interface SiteSEOSettings {
   siteName: string;
+  /** Public channels (footer, floating contact button); empty = not shown. */
+  facebookUrl?: string;
+  youtubeUrl?: string;
+  linkedinUrl?: string;
+  /** Zalo: phone number or zalo.me link. */
+  zalo?: string;
+  /** Custom legal pages (HTML, sanitised by the server); empty = the built-in default text. */
+  privacyPolicyHtml?: string;
+  termsHtml?: string;
   siteSlogan: string;
   faviconUrl: string;
   logoUrl: string;

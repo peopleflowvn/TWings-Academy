@@ -26,7 +26,7 @@ import {
 import { ShareButtons } from './ShareButtons';
 import confetti from 'canvas-confetti';
 import { Course, Module, Lesson, Order, Instructor, CourseReview } from '../types';
-import { DEFAULT_COURSE_REVIEWS } from '../data/coursesData';
+import { api, ApiError, isBackendEnabled } from '../lib/api';
 
 interface CourseraCourseDetailPageProps {
   course: Course;
@@ -36,6 +36,8 @@ interface CourseraCourseDetailPageProps {
   onStartLesson: (course: Course, lesson: Lesson) => void;
   onNavigateClassroom: (course: Course) => void;
   onQuickRegisterSuccess?: (newOrder: Order) => void;
+  /** Pay now by VietQR (checkout modal), prefilled with what the visitor typed. */
+  onCheckout?: (course: Course, prefill: { customerName?: string; customerEmail?: string; customerPhone?: string }) => void;
 }
 
 export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> = ({
@@ -46,31 +48,19 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
   onStartLesson,
   onNavigateClassroom,
   onQuickRegisterSuccess,
+  onCheckout,
 }) => {
   const chapters = course.chapters || course.syllabus || [];
-  const defaultInstructor: Instructor = {
-    id: 'inst-default',
-    name: course.partner?.name || 'Giảng viên Chuyên gia MSB & TWINGS',
-    title: 'Giám đốc Đào tạo & Thực chiến',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
-    bio: 'Đội ngũ chuyên gia từ MSB, ROX Group và các viện nghiên cứu tài chính thiết kế và trực tiếp giảng dạy.',
-    credential: course.partner?.name || 'Chứng chỉ Quốc tế'
-  };
-
+  // Only real data: no placeholder instructor, sample reviews or generic objectives.
   const instructorList: Instructor[] = (course.instructors && course.instructors.length > 0)
     ? course.instructors
-    : (course.instructor ? [course.instructor] : [defaultInstructor]);
-
-  const reviewsList: CourseReview[] = (course.reviews && course.reviews.length > 0)
-    ? course.reviews
-    : DEFAULT_COURSE_REVIEWS;
-
-  const objectives = course.objectives || course.learningObjectives || [
-    'Nắm vững kiến thức nghiệp vụ thực chiến và cách xử lý hồ sơ tín dụng',
-    'Thực hành các công cụ chuyên ngành, quy trình thẩm định và kết nối nguồn vốn',
-    'Tự tin phỏng vấn tuyển dụng tại MSB và các ngân hàng thương mại cổ phần lớn'
-  ];
-
+    : (course.instructor ? [course.instructor] : []);
+  const reviewsList: CourseReview[] = course.reviews || [];
+  const reviewAverage = reviewsList.length
+    ? reviewsList.reduce((sum, r) => sum + (r.rating || 0), 0) / reviewsList.length
+    : 0;
+  const objectives = (course.objectives?.length ? course.objectives : course.learningObjectives) || [];
+  const upcoming = course.upcomingCohorts || [];
   const [openModuleIds, setOpenModuleIds] = useState<string[]>(
     chapters.map((m) => m.id)
   );
@@ -81,6 +71,10 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [area, setArea] = useState('Hà Nội');
+  const [cohortName, setCohortName] = useState('');
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [honeypot, setHoneypot] = useState('');
+  const [serverError, setServerError] = useState('');
   const [consultNote, setConsultNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registeredSuccess, setRegisteredSuccess] = useState(false);
@@ -103,21 +97,46 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
     if (!fullName.trim()) errs.fullName = 'Vui lòng nhập họ và tên';
     if (!email.trim() || !email.includes('@')) errs.email = 'Vui lòng nhập email hợp lệ';
     if (!phone.trim() || phone.length < 9) errs.phone = 'Vui lòng nhập số điện thoại chính xác';
-    if (!birthDate.trim()) errs.birthDate = 'Vui lòng nhập ngày sinh (dd/mm/yyyy)';
+    if (birthDate.trim() && !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(birthDate.trim())) errs.birthDate = 'Ngày sinh theo dạng dd/mm/yyyy';
+    if (!privacyConsent) errs.privacyConsent = 'Vui lòng đồng ý với chính sách xử lý dữ liệu cá nhân';
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleEmbeddedSubmit = (e: React.FormEvent) => {
+  const handleEmbeddedSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError('');
     if (!validateForm()) return;
 
-    setIsSubmitting(true);
-    const orderCode = `TW_${Math.floor(1000 + Math.random() * 9000)}_${fullName.replace(/\s+/g, '_')}`;
+    let registrationCode = `REG-${Date.now().toString(36).toUpperCase()}`;
+    if (isBackendEnabled()) {
+      setIsSubmitting(true);
+      try {
+        const res = await api.post<{ registrationCode: string }>('/public/registrations/', {
+          courseId: course.id,
+          customerName: fullName.trim(),
+          customerEmail: email.trim(),
+          customerPhone: phone.trim(),
+          birthDate: birthDate.trim() || null,
+          area,
+          batchCohort: cohortName,
+          consultNeed: consultNote,
+          source: 'Form Chi Tiết Khóa Học',
+          privacyConsent,
+          website: honeypot
+        });
+        registrationCode = res.registrationCode;
+      } catch (err) {
+        setServerError(err instanceof ApiError ? err.message : 'Không gửi được đăng ký, vui lòng thử lại.');
+        return;
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
 
     const newOrder: Order = {
-      id: `ord-${Date.now()}`,
-      orderCode,
+      id: registrationCode,
+      orderCode: registrationCode,
       courseId: course.id,
       courseTitle: course.title,
       amount: course.price,
@@ -125,48 +144,14 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
       status: 'pending',
       paymentMethod: 'vietqr',
       createdAt: new Date().toISOString(),
-
-      // CRM Details
-      registrationCode: orderCode,
       customerName: fullName,
-      birthDate,
-      gender: 'Nữ',
       customerPhone: phone,
       customerEmail: email,
-      area,
-      currentResidence: area,
-      campaignCode: 'DETAIL_PAGE_FORM',
-      source: 'Form Chi Tiết Khóa Học',
-      registeredAt: new Date().toLocaleString('vi-VN'),
-      reachedDate: new Date().toLocaleDateString('vi-VN'),
-      consultNeed: consultNote || 'Tư vấn chi tiết khóa học và lịch học',
-      interestedCourse: course.title,
-      pic: 'HuongNT22',
-      studyArea: area,
-      approachMethod: 'Gọi điện / Zalo',
-      interestLevel: 'Rất cao',
-      crmStatus: '1. Mới',
-      enrolledCourseName: course.title,
-      batchCohort: 'Khóa học mới nhất',
-      consultDetail: consultNote ? `Ghi chú: ${consultNote}` : 'Đăng ký trực tiếp từ trang chi tiết khóa học.',
-      tuitionFee: course.price,
-      totalReceivable: course.price,
-      paidAmountL1: 0,
-      paymentStatusDetail: 'Chưa thanh toán'
-    };
-
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setRegisteredSuccess(true);
-      if (onQuickRegisterSuccess) {
-        onQuickRegisterSuccess(newOrder);
-      }
-      confetti({
-        particleCount: 70,
-        spread: 60,
-        origin: { y: 0.6 }
-      });
-    }, 600);
+      crmStatus: '1. Mới'
+    } as Order;
+    setRegisteredSuccess(true);
+    onQuickRegisterSuccess?.(newOrder);
+    confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
   };
 
   return (
@@ -209,12 +194,16 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
 
             {/* Meta row */}
             <div className="flex flex-wrap items-center gap-4 text-xs text-blue-200 pt-1">
-              <span className="flex items-center gap-1 text-amber-400 font-bold">
-                <Star className="w-4 h-4 fill-current" />
-                <span>{course.rating.toFixed(1)}</span>
-                <span className="text-blue-300 font-normal">({course.reviewsCount.toLocaleString()} đánh giá)</span>
-              </span>
-              <span>·</span>
+              {reviewsList.length > 0 && (
+                <>
+                  <span className="flex items-center gap-1 text-amber-400 font-bold">
+                    <Star className="w-4 h-4 fill-current" />
+                    <span>{reviewAverage.toFixed(1)}</span>
+                    <span className="text-blue-300 font-normal">({reviewsList.length} đánh giá)</span>
+                  </span>
+                  <span>·</span>
+                </>
+              )}
               <span className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
                 <span>{course.duration}</span>
@@ -240,6 +229,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
           {/* LEFT COLUMN (8 COLS): Syllabus, Objectives, Instructor, Video Trial */}
           <div className="lg:col-span-7 xl:col-span-8 space-y-8">
             {/* YouTube Video Sample Trial Embed */}
+            {course.youtubeVideoId && (
             <div className="bg-slate-900 rounded-3xl overflow-hidden shadow-md border border-slate-800">
               <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between text-xs text-white">
                 <div className="flex items-center gap-2">
@@ -252,14 +242,16 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
               </div>
               <div className="aspect-video w-full">
                 <iframe
-                  src={`https://www.youtube.com/embed/${course.youtubeVideoId || 'sal78ACtGTc'}?rel=0&modestbranding=1`}
+                  src={`https://www.youtube-nocookie.com/embed/${course.youtubeVideoId}?rel=0&modestbranding=1`}
                   title={course.title}
+                  loading="lazy"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                   className="w-full h-full border-0"
                 />
               </div>
             </div>
+            )}
 
             {/* 1. Giới thiệu tổng quan khóa học */}
             {(course.overview || course.description || course.subtitle) && (
@@ -281,6 +273,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
             )}
 
             {/* 2. What you'll learn */}
+            {objectives.length > 0 && (
             <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
               <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-500" />
@@ -298,6 +291,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                 ))}
               </div>
             </section>
+            )}
 
             {/* 3. Detailed Curriculum Syllabus */}
             <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-5">
@@ -384,6 +378,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
             </section>
 
             {/* 4. Đội ngũ Giảng viên thực chiến (Multi-Instructor Team) */}
+            {instructorList.length > 0 && (
             <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
@@ -391,9 +386,6 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                     <Award className="w-5 h-5 text-amber-500" />
                     <span>Đội ngũ Giảng viên & Chuyên gia Thực chiến ({instructorList.length})</span>
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Các Giám đốc Khối, Giám đốc Vùng và Chuyên gia từ Ngân hàng MSB & Tập đoàn ROX Group
-                  </p>
                 </div>
               </div>
 
@@ -421,20 +413,18 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                       <p className="text-xs text-slate-600 leading-relaxed pt-1">{inst.bio}</p>
                       
                       <div className="flex items-center gap-4 text-[11px] text-slate-500 pt-1 font-mono">
-                        <span className="flex items-center gap-1 text-amber-500 font-bold">
-                          <Star className="w-3.5 h-3.5 fill-current" />
-                          <span>{inst.rating ? inst.rating.toFixed(1) : '5.0'}</span>
-                        </span>
-                        <span>·</span>
-                        <span>{inst.studentsCount ? `${inst.studentsCount.toLocaleString()}+ học viên đã theo học` : '3,000+ học viên'}</span>
+                        {inst.yearsOfExperience ? <span>{inst.yearsOfExperience} năm kinh nghiệm</span> : null}
+                        {inst.studentsCount ? <span>{inst.studentsCount.toLocaleString('vi-VN')}+ học viên đã theo học</span> : null}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             </section>
+            )}
 
-            {/* 5. ⭐ ĐÁNH GIÁ & REVIEW TỪ CỰU HỌC VIÊN */}
+            {/* 5. ⭐ ĐÁNH GIÁ & REVIEW TỪ CỰU HỌC VIÊN (only real reviews) */}
+            {reviewsList.length > 0 && (
             <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                 <div>
@@ -442,15 +432,13 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                     <Star className="w-5 h-5 text-amber-500 fill-current" />
                     <span>Review & Đánh Giá Của Cựu Học Viên ({reviewsList.length})</span>
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Trải nghiệm thực tế từ các học viên hiện đang công tác tại MSB và các ngân hàng lớn
-                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">Cảm nhận của học viên đã học khóa này</p>
                 </div>
 
                 {/* Rating score badge */}
                 <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-2 rounded-2xl shrink-0">
                   <div className="text-2xl font-black text-amber-600 font-mono">
-                    {course.rating.toFixed(1)}
+                    {reviewAverage.toFixed(1)}
                   </div>
                   <div className="text-xs">
                     <div className="flex items-center text-amber-500">
@@ -459,7 +447,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                       ))}
                     </div>
                     <div className="text-[10px] text-slate-500 font-bold mt-0.5">
-                      100% Cựu học viên hài lòng
+                      {reviewsList.length} đánh giá
                     </div>
                   </div>
                 </div>
@@ -511,6 +499,8 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
               </div>
             </section>
 
+            )}
+
             {/* 6. Notice regarding LMS delivery */}
             <div className="bg-purple-50 p-5 rounded-3xl border border-purple-200 text-xs text-purple-900 space-y-1.5">
               <div className="font-bold flex items-center gap-1.5 text-sm">
@@ -518,7 +508,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                 <span>Quy trình đào tạo & bàn giao tài khoản học tập:</span>
               </div>
               <p className="text-xs text-purple-800 leading-relaxed">
-                Khóa học không phải chỉ là tự học video đơn thuần. Học viên sẽ được học trên hệ thống LMS chuyên biệt của viện đào tạo. Sau khi hoàn tất đăng ký, Ban Đào tạo sẽ làm việc riêng 1-1 với từng học viên để cấp tài khoản cá nhân, lịch cố vấn chuyên môn và kết nối phỏng vấn tuyển dụng.
+                Sau khi thanh toán (hoặc đóng kỳ trả góp đầu), hệ thống tự tạo tài khoản trên TWings LMS và gửi email hướng dẫn vào học. Với khóa học theo đợt, bạn được xếp vào lớp của đợt khai giảng đã chọn. Lịch học, học phí và chứng chỉ luôn xem được trong Tài khoản học viên.
               </p>
             </div>
           </div>
@@ -550,7 +540,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                       Đăng Ký Thành Công!
                     </h4>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                      Cảm ơn <strong>{fullName}</strong>. Ban tuyển sinh TWings Academy sẽ liên hệ qua SĐT <strong>{phone}</strong> trong vòng 15 phút để tư vấn chi tiết khóa học.
+                      Cảm ơn <strong>{fullName}</strong>. Ban tuyển sinh TWings Academy sẽ liên hệ qua SĐT <strong>{phone}</strong> trong giờ làm việc để tư vấn chi tiết khóa học.
                     </p>
                     <button
                       onClick={() => setRegisteredSuccess(false)}
@@ -622,7 +612,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                     </div>
 
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">Ngày sinh * (dd/mm/yyyy)</label>
+                      <label className="font-bold text-slate-700 block mb-1">Ngày sinh (không bắt buộc, dd/mm/yyyy)</label>
                       <input
                         type="text"
                         value={birthDate}
@@ -649,6 +639,24 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                       </select>
                     </div>
 
+                    {upcoming.length > 0 && (
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-1">Đợt khai giảng mong muốn</label>
+                        <select
+                          value={cohortName}
+                          onChange={(e) => setCohortName(e.target.value)}
+                          className="w-full p-2.5 border border-slate-300 rounded-xl bg-slate-50 text-xs font-semibold"
+                        >
+                          <option value="">Chưa chọn – cần tư vấn</option>
+                          {upcoming.map((c) => (
+                            <option key={c.name} value={c.name}>
+                              {c.name}{c.startDate ? ` – ${new Date(`${c.startDate}T00:00:00`).toLocaleDateString('vi-VN')}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">Khóa học quan tâm *</label>
                       <input
@@ -665,10 +673,24 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                         rows={2}
                         value={consultNote}
                         onChange={(e) => setConsultNote(e.target.value)}
-                        placeholder="VD: Cần hỗ trợ thực tập và chuẩn bị phỏng vấn tại MSB..."
+                        placeholder="VD: Muốn học buổi tối, cần tư vấn trả góp..."
                         className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 text-xs"
                       />
                     </div>
+
+                    {/* Honeypot: hidden from people, filled in by bots */}
+                    <input type="text" name="website" value={honeypot} onChange={(e) => setHoneypot(e.target.value)}
+                      tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
+
+                    <label className="flex items-start gap-2 text-[11px] text-slate-600 cursor-pointer">
+                      <input type="checkbox" checked={privacyConsent} onChange={(e) => setPrivacyConsent(e.target.checked)} className="mt-0.5" />
+                      <span>
+                        Tôi đồng ý để TWings Academy xử lý dữ liệu cá nhân nhằm tư vấn và ghi danh theo{' '}
+                        <a href="/chinh-sach-bao-mat" target="_blank" rel="noopener" className="text-[#0073C1] underline">Chính sách bảo mật</a>.
+                      </span>
+                    </label>
+                    {formErrors.privacyConsent && <p className="text-[10px] text-red-500 -mt-2">{formErrors.privacyConsent}</p>}
+                    {serverError && <p className="text-[11px] text-red-600 font-semibold">{serverError}</p>}
 
                     <button
                       type="submit"
@@ -682,10 +704,14 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                     <div className="text-center pt-1">
                       <button
                         type="button"
-                        onClick={() => onEnrollCourse(course)}
+                        onClick={() =>
+                          onCheckout
+                            ? onCheckout(course, { customerName: fullName, customerEmail: email, customerPhone: phone })
+                            : onEnrollCourse(course)
+                        }
                         className="text-[11px] text-[#0073C1] font-bold hover:underline cursor-pointer"
                       >
-                        Hoặc Quét VietQR Thanh Toán Trực Tiếp →
+                        Hoặc thanh toán ngay bằng VietQR →
                       </button>
                     </div>
                   </form>
@@ -693,21 +719,40 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
               </div>
             </div>
 
-            {/* Quick Guarantees Card */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3 text-xs text-slate-600">
-              <div className="flex items-center gap-2.5">
-                <Building2 className="w-4 h-4 text-[#0073C1] shrink-0" />
-                <span>Bảo lãnh cơ hội thực tập & tuyển dụng tại MSB</span>
+            {/* Upcoming intakes */}
+            {upcoming.length > 0 && (
+              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3 text-xs">
+                <div className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[#0073C1]" /> Lịch khai giảng
+                </div>
+                {upcoming.map((c) => (
+                  <div key={c.name} className="flex items-start justify-between gap-3 border-t border-slate-100 pt-2">
+                    <div>
+                      <div className="font-bold text-slate-900">{c.name}</div>
+                      <div className="text-slate-500">
+                        {c.startDate ? new Date(`${c.startDate}T00:00:00`).toLocaleDateString('vi-VN') : 'Sắp công bố ngày'}
+                        {c.location ? ` · ${c.location}` : ''}
+                      </div>
+                    </div>
+                    <span className={`shrink-0 font-bold ${c.seatsLeft <= 5 ? 'text-red-600' : 'text-emerald-700'}`}>
+                      {c.status === 'opening' ? (c.seatsLeft > 0 ? `Còn ${c.seatsLeft} chỗ` : 'Hết chỗ') : 'Sắp mở'}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-2.5">
-                <Award className="w-4 h-4 text-amber-500 shrink-0" />
-                <span>Chứng nhận hoàn thành có giá trị trong hồ sơ nhân sự</span>
+            )}
+
+            {/* What the course itself guarantees (edited per course in /app) */}
+            {(course.guarantees?.length ?? 0) > 0 && (
+              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3 text-xs text-slate-600">
+                {course.guarantees!.map((g) => (
+                  <div key={g} className="flex items-center gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-[#0073C1] shrink-0" />
+                    <span>{g}</span>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-2.5">
-                <User className="w-4 h-4 text-purple-600 shrink-0" />
-                <span>Cố vấn 1-1 cùng Giám đốc Khối ngân hàng</span>
-              </div>
-            </div>
+            )}
           </div>
 
         </div>

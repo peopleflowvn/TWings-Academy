@@ -67,6 +67,19 @@ if (get_string_manager()->translation_exists('vi', false)) {
     set_config('lang', 'vi');
 }
 
+// ---------------------------------------------------------------- site policy
+// Moodle's own consent step: on first sign-in learners must agree to the TWings privacy policy
+// (published on the website, the same text for site and LMS).
+$policyhosts = array_values(array_filter(array_map('trim', explode(',', getenv('MOODLE_HOSTS') ?: ''))));
+if ($policyhosts) {
+    $policyurl = 'https://' . $policyhosts[0] . '/chinh-sach-bao-mat';
+    if (get_config('core', 'sitepolicy') !== $policyurl) {
+        set_config('sitepolicy', $policyurl);
+        set_config('sitepolicyguest', $policyurl);
+        $out('site policy: ' . $policyurl);
+    }
+}
+
 // ---------------------------------------------------------------- integration role + user
 $capabilities = [
     'webservice/rest:use',
@@ -125,6 +138,10 @@ if (!$wsuser) {
     $out('created web service user twings_ws');
 }
 role_assign($roleid, $wsuser->id, $syscontext->id);
+// The site policy (below) must never block the integration account's web service calls.
+if (empty($wsuser->policyagreed)) {
+    $DB->set_field('user', 'policyagreed', 1, ['id' => $wsuser->id]);
+}
 
 // ---------------------------------------------------------------- external service + token
 $functions = [
@@ -139,6 +156,8 @@ $functions = [
     'enrol_manual_unenrol_users', 'core_user_update_users', 'core_role_assign_roles',
     // Intakes: copy the template course, set its dates
     'core_course_duplicate_course', 'core_course_update_courses',
+    // Public syllabus on the website: section and activity names of the template course
+    'core_course_get_contents',
 ];
 $service = $DB->get_record('external_services', ['shortname' => 'twings']);
 if (!$service) {

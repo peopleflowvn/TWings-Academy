@@ -73,8 +73,34 @@ class CourseSerializer(serializers.ModelSerializer):
         return _validate_syllabus(value)
 
 
+def upcoming_cohorts(course) -> list[dict]:
+    """Intakes a visitor can still join: opening or upcoming, not started yet (or no date set)."""
+    from django.db.models import Count, Q
+    from django.utils import timezone
+
+    today = timezone.localdate()
+    rows = (
+        course.cohorts.filter(status__in=("opening", "upcoming"))
+        .filter(Q(start_date__isnull=True) | Q(start_date__gte=today))
+        .annotate(taken=Count("orders", filter=Q(orders__learning_access=True)))
+        .order_by("start_date")[:4]
+    )
+    return [
+        {
+            "name": c.name,
+            "start_date": c.start_date.isoformat() if c.start_date else None,
+            "registration_deadline": c.registration_deadline.isoformat() if c.registration_deadline else None,
+            "location": c.location,
+            "status": c.status,
+            "seats_left": max(c.capacity - c.taken, 0),
+        }
+        for c in rows
+    ]
+
+
 class PublicCourseSerializer(serializers.ModelSerializer):
     instructors = PublicInstructorSerializer(many=True, read_only=True)
+    upcoming_cohorts = serializers.SerializerMethodField()
     instructor = serializers.SerializerMethodField()
     partner = PartnerSerializer(read_only=True)
     syllabus = serializers.SerializerMethodField()
@@ -83,6 +109,9 @@ class PublicCourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         exclude = ["is_published", "sort_order", "created_at", "updated_at"]
+
+    def get_upcoming_cohorts(self, obj):
+        return upcoming_cohorts(obj)
 
     def get_instructor(self, obj):
         first = next(iter(obj.instructors.all()), None)

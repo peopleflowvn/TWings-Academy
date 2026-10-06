@@ -147,7 +147,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
                 Khóa Học & Chương Trình Đào Tạo
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Tìm kiếm chương trình phù hợp từ Google, Stanford, IBM, DeepLearning.AI và hơn 350+ đối tác hàng đầu.
+                Khóa học thực chiến và chương trình trọn gói theo lộ trình nghề nghiệp, có lịch khai giảng và hỗ trợ trả góp.
               </p>
             </div>
 

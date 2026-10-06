@@ -9,7 +9,7 @@ same metadata when the route changes. Also serves /sitemap.xml and /robots.txt.
 
 Routes (keep in step with frontend/src/lib/routes.ts):
   /  /khoa-hoc  /khoa-hoc/<slug>  /chuong-trinh  /chuong-trinh/<slug>  /ve-chung-toi  /tin-tuc
-  /tin-tuc/<slug>  (+ /tai-khoan, never indexed)
+  /tin-tuc/<slug>  /chinh-sach-bao-mat  /dieu-khoan  (+ /tai-khoan, never indexed)
 """
 
 import json
@@ -335,6 +335,19 @@ def _article(seo, slug) -> Page:
     )
 
 
+def _legal(key: str, path: str) -> Page:
+    from .legal import legal_page
+
+    page = legal_page(key)
+    return Page(
+        path=path,
+        title=f"{page['title']} | {SITE_NAME}",
+        description=plain(page["html"]),
+        heading=page["title"],
+        body_html=page["html"],
+    )
+
+
 def _breadcrumb(items) -> dict:
     return {
         "@context": "https://schema.org",
@@ -368,6 +381,10 @@ def resolve(path: str) -> Page:
             return _news(seo)
         case ["tin-tuc", slug]:
             return _article(seo, slug)
+        case ["chinh-sach-bao-mat"]:
+            return _legal("privacy", "/chinh-sach-bao-mat")
+        case ["dieu-khoan"]:
+            return _legal("terms", "/dieu-khoan")
         case ["tai-khoan"]:
             return Page(path="/tai-khoan", title=f"Tài khoản học viên | {SITE_NAME}", noindex=True)
     raise Http404
@@ -437,7 +454,8 @@ def page_meta(request):
 @require_GET
 def sitemap(request):
     base = base_url()
-    urls = [(f"{base}{p}", None) for p in ("/", "/khoa-hoc", "/ve-chung-toi", "/tin-tuc")]
+    pages = ("/", "/khoa-hoc", "/ve-chung-toi", "/tin-tuc", "/chinh-sach-bao-mat", "/dieu-khoan")
+    urls = [(f"{base}{p}", None) for p in pages]
     if _programs().exists():
         urls.append((f"{base}/chuong-trinh", None))
     urls += [(f"{base}/khoa-hoc/{c.slug}", c.updated_at) for c in _courses()]

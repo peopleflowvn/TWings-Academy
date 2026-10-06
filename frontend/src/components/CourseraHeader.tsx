@@ -9,6 +9,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useSiteLogo } from '../lib/siteSeo';
+import { routePath } from '../lib/routes';
 
 interface CourseraHeaderProps {
   currentView: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about';
@@ -29,6 +30,13 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const logoUrl = useSiteLogo();
+  // Real links (href = the page's URL: new tab, crawlers); a plain click is routed inside the SPA.
+  const navClick = (view: Parameters<typeof onNavigate>[0], closeMenu = false) => (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    if (closeMenu) setMobileMenuOpen(false);
+    onNavigate(view);
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
@@ -36,8 +44,9 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
         {/* Left Section: Logo */}
         <div className="flex items-center gap-4 sm:gap-6">
           {/* Logo Brand: TWINGS ACADEMY */}
-          <button
-            onClick={() => onNavigate('home')}
+          <a
+            href={routePath('home')}
+            onClick={navClick('home')}
             className="flex items-center gap-2.5 cursor-pointer focus:outline-none group text-left"
             title="Trang Chủ TWings Academy"
           >
@@ -63,7 +72,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             </div>
             </>
             )}
-          </button>
+          </a>
         </div>
 
         {/* Center: Search Bar */}
@@ -94,33 +103,36 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
 
         {/* Right Navigation */}
         <div className="flex items-center gap-3 sm:gap-5 text-xs font-semibold text-slate-700">
-          <button
-            onClick={() => onNavigate('catalog')}
+          <a
+            href={routePath('catalog')}
+            onClick={navClick('catalog')}
             className={`hidden lg:inline hover:text-[#0073C1] transition-colors cursor-pointer ${
               currentView === 'catalog' ? 'text-[#0073C1] font-bold' : ''
             }`}
           >
             Khóa học
-          </button>
+          </a>
 
-          <button
-            onClick={() => onNavigate('about')}
+          <a
+            href={routePath('about')}
+            onClick={navClick('about')}
             className={`hidden lg:inline hover:text-[#0073C1] transition-colors cursor-pointer ${
               currentView === 'about' ? 'text-[#0073C1] font-bold' : ''
             }`}
           >
             Về chúng tôi
-          </button>
+          </a>
 
-          <button
-            onClick={() => onNavigate('articles')}
+          <a
+            href={routePath('articles')}
+            onClick={navClick('articles')}
             className={`hidden lg:flex items-center gap-1.5 hover:text-[#0073C1] transition-colors cursor-pointer ${
               currentView === 'articles' ? 'text-[#0073C1] font-bold' : ''
             }`}
           >
             <Newspaper className="w-3.5 h-3.5" />
             <span>Tin tức & Cẩm nang</span>
-          </button>
+          </a>
 
           {/* Learners: the Moodle LMS (full page, served at /learn on the same domain) */}
           <a
@@ -143,12 +155,13 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           </button>
 
           {/* Join for Free Button */}
-          <button
-            onClick={() => onNavigate('catalog')}
+          <a
+            href={routePath('catalog')}
+            onClick={navClick('catalog')}
             className="px-4 sm:px-5 py-2.5 bg-[#0073C1] hover:bg-[#005FA0] text-white font-bold text-xs rounded-xl transition-colors cursor-pointer whitespace-nowrap shadow-xs"
           >
             Xem khóa học
-          </button>
+          </a>
 
           {/* Mobile menu button */}
           <button
@@ -184,48 +197,40 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             </button>
           </form>
 
-          <button
-            onClick={() => {
-              setMobileMenuOpen(false);
-              onNavigate('home');
-            }}
-            className="w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50"
+          <a
+            href={routePath('home')}
+            onClick={navClick('home', true)}
+            className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50"
           >
             Trang Chủ
-          </button>
-          <button
-            onClick={() => {
-              setMobileMenuOpen(false);
-              onNavigate('catalog');
-            }}
-            className="w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-[#0073C1]"
+          </a>
+          <a
+            href={routePath('catalog')}
+            onClick={navClick('catalog', true)}
+            className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-[#0073C1]"
           >
             Khóa Học & Chương Trình
-          </button>
-          <button
-            onClick={() => {
-              setMobileMenuOpen(false);
-              onNavigate('about');
-            }}
-            className="w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50"
+          </a>
+          <a
+            href={routePath('about')}
+            onClick={navClick('about', true)}
+            className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50"
           >
             Về Chúng Tôi
-          </button>
-          <button
-            onClick={() => {
-              setMobileMenuOpen(false);
-              onNavigate('articles');
-            }}
-            className="w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50"
+          </a>
+          <a
+            href={routePath('articles')}
+            onClick={navClick('articles', true)}
+            className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50"
           >
             Tin Tức & Cẩm Nang Nghề Nghiệp
-          </button>
+          </a>
           <button
             onClick={() => {
               setMobileMenuOpen(false);
               onOpenConsultation();
             }}
-            className="w-full text-left py-2 px-3 rounded-lg hover:bg-blue-50 text-[#0073C1] font-bold"
+            className="block w-full text-left py-2 px-3 rounded-lg hover:bg-blue-50 text-[#0073C1] font-bold"
           >
             Đăng Ký Tư Vấn Khóa Học
           </button>

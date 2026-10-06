@@ -274,6 +274,12 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 - Sau khi đổi ảnh/tiêu đề một trang đã từng được chia sẻ, Facebook giữ bản cũ trong cache: dùng
   https://developers.facebook.com/tools/debug/ → "Scrape Again".
 
+- Trang pháp lý `/chinh-sach-bao-mat`, `/dieu-khoan`: bản mặc định trong `backend/apps/cms/legal.py`
+  (cần pháp chế rà soát), thay được trong /app → Cài đặt SEO website. Moodle dùng cùng trang này làm
+  "site policy" (học viên đồng ý khi đăng nhập LMS lần đầu; tài khoản tích hợp `twings_ws` được miễn).
+- Đề cương công khai lấy từ Moodle: /app → Học viên & tiến độ → "Đề cương → web" (tên chương / hoạt động
+  của khóa mẫu, không lấy nội dung bài; điền mô tả khóa nếu trống).
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị

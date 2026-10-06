@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Course, Module, Lesson, Instructor, CourseReview } from '../../types';
-import { REAL_INSTRUCTORS, DEFAULT_COURSE_REVIEWS } from '../../data/coursesData';
+import { api, isBackendEnabled, Paginated } from '../../lib/api';
 
 interface CMSCoursesTabProps {
   courses: Course[];
@@ -57,6 +57,15 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
   // Editable buffer for the selected course
   const currentCourse = courses.find((c) => c.id === selectedCourseId) || courses[0];
   const [editForm, setEditForm] = useState<Course | null>(null);
+  // Instructors managed on the "Giảng viên" page: the only ones a course can be linked to (saved by id).
+  const [staffInstructors, setStaffInstructors] = useState<Instructor[] | null>(null);
+  useEffect(() => {
+    if (!isBackendEnabled()) return;
+    api
+      .get<Paginated<Instructor> | Instructor[]>('/staff/instructors/?pageSize=200')
+      .then((res) => setStaffInstructors(Array.isArray(res) ? res : res.results))
+      .catch(() => setStaffInstructors(null));
+  }, []);
 
   // Sync edit form whenever selected course changes
   useEffect(() => {
@@ -102,8 +111,15 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
       youtubeTrialUrl: editForm.youtubeVideoId 
         ? `https://www.youtube.com/watch?v=${extractYouTubeId(editForm.youtubeVideoId)}`
         : editForm.youtubeTrialUrl,
-      instructor: editForm.instructors?.[0] || editForm.instructor || REAL_INSTRUCTORS[0],
+      instructor: editForm.instructors?.[0] || editForm.instructor,
     };
+    // Persist the course's instructors (the API links them by id); unknown entries are ignored.
+    if (staffInstructors) {
+      const known = new Set(staffInstructors.map((i) => i.id));
+      (cleaned as Course & { instructorIds?: string[] }).instructorIds = (editForm.instructors || [])
+        .map((i) => i.id)
+        .filter((id) => known.has(id));
+    }
 
     onUpdateCourse(cleaned);
     setSaveSuccessMsg(true);
@@ -130,18 +146,18 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
       locationText: 'Hệ thống LMS chuyên biệt + Cố vấn 1-1 trực tiếp tại ROX Tower',
       price: 6990000,
       originalPrice: 8900000,
-      rating: 5.0,
-      reviewsCount: 45,
+      rating: 0,
+      reviewsCount: 0,
       studentsCount: 320,
       duration: '40 giờ học thực chiến',
-      lessonsCount: 24,
+      lessonsCount: 0,
       badgeType: 'new',
       thumbnail: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80',
-      youtubeVideoId: 'sal78ACtGTc',
-      youtubeTrialUrl: 'https://www.youtube.com/watch?v=sal78ACtGTc',
-      instructor: REAL_INSTRUCTORS[0],
-      instructors: [REAL_INSTRUCTORS[0], REAL_INSTRUCTORS[1]],
-      reviews: DEFAULT_COURSE_REVIEWS,
+      // No placeholder video, instructors or reviews: the public page only shows what staff fill in.
+      youtubeVideoId: '',
+      youtubeTrialUrl: '',
+      instructors: [],
+      reviews: [], // only real learner reviews are shown publicly
       guarantees: [
         'Bảo lãnh thực tập & phỏng vấn tuyển dụng tại MSB',
         'Cấp tài khoản LMS chuyên biệt kèm 1-1 cùng Giám đốc Khối',
@@ -818,10 +834,13 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
               {/* Quick Pick from MSB standard instructors */}
               <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2">
                 <span className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">
-                  Chọn nhanh giảng viên tiêu biểu MSB để thêm vào khóa:
+                  Thêm giảng viên vào khóa (danh sách từ trang “Giảng viên”; sửa hồ sơ giảng viên tại trang đó):
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  {REAL_INSTRUCTORS.map((realInst) => (
+                  {(staffInstructors || []).length === 0 && (
+                    <span className="text-slate-500">Chưa có giảng viên nào – thêm tại trang Giảng viên.</span>
+                  )}
+                  {(staffInstructors || []).map((realInst) => (
                     <button
                       key={realInst.id}
                       type="button"
@@ -834,7 +853,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                       className="px-2.5 py-1 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-[#0073C1] rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-2xs"
                     >
                       <img src={realInst.avatar} alt="" className="w-5 h-5 rounded-full object-cover" />
-                      <span>{realInst.name} ({realInst.title.split(' ')[0]})</span>
+                      <span>{realInst.name}{realInst.title ? ` (${realInst.title.split(' ')[0]})` : ''}</span>
                       <Plus className="w-3 h-3 text-slate-400" />
                     </button>
                   ))}
@@ -860,10 +879,6 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                         type="button"
                         onClick={() => {
                           const current = editForm.instructors || (editForm.instructor ? [editForm.instructor] : []);
-                          if (current.length <= 1) {
-                            alert('Khóa học cần có ít nhất 1 giảng viên chính.');
-                            return;
-                          }
                           const updated = current.filter((_, i) => i !== idx);
                           setEditForm({ ...editForm, instructors: updated, instructor: updated[0] });
                         }}

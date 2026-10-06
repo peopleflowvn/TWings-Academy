@@ -68,7 +68,7 @@ export const CourseraArticlesPage: React.FC<CourseraArticlesPageProps> = ({
                 onClick={() => onSelectArticle(featuredArticle)}
                 className="lg:col-span-7 h-72 lg:h-auto relative overflow-hidden bg-slate-100 cursor-pointer group"
               >
-                <img
+                <img loading="lazy" decoding="async"
                   src={featuredArticle.featuredImage || 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80'}
                   alt={featuredArticle.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -185,7 +185,7 @@ export const CourseraArticlesPage: React.FC<CourseraArticlesPageProps> = ({
                 className="h-48 relative overflow-hidden bg-slate-100 cursor-pointer"
                 onClick={() => onSelectArticle(art)}
               >
-                <img
+                <img loading="lazy" decoding="async"
                   src={art.featuredImage}
                   alt={art.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

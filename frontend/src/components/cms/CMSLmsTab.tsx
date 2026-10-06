@@ -70,6 +70,23 @@ export const CMSLmsTab: React.FC = () => {
     { paid: 0, students: 0, unmapped: 0, waiting: 0 }
   );
 
+  const importOutline = async (courseId: string, title: string) => {
+    if (!window.confirm(`Thay đề cương công khai của "${title}" bằng các chương / hoạt động của khóa mẫu trên Moodle? Bài học thử miễn phí được giữ lại.`)) return;
+    setProvisioning(courseId);
+    setError('');
+    try {
+      const res = await lmsApi.importOutline(courseId);
+      window.alert(
+        `Đã cập nhật đề cương trên website: ${res.modules} chương, ${res.lessons} hoạt động` +
+          (res.descriptionFilled ? ', và lấy mô tả khóa từ Moodle.' : '.')
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không lấy được đề cương từ Moodle');
+    } finally {
+      setProvisioning(null);
+    }
+  };
+
   const provision = async (intake: LmsIntakeRow) => {
     setProvisioning(intake.id);
     setError('');
@@ -181,6 +198,12 @@ export const CMSLmsTab: React.FC = () => {
                       <button type="button" className="hover:underline cursor-pointer" onClick={() => openInMoodle(r.moodle!.links.course)}>Khóa</button>
                       <button type="button" className="hover:underline cursor-pointer" onClick={() => openInMoodle(r.moodle!.links.grades)}>Sổ điểm</button>
                       <button type="button" className="hover:underline cursor-pointer" onClick={() => openInMoodle(r.moodle!.links.completion)}>Tiến độ</button>
+                      {canManage && (
+                        <button type="button" disabled={provisioning !== null} title="Đưa tên chương & hoạt động của khóa mẫu lên trang khóa học công khai"
+                          className="hover:underline cursor-pointer disabled:opacity-50" onClick={() => importOutline(r.courseId, r.title)}>
+                          {provisioning === r.courseId ? 'Đang lấy…' : 'Đề cương → web'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </td>

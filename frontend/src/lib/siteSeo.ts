@@ -90,6 +90,28 @@ export async function applyPageMeta(path: string): Promise<void> {
   setMeta('property', 'og:site_name', meta.siteName);
 }
 
+/** The SEO settings document (contact details, channels...), or null while loading / offline. */
+export function useSiteSeo(): Partial<SiteSEOSettings> | null {
+  const [seo, setSeo] = useState<Partial<SiteSEOSettings> | null>(null);
+  useEffect(() => {
+    loadSiteSeo().then(setSeo);
+  }, []);
+  return seo;
+}
+
+/** Digits of a phone number ("0843 314 382 (Ms. Hường)" -> "0843314382"). */
+export const phoneDigits = (text?: string) => (text || '').replace(/\(.*?\)/g, '').replace(/[^\d+]/g, '');
+
+/** zalo.me link from a phone number or an existing Zalo link. */
+export function zaloLink(value?: string): string {
+  if (!value) return '';
+  if (/^https:\/\/(zalo\.me|oa\.zalo\.me)\//.test(value)) return value;
+  const digits = phoneDigits(value);
+  return digits ? `https://zalo.me/${digits}` : '';
+}
+
+export { safeUrl };
+
 /** Uploaded header logo, or '' to keep the built-in TWings wordmark. */
 export function useSiteLogo(): string {
   const [logo, setLogo] = useState('');

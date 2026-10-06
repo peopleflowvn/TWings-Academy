@@ -10,6 +10,8 @@ import { isBackendEnabled } from '../lib/api';
 import { commerceApi, formatVND, installmentPreview, Program } from '../lib/commerce';
 import { CourseraCheckoutModal } from '../components/CourseraCheckoutModal';
 import { AccountPage } from './AccountPage';
+import { LegalPage } from './LegalPage';
+import { FloatingContact } from '../components/FloatingContact';
 import { applyPageMeta } from '../lib/siteSeo';
 
 const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNode }> = ({ active, children }) => {
@@ -39,12 +41,15 @@ const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNod
         </div>
       </header>
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-8">{children}</main>
+      <FloatingContact />
       <footer className="border-t border-slate-200 bg-white text-xs text-slate-500">
         <div className="max-w-6xl mx-auto px-4 py-5 flex flex-wrap gap-4 justify-between">
           <span>© TWings Academy</span>
           <span className="flex gap-4">
             <a href="/khoa-hoc" className="hover:text-slate-800">Khóa học & chương trình</a>
             <a href="/tai-khoan" className="hover:text-slate-800">Tài khoản học viên</a>
+            <a href="/dieu-khoan" className="hover:text-slate-800">Điều khoản</a>
+            <a href="/chinh-sach-bao-mat" className="hover:text-slate-800">Chính sách bảo mật</a>
           </span>
         </div>
       </footer>
@@ -193,6 +198,9 @@ export default function StorefrontApp() {
   const programMatch = path.match(/^\/chuong-trinh\/([a-z0-9-]+)$/i);
   if (path === '/tai-khoan') {
     return <Shell active="account"><AccountPage /></Shell>;
+  }
+  if (path === '/chinh-sach-bao-mat' || path === '/dieu-khoan') {
+    return <Shell active="account"><LegalPage kind={path === '/dieu-khoan' ? 'terms' : 'privacy'} /></Shell>;
   }
   return (
     <Shell active="programs">{programMatch ? <ProgramDetail slug={programMatch[1]} /> : <ProgramsList />}</Shell>

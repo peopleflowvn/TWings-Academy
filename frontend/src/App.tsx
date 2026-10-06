@@ -38,6 +38,7 @@ import { CourseraAboutPage } from './components/CourseraAboutPage';
 import { CourseraCheckoutModal, CheckoutPrefill } from './components/CourseraCheckoutModal';
 import { RegistrationModal } from './components/RegistrationModal';
 import { YouTubeTrialModal } from './components/YouTubeTrialModal';
+import { FloatingContact } from './components/FloatingContact';
 
 export default function App() {
   // Every page has its own URL (/khoa-hoc/<slug>, /tin-tuc/<slug>, /ve-chung-toi...): see lib/routes.ts.
@@ -254,14 +255,18 @@ export default function App() {
           isEnrolled={enrolledCourseIds.includes(selectedCourse.id)}
           onBack={() => handleNavigate('catalog')}
           onEnrollCourse={(c) => handleOpenRegistration(c)}
+          onCheckout={(c, prefill) => {
+            setCheckoutPrefill(prefill);
+            setCheckoutCourse(c);
+          }}
           onQuickRegisterSuccess={handleRegistrationSuccess}
           onStartLesson={(c, l) => {
-            const vidId = l.youtubeId || c.youtubeVideoId || 'sal78ACtGTc';
-            handleOpenYouTubeTrial(vidId, `${c.title} - ${l.title}`, c);
+            const vidId = l.youtubeId || c.youtubeVideoId;
+            if (vidId) handleOpenYouTubeTrial(vidId, `${c.title} - ${l.title}`, c);
+            else handleOpenRegistration(c);
           }}
-          onNavigateClassroom={(c) => {
-            const vidId = c.youtubeVideoId || 'sal78ACtGTc';
-            handleOpenYouTubeTrial(vidId, c.title, c);
+          onNavigateClassroom={() => {
+            window.location.href = '/learn/';
           }}
         />
       )}
@@ -301,6 +306,10 @@ export default function App() {
       {/* 5. Subpage: Coursera Official Homepage */}
       {currentView === 'home' && (
         <main className="flex-1">
+          {/* The page's main heading for search engines and screen readers (the banners carry the visuals). */}
+          <h1 className="sr-only">
+            {cmsSections.about?.title || 'TWings Academy'} – Đào tạo thực chiến nghiệp vụ ngân hàng, tài chính và tuyển sinh nhân sự
+          </h1>
           {/* Horizontal Scrolling Hero Banners (User: "có thể có nhiều hơn 2 và cần chạy cuộn ngang") */}
           {cmsSections.hero.enabled && (
             <CourseraHeroBanners
@@ -345,7 +354,7 @@ export default function App() {
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
               onEnrollCourse={(c) => handleOpenRegistration(c)}
-              onOpenYouTubeTrial={(c) => handleOpenYouTubeTrial(c.youtubeVideoId || 'sal78ACtGTc', c.title, c)}
+              onOpenYouTubeTrial={(c) => (c.youtubeVideoId ? handleOpenYouTubeTrial(c.youtubeVideoId, c.title, c) : handleOpenRegistration(c))}
               onViewAll={() => handleNavigate('catalog')}
             />
           )}
@@ -356,12 +365,12 @@ export default function App() {
               id="ai-shelf"
               badgeTag="Đột phá công nghệ 2026"
               title={cmsSections.trendingAI?.title || 'Khám phá các khóa học AI & Công nghệ đột phá'}
-              subtitle="Nắm vững kỹ năng Generative AI, AI Agents và Machine Learning từ DeepLearning.AI, Google và IBM."
+              subtitle="Ứng dụng AI và công nghệ vào công việc tài chính – ngân hàng."
               courses={trendingAICourses}
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
               onEnrollCourse={(c) => handleOpenRegistration(c)}
-              onOpenYouTubeTrial={(c) => handleOpenYouTubeTrial(c.youtubeVideoId || 'sal78ACtGTc', c.title, c)}
+              onOpenYouTubeTrial={(c) => (c.youtubeVideoId ? handleOpenYouTubeTrial(c.youtubeVideoId, c.title, c) : handleOpenRegistration(c))}
               onViewAll={() => {
                 setSearchCategory('Trí tuệ nhân tạo (AI)');
                 handleNavigate('catalog');
@@ -374,19 +383,19 @@ export default function App() {
             <CourseraShelf
               id="certificates-shelf"
               badgeTag="Khởi đầu sự nghiệp mới"
-              title={cmsSections.certificates?.title || 'Chứng chỉ Chuyên môn từ Google, IBM, Meta'}
+              title={cmsSections.certificates?.title || 'Chứng chỉ chuyên môn'}
               subtitle="Trang bị các kỹ năng nghề nghiệp thực tế có chứng chỉ được doanh nghiệp săn đón."
               courses={professionalCertificates}
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
               onEnrollCourse={(c) => handleOpenRegistration(c)}
-              onOpenYouTubeTrial={(c) => handleOpenYouTubeTrial(c.youtubeVideoId || 'sal78ACtGTc', c.title, c)}
+              onOpenYouTubeTrial={(c) => (c.youtubeVideoId ? handleOpenYouTubeTrial(c.youtubeVideoId, c.title, c) : handleOpenRegistration(c))}
               onViewAll={() => handleNavigate('catalog')}
             />
           )}
 
-          {/* Coursera Plus / TWings Plus Subscription Banner */}
-          {cmsSections.courseraPlus?.enabled !== false && (
+          {/* TWings Plus subscription banner: only when staff switch it on (no such plan is sold yet) */}
+          {cmsSections.courseraPlus?.enabled === true && (
             <CourseraPlusBanner 
               config={cmsSections.courseraPlus}
               onJoinPlus={() => handleNavigate('catalog')} 
@@ -399,12 +408,12 @@ export default function App() {
               id="degrees-shelf"
               badgeTag="Bằng cấp trực tuyến 100%"
               title={cmsSections.degrees?.title || 'Chương trình Cử nhân & Thạc sĩ từ các trường đại học uy tín'}
-              subtitle="Học tập và tốt nghiệp với tấm bằng danh giá từ University of Illinois, University of London..."
+              subtitle="Chương trình học dài hạn cùng các trường đối tác."
               courses={degreePrograms}
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
               onEnrollCourse={(c) => handleOpenRegistration(c)}
-              onOpenYouTubeTrial={(c) => handleOpenYouTubeTrial(c.youtubeVideoId || 'sal78ACtGTc', c.title, c)}
+              onOpenYouTubeTrial={(c) => (c.youtubeVideoId ? handleOpenYouTubeTrial(c.youtubeVideoId, c.title, c) : handleOpenRegistration(c))}
               onViewAll={() => handleNavigate('catalog')}
             />
           )}
@@ -431,7 +440,8 @@ export default function App() {
       )}
 
       {/* Global Footer */}
-      <CourseraFooter onNavigate={handleNavigate} />
+      <CourseraFooter onNavigate={handleNavigate} courses={courses} onSelectCourse={handleSelectCourse} />
+      <FloatingContact />
 
       {/* Comprehensive Personal Info Registration Modal */}
       {showRegistrationModal && (

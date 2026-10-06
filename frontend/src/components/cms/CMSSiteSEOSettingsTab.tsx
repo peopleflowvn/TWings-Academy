@@ -174,7 +174,7 @@ export const CMSSiteSEOSettingsTab: React.FC = () => {
                 <label className="font-bold text-slate-700 block mb-1">Google Analytics ID (GA4)</label>
                 <input
                   type="text"
-                  value={settings.googleAnalyticsId || 'G-TWINGS2026'}
+                  value={settings.googleAnalyticsId || ''}
                   onChange={(e) => setSettings({ ...settings, googleAnalyticsId: e.target.value })}
                   placeholder="G-XXXXXXXXXX"
                   className="w-full p-2.5 border border-slate-300 rounded-lg font-mono"
@@ -185,13 +185,73 @@ export const CMSSiteSEOSettingsTab: React.FC = () => {
                 <label className="font-bold text-slate-700 block mb-1">Facebook Pixel ID</label>
                 <input
                   type="text"
-                  value={settings.facebookPixelId || '8924820192837'}
+                  value={settings.facebookPixelId || ''}
                   onChange={(e) => setSettings({ ...settings, facebookPixelId: e.target.value })}
                   placeholder="XXXXXXXXXXXX"
                   className="w-full p-2.5 border border-slate-300 rounded-lg font-mono"
                 />
               </div>
             </div>
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+              Lưu mã GA4 / Pixel tại đây chưa đủ để đo lường: website đang chặn mọi script bên ngoài để bảo mật.
+              Khi có mã thật, báo đội kỹ thuật bật (cần mở chính sách bảo mật nội dung cho Google/Meta và cập nhật
+              Chính sách bảo mật về cookie).
+            </p>
+          </div>
+
+          {/* Channels: footer + floating contact button */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4 text-xs">
+            <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">
+              Kênh liên hệ & mạng xã hội (footer, nút liên hệ nổi)
+            </h3>
+            <p className="text-[11px] text-slate-500">Để trống kênh nào thì kênh đó không hiện trên website.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {([
+                ['zalo', 'Zalo (số điện thoại hoặc link zalo.me)', '0843314382 hoặc https://zalo.me/...'],
+                ['facebookUrl', 'Fanpage Facebook (https://...)', 'https://www.facebook.com/...'],
+                ['youtubeUrl', 'Kênh YouTube (https://...)', 'https://www.youtube.com/@...'],
+                ['linkedinUrl', 'LinkedIn (https://...)', 'https://www.linkedin.com/company/...']
+              ] as const).map(([key, label, placeholder]) => (
+                <div key={key}>
+                  <label className="font-bold text-slate-700 block mb-1">{label}</label>
+                  <input
+                    type="text"
+                    value={settings[key] || ''}
+                    onChange={(e) => setSettings({ ...settings, [key]: e.target.value.trim() })}
+                    placeholder={placeholder}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg font-mono"
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500">Zalo để trống thì dùng số Hotline.</p>
+          </div>
+
+          {/* Legal pages */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4 text-xs">
+            <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">
+              Trang pháp lý: <a href="/chinh-sach-bao-mat" target="_blank" rel="noopener" className="text-[#0073C1] underline">Chính sách bảo mật</a>
+              {' '}· <a href="/dieu-khoan" target="_blank" rel="noopener" className="text-[#0073C1] underline">Điều khoản</a>
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Để trống: website dùng bản soạn sẵn theo Luật Bảo vệ dữ liệu cá nhân 2025 (nên nhờ pháp chế rà soát).
+              Muốn thay, dán nội dung HTML (thẻ h2, p, ul, li, a, strong) – máy chủ tự loại bỏ mã không an toàn.
+            </p>
+            {([
+              ['privacyPolicyHtml', 'Chính sách bảo mật (HTML)'],
+              ['termsHtml', 'Điều khoản sử dụng dịch vụ (HTML)']
+            ] as const).map(([key, label]) => (
+              <div key={key}>
+                <label className="font-bold text-slate-700 block mb-1">{label}</label>
+                <textarea
+                  rows={6}
+                  value={settings[key] || ''}
+                  onChange={(e) => setSettings({ ...settings, [key]: e.target.value })}
+                  placeholder="Để trống để dùng bản mặc định"
+                  className="w-full p-2.5 border border-slate-300 rounded-lg font-mono text-[11px]"
+                />
+              </div>
+            ))}
           </div>
         </div>
 

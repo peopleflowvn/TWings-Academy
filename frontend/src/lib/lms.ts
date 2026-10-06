@@ -110,6 +110,11 @@ export const lmsApi = {
   learners: (moodleCourseId: number) => api.get<LmsLearner[]>(`/staff/lms/courses/${moodleCourseId}/learners/`),
   provisionCohort: (cohortId: string) =>
     api.post<{ moodleCourseId: number; teachers: number; enrolled: number }>(`/staff/lms/cohorts/${cohortId}/provision/`, {}),
+  importOutline: (courseId: string) =>
+    api.post<{ moodleCourseId: number; modules: number; lessons: number; descriptionFilled: boolean }>(
+      `/staff/lms/courses/${courseId}/import-outline/`,
+      {}
+    ),
   prepareStaffAccess: () => api.post<{ moodleUserId: number; manager: boolean }>('/staff/lms/open/', {}),
 };
 

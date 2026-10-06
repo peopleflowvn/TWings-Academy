@@ -41,7 +41,7 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
             >
               {p.logoUrl ? (
                 <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 bg-white p-1 shrink-0 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={p.logoUrl}
                     alt={p.name}
                     className="w-full h-full object-contain"

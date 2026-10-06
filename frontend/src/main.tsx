@@ -10,7 +10,7 @@ const AdminApp = lazy(() => import('./admin/AdminApp'));
 const StorefrontApp = lazy(() => import('./storefront/StorefrontApp'));
 const path = window.location.pathname;
 const isAdmin = /^\/app(\/|$)/.test(path);
-const isStorefront = /^\/(chuong-trinh|tai-khoan)(\/|$)/.test(path);
+const isStorefront = /^\/(chuong-trinh|tai-khoan|chinh-sach-bao-mat|dieu-khoan)(\/|$)/.test(path);
 
 // Favicon, logo, default title/description from /app → Cài đặt SEO (not for the staff app).
 if (!isAdmin) applySiteSeo();

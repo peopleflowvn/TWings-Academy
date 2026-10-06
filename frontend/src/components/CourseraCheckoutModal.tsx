@@ -436,7 +436,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                     />
                     <span>
                       Tôi đồng ý để TWings Academy xử lý dữ liệu cá nhân (họ tên, email, số điện thoại) nhằm ghi danh,
-                      thanh toán và tư vấn khóa học theo Nghị định 13/2023/NĐ-CP.
+                      thanh toán và tư vấn khóa học theo{' '}<a href="/chinh-sach-bao-mat" target="_blank" rel="noopener" className="text-[#0056D2] underline">Chính sách bảo mật</a>.
                     </span>
                   </label>
                   {formError && <div className="text-xs text-red-600 font-medium">{formError}</div>}
