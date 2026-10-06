@@ -15,6 +15,7 @@ import {
   Linkedin,
   Clock
 } from 'lucide-react';
+import { ShareButtons } from './ShareButtons';
 import { Article, Course } from '../types';
 
 interface CourseraArticleDetailPageProps {
@@ -32,7 +33,6 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
   onSelectCourse,
   onOpenConsultation,
 }) => {
-  const [copiedLink, setCopiedLink] = useState(false);
 
   // Find relevant courses matching the article's category or keywords
   const relevantCourses = allCourses.filter((c) => {
@@ -44,12 +44,6 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
   }).slice(0, 3);
 
   const fallbackCourses = relevantCourses.length > 0 ? relevantCourses : allCourses.slice(0, 3);
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  };
 
   const formatVND = (num: number) => {
     return new Intl.NumberFormat('vi-VN').format(num) + ' ₫';
@@ -68,16 +62,7 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
             <span>Quay lại Danh sách Tin tức</span>
           </button>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleCopyLink}
-              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 flex items-center gap-1 text-[11px] font-bold cursor-pointer"
-              title="Sao chép liên kết"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>{copiedLink ? 'Đã sao chép!' : 'Chia sẻ bài'}</span>
-            </button>
-          </div>
+          <ShareButtons title={article.title} />
         </div>
       </div>
 

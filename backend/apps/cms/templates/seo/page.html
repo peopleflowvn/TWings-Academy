@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ meta.title }}</title>
+{% if meta.description %}<meta name="description" content="{{ meta.description }}">{% endif %}
+<link rel="canonical" href="{{ meta.canonical }}">
+{% if meta.noindex %}<meta name="robots" content="noindex">{% endif %}
+<meta property="og:locale" content="vi_VN">
+<meta property="og:site_name" content="{{ meta.site_name }}">
+<meta property="og:type" content="{{ meta.type }}">
+<meta property="og:url" content="{{ meta.canonical }}">
+<meta property="og:title" content="{{ meta.title }}">
+{% if meta.description %}<meta property="og:description" content="{{ meta.description }}">{% endif %}
+{% if meta.image %}<meta property="og:image" content="{{ meta.image }}">
+<meta property="og:image:alt" content="{{ page.heading|default:meta.title }}">
+<meta name="twitter:image" content="{{ meta.image }}">{% endif %}
+{% if meta.published %}<meta property="article:published_time" content="{{ meta.published }}">{% endif %}
+<meta name="twitter:card" content="{% if meta.image %}summary_large_image{% else %}summary{% endif %}">
+<meta name="twitter:title" content="{{ meta.title }}">
+{% if meta.description %}<meta name="twitter:description" content="{{ meta.description }}">{% endif %}
+{% for item in jsonld %}<script type="application/ld+json">{{ item|safe }}</script>
+{% endfor %}
+</head>
+<body>
+<header><a href="{{ base }}/">TWings Academy</a> · <a href="{{ base }}/khoa-hoc">Khóa học</a> · <a href="{{ base }}/ve-chung-toi">Về chúng tôi</a> · <a href="{{ base }}/tin-tuc">Tin tức & Cẩm nang</a></header>
+<main>
+<h1>{{ page.heading|default:meta.title }}</h1>
+{% if meta.image %}<img src="{{ meta.image }}" alt="{{ page.heading|default:meta.title }}" width="600">{% endif %}
+{% if meta.description %}<p>{{ meta.description }}</p>{% endif %}
+{{ page.body_html|safe }}
+{% if links %}<ul>{% for text, href in links %}<li><a href="{{ href }}">{{ text }}</a></li>{% endfor %}</ul>{% endif %}
+</main>
+</body>
+</html>

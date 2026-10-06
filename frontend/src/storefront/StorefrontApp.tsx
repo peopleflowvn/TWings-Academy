@@ -10,6 +10,7 @@ import { isBackendEnabled } from '../lib/api';
 import { commerceApi, formatVND, installmentPreview, Program } from '../lib/commerce';
 import { CourseraCheckoutModal } from '../components/CourseraCheckoutModal';
 import { AccountPage } from './AccountPage';
+import { applyPageMeta } from '../lib/siteSeo';
 
 const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNode }> = ({ active, children }) => {
   const link = (href: string, label: string, on: boolean) => (
@@ -185,6 +186,10 @@ const ProgramDetail: React.FC<{ slug: string }> = ({ slug }) => {
 
 export default function StorefrontApp() {
   const path = window.location.pathname.replace(/\/+$/, '');
+  // Canonical, description and share tags (bots get the same from the server).
+  useEffect(() => {
+    applyPageMeta(path || '/');
+  }, [path]);
   const programMatch = path.match(/^\/chuong-trinh\/([a-z0-9-]+)$/i);
   if (path === '/tai-khoan') {
     return <Shell active="account"><AccountPage /></Shell>;

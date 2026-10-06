@@ -23,6 +23,7 @@ import {
   MapPin,
   CheckCircle2
 } from 'lucide-react';
+import { ShareButtons } from './ShareButtons';
 import confetti from 'canvas-confetti';
 import { Course, Module, Lesson, Order, Instructor, CourseReview } from '../types';
 import { DEFAULT_COURSE_REVIEWS } from '../data/coursesData';
@@ -203,6 +204,8 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
             <p className="text-xs sm:text-sm text-blue-100 max-w-3xl leading-relaxed">
               {course.subtitle}
             </p>
+
+            <ShareButtons title={course.title} tone="dark" />
 
             {/* Meta row */}
             <div className="flex flex-wrap items-center gap-4 text-xs text-blue-200 pt-1">

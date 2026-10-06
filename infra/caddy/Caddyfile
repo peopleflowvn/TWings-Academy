@@ -71,6 +71,30 @@ Disallow: /
 			reverse_proxy lms:8080
 		}
 
+		# Sitemap and robots.txt come from Django (the test domain answers its own robots.txt above).
+		@seoFiles path /sitemap.xml /robots.txt
+		handle @seoFiles {
+			reverse_proxy backend:8000 {
+				header_up X-Real-IP {client_ip}
+			}
+		}
+
+		# Link-preview bots (Facebook, Messenger, Zalo, X, LinkedIn, Telegram...) never run the SPA's
+		# JavaScript, and search engines index faster without it: they get the page's server-rendered
+		# HTML (title, description, share image, canonical, structured data, main text). People always
+		# get the SPA, which loads the same metadata from /api/v1/public/seo/.
+		@bots {
+			header_regexp User-Agent (?i)(facebookexternalhit|facebot|meta-externalagent|zalo|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|whatsapp|skypeuripreview|pinterest|redditbot|embedly|viber|googlebot|google-inspectiontool|bingbot|coccocbot|applebot|duckduckbot|yandex)
+			not path /assets/* /api/* /app /app/* /learn* /xac-minh/* /favicon.ico
+		}
+		handle @bots {
+			header Vary User-Agent
+			rewrite * /_seo{path}
+			reverse_proxy backend:8000 {
+				header_up X-Real-IP {client_ip}
+			}
+		}
+
 		handle {
 			root * /srv/web
 			header {
@@ -85,7 +109,11 @@ Disallow: /
 			@assets path /assets/*
 			header @assets Cache-Control "public, max-age=31536000, immutable"
 			@pages not path /assets/*
-			header @pages Cache-Control "no-cache"
+			header @pages {
+				Cache-Control "no-cache"
+				# Same URL, different HTML for bots (see @bots): keep caches from mixing them up.
+				Vary User-Agent
+			}
 
 			# Client-side routing: unknown paths get the SPA shell.
 			try_files {path} /index.html

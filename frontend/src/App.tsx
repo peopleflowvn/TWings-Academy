@@ -14,6 +14,8 @@ import {
 } from './data/courseraData';
 import { DEFAULT_CMS_SECTIONS } from './data/coursesData';
 import { api, isBackendEnabled, Paginated } from './lib/api';
+import { parseRoute, routePath, View } from './lib/routes';
+import { applyPageMeta } from './lib/siteSeo';
 
 // Coursera Components
 import { CourseraHeader } from './components/CourseraHeader';
@@ -37,13 +39,16 @@ import { CourseraCheckoutModal, CheckoutPrefill } from './components/CourseraChe
 import { RegistrationModal } from './components/RegistrationModal';
 import { YouTubeTrialModal } from './components/YouTubeTrialModal';
 
-type View = 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about';
-
 export default function App() {
-  // Navigation View State (the staff app lives at /app as its own bundle, see main.tsx)
-  const [currentView, setCurrentView] = useState<View>(() =>
-    /^\/khoa-hoc\/?$/.test(window.location.pathname) ? 'catalog' : 'home'
-  );
+  // Every page has its own URL (/khoa-hoc/<slug>, /tin-tuc/<slug>, /ve-chung-toi...): see lib/routes.ts.
+  // The staff app (/app) and program / account pages are separate bundles (main.tsx).
+  const initialRoute = parseRoute(window.location.pathname) ?? { view: 'home' as View };
+  const [currentView, setCurrentView] = useState<View>(initialRoute.view);
+  // Slug from the URL waiting for the course / article list (deep link or back/forward).
+  const [pendingSlug, setPendingSlug] = useState<string | undefined>(initialRoute.slug);
+  // The live course / article lists have arrived (or there is no backend: bundled data only).
+  const [contentLoaded, setContentLoaded] = useState(!isBackendEnabled());
+  const [articleMissing, setArticleMissing] = useState<string | undefined>();
 
   // Core Data
   const [courses, setCourses] = useState<Course[]>(COURSES);
@@ -97,6 +102,7 @@ export default function App() {
       if (sectionsRes.status === 'fulfilled' && sectionsRes.value.data?.hero) {
         setCmsSections({ ...DEFAULT_CMS_SECTIONS, ...sectionsRes.value.data });
       }
+      setContentLoaded(true);
     };
     load().catch(() => undefined);
     return () => {
@@ -110,16 +116,90 @@ export default function App() {
   const professionalCertificates = courses.filter((c) => c.type === 'Chứng chỉ Chuyên môn');
   const degreePrograms = courses.filter((c) => c.type === 'Bằng cấp Trực tuyến' || c.badgeSection === 'hot_new');
 
-  // Navigation Handler
-  const handleNavigate = (view: View) => {
+  // ---- Routing: state <-> URL ----
+  const go = (view: View, slug?: string) => {
+    const path = routePath(view, slug);
+    if (path !== window.location.pathname) window.history.pushState(null, '', path);
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Browser back / forward.
+  useEffect(() => {
+    const onPopState = () => {
+      const route = parseRoute(window.location.pathname) ?? { view: 'home' as View };
+      setCurrentView(route.view);
+      setPendingSlug(route.slug);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // Resolve a slug from the URL once the lists are there (an article beyond the first page is fetched).
+  useEffect(() => {
+    // Wait for the live lists: the bundled demo data must not answer a deep link.
+    if (!pendingSlug || !contentLoaded) return;
+    if (currentView === 'course-detail') {
+      const found = courses.find((c) => c.slug === pendingSlug);
+      if (found) {
+        setSelectedCourse(found);
+        setPendingSlug(undefined);
+      }
+    } else if (currentView === 'article-detail') {
+      const found = articles.find((a) => a.slug === pendingSlug);
+      if (found) {
+        setSelectedArticle(found);
+        setPendingSlug(undefined);
+      } else if (isBackendEnabled()) {
+        api
+          .get<Article>(`/public/articles/${encodeURIComponent(pendingSlug)}/`)
+          .then((a) => {
+            setSelectedArticle(a);
+            setPendingSlug(undefined);
+          })
+          .catch(() => setArticleMissing(pendingSlug));
+      }
+    }
+  }, [pendingSlug, currentView, courses, articles, contentLoaded]);
+
+  /** Deep link still resolving, or pointing to nothing. */
+  const pendingPage = (kind: 'course' | 'article') => {
+    const missing = kind === 'course' ? contentLoaded : articleMissing === pendingSlug;
+    return (
+      <main className="flex-1 max-w-3xl mx-auto px-4 py-20 text-center text-slate-600 space-y-3">
+        {missing ? (
+          <>
+            <h1 className="text-xl font-bold text-slate-900">Không tìm thấy {kind === 'course' ? 'khóa học' : 'bài viết'}</h1>
+            <p className="text-sm">Trang có thể đã được đổi tên hoặc gỡ xuống.</p>
+            <button type="button" onClick={() => go(kind === 'course' ? 'catalog' : 'articles')}
+              className="px-4 py-2 rounded-xl bg-[#0073C1] text-white text-sm font-bold cursor-pointer">
+              {kind === 'course' ? 'Xem các khóa học' : 'Xem tin tức & cẩm nang'}
+            </button>
+          </>
+        ) : (
+          <p className="text-sm">Đang tải…</p>
+        )}
+      </main>
+    );
+  };
+
+  // Title, description, canonical and share tags of the page (same data the server gives bots).
+  useEffect(() => {
+    applyPageMeta(window.location.pathname);
+  }, [currentView, selectedCourse, selectedArticle]);
+
+  const handleNavigate = (view: View) => go(view);
+
   const handleSelectCourse = (course: Course) => {
     setSelectedCourse(course);
-    setCurrentView('course-detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setPendingSlug(undefined);
+    go('course-detail', course.slug);
+  };
+
+  const handleSelectArticle = (article: Article) => {
+    setSelectedArticle(article);
+    setPendingSlug(undefined);
+    go('article-detail', article.slug);
   };
 
   const handleOpenRegistration = (course?: Course) => {
@@ -167,7 +247,8 @@ export default function App() {
       )}
 
       {/* 3. Subpage: Course Detail Landing Page */}
-      {currentView === 'course-detail' && (
+      {currentView === 'course-detail' && pendingSlug && pendingPage('course')}
+      {currentView === 'course-detail' && !pendingSlug && (
         <CourseraCourseDetailPage
           course={selectedCourse}
           isEnrolled={enrolledCourseIds.includes(selectedCourse.id)}
@@ -190,18 +271,15 @@ export default function App() {
         <CourseraArticlesPage
           articles={articles}
           courses={courses}
-          onSelectArticle={(art) => {
-            setSelectedArticle(art);
-            setCurrentView('article-detail');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onSelectArticle={handleSelectArticle}
           onSelectCourse={handleSelectCourse}
           onOpenConsultation={() => handleOpenRegistration()}
         />
       )}
 
       {/* 4b. Subpage: Standalone Article Detail Page (User: "Mỗi bài viết chi tiết lại là 1 trang con chứ không phải dạng popup. Trong chi tiết bài viết cần gợi ý học các khóa học phù hợp") */}
-      {currentView === 'article-detail' && selectedArticle && (
+      {currentView === 'article-detail' && pendingSlug && pendingPage('article')}
+      {currentView === 'article-detail' && !pendingSlug && selectedArticle && (
         <CourseraArticleDetailPage
           article={selectedArticle}
           allCourses={courses}

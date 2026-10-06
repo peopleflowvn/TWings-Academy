@@ -261,6 +261,19 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   Mỗi phần chỉ hiện với quyền tương ứng (tài chính / CRM / LMS).
 - Thiết lập bán hàng ban đầu: ops task `seed-sales` (chạy một lần; chạy lại không thay đổi gì).
 
+## SEO & chia sẻ mạng xã hội
+
+- Mỗi trang có URL riêng: `/khoa-hoc`, `/khoa-hoc/<slug>`, `/chuong-trinh/<slug>`, `/ve-chung-toi`, `/tin-tuc`,
+  `/tin-tuc/<slug>` (router: `frontend/src/lib/routes.ts`).
+- Bot xem trước link (Facebook, Messenger, Zalo, X, LinkedIn, Telegram…) và bot tìm kiếm (Google, Bing,
+  Cốc Cốc…) không chạy JavaScript: Caddy nhận diện User-Agent và chuyển sang Django `/_seo/<path>`, trả HTML có
+  tiêu đề, mô tả, ảnh chia sẻ, canonical, JSON-LD (Course, Article, Breadcrumb) và nội dung chính
+  (`backend/apps/cms/seo.py`). Người dùng vẫn nhận SPA, SPA lấy cùng metadata từ `/api/v1/public/seo/`.
+- `/sitemap.xml` và `/robots.txt` do Django sinh (robots luôn chặn /app, /api, /learn, /tai-khoan).
+  Địa chỉ chuẩn: `PUBLIC_SITE_URL` (mặc định https://tuyensinh.twings.edu.vn).
+- Sau khi đổi ảnh/tiêu đề một trang đã từng được chia sẻ, Facebook giữ bản cũ trong cache: dùng
+  https://developers.facebook.com/tools/debug/ → "Scrape Again".
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị

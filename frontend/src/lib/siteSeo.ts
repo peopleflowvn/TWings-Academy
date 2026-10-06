@@ -1,9 +1,10 @@
 /**
- * Site identity edited in /app → Cài đặt SEO website ('site_seo' config): favicon, logo, default title,
- * description and share image, applied to every public page at start-up.
+ * Site identity and per-page metadata for the public site.
  *
- * Limits: social networks (Facebook, Zalo) read the share card from the HTML without running scripts,
- * so for them index.html's own og: tags still apply; Google renders scripts and sees these values.
+ * - applySiteSeo(): favicon from /app → Cài đặt SEO website ('site_seo' config), once at start-up.
+ * - applyPageMeta(path): title, description, canonical, robots and share tags of the current page,
+ *   from /api/v1/public/seo/ (the same data the server renders for Facebook / Zalo / search bots, which
+ *   never run this code; see backend/apps/cms/seo.py).
  */
 import { useEffect, useState } from 'react';
 import { api, isBackendEnabled } from './api';
@@ -21,8 +22,11 @@ export function loadSiteSeo(): Promise<Partial<SiteSEOSettings> | null> {
 }
 
 function setMeta(attr: 'name' | 'property', key: string, content?: string) {
-  if (!content) return;
   let tag = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
+  if (!content) {
+    tag?.remove();
+    return;
+  }
   if (!tag) {
     tag = document.createElement('meta');
     tag.setAttribute(attr, key);
@@ -31,27 +35,59 @@ function setMeta(attr: 'name' | 'property', key: string, content?: string) {
   tag.content = content;
 }
 
+function setLink(rel: string, href: string) {
+  let link = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = rel;
+    document.head.appendChild(link);
+  }
+  link.href = href;
+}
+
 /** Only https URLs (or site-relative paths) are applied. */
 const safeUrl = (url?: string) => (url && /^(https:\/\/|\/)/.test(url) ? url : '');
 
 export async function applySiteSeo(): Promise<void> {
   const seo = await loadSiteSeo();
-  if (!seo) return;
-  const favicon = safeUrl(seo.faviconUrl);
-  if (favicon) {
-    document.head.querySelectorAll('link[rel~="icon"]').forEach((l) => l.remove());
-    const link = document.createElement('link');
-    link.rel = 'icon';
-    link.href = favicon;
-    document.head.appendChild(link);
+  const favicon = safeUrl(seo?.faviconUrl);
+  if (!favicon) return;
+  document.head.querySelectorAll('link[rel~="icon"]').forEach((l) => l.remove());
+  setLink('icon', favicon);
+}
+
+interface PageMeta {
+  title: string;
+  description: string;
+  canonical: string;
+  image: string;
+  type: string;
+  noindex: boolean;
+  siteName: string;
+}
+
+let latest = '';
+
+export async function applyPageMeta(path: string): Promise<void> {
+  if (!isBackendEnabled()) return;
+  latest = path;
+  let meta: PageMeta;
+  try {
+    meta = await api.get<PageMeta>(`/public/seo/?path=${encodeURIComponent(path)}`);
+  } catch {
+    return; // unknown page: keep what is there
   }
-  // Pages that set their own title (programs, account...) keep it; the homepage gets the default.
-  if (seo.defaultMetaTitle && window.location.pathname === '/') document.title = seo.defaultMetaTitle;
-  setMeta('name', 'description', seo.defaultMetaDescription);
-  setMeta('property', 'og:title', seo.defaultMetaTitle);
-  setMeta('property', 'og:description', seo.defaultMetaDescription);
-  setMeta('property', 'og:image', safeUrl(seo.ogImageUrl));
-  setMeta('property', 'og:site_name', seo.siteName);
+  if (latest !== path) return; // the visitor already moved on
+  document.title = meta.title;
+  setMeta('name', 'description', meta.description);
+  setMeta('name', 'robots', meta.noindex ? 'noindex' : '');
+  setLink('canonical', meta.canonical);
+  setMeta('property', 'og:title', meta.title);
+  setMeta('property', 'og:description', meta.description);
+  setMeta('property', 'og:url', meta.canonical);
+  setMeta('property', 'og:type', meta.type);
+  setMeta('property', 'og:image', safeUrl(meta.image));
+  setMeta('property', 'og:site_name', meta.siteName);
 }
 
 /** Uploaded header logo, or '' to keep the built-in TWings wordmark. */
