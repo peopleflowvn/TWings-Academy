@@ -116,6 +116,24 @@ export const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
     riskLevel: 'high'
   },
   {
+    id: 'perm-courses-9',
+    code: 'courses.publish',
+    name: 'Duyệt & xuất bản / ngừng bán khóa học',
+    description: 'Duyệt khóa học (và chương trình) đã đủ điều kiện, chốt học phí khi mở bán, ngừng bán',
+    category: 'courses',
+    categoryLabel: '2. Khóa Học & Nhúng YouTube',
+    riskLevel: 'high'
+  },
+  {
+    id: 'perm-courses-10',
+    code: 'courses.pricing',
+    name: 'Định giá khóa học đang bán',
+    description: 'Đổi học phí, giá niêm yết, trả góp của khóa học / chương trình đang bán (được ghi lịch sử)',
+    category: 'courses',
+    categoryLabel: '2. Khóa Học & Nhúng YouTube',
+    riskLevel: 'high'
+  },
+  {
     id: 'perm-courses-8',
     code: 'courses.programs',
     name: 'Quản lý chương trình (gói khóa học)',
@@ -371,6 +389,7 @@ export const DEFAULT_ROLE_CONFIGS: Record<UserRole, RolePermissionConfig> = {
       'finance.confirm_manual',
       'finance.referral_bonus',
       'finance.refund',
+      'courses.pricing',
       'courses.view'
     ]
   }

@@ -32,6 +32,8 @@ import {
 import confetti from 'canvas-confetti';
 import { Course, Module, Lesson, Instructor, CourseReview } from '../../types';
 import { api, isBackendEnabled, Paginated } from '../../lib/api';
+import { useStaffCan } from '../../lib/lms';
+import { CoursePublishingPanel } from './CoursePublishingPanel';
 
 interface CMSCoursesTabProps {
   courses: Course[];
@@ -39,6 +41,8 @@ interface CMSCoursesTabProps {
   onUpdateCourse: (updatedCourse: Course) => void;
   onDeleteCourse: (courseId: string) => void;
   onPreviewCourse?: (course: Course) => void;
+  /** Reload the course list (after a publishing step changed the course on the server). */
+  onReload?: () => void;
 }
 
 export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
@@ -47,7 +51,9 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
   onUpdateCourse,
   onDeleteCourse,
   onPreviewCourse,
+  onReload,
 }) => {
+  const canPrice = useStaffCan('courses.pricing');
   // Currently selected course to edit
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,6 +63,8 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
   // Editable buffer for the selected course
   const currentCourse = courses.find((c) => c.id === selectedCourseId) || courses[0];
   const [editForm, setEditForm] = useState<Course | null>(null);
+  // A course on sale keeps its approved price unless the user may set prices (server enforces it too).
+  const priceLocked = currentCourse?.status === 'published' && !canPrice;
   // Instructors managed on the "Giảng viên" page: the only ones a course can be linked to (saved by id).
   const [staffInstructors, setStaffInstructors] = useState<Instructor[] | null>(null);
   useEffect(() => {
@@ -333,7 +341,8 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
             >
               {filteredCourses.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.title} — [{c.category}] · {formatVND(c.price)}
+                  {{ draft: '[Nháp]', review: '[Chờ duyệt]', published: '[Đang bán]', archived: '[Ngừng bán]' }[c.status || 'draft']}{' '}
+                  {c.title} — {formatVND(c.price)}
                 </option>
               ))}
             </select>
@@ -348,6 +357,11 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* Journey step 1: readiness, review & publish, preview, Moodle template, history */}
+      {currentCourse && isBackendEnabled() && (
+        <CoursePublishingPanel course={currentCourse} onChanged={() => onReload?.()} />
+      )}
 
       {/* 2. SUB-TABS NAVIGATION (6 DEDICATED SECTIONS) */}
       <div className="bg-white rounded-2xl p-2 border border-slate-200 shadow-2xs overflow-x-auto">
@@ -546,6 +560,8 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                   <label className="font-bold text-slate-700 block mb-1">Học phí ưu đãi (VND) *</label>
                   <input
                     type="number"
+                    disabled={priceLocked}
+                    title={priceLocked ? 'Khóa đang bán: đổi giá cần quyền Định giá' : ''}
                     value={editForm.price}
                     onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-mono font-bold text-slate-900"
@@ -557,6 +573,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                   <label className="font-bold text-slate-700 block mb-1">Học phí niêm yết gốc (Gạch chân) *</label>
                   <input
                     type="number"
+                    disabled={priceLocked}
                     value={editForm.originalPrice}
                     onChange={(e) => setEditForm({ ...editForm, originalPrice: Number(e.target.value) })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-slate-600"
@@ -567,6 +584,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Trả góp (số kỳ)</label>
                   <select
+                    disabled={priceLocked}
                     value={editForm.installmentCount || 1}
                     onChange={(e) => setEditForm({ ...editForm, installmentCount: Number(e.target.value) })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl"
@@ -582,7 +600,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                     type="number"
                     min={7}
                     max={180}
-                    disabled={(editForm.installmentCount || 1) <= 1}
+                    disabled={priceLocked || (editForm.installmentCount || 1) <= 1}
                     value={editForm.installmentIntervalDays || 30}
                     onChange={(e) => setEditForm({ ...editForm, installmentIntervalDays: Number(e.target.value) })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl disabled:bg-slate-50"

@@ -67,7 +67,7 @@ def test_article_page_uses_seo_fields_and_sanitised_content(client, article):
 
 
 def test_unpublished_and_unknown_pages_are_404(client, course, article):
-    course.is_published = False
+    course.status = "archived"
     course.save()
     article.status = "draft"
     article.save()

@@ -179,6 +179,7 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
             onAddCourse={courses.add}
             onUpdateCourse={courses.update}
             onDeleteCourse={courses.remove}
+            onReload={courses.reload}
           />
         );
       case '/catalog/programs':

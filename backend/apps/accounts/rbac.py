@@ -17,6 +17,8 @@ PERMISSIONS: dict[str, str] = {
     "courses.reviews": "Quản lý đánh giá",
     "courses.delete": "Xóa khóa học",
     "courses.programs": "Quản lý chương trình (gói khóa học)",
+    "courses.publish": "Duyệt & xuất bản / ngừng bán khóa học (chốt giá khi duyệt)",
+    "courses.pricing": "Định giá: đổi học phí, trả góp của khóa đang bán",
     "banner.carousel": "Quản lý banner trang chủ",
     "homepage.intro_about": "Biên tập nội dung trang chủ",
     "homepage.partners": "Quản lý đối tác",
@@ -100,6 +102,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             "finance.confirm_manual",
             "finance.referral_bonus",
             "finance.refund",
+            "courses.pricing",
             "courses.view",
         }
     ),

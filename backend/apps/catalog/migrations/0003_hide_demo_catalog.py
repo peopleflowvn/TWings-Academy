@@ -25,9 +25,8 @@ def hide_demo_catalog(apps, schema_editor):
     for course in Course.objects.filter(slug__startswith="khoa-hoc-moi-", is_published=True):
         lessons = sum(len(m.get("lessons", [])) for m in course.syllabus or [] if isinstance(m, dict))
         if not course.description and lessons == 0:  # untouched "new course" drafts
-            course.is_published = False
-            course.reviews = []  # the editor used to pre-fill sample reviews
-            course.save(update_fields=["is_published", "reviews", "updated_at"])
+            # the editor used to pre-fill sample reviews
+            Course.objects.filter(pk=course.pk).update(is_published=False, reviews=[])
     Partner.objects.filter(name__in=FOREIGN_BRANDS).update(is_active=False)
 
 

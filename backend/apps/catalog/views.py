@@ -1,8 +1,13 @@
 from django.db.models import Count, Prefetch, Q
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, serializers, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 from apps.accounts.permissions import ActionPermission
+from apps.accounts.rbac import has_perm_code
+from apps.core.models import AuditLog, audit
 
 from .models import Cohort, Coupon, Course, Instructor, Partner, Program, ProgramCourse
 from .serializers import (
@@ -44,6 +49,21 @@ class PublicCourseViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
             Course.objects.filter(is_published=True).select_related("partner").prefetch_related("instructors")
         )
 
+    def retrieve(self, request, *args, **kwargs):
+        """Unpublished courses can be previewed with a signed link from /app (never indexed)."""
+        from .publishing import course_from_preview
+
+        token = request.query_params.get("preview")
+        if token:
+            course = course_from_preview(token)
+            if course is None or course.slug != kwargs.get("slug"):
+                return Response({"detail": "Link xem trước không hợp lệ hoặc đã hết hạn."}, status=404)
+            response = Response(self.get_serializer(course).data)
+            response["X-Robots-Tag"] = "noindex"
+            response["Cache-Control"] = "no-store"
+            return response
+        return super().retrieve(request, *args, **kwargs)
+
 
 class PublicProgramViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     permission_classes = [AllowAny]
@@ -77,12 +97,117 @@ class PublicPartnerViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 class CourseViewSet(viewsets.ModelViewSet):
     serializer_class = CourseSerializer
     permission_classes = [ActionPermission]
-    permission_map = perm_map(
-        ["courses.view"], ["courses.edit_info", "courses.curriculum"], ["courses.delete"]
-    )
+    permission_map = {
+        **perm_map(["courses.view"], ["courses.edit_info", "courses.curriculum"], ["courses.delete"]),
+        "workflow": ["courses.edit_info", "courses.curriculum", "courses.publish"],
+        "readiness": ["courses.view"],
+        "history": ["courses.view"],
+        "preview_link": ["courses.view"],
+        "moodle_template": ["courses.curriculum", "lms.manage"],
+    }
     search_fields = ["title", "slug", "category"]
-    filterset_fields = ["category", "is_published"]
+    filterset_fields = ["category", "is_published", "status"]
     queryset = Course.objects.select_related("partner").prefetch_related("instructors")
+
+    # ---- audit trail: what changed (prices with old -> new values)
+    def perform_create(self, serializer):
+        course = serializer.save()
+        audit(self.request, "course.create", course, title=course.title, price=course.price)
+
+    def perform_update(self, serializer):
+        from .publishing import PRICE_FIELDS
+
+        instance = serializer.instance
+        before = {
+            f: getattr(instance, f)
+            for f in serializer.validated_data
+            if f != "instructors" and hasattr(instance, f)
+        }
+        course = serializer.save()
+        changed = {f: (old, getattr(course, f)) for f, old in before.items() if old != getattr(course, f)}
+        prices = {f: {"from": a, "to": b} for f, (a, b) in changed.items() if f in PRICE_FIELDS}
+        if prices:
+            audit(self.request, "course.price_change", course, **prices)
+        other = sorted(f for f in changed if f not in PRICE_FIELDS)
+        if other:
+            audit(self.request, "course.update", course, fields=other)
+
+    def perform_destroy(self, instance):
+        audit(self.request, "course.delete", instance, title=instance.title)
+        instance.delete()
+
+    # ---- publishing workflow (apps.catalog.publishing)
+    @action(detail=True, methods=["post"])
+    def workflow(self, request, pk=None):
+        from .publishing import WorkflowError, transition
+
+        course = self.get_object()
+        step = str(request.data.get("action", ""))
+        if step not in ("submit", "publish", "return", "unpublish"):
+            raise serializers.ValidationError({"action": "Thao tác không hợp lệ."})
+        needs = ["courses.publish"]
+        if step == "submit":
+            needs += ["courses.edit_info", "courses.curriculum"]
+        if not any(has_perm_code(request.user, c) for c in needs):
+            raise PermissionDenied("Cần quyền Duyệt & xuất bản khóa học.")
+        try:
+            transition(request, course, step, str(request.data.get("note", ""))[:2000])
+        except WorkflowError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(self.get_serializer(course).data)
+
+    @action(detail=True, methods=["get"])
+    def readiness(self, request, pk=None):
+        from apps.lms import moodle
+        from apps.lms.services import _find_course
+
+        from .publishing import readiness
+
+        course = self.get_object()
+        template = None
+        if moodle.is_configured():
+            try:
+                found = _find_course("idnumber", course.id) or _find_course("shortname", course.slug)
+                template = found is not None
+            except moodle.MoodleError:
+                template = None
+        return Response(readiness(course, moodle_template=template))
+
+    @action(detail=True, methods=["get"])
+    def history(self, request, pk=None):
+        course = self.get_object()
+        rows = AuditLog.objects.filter(object_type="catalog.Course", object_id=str(course.pk)).order_by(
+            "-at"
+        )[:100]
+        return Response(
+            [{"at": r.at, "actor": r.actor_label, "action": r.action, "details": r.details} for r in rows]
+        )
+
+    @action(detail=True, methods=["post"], url_path="preview-link")
+    def preview_link(self, request, pk=None):
+        from apps.cms.seo import base_url
+
+        from .publishing import preview_token
+
+        course = self.get_object()
+        return Response({"url": f"{base_url()}/khoa-hoc/{course.slug}?preview={preview_token(course)}"})
+
+    @action(detail=True, methods=["post"], url_path="moodle-template")
+    def moodle_template(self, request, pk=None):
+        """Create (or find) the course's template on Moodle, where the learning content is built."""
+        from apps.lms import moodle
+        from apps.lms.overview import links
+        from apps.lms.services import ensure_course
+
+        course = self.get_object()
+        if not moodle.is_configured():
+            return Response({"detail": "LMS chưa được cấu hình."}, status=400)
+        try:
+            moodle_id = ensure_course(course)
+        except moodle.MoodleError as exc:
+            return Response({"detail": f"Moodle báo lỗi: {exc}"}, status=502)
+        audit(request, "course.moodle_template", course, moodle_course_id=moodle_id)
+        return Response({"moodleCourseId": moodle_id, "links": links(course_id=moodle_id)})
 
 
 class ProgramViewSet(viewsets.ModelViewSet):

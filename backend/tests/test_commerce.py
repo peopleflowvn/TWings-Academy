@@ -64,7 +64,9 @@ def _checkout(api, payload, **extra):
 
 @pytest.fixture
 def program(course):
-    second = Course.objects.create(slug="kiem-soat-vien", title="Kiểm soát viên", price=4_000_000)
+    second = Course.objects.create(
+        slug="kiem-soat-vien", title="Kiểm soát viên", price=4_000_000, status="published"
+    )
     program = Program.objects.create(
         slug="chuyen-vien-ngan-hang",
         title="Chuyên viên ngân hàng",

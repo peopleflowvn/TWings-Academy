@@ -79,7 +79,10 @@ class Command(BaseCommand):
             defaults = pick(Course, c, exclude={"partner", "instructors"})
             defaults["syllabus"] = c.get("syllabus") or c.get("chapters") or []
             defaults["partner_id"] = upsert_partner(c.get("partner"))
-            course, _ = Course.objects.update_or_create(id=c["id"], defaults=defaults)
+            # Seeded courses are the real catalogue: on sale when first created, untouched afterwards.
+            course, _ = Course.objects.update_or_create(
+                id=c["id"], defaults=defaults, create_defaults={**defaults, "status": "published"}
+            )
             people = c.get("instructors") or ([c["instructor"]] if c.get("instructor") else [])
             course.instructors.set([upsert_instructor(i) for i in people if i.get("id")])
             bump("courses")

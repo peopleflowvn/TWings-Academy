@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ExternalLink, Plus, Save, Trash2, X } from 'lucide-
 import { Course } from '../../types';
 import { commerceApi, formatVND, Program } from '../../lib/commerce';
 import { ImageUploadField } from '../../components/cms/ImageUploadField';
+import { useStaffCan } from '../../lib/lms';
 
 type Draft = Partial<Program> & { courseIds: string[] };
 
@@ -31,6 +32,10 @@ export const ProgramsPage: React.FC<{ courses: Course[]; canEdit: boolean }> = (
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const canPublish = useStaffCan('courses.publish');
+  const canPrice = useStaffCan('courses.pricing');
+  // Same rules as courses: approvers put programs on sale; a live program's price needs the pricing right.
+  const livePriceLocked = !!draft?.id && !!programs.find((p) => p.id === draft.id)?.isPublished && !canPrice;
 
   const load = () => commerceApi.staffPrograms().then(setPrograms).catch((e: Error) => setError(e.message));
   useEffect(() => {
@@ -176,10 +181,10 @@ export const ProgramsPage: React.FC<{ courses: Course[]; canEdit: boolean }> = (
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <label>Giá chương trình
-                <input type="number" min={0} className={input} value={draft.price} onChange={(e) => setDraft({ ...draft, price: Number(e.target.value) })} />
+                <input type="number" min={0} disabled={livePriceLocked} className={input} value={draft.price} onChange={(e) => setDraft({ ...draft, price: Number(e.target.value) })} />
               </label>
               <label>Giá niêm yết
-                <input type="number" min={0} className={input} value={draft.originalPrice} onChange={(e) => setDraft({ ...draft, originalPrice: Number(e.target.value) })} />
+                <input type="number" min={0} disabled={livePriceLocked} className={input} value={draft.originalPrice} onChange={(e) => setDraft({ ...draft, originalPrice: Number(e.target.value) })} />
               </label>
               <label>Trả góp
                 <select className={input} value={draft.installmentCount} onChange={(e) => setDraft({ ...draft, installmentCount: Number(e.target.value) })}>
@@ -193,8 +198,8 @@ export const ProgramsPage: React.FC<{ courses: Course[]; canEdit: boolean }> = (
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <label className="flex items-center gap-2 font-bold">
-                <input type="checkbox" checked={!!draft.isPublished} onChange={(e) => setDraft({ ...draft, isPublished: e.target.checked })} />
-                Mở bán trên website (/chuong-trinh)
+                <input type="checkbox" disabled={!canPublish} checked={!!draft.isPublished} onChange={(e) => setDraft({ ...draft, isPublished: e.target.checked })} />
+                Mở bán trên website (/chuong-trinh){!canPublish && <span className="font-normal text-slate-500"> – cần quyền Duyệt & xuất bản</span>}
               </label>
               <button type="button" disabled={busy || !draft.title || draft.courseIds.length === 0} onClick={save}
                 className="px-4 py-2 rounded-xl bg-[#0073C1] text-white font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50">

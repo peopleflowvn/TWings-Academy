@@ -23,11 +23,18 @@ def _migration(app, name):
 def test_demo_catalog_is_hidden_not_deleted(course):
     google = Partner.objects.create(name="Google")
     msb = Partner.objects.create(name="MSB Ngân hàng TMCP Hàng Hải")
-    foreign = Course.objects.create(slug="phan-tich-du-lieu-google", title="GDA", partner=google)
-    draft = Course.objects.create(
-        slug="khoa-hoc-moi-123", title="Khóa Học Nghiệp Vụ Mới 2026", reviews=[{"id": 1}]
+    foreign = Course.objects.create(
+        slug="phan-tich-du-lieu-google", title="GDA", partner=google, status="published"
     )
-    edited = Course.objects.create(slug="khoa-hoc-moi-456", title="Đã soạn", description="Nội dung thật")
+    draft = Course.objects.create(
+        slug="khoa-hoc-moi-123",
+        title="Khóa Học Nghiệp Vụ Mới 2026",
+        reviews=[{"id": 1}],
+        status="published",
+    )
+    edited = Course.objects.create(
+        slug="khoa-hoc-moi-456", title="Đã soạn", description="Nội dung thật", status="published"
+    )
     _migration("catalog", "0003_hide_demo_catalog").hide_demo_catalog(django_apps, None)
     for c in (foreign, draft, edited, course):
         c.refresh_from_db()

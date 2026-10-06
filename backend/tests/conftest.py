@@ -38,6 +38,7 @@ def staff_client():
 @pytest.fixture
 def course(db):
     return Course.objects.create(
+        status="published",
         slug="rm-doanh-nghiep",
         title="RM Doanh Nghiệp",
         price=8_490_000,

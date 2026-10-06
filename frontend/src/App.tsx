@@ -47,6 +47,9 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>(initialRoute.view);
   // Slug from the URL waiting for the course / article list (deep link or back/forward).
   const [pendingSlug, setPendingSlug] = useState<string | undefined>(initialRoute.slug);
+  // Signed preview link from /app (?preview=...): shows a course that is not on sale yet.
+  const [previewToken] = useState(() => new URLSearchParams(window.location.search).get('preview') || '');
+  const [previewing, setPreviewing] = useState(false);
   // The live course / article lists have arrived (or there is no backend: bundled data only).
   const [contentLoaded, setContentLoaded] = useState(!isBackendEnabled());
   const [articleMissing, setArticleMissing] = useState<string | undefined>();
@@ -140,6 +143,17 @@ export default function App() {
   useEffect(() => {
     // Wait for the live lists: the bundled demo data must not answer a deep link.
     if (!pendingSlug || !contentLoaded) return;
+    if (currentView === 'course-detail' && previewToken && isBackendEnabled()) {
+      api
+        .get<Course>(`/public/courses/${encodeURIComponent(pendingSlug)}/?preview=${encodeURIComponent(previewToken)}`)
+        .then((c) => {
+          setSelectedCourse(c);
+          setPreviewing(true);
+          setPendingSlug(undefined);
+        })
+        .catch(() => setContentLoaded(true));
+      return;
+    }
     if (currentView === 'course-detail') {
       const found = courses.find((c) => c.slug === pendingSlug);
       if (found) {
@@ -249,6 +263,11 @@ export default function App() {
 
       {/* 3. Subpage: Course Detail Landing Page */}
       {currentView === 'course-detail' && pendingSlug && pendingPage('course')}
+      {currentView === 'course-detail' && !pendingSlug && previewing && (
+        <div className="bg-amber-400 text-amber-950 text-center text-xs font-bold py-2 px-4">
+          Bản xem trước – khóa học chưa được mở bán, trang này không hiển thị công khai.
+        </div>
+      )}
       {currentView === 'course-detail' && !pendingSlug && (
         <CourseraCourseDetailPage
           course={selectedCourse}

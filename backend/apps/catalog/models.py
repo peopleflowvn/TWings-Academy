@@ -124,7 +124,18 @@ class Course(InstallmentPlan, BaseModel):
     syllabus = models.JSONField(default=list, blank=True)
     reviews = models.JSONField(default=list, blank=True)
 
-    is_published = models.BooleanField(default=True)
+    # Lifecycle: draft -> review -> published (on sale) -> archived. Only "published" is public; the
+    # price is approved by whoever publishes (courses.publish), later changes need courses.pricing.
+    STATUS_CHOICES = [
+        ("draft", "Nháp"),
+        ("review", "Chờ duyệt"),
+        ("published", "Đang bán"),
+        ("archived", "Ngừng bán"),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft", db_index=True)
+    review_note = models.TextField(blank=True)  # the reviewer's feedback when sending back to draft
+    published_at = models.DateTimeField(null=True, blank=True)
+    is_published = models.BooleanField(default=False)  # kept in step with status (public filters)
     sort_order = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -132,6 +143,12 @@ class Course(InstallmentPlan, BaseModel):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        self.is_published = self.status == "published"
+        if "update_fields" in kwargs and kwargs["update_fields"] is not None:
+            kwargs["update_fields"] = {*kwargs["update_fields"], "is_published"}
+        super().save(*args, **kwargs)
 
 
 class Cohort(BaseModel):

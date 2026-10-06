@@ -221,7 +221,21 @@ export interface CourseReview {
   verifiedStudent?: boolean;
 }
 
+export interface CourseReadinessItem {
+  key: string;
+  label: string;
+  required: boolean;
+  ok: boolean;
+  hint: string;
+}
+
 export interface Course {
+  /** Publishing workflow (staff API): draft -> review -> published -> archived. */
+  status?: 'draft' | 'review' | 'published' | 'archived';
+  reviewNote?: string;
+  publishedAt?: string | null;
+  updatedAt?: string;
+  readiness?: CourseReadinessItem[];
   id: string;
   slug: string;
   title: string;

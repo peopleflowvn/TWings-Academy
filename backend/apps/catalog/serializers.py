@@ -64,13 +64,36 @@ class CourseSerializer(serializers.ModelSerializer):
     )
     instructors = InstructorSerializer(many=True, read_only=True)
     partner = PartnerSerializer(read_only=True)
+    readiness = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = "__all__"
+        # Changed only through the publishing workflow (apps.catalog.publishing).
+        read_only_fields = ["status", "is_published", "published_at", "review_note"]
+
+    def get_readiness(self, obj):
+        from .publishing import readiness
+
+        return readiness(obj)
 
     def validate_syllabus(self, value):
         return _validate_syllabus(value)
+
+    def validate(self, attrs):
+        """A course on sale keeps the price it was approved with unless the user may set prices."""
+        from apps.accounts.rbac import has_perm_code
+
+        from .publishing import PRICE_FIELDS
+
+        course, request = self.instance, self.context.get("request")
+        if course is not None and course.status == "published" and request is not None:
+            changed = [f for f in PRICE_FIELDS if f in attrs and attrs[f] != getattr(course, f)]
+            if changed and not has_perm_code(request.user, "courses.pricing"):
+                raise serializers.ValidationError(
+                    {"price": "Khóa đang bán: đổi học phí / trả góp cần quyền Định giá (courses.pricing)."}
+                )
+        return attrs
 
 
 def upcoming_cohorts(course) -> list[dict]:
@@ -183,6 +206,30 @@ class ProgramSerializer(_ProgramBase):
     class Meta:
         model = Program
         exclude = ["created_at", "updated_at"]
+
+    def validate(self, attrs):
+        """Same rules as courses: publishing needs courses.publish, re-pricing a live one courses.pricing."""
+        from apps.accounts.rbac import has_perm_code
+
+        request, program = self.context.get("request"), self.instance
+        if request is None:
+            return attrs
+        publishing = "is_published" in attrs and attrs["is_published"] != (
+            program.is_published if program else False
+        )
+        if publishing and not has_perm_code(request.user, "courses.publish"):
+            raise serializers.ValidationError(
+                {"is_published": "Mở / ngừng bán chương trình cần quyền Duyệt & xuất bản."}
+            )
+        if program is not None and program.is_published:
+            fields = ("price", "original_price", "installment_count", "installment_interval_days")
+            if any(f in attrs and attrs[f] != getattr(program, f) for f in fields) and not has_perm_code(
+                request.user, "courses.pricing"
+            ):
+                raise serializers.ValidationError(
+                    {"price": "Chương trình đang bán: đổi giá cần quyền Định giá."}
+                )
+        return attrs
 
     def validate_course_ids(self, value):
         unique = list(dict.fromkeys(value))
