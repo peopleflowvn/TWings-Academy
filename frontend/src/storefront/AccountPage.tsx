@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Award, BookOpen, CheckCircle2, Copy, Loader2, LogOut, Mail, RotateCcw } from 'lucide-react';
 import { ApiError, isBackendEnabled, resetCsrfToken } from '../lib/api';
-import { Account, AccountCourse, AccountOrder, commerceApi, formatDate, formatVND } from '../lib/commerce';
+import { Account, AccountCourse, AccountOrder, commerceApi, Dossier, formatDate, formatVND } from '../lib/commerce';
 
 const STATUS_STYLE: Record<string, string> = {
   paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -214,7 +214,154 @@ const ReviewBox: React.FC<{ course: AccountCourse; learnerName: string }> = ({ c
   );
 };
 
-const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: string; onChange: (o: AccountOrder) => void }> = ({ order, learnUrl, learnerName, onChange }) => (
+/** Step 6: the learner completes the enrolment file (CCCD is stored encrypted and never shown back). */
+const DossierBox: React.FC<{ order: AccountOrder }> = ({ order }) => {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<Dossier | null>(null);
+  const [form, setForm] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const missing = data ? data.missing : order.dossierMissing;
+  const load = () =>
+    commerceApi.dossier(order.orderCode).then((d) => {
+      setData(d);
+      setForm({
+        birthDate: d.birthDate || '', gender: d.gender || '', citizenId: '', issuedPlace: d.issuedPlace || '',
+        permanentAddress: d.permanentAddress || '', currentResidence: d.currentResidence || '', educationLevel: d.educationLevel || '',
+        major: d.major || '', university: d.university || '', graduationYear: d.graduationYear || '',
+        contactPersonName: d.contactPersonName || '', contactPersonPhone: d.contactPersonPhone || '', contactRelation: d.contactRelation || ''
+      });
+    });
+  const save = async () => {
+    setBusy(true);
+    setMsg('');
+    try {
+      const body: Record<string, string | null> = { ...form, birthDate: form.birthDate || null };
+      const next = await commerceApi.saveDossier(order.orderCode, body);
+      setData(next);
+      setForm({ ...form, citizenId: '' });
+      setMsg(next.missing.length ? 'Đã lưu – còn thiếu một số mục bắt buộc.' : 'Đã lưu hồ sơ nhập học. Cảm ơn bạn!');
+    } catch (err) {
+      setMsg(err instanceof ApiError ? err.message : 'Không lưu được hồ sơ.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const upload = async (file?: File) => {
+    if (!file) return;
+    setBusy(true);
+    setMsg('');
+    try {
+      setData(await commerceApi.uploadCv(order.orderCode, file));
+      setMsg('Đã tải CV lên.');
+    } catch (err) {
+      setMsg(err instanceof ApiError ? err.message : 'Không tải được CV.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const field = 'w-full p-2 text-xs border border-slate-300 rounded-xl';
+  const f = (key: string, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
+    <label className="text-[11px] text-slate-600">{label}
+      <input className={field} value={form[key] || ''} onChange={(e) => setForm({ ...form, [key]: e.target.value })} {...props} />
+    </label>
+  );
+  if (!open) {
+    return (
+      <button type="button" onClick={() => { setOpen(true); load(); }}
+        className={`text-xs font-bold hover:underline cursor-pointer ${missing.length ? 'text-amber-700' : 'text-emerald-700'}`}>
+        {missing.length ? `Hồ sơ nhập học: còn thiếu ${missing.length} mục – hoàn thiện ngay` : 'Hồ sơ nhập học: đã đủ – xem / sửa'}
+      </button>
+    );
+  }
+  return (
+    <div className="border border-slate-200 rounded-xl p-3 space-y-2 text-xs">
+      <div className="font-bold text-slate-800">Hồ sơ nhập học <span className="font-normal text-slate-500">(* bắt buộc; CCCD được mã hóa khi lưu)</span></div>
+      {!data ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {f('birthDate', 'Ngày sinh *', { type: 'date' })}
+            <label className="text-[11px] text-slate-600">Giới tính
+              <select className={field} value={form.gender || ''} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
+                <option value="">–</option><option>Nam</option><option>Nữ</option><option>Khác</option>
+              </select>
+            </label>
+            {f('citizenId', data.citizenIdMasked ? `CCCD * (đã lưu ${data.citizenIdMasked}; để trống nếu không đổi)` : 'Số CCCD *', { inputMode: 'numeric', maxLength: 12 })}
+            {f('issuedPlace', 'Nơi cấp')}
+            {f('permanentAddress', 'Địa chỉ thường trú *')}
+            {f('currentResidence', 'Nơi ở hiện tại')}
+            {f('educationLevel', 'Trình độ * (VD: Đại học)')}
+            {f('major', 'Chuyên ngành')}
+            {f('university', 'Trường')}
+            {f('graduationYear', 'Năm tốt nghiệp')}
+            {f('contactPersonName', 'Người liên hệ khẩn cấp')}
+            {f('contactPersonPhone', 'SĐT người liên hệ')}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" disabled={busy} onClick={save} className="px-3 py-1.5 rounded-xl bg-[#0056D2] text-white font-bold cursor-pointer disabled:opacity-50">Lưu hồ sơ</button>
+            <label className="cursor-pointer text-[#0056D2] font-bold">
+              {data.hasCv ? 'Thay CV (PDF/DOCX)' : 'Tải CV lên (PDF/DOCX, ≤ 5 MB)'}
+              <input type="file" accept=".pdf,.docx" className="hidden" onChange={(e) => upload(e.target.files?.[0])} />
+            </label>
+            {data.hasCv && <span className="text-emerald-700">Đã có CV</span>}
+            <button type="button" onClick={() => setOpen(false)} className="text-slate-500 cursor-pointer">Đóng</button>
+          </div>
+          {msg && <p className={msg.startsWith('Đã') ? 'text-emerald-700' : 'text-red-600'}>{msg}</p>}
+        </>
+      )}
+    </div>
+  );
+};
+
+/** Step 5: VAT invoice request (company or personal). */
+const InvoiceBox: React.FC<{ order: AccountOrder; email: string; onChange: (o: AccountOrder) => void }> = ({ order, email, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ buyerType: 'company' as 'company' | 'person', companyName: '', taxCode: '', address: '', email });
+  const [error, setError] = useState('');
+  if (order.invoice?.status === 'issued') return <p className="text-xs text-emerald-700">Đã xuất hóa đơn {order.invoice.number}.</p>;
+  if (order.totalPaid <= 0) return null;
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="text-xs text-slate-600 hover:text-slate-900 cursor-pointer">
+        {order.invoice ? 'Đã gửi yêu cầu xuất hóa đơn – sửa thông tin' : 'Yêu cầu xuất hóa đơn VAT'}
+      </button>
+    );
+  }
+  const submit = async () => {
+    setError('');
+    try {
+      onChange(await commerceApi.requestInvoice(order.orderCode, form));
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không gửi được yêu cầu.');
+    }
+  };
+  const field = 'w-full p-2 text-xs border border-slate-300 rounded-xl';
+  return (
+    <div className="border border-slate-200 rounded-xl p-3 space-y-2 text-xs">
+      <div className="flex gap-3">
+        {(['company', 'person'] as const).map((t) => (
+          <label key={t} className="flex items-center gap-1.5"><input type="radio" checked={form.buyerType === t} onChange={() => setForm({ ...form, buyerType: t })} />{t === 'company' ? 'Công ty' : 'Cá nhân'}</label>
+        ))}
+      </div>
+      {form.buyerType === 'company' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input className={field} placeholder="Tên công ty *" value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} />
+          <input className={field} placeholder="Mã số thuế *" value={form.taxCode} onChange={(e) => setForm({ ...form, taxCode: e.target.value.trim() })} />
+          <input className={`${field} sm:col-span-2`} placeholder="Địa chỉ *" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        </div>
+      )}
+      <input className={field} type="email" placeholder="Email nhận hóa đơn" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+      {error && <p className="text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button type="button" onClick={submit} className="px-3 py-1.5 rounded-xl bg-slate-800 text-white font-bold cursor-pointer">Gửi yêu cầu</button>
+        <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-slate-500 cursor-pointer">Hủy</button>
+      </div>
+    </div>
+  );
+};
+
+const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: string; learnerEmail: string; onChange: (o: AccountOrder) => void }> = ({ order, learnUrl, learnerName, learnerEmail, onChange }) => (
   <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
@@ -289,6 +436,8 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: 
       ))}
     </div>
 
+    {order.learningAccess && <DossierBox order={order} />}
+    <InvoiceBox order={order} email={learnerEmail} onChange={onChange} />
     <RefundRequest order={order} onSent={onChange} />
   </div>
 );
@@ -334,7 +483,7 @@ export const AccountPage: React.FC = () => {
       </div>
       {account.orders.length === 0 && <p className="text-sm text-slate-600">Chưa có đơn đăng ký nào với email này.</p>}
       {account.orders.map((o) => (
-        <OrderCard key={o.orderCode} order={o} learnUrl={account.learnUrl} learnerName={account.name} onChange={replace} />
+        <OrderCard key={o.orderCode} order={o} learnUrl={account.learnUrl} learnerName={account.name} learnerEmail={account.email} onChange={replace} />
       ))}
     </div>
   );

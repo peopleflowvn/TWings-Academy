@@ -12,6 +12,10 @@ interface DashboardData {
     leads30d: number;
     paid30d: number;
     tasksDueToday: number;
+    overdueLeads: number;
+    overdueList: { id: string; customerName: string; course: string; pic: string; dueAt: string }[];
+    myOpenLeads: number;
+    appointmentsToday: number;
     upcomingTasks: { id: string; title: string; dueDate: string | null; priority: string; orderId: string; customerName: string }[];
   };
   finance?: { revenueMonth: number; revenueToday: number; receivable: number; unmatchedTransactions: number };
@@ -94,6 +98,12 @@ export const DashboardPage: React.FC<{ user: AdminUser }> = ({ user }) => {
           {f && <Stat label="Doanh thu tháng này" value={vnd(f.revenueMonth)} icon={Wallet} tone="text-emerald-700 bg-emerald-50" to="/finance/transactions" />}
           {f && <Stat label="Còn phải thu" value={vnd(f.receivable)} icon={Wallet} tone="text-amber-700 bg-amber-50" to="/sales/crm" />}
           {s && <Stat label="Việc đến hạn" value={s.tasksDueToday} icon={CheckSquare} tone="text-amber-700 bg-amber-50" />}
+          {s && (
+            <Stat label="Lead quá hạn phản hồi" value={s.overdueLeads} icon={AlertTriangle}
+              tone={s.overdueLeads ? 'text-red-700 bg-red-50' : 'text-slate-600 bg-slate-100'} to="/sales/consulting" />
+          )}
+          {s && <Stat label="Lead đang mở của tôi" value={s.myOpenLeads} icon={Users} to="/sales/crm" />}
+          {s && <Stat label="Lịch hẹn tư vấn hôm nay" value={s.appointmentsToday} icon={CalendarClock} to="/sales/consulting" />}
           {f && (
             <Stat
               label="Giao dịch chưa khớp"

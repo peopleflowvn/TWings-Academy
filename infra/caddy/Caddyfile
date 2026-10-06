@@ -52,8 +52,9 @@ Disallow: /
 			}
 		}
 
-		# Public certificate verification pages (rendered by Django).
-		handle /xac-minh/* {
+		# Public certificate verification and payment receipt pages (rendered by Django).
+		@django path /xac-minh/* /bien-nhan/*
+		handle @django {
 			reverse_proxy backend:8000 {
 				header_up X-Real-IP {client_ip}
 			}

@@ -39,6 +39,7 @@ class DashboardView(APIView):
                 "leads30d": last30.count(),
                 "paid30d": last30.filter(status="paid").count(),
                 "tasksDueToday": FollowupTask.objects.filter(is_completed=False, due_date__lte=today).count(),
+                **_lead_service(user, now),
                 "upcomingTasks": [
                     {
                         "id": t.id,
@@ -195,3 +196,31 @@ class SystemHealthView(APIView):
             "Cloudflare R2" if "s3" in storage.lower() else "Ổ đĩa máy chủ (chưa dùng R2)",
         )
         return Response({"checks": checks, "checkedAt": timezone.now()})
+
+
+def _lead_service(user, now) -> dict:
+    """Step 4 service level: leads past their first-response deadline, mine, today's consultations."""
+    from apps.crm.assignment import OPEN_STAGES, overdue_leads
+    from apps.crm.models import Appointment, Order
+
+    overdue = overdue_leads().select_related("assigned_to").order_by("response_due_at")
+    end_of_day = timezone.localtime(now).replace(hour=23, minute=59)
+    return {
+        "overdueLeads": overdue.count(),
+        "overdueList": [
+            {
+                "id": o.id,
+                "customerName": o.customer_name,
+                "course": o.course_title,
+                "pic": o.pic,
+                "dueAt": o.response_due_at,
+            }
+            for o in overdue[:8]
+        ],
+        "myOpenLeads": Order.objects.filter(
+            assigned_to=user, crm_status__in=OPEN_STAGES, status="pending", parent__isnull=True
+        ).count(),
+        "appointmentsToday": Appointment.objects.filter(
+            status="planned", starts_at__gte=now - timezone.timedelta(hours=1), starts_at__lte=end_of_day
+        ).count(),
+    }

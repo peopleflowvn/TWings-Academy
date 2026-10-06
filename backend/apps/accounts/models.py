@@ -43,6 +43,8 @@ class User(AbstractUser):
     avatar = models.URLField(max_length=500, blank=True)
     # {"granted": ["crm.export_excel"], "revoked": ["crm.delete_lead"]}
     permission_overrides = models.JSONField(default=dict, blank=True)
+    # Admissions consultants share new website leads (fewest open leads first); off = holiday / leave.
+    receives_leads = models.BooleanField(default=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name"]

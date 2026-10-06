@@ -14,6 +14,28 @@ def learn_url() -> str:
     return f"{site_url()}/learn/"
 
 
+def _intake_block(order) -> str:
+    """Start date, schedule and first sessions of the learner's intake (empty for self-paced courses)."""
+    from django.utils import timezone
+
+    cohort = order.cohort
+    if cohort is None:
+        return ""
+    lines = []
+    if cohort.start_date:
+        lines.append(f"Khai giảng: <strong>{cohort.start_date:%d/%m/%Y}</strong>")
+    if cohort.schedule_text:
+        lines.append(f"Lịch học: {escape(cohort.schedule_text)}")
+    if cohort.location:
+        lines.append(f"Địa điểm: {escape(cohort.location)}")
+    sessions = cohort.sessions.filter(starts_at__gte=timezone.now())[:3]
+    for s in sessions:
+        lines.append(f"{timezone.localtime(s.starts_at):%H:%M %d/%m} – {escape(s.title or 'Buổi học')}")
+    if not lines:
+        return ""
+    return "<p><strong>Thông tin lớp " + escape(cohort.name) + ":</strong><br>" + "<br>".join(lines) + "</p>"
+
+
 def send_access_email(order, *, sent_by=None):
     url = learn_url()
     course = escape(order.course.title if order.course else order.course_title)
@@ -28,6 +50,9 @@ def send_access_email(order, *, sent_by=None):
   <li>Nhập email <strong>{escape(order.customer_email)}</strong> và mã 6 chữ số được gửi tới email này</li>
 </ol>
 <p>Bạn cũng có thể đăng nhập bằng mật khẩu trong email “Tài khoản thành viên mới” của hệ thống học.</p>
+{_intake_block(order)}
+<p><strong>Hoàn thiện hồ sơ nhập học</strong> (CCCD, học vấn, CV) và xem lịch học phí tại
+<a href="{site_url()}/tai-khoan">Tài khoản học viên</a>.</p>
 <p>Mã đơn hàng: {escape(order.order_code)}. Cần hỗ trợ, vui lòng trả lời email này.</p>
 <p>TWings Academy</p>
 """

@@ -37,6 +37,17 @@ urlpatterns = [
     path("account/logout/", account.LogoutView.as_view(), name="public-account-logout"),
     path("account/reviews/", account.ReviewView.as_view(), name="public-account-review"),
     path(
+        "account/orders/<str:order_code>/invoice/",
+        account.InvoiceView.as_view(),
+        name="public-account-invoice",
+    ),
+    path(
+        "account/orders/<str:order_code>/dossier/",
+        account.DossierView.as_view(),
+        name="public-account-dossier",
+    ),
+    path("account/orders/<str:order_code>/cv/", account.CvUploadView.as_view(), name="public-account-cv"),
+    path(
         "account/orders/<str:order_code>/refund-request/",
         account.RefundRequestView.as_view(),
         name="public-account-refund-request",

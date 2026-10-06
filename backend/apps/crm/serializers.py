@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from apps.catalog.models import Cohort, Course, Program
 
-from .models import Activity, AdmissionCampaign, CampaignPosition, FollowupTask, Order
+from .models import Activity, AdmissionCampaign, Appointment, CampaignPosition, FollowupTask, Order
 
 PRIVACY_POLICY_VERSION = "2026-10"
 
@@ -114,6 +114,9 @@ class PublicRegistrationSerializer(serializers.Serializer):
     coupon_code = serializers.CharField(max_length=50, required=False, allow_blank=True)
     # First / last marketing touch kept by the browser (utm_*, ref, referrer, landing page).
     attribution = serializers.JSONField(required=False)
+    # Checkout only: terms of service (/dieu-khoan) accepted, optional VAT invoice details.
+    terms_accepted = serializers.BooleanField(default=False)
+    invoice = serializers.JSONField(required=False)
     privacy_consent = serializers.BooleanField()
     # Honeypot: real users never see or fill this field.
     website = serializers.CharField(required=False, allow_blank=True)
@@ -122,6 +125,13 @@ class PublicRegistrationSerializer(serializers.Serializer):
         from .attribution import clean
 
         return clean(value)
+
+    def validate_invoice(self, value):
+        if not value:
+            return None
+        ser = InvoiceInputSerializer(data=value)
+        ser.is_valid(raise_exception=True)
+        return dict(ser.validated_data)
 
     def validate_privacy_consent(self, value):
         if value is not True:
@@ -200,3 +210,96 @@ class AdmissionCampaignSerializer(serializers.ModelSerializer):
                 position.save()
             keep.append(position.pk)
         campaign.positions.exclude(pk__in=keep).delete()
+
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    order_code = serializers.CharField(source="order.order_code", read_only=True)
+    customer_name = serializers.CharField(source="order.customer_name", read_only=True)
+    customer_phone = serializers.CharField(source="order.customer_phone", read_only=True)
+    course_title = serializers.CharField(source="order.course_title", read_only=True)
+    order_id = serializers.CharField(source="order.id", read_only=True)
+    staff_name = serializers.CharField(source="staff.name", read_only=True, default="")
+    notify = serializers.BooleanField(write_only=True, required=False, default=True)
+
+    class Meta:
+        model = Appointment
+        fields = [
+            "id",
+            "order_id",
+            "order_code",
+            "customer_name",
+            "customer_phone",
+            "course_title",
+            "starts_at",
+            "duration_minutes",
+            "channel",
+            "location",
+            "note",
+            "status",
+            "staff",
+            "staff_name",
+            "notify",
+        ]
+        read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        validated_data.pop("notify", None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data.pop("notify", None)
+        return super().update(instance, validated_data)
+
+
+class InvoiceInputSerializer(serializers.Serializer):
+    """VAT invoice details given by a learner (company or person)."""
+
+    buyer_type = serializers.ChoiceField(choices=["company", "person"], default="company")
+    company_name = serializers.CharField(max_length=300, required=False, allow_blank=True)
+    tax_code = serializers.RegexField(
+        r"^\d{10}(-\d{3})?$|^\d{12}$", max_length=20, required=False, allow_blank=True
+    )
+    address = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    email = serializers.EmailField()
+
+    def validate(self, attrs):
+        if attrs.get("buyer_type", "company") == "company":
+            missing = [f for f in ("company_name", "tax_code", "address") if not attrs.get(f)]
+            if missing:
+                raise serializers.ValidationError("Hóa đơn công ty cần tên công ty, mã số thuế và địa chỉ.")
+        return attrs
+
+
+class InvoiceRequestSerializer(serializers.ModelSerializer):
+    order_code = serializers.CharField(source="order.order_code", read_only=True)
+    order_id = serializers.CharField(source="order.id", read_only=True)
+    customer_name = serializers.CharField(source="order.customer_name", read_only=True)
+    course_title = serializers.CharField(source="order.course_title", read_only=True)
+    amount = serializers.IntegerField(source="order.amount", read_only=True)
+    total_paid = serializers.IntegerField(source="order.total_paid_amount", read_only=True)
+    issued_by_name = serializers.CharField(source="issued_by.name", read_only=True, default="")
+
+    class Meta:
+        from .models import InvoiceRequest
+
+        model = InvoiceRequest
+        fields = [
+            "id",
+            "order_id",
+            "order_code",
+            "customer_name",
+            "course_title",
+            "amount",
+            "total_paid",
+            "buyer_type",
+            "company_name",
+            "tax_code",
+            "address",
+            "email",
+            "status",
+            "invoice_number",
+            "issued_at",
+            "issued_by_name",
+            "created_at",
+        ]
+        read_only_fields = ["issued_at", "created_at"]

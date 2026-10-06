@@ -50,6 +50,10 @@ def _credit(order: Order, amount: int, *, source: str, txn=None, user=None, note
     if txn is not None:
         order.transaction_code = txn.reference_code or txn.provider_txn_id
     order.save()
+    # Step 5: printable receipt e-mailed to the learner once the payment is committed.
+    from .receipts import send_receipt
+
+    transaction.on_commit(lambda: send_receipt(payment.pk))
     Activity.objects.create(
         order=order,
         type="payment",

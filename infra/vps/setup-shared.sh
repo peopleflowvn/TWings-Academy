@@ -79,6 +79,7 @@ cat > /etc/cron.d/twings-billing <<EOF
 CRON_TZ=Asia/Ho_Chi_Minh
 0 9 * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py remind_installments >/dev/null 2>&1
 15 0 * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py refresh_intakes >/dev/null 2>&1
+5 7-21 * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py remind_appointments >/dev/null 2>&1
 30 9 * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py run_journeys >/dev/null 2>&1
 EOF
 chmod 644 /etc/cron.d/twings-billing

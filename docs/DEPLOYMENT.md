@@ -300,6 +300,18 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 - **Đánh giá thật**: học viên (đã ghi danh LMS) viết trong Tài khoản, đồng ý đăng → /app → Đánh giá của học viên duyệt
   → hiện trên trang khóa học với nhãn “Học viên đã học”.
 
+## Tư vấn, thanh toán, nhập học (hành trình khâu 4–6)
+
+- **Khâu 4**: lead website tự giao tư vấn viên (vai trò Tư vấn tuyển sinh, bật “nhận lead”; ít lead mở nhất, khách cũ
+  giữ người cũ) + email báo + việc “Liên hệ lead mới”; hạn phản hồi `LEAD_RESPONSE_HOURS` (mặc định 4 giờ, tính trong
+  8:00–20:00); lead quá hạn trên Tổng quan. Lịch hẹn tư vấn (email xác nhận; `remind_appointments` mỗi giờ 7–21h nhắc
+  khách và tư vấn viên ~2 giờ trước). /app → Tư vấn & lịch hẹn.
+- **Khâu 5**: thanh toán bắt buộc đồng ý Điều khoản (lưu thời điểm + phiên bản); mỗi khoản thu gửi **biên nhận**
+  (`/bien-nhan/<token>/`, in / lưu PDF); yêu cầu **hóa đơn VAT** (lúc thanh toán hoặc trong Tài khoản) → /app → Hóa đơn
+  theo yêu cầu (xuất trên phần mềm HĐĐT rồi ghi số).
+- **Khâu 6**: học viên tự hoàn thiện **hồ sơ nhập học** + CV (kho riêng tư, nhân viên tải trong hồ sơ lead); email vào học
+  kèm lịch lớp; /app → Đợt khai giảng → **Danh sách lớp** (học phí, hồ sơ thiếu, LMS, CSV).
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị

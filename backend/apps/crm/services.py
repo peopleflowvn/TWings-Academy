@@ -83,6 +83,8 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     data.pop("website", None)
     preferred_cohort = data.pop("batch_cohort", "")
     attribution = data.pop("attribution", None) or {}
+    terms_accepted = data.pop("terms_accepted", False)
+    invoice = data.pop("invoice", None)
     source = data.pop("source", "") or "Website"
     item = course or program
     if item is None:
@@ -128,6 +130,15 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     order.save()
     if installments > 1:
         create_installments(order, item.installment_interval_days)
+    if with_payment and terms_accepted:
+        from apps.cms.legal import UPDATED
+
+        order.terms_accepted_at, order.terms_version = timezone.now(), UPDATED
+        order.save(update_fields=["terms_accepted_at", "terms_version", "updated_at"])
+    if invoice:
+        from .models import InvoiceRequest
+
+        InvoiceRequest.objects.create(order=order, **invoice)
 
     duplicates = order.find_duplicates()
     if duplicates.exists():
@@ -144,6 +155,9 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
         content=(f"Lớp mong muốn đã đủ/đóng, tự chuyển sang {cohort.name}." if rerouted and cohort else ""),
         actor="Website",
     )
+    from .assignment import assign_new_lead
+
+    assign_new_lead(order)  # step 4: a consultant and a response deadline right away
     return order
 
 

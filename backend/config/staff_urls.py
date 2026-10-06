@@ -20,7 +20,17 @@ from apps.core.dashboard import DashboardView, SystemHealthView
 from apps.core.reports import ReportsView
 from apps.core.uploads import ImageUploadView
 from apps.core.views import AuditLogViewSet
-from apps.crm.views import AdmissionCampaignViewSet, CohortRolloverView, JourneysView, OrderViewSet
+from apps.crm.views import (
+    AdmissionCampaignViewSet,
+    AppointmentViewSet,
+    CohortRolloverView,
+    CohortRosterView,
+    ConsultantsView,
+    InvoiceRequestViewSet,
+    JourneysView,
+    OrderCvView,
+    OrderViewSet,
+)
 from apps.notifications.views import EmailLogViewSet, EmailTemplateViewSet, SendEmailView
 from apps.payments.views import (
     BankTransactionViewSet,
@@ -43,6 +53,8 @@ router.register("banners", HeroBannerViewSet, basename="staff-banner")
 router.register("site-config", SiteConfigViewSet, basename="staff-site-config")
 router.register("orders", OrderViewSet, basename="staff-order")
 router.register("campaigns", AdmissionCampaignViewSet, basename="staff-campaign")
+router.register("appointments", AppointmentViewSet, basename="staff-appointment")
+router.register("invoices", InvoiceRequestViewSet, basename="staff-invoice")
 router.register("email-templates", EmailTemplateViewSet, basename="staff-email-template")
 router.register("email-logs", EmailLogViewSet, basename="staff-email-log")
 router.register("transactions", BankTransactionViewSet, basename="staff-transaction")
@@ -58,6 +70,9 @@ urlpatterns = [
     path("orders/<str:pk>/refund/", RefundOrderView.as_view(), name="staff-order-refund"),
     path("intakes/", IntakesOverviewView.as_view(), name="staff-intakes"),
     path("cohorts/<str:pk>/sessions/", CohortSessionsView.as_view(), name="staff-cohort-sessions"),
+    path("cohorts/<str:pk>/roster/", CohortRosterView.as_view(), name="staff-cohort-roster"),
+    path("orders/<str:pk>/cv/", OrderCvView.as_view(), name="staff-order-cv"),
+    path("consultants/", ConsultantsView.as_view(), name="staff-consultants"),
     path("cohorts/<str:pk>/rollover/", CohortRolloverView.as_view(), name="staff-cohort-rollover"),
     path("lms/", include("apps.lms.urls")),
     path("dashboard/", DashboardView.as_view(), name="staff-dashboard"),

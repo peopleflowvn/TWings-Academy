@@ -43,6 +43,7 @@ class StaffUserSerializer(serializers.ModelSerializer):
             "status",
             "permissions",
             "permission_overrides",
+            "receives_leads",
             "last_login",
             "date_joined",
             "password",

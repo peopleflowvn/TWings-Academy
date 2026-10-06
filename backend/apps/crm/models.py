@@ -219,6 +219,15 @@ class Order(BaseModel):
     retake_payment_status = models.CharField(max_length=50, blank=True)
     retake_note = models.TextField(blank=True)
 
+    # Step 4 – first response to a new lead (commitment: settings.LEAD_RESPONSE_HOURS).
+    response_due_at = models.DateTimeField(null=True, blank=True)
+    first_response_at = models.DateTimeField(null=True, blank=True)
+    # Step 5 – terms of service accepted at checkout (version of /dieu-khoan).
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    terms_version = models.CharField(max_length=20, blank=True)
+    # Step 6 – the learner completed the enrolment file from the learner account.
+    dossier_submitted_at = models.DateTimeField(null=True, blank=True)
+
     # Where the lead came from: first and last touch (utm_*, referrer, landing page, ?ref= code),
     # captured in the visitor's browser and sent with the form (apps.crm.attribution).
     attribution = models.JSONField(default=dict, blank=True)
@@ -356,3 +365,55 @@ class FollowupTask(BaseModel):
 
     class Meta:
         ordering = ["is_completed", "due_date"]
+
+
+class Appointment(BaseModel):
+    """A consultation booked with a lead (call, Zalo, online meeting or at the office)."""
+
+    CHANNEL_CHOICES = [
+        ("call", "Gọi điện"),
+        ("zalo", "Zalo"),
+        ("online", "Họp online"),
+        ("office", "Tại văn phòng"),
+    ]
+    STATUS_CHOICES = [
+        ("planned", "Đã hẹn"),
+        ("done", "Đã tư vấn"),
+        ("no_show", "Khách không đến"),
+        ("cancelled", "Đã hủy"),
+    ]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="appointments")
+    starts_at = models.DateTimeField()
+    duration_minutes = models.PositiveSmallIntegerField(default=30)
+    channel = models.CharField(max_length=20, choices=CHANNEL_CHOICES, default="call")
+    location = models.CharField(max_length=300, blank=True)  # address or meeting link
+    note = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="planned", db_index=True)
+    staff = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    reminded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["starts_at"]
+
+
+class InvoiceRequest(BaseModel):
+    """A learner / company asks for a VAT invoice; finance issues it in the e-invoice software."""
+
+    STATUS_CHOICES = [("requested", "Chờ xuất"), ("issued", "Đã xuất"), ("cancelled", "Đã hủy")]
+
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="invoice_request")
+    buyer_type = models.CharField(
+        max_length=20, choices=[("company", "Công ty"), ("person", "Cá nhân")], default="company"
+    )
+    company_name = models.CharField(max_length=300, blank=True)
+    tax_code = models.CharField(max_length=20, blank=True)
+    address = models.CharField(max_length=500, blank=True)
+    email = models.EmailField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="requested", db_index=True)
+    invoice_number = models.CharField(max_length=50, blank=True)
+    issued_at = models.DateTimeField(null=True, blank=True)
+    issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        ordering = ["-created_at"]

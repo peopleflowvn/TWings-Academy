@@ -41,6 +41,10 @@ class PublicCheckoutView(APIView):
         ser.is_valid(raise_exception=True)
         if ser.validated_data.get("website"):
             return Response({"detail": "Yêu cầu không hợp lệ."}, status=400)
+        if not ser.validated_data.get("terms_accepted"):
+            return Response(
+                {"detail": "Vui lòng đồng ý Điều khoản sử dụng dịch vụ để thanh toán."}, status=400
+            )
         try:
             order = create_public_order(dict(ser.validated_data), ser.consent_fields(), with_payment=True)
         except CheckoutError as exc:

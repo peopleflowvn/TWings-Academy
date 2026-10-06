@@ -3,6 +3,7 @@ import { CalendarDays, CheckCircle2, Loader2, Plus, RefreshCw, Save, Target, X }
 import { api, ApiError } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { formatDate, formatVND } from '../../lib/commerce';
+import { RosterModal } from './JourneyPages';
 
 interface IntakeRow {
   id: string;
@@ -301,6 +302,7 @@ export const IntakesPage: React.FC<{ courses: { id: string; title: string }[] }>
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Draft | null>(null);
   const [scheduling, setScheduling] = useState<IntakeRow | null>(null);
+  const [roster, setRoster] = useState<string | null>(null);
 
   const load = () => {
     setError('');
@@ -379,6 +381,7 @@ export const IntakesPage: React.FC<{ courses: { id: string; title: string }[] }>
                     {r.nextSession && <div className="text-slate-500">Buổi tới: {new Date(r.nextSession).toLocaleString('vi-VN')}</div>}
                   </td>
                   <td className="py-3 pr-3 text-right whitespace-nowrap">
+                    <button type="button" onClick={() => setRoster(r.id)} className="text-[#0073C1] font-bold hover:underline cursor-pointer mr-3">Danh sách lớp</button>
                     {canEdit && (
                       <>
                         <button type="button" onClick={() => setScheduling(r)} className="text-[#0073C1] font-bold hover:underline cursor-pointer mr-3 inline-flex items-center gap-1">
@@ -415,6 +418,7 @@ export const IntakesPage: React.FC<{ courses: { id: string; title: string }[] }>
 
       {editing && <IntakeEditor draft={editing} courses={courses} intakes={data.intakes} onClose={() => setEditing(null)} onSaved={load} />}
       {scheduling && <SessionsEditor intake={scheduling} onClose={() => setScheduling(null)} onSaved={load} />}
+      {roster && <RosterModal cohortId={roster} onClose={() => setRoster(null)} />}
     </div>
   );
 };

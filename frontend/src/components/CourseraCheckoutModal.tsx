@@ -96,6 +96,9 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
   const [customerPhone, setCustomerPhone] = useState(prefill?.customerPhone || '');
   const [couponCode, setCouponCode] = useState('');
   const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [wantInvoice, setWantInvoice] = useState(false);
+  const [invoice, setInvoice] = useState({ companyName: '', taxCode: '', address: '', email: '' });
   const [honeypot, setHoneypot] = useState('');
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -111,6 +114,10 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
     setFormError('');
     if (!customerName.trim() || !customerEmail.includes('@') || customerPhone.trim().length < 9) {
       setFormError('Vui lòng nhập đầy đủ họ tên, email và số điện thoại hợp lệ.');
+      return;
+    }
+    if (liveMode && !termsAccepted) {
+      setFormError('Bạn cần đồng ý Điều khoản sử dụng dịch vụ để thanh toán.');
       return;
     }
     if (!privacyConsent) {
@@ -153,6 +160,10 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
         couponCode: couponCode.trim(),
         privacyConsent,
         attribution: getAttribution(),
+        termsAccepted,
+        ...(wantInvoice
+          ? { invoice: { buyerType: 'company', ...invoice, email: invoice.email.trim() || customerEmail.trim() } }
+          : {}),
         website: honeypot,
         source: 'Website Checkout'
       });
@@ -441,6 +452,26 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       ))}
                     </div>
                   )}
+                  {liveMode && (
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-[11px] text-slate-600 cursor-pointer">
+                        <input type="checkbox" checked={wantInvoice} onChange={(e) => setWantInvoice(e.target.checked)} />
+                        <span>Xuất hóa đơn VAT cho công ty</span>
+                      </label>
+                      {wantInvoice && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input value={invoice.companyName} onChange={(e) => setInvoice({ ...invoice, companyName: e.target.value })} placeholder="Tên công ty *" maxLength={300}
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl" />
+                          <input value={invoice.taxCode} onChange={(e) => setInvoice({ ...invoice, taxCode: e.target.value.trim() })} placeholder="Mã số thuế *" maxLength={20}
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl font-mono" />
+                          <input value={invoice.address} onChange={(e) => setInvoice({ ...invoice, address: e.target.value })} placeholder="Địa chỉ công ty *" maxLength={500}
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl sm:col-span-2" />
+                          <input type="email" value={invoice.email} onChange={(e) => setInvoice({ ...invoice, email: e.target.value })} placeholder="Email nhận hóa đơn (mặc định email của bạn)" maxLength={254}
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl sm:col-span-2" />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {/* Honeypot: hidden from people, filled in by bots */}
                   <input
                     type="text"
@@ -464,6 +495,16 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       thanh toán và tư vấn khóa học theo{' '}<a href="/chinh-sach-bao-mat" target="_blank" rel="noopener" className="text-[#0056D2] underline">Chính sách bảo mật</a>.
                     </span>
                   </label>
+                  {liveMode && (
+                    <label className="flex items-start gap-2 text-[11px] text-slate-600 cursor-pointer">
+                      <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-0.5" />
+                      <span>
+                        Tôi đã đọc và đồng ý{' '}
+                        <a href="/dieu-khoan" target="_blank" rel="noopener" className="text-[#0056D2] underline">Điều khoản sử dụng dịch vụ</a>
+                        {' '}(học phí, trả góp, hoàn học phí).
+                      </span>
+                    </label>
+                  )}
                   {formError && <div className="text-xs text-red-600 font-medium">{formError}</div>}
                   <button
                     type="submit"

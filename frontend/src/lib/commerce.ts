@@ -2,7 +2,7 @@
  * Selling beyond single courses: programs (bundles), installment plans, refunds, the learner account.
  * Amounts always come from the server; the browser only displays them.
  */
-import { api } from './api';
+import { api, apiFetch } from './api';
 
 export interface ProgramCourseSummary {
   id: string;
@@ -94,6 +94,28 @@ export interface AccountOrder extends OrderBilling {
   createdAt: string;
   courses: AccountCourse[];
   refundRequested: boolean;
+  invoice: { status: 'requested' | 'issued' | 'cancelled'; number: string; companyName: string } | null;
+  /** Required enrolment-file fields still missing (birth_date, citizen_id, permanent_address, education_level). */
+  dossierMissing: string[];
+}
+
+export interface Dossier {
+  birthDate: string | null;
+  gender: string;
+  citizenIdMasked: string;
+  issuedPlace: string;
+  currentResidence: string;
+  permanentAddress: string;
+  educationLevel: string;
+  major: string;
+  university: string;
+  graduationYear: string;
+  contactPersonName: string;
+  contactPersonPhone: string;
+  contactRelation: string;
+  hasCv: boolean;
+  missing: string[];
+  submittedAt: string | null;
 }
 
 export type Account =
@@ -121,6 +143,16 @@ export const commerceApi = {
   logout: () => api.post<{ authenticated: boolean }>('/public/account/logout/'),
   review: (body: { orderCode: string; rating: number; comment: string; displayName: string; role: string; consent: boolean }) =>
     api.post<AccountCourse>('/public/account/reviews/', body),
+  requestInvoice: (orderCode: string, body: { buyerType: 'company' | 'person'; companyName: string; taxCode: string; address: string; email: string }) =>
+    api.post<AccountOrder>(`/public/account/orders/${orderCode}/invoice/`, body),
+  dossier: (orderCode: string) => api.get<Dossier>(`/public/account/orders/${orderCode}/dossier/`),
+  saveDossier: (orderCode: string, body: Record<string, string | null>) =>
+    api.put<Dossier>(`/public/account/orders/${orderCode}/dossier/`, body),
+  uploadCv: (orderCode: string, file: File) => {
+    const body = new FormData();
+    body.append('file', file);
+    return apiFetch<Dossier>(`/public/account/orders/${orderCode}/cv/`, { method: 'POST', body });
+  },
   requestRefund: (orderCode: string, reason: string) =>
     api.post<AccountOrder>(`/public/account/orders/${orderCode}/refund-request/`, { reason })
 };

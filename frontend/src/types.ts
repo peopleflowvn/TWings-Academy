@@ -382,6 +382,11 @@ export type CRMStatus =
 export type PaymentStatus = 'Chưa thanh toán' | 'Đã đóng phí' | 'Đã đóng 1 phần' | 'Đã hoàn tiền';
 
 export interface Order {
+  /** Steps 4-6 (staff API) */
+  responseDueAt?: string | null;
+  firstResponseAt?: string | null;
+  termsAcceptedAt?: string | null;
+  dossierSubmittedAt?: string | null;
   id: string;
   orderCode: string;
   courseId: string;

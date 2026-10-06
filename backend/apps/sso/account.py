@@ -88,8 +88,15 @@ def _order_item(order: Order) -> dict:
     courses = (
         [_course_item(c) for c in order.components.all()] if order.is_program_order else [_course_item(order)]
     )
+    invoice = getattr(order, "invoice_request", None)
     return {
         **billing,
+        "invoice": (
+            {"status": invoice.status, "number": invoice.invoice_number, "company_name": invoice.company_name}
+            if invoice
+            else None
+        ),
+        "dossier_missing": [f for f in DOSSIER_REQUIRED if not getattr(order, f)],
         "title": order.course_title,
         "kind": "program" if order.is_program_order else "course",
         "created_at": order.created_at.isoformat(),
@@ -260,3 +267,150 @@ class ReviewView(_LearnerView):
             actor=email,
         )
         return Response(_course_item(order))
+
+
+# ---------------------------------------------------------------- step 5/6: invoice, enrolment file, CV
+def _own_order(request, order_code: str):
+    email = learner_email(request)
+    if email is None:
+        return None, Response({"detail": "Vui lòng đăng nhập."}, status=401)
+    order = Order.objects.filter(
+        order_code=order_code.upper(), customer_email__iexact=email, parent__isnull=True
+    ).first()
+    if order is None:
+        return None, Response({"detail": "Không tìm thấy đơn hàng."}, status=404)
+    return order, None
+
+
+class InvoiceView(_LearnerView):
+    def post(self, request, order_code):
+        from apps.crm.models import InvoiceRequest
+        from apps.crm.serializers import InvoiceInputSerializer
+
+        order, error = _own_order(request, order_code)
+        if error:
+            return error
+        existing = InvoiceRequest.objects.filter(order=order).first()
+        if existing and existing.status == "issued":
+            return Response({"detail": "Hóa đơn đã được xuất."}, status=400)
+        ser = InvoiceInputSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        InvoiceRequest.objects.update_or_create(
+            order=order, defaults={**ser.validated_data, "status": "requested"}
+        )
+        Activity.objects.create(
+            order=order, type="note", title="Học viên yêu cầu xuất hóa đơn", actor=order.customer_email
+        )
+        return Response(_order_item(order))
+
+
+DOSSIER_FIELDS = [
+    "birth_date",
+    "gender",
+    "issued_place",
+    "current_residence",
+    "permanent_address",
+    "education_level",
+    "major",
+    "university",
+    "graduation_year",
+    "contact_person_name",
+    "contact_person_phone",
+    "contact_relation",
+]
+DOSSIER_REQUIRED = ["birth_date", "citizen_id", "permanent_address", "education_level"]
+
+
+class DossierSerializer(serializers.Serializer):
+    birth_date = serializers.DateField(required=False, allow_null=True)
+    gender = serializers.ChoiceField(choices=["Nam", "Nữ", "Khác"], required=False, allow_blank=True)
+    citizen_id = serializers.RegexField(r"^\d{9}$|^\d{12}$", required=False, allow_blank=True)
+    issued_place = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    current_residence = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    permanent_address = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    education_level = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    major = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    university = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    graduation_year = serializers.CharField(max_length=10, required=False, allow_blank=True)
+    contact_person_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    contact_person_phone = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    contact_relation = serializers.CharField(max_length=50, required=False, allow_blank=True)
+
+
+def dossier_data(order: Order) -> dict:
+    data = {f: getattr(order, f) for f in DOSSIER_FIELDS}
+    data["birth_date"] = order.birth_date.isoformat() if order.birth_date else None
+    cid = order.citizen_id or ""
+    data["citizen_id_masked"] = f"•••••••••{cid[-3:]}" if cid else ""
+    data["has_cv"] = bool(order.cv_link)
+    data["missing"] = [f for f in DOSSIER_REQUIRED if not getattr(order, f)]
+    data["submitted_at"] = order.dossier_submitted_at.isoformat() if order.dossier_submitted_at else None
+    return data
+
+
+class DossierView(_LearnerView):
+    """The learner's enrolment file (identity, education, emergency contact). CCCD is never sent back."""
+
+    def get(self, request, order_code):
+        order, error = _own_order(request, order_code)
+        return error or Response(dossier_data(order))
+
+    def put(self, request, order_code):
+        from django.utils import timezone
+
+        order, error = _own_order(request, order_code)
+        if error:
+            return error
+        ser = DossierSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        for field, value in ser.validated_data.items():
+            if field == "citizen_id" and not value:
+                continue  # empty = keep the stored number
+            setattr(order, field, value if value is not None else None)
+        if not [f for f in DOSSIER_REQUIRED if not getattr(order, f)] and order.dossier_submitted_at is None:
+            order.dossier_submitted_at = timezone.now()
+            Activity.objects.create(
+                order=order, type="note", title="Học viên đã nộp hồ sơ nhập học", actor=order.customer_email
+            )
+        order.save()
+        return Response(dossier_data(order))
+
+
+CV_TYPES = {b"%PDF": "pdf", b"PK\x03\x04": "docx"}
+MAX_CV_BYTES = 5 * 1024 * 1024
+
+
+class CvUploadView(_LearnerView):
+    """CV upload into private storage (never public); staff download it from /app."""
+
+    from rest_framework.parsers import MultiPartParser
+
+    parser_classes = [MultiPartParser]
+
+    def post(self, request, order_code):
+        import secrets
+
+        from django.core.files.base import ContentFile
+        from django.core.files.storage import storages
+
+        order, error = _own_order(request, order_code)
+        if error:
+            return error
+        upload = request.FILES.get("file")
+        if upload is None or upload.size > MAX_CV_BYTES:
+            return Response({"detail": "Chọn tệp CV (PDF hoặc DOCX, tối đa 5 MB)."}, status=400)
+        head = upload.read(4)
+        ext = CV_TYPES.get(head)
+        if ext is None:
+            return Response({"detail": "Chỉ nhận CV dạng PDF hoặc DOCX."}, status=400)
+        upload.seek(0)
+        storage = storages["private"]
+        name = storage.save(f"cv/{order.pk}/{secrets.token_hex(8)}.{ext}", ContentFile(upload.read()))
+        if order.cv_link.startswith("private:"):
+            storage.delete(order.cv_link.removeprefix("private:"))
+        order.cv_link = f"private:{name}"
+        order.save(update_fields=["cv_link", "updated_at"])
+        Activity.objects.create(
+            order=order, type="note", title="Học viên tải lên CV", actor=order.customer_email
+        )
+        return Response(dossier_data(order))

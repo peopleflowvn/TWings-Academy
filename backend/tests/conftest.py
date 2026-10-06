@@ -90,6 +90,7 @@ def registration_payload(course):
         "customerPhone": "0912345678",
         "customerEmail": "a@example.com",
         "privacyConsent": True,
+        "termsAccepted": True,  # required by checkout, ignored by the consultation form
     }
 
 

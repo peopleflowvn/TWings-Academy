@@ -260,6 +260,8 @@ VIETQR_TEMPLATE = env("VIETQR_TEMPLATE", default="compact2")
 MOODLE_INTERNAL_URL = env("MOODLE_INTERNAL_URL", default="")  # e.g. http://lms:8080/learn
 MOODLE_WS_TOKEN = env("MOODLE_WS_TOKEN", default="")
 MOODLE_HOST = env("MOODLE_HOST", default="")  # Moodle's canonical site hostname (Host header)
+# Admissions: hours to call back a new website lead (working hours 8:00-20:00 local).
+LEAD_RESPONSE_HOURS = env.int("LEAD_RESPONSE_HOURS", default=4)
 # Canonical address of the public site (canonical URLs, share links, sitemap).
 PUBLIC_SITE_URL = env("PUBLIC_SITE_URL", default="https://tuyensinh.twings.edu.vn")
 MOODLE_STUDENT_ROLE_ID = env.int("MOODLE_STUDENT_ROLE_ID", default=5)  # Moodle's built-in "student"

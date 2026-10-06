@@ -54,6 +54,7 @@ import { COMP_AI_PIPELINE_STAGES, runCompAIEvidenceEnrichment } from '../../util
 import { SendResendEmailModal } from './SendResendEmailModal';
 import { LmsLearningPanel } from './LmsLearningPanel';
 import { OrderBillingPanel } from './OrderBillingPanel';
+import { LeadContactPanel } from './LeadContactPanel';
 
 interface CompAILeadDetailModalProps {
   order: Order;
@@ -70,7 +71,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 }) => {
   const [order, setOrder] = useState<Order>(initialOrder);
   const [isDirty, setIsDirty] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'agent' | 'timeline' | 'tasks' | 'billing' | 'vietqr' | 'lms' | 'training'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'contact' | 'agent' | 'timeline' | 'tasks' | 'billing' | 'vietqr' | 'lms' | 'training'>('profile');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -672,6 +673,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
             <div className="flex items-center gap-1 border-b border-slate-200 bg-white p-1 rounded-2xl border shadow-2xs overflow-x-auto">
               {[
                 { id: 'profile', label: 'Hồ Sơ & Học Vấn', icon: User, count: null },
+                { id: 'contact', label: 'Liên Hệ & Lịch Hẹn', icon: Phone, count: null },
                 { id: 'agent', label: 'Bằng Chứng AI (Evidence)', icon: Bot, count: order.agentResearch?.verifiedFacts.length },
                 { id: 'timeline', label: 'Nhật Ký Tương Tác', icon: FileText, count: order.timelineActivities?.length },
                 { id: 'tasks', label: 'Lịch Nhắc Hẹn', icon: CheckSquare, count: order.followupTasks?.filter(t => !t.isCompleted).length },
@@ -1451,6 +1453,18 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
             {/* TAB: LEARNING ON THE MOODLE LMS (live data, staff actions) */}
             {activeTab === 'lms' && <LmsLearningPanel orderId={order.id} />}
             {activeTab === 'billing' && <OrderBillingPanel orderId={order.id} />}
+            {activeTab === 'contact' && (
+              <LeadContactPanel
+                orderId={order.id}
+                name={order.customerName}
+                phone={order.customerPhone}
+                email={order.customerEmail}
+                responseDueAt={order.responseDueAt}
+                firstResponseAt={order.firstResponseAt}
+                dossierSubmittedAt={order.dossierSubmittedAt}
+                hasCv={(order.cvLink || '').startsWith('private:')}
+              />
+            )}
 
             {/* TAB 5: VIETQR BILLING & INVOICING */}
             {/* ============================================================= */}
