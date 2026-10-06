@@ -215,6 +215,16 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   tạm khóa/mở khóa, gửi email hướng dẫn vào học. Nút **Mở Moodle** đăng nhập bằng tài khoản CMS; nhân sự Đào tạo
   được gán vai trò *manager* của Moodle. Quyền: `lms.view` (Sales, Đào tạo), `lms.manage` (Đào tạo). Dữ liệu đọc
   trực tiếp từ Moodle, không lưu bản sao. Học viên đã bị hủy ghi danh sẽ không bị ghi danh lại khi có người sửa đơn.
+- **Đợt khai giảng = khóa Moodle riêng:** mỗi khóa TWings có một *khóa mẫu* trên Moodle (soạn nội dung, ngân hàng đề
+  một lần). Khi tạo một đợt (Cohort) trong /app, hệ thống sao chép khóa mẫu thành khóa riêng của đợt (không chép học
+  viên), đặt ngày khai giảng, và gán giảng viên của khóa cùng giảng viên phụ trách đợt làm *editing teacher*. Đơn đã
+  thanh toán được ghi danh vào khóa của đợt; khóa có chia đợt mà đơn chưa xếp đợt thì ở trạng thái **Chờ xếp lớp**
+  và được ghi danh ngay khi được xếp. Chuyển đợt thì ghi danh được chuyển theo. Khóa không chia đợt học thẳng trong
+  khóa mẫu (tự học). Giảng viên đăng nhập Moodle bằng mã gửi qua email (SSO).
+- **Hoàn thành & chứng chỉ:** cron 30 phút đồng bộ % tiến độ; khi Moodle ghi nhận hoàn thành, TWings cấp chứng chỉ
+  `TWC-XXXXXXXXXX` có trang xác minh công khai `/xac-minh/<mã>/`, cập nhật CRM và gửi email chúc mừng.
+- **Plugin đóng sẵn trong image** (ghim theo commit): Custom certificate (chứng chỉ PDF), Attendance (điểm danh),
+  Completion Progress (thanh tiến độ), Ad-hoc database queries (báo cáo SQL cho cán bộ quản lý).
 - **Soạn nội dung:** đăng nhập `/learn` bằng `admin` (mật khẩu `PROD_LMS__MOODLE_ADMIN_PASSWORD` trong `.env`). Dùng
   các tính năng sẵn có của Moodle: bài giảng, video YouTube, quiz, bài tập, hoàn thành khóa học, huy hiệu.
 - **Bảo mật:** `/learn/webservice/*` bị chặn từ Internet, chỉ backend gọi được qua mạng nội bộ. Token có giới hạn IP

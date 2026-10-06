@@ -43,12 +43,34 @@ def identity_for_email(email: str) -> dict | None:
         return staff_identity(staff)
     order = Order.objects.filter(customer_email__iexact=email, status="paid").order_by("-paid_at").first()
     if order is None:
-        return None
+        return _instructor_identity(email)
     given, family = split_vietnamese_name(order.customer_name)
     return {
         "sub": f"learner:{_h(email)[:32]}",
         "email": email,
         "name": order.customer_name,
+        "given_name": given,
+        "family_name": family,
+    }
+
+
+def _instructor_identity(email: str) -> dict | None:
+    """Instructors teach on Moodle (editing teachers) without a CMS account: e-mail code sign-in."""
+    from apps.catalog.models import Instructor
+
+    instructor = (
+        Instructor.objects.filter(email__iexact=email)
+        .exclude(status="on_leave")
+        .order_by("-updated_at")
+        .first()
+    )
+    if instructor is None:
+        return None
+    given, family = split_vietnamese_name(instructor.name)
+    return {
+        "sub": f"instructor:{instructor.pk}",
+        "email": email,
+        "name": instructor.name,
         "given_name": given,
         "family_name": family,
     }

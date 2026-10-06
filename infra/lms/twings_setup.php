@@ -83,6 +83,10 @@ $capabilities = [
     // Learners' e-mail must be visible to the integration: users are looked up by e-mail (an existing
     // account must be reused, never duplicated) and the CMS lists learners with their e-mail.
     'moodle/site:viewuseridentity', 'moodle/course:useremail', 'moodle/site:viewfullnames',
+    // One Moodle course per intake, copied from the course's template (backup/restore) and dated.
+    'moodle/backup:backupcourse', 'moodle/backup:configure', 'moodle/restore:restorecourse',
+    'moodle/restore:configure', 'moodle/restore:rolldates', 'moodle/course:update',
+    'moodle/course:changefullname', 'moodle/course:visibility',
 ];
 $role = $DB->get_record('role', ['shortname' => 'twingsintegration']);
 $roleid = $role ? $role->id : create_role(
@@ -98,7 +102,8 @@ $studentroleid = $DB->get_field('role', 'id', ['shortname' => 'student'], MUST_E
 // Roles the integration may hand out: student (enrolment) and manager (TWings training staff).
 // core_role_set_assign_allowed() inserts unconditionally (unique index): only call it once.
 $managerroleid = $DB->get_field('role', 'id', ['shortname' => 'manager'], MUST_EXIST);
-foreach ([$studentroleid, $managerroleid] as $target) {
+$teacherroleid = $DB->get_field('role', 'id', ['shortname' => 'editingteacher'], MUST_EXIST);
+foreach ([$studentroleid, $managerroleid, $teacherroleid] as $target) {
     if (!$DB->record_exists('role_allow_assign', ['roleid' => $roleid, 'allowassign' => $target])) {
         core_role_set_assign_allowed($roleid, $target);
     }
@@ -132,6 +137,8 @@ $functions = [
     'core_enrol_get_users_courses', 'core_enrol_get_enrolled_users',
     'core_completion_get_course_completion_status', 'gradereport_overview_get_course_grades',
     'enrol_manual_unenrol_users', 'core_user_update_users', 'core_role_assign_roles',
+    // Intakes: copy the template course, set its dates
+    'core_course_duplicate_course', 'core_course_update_courses',
 ];
 $service = $DB->get_record('external_services', ['shortname' => 'twings']);
 if (!$service) {

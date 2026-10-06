@@ -261,6 +261,7 @@ MOODLE_WS_TOKEN = env("MOODLE_WS_TOKEN", default="")
 MOODLE_HOST = env("MOODLE_HOST", default="")  # Moodle's canonical site hostname (Host header)
 MOODLE_STUDENT_ROLE_ID = env.int("MOODLE_STUDENT_ROLE_ID", default=5)  # Moodle's built-in "student"
 MOODLE_MANAGER_ROLE_ID = env.int("MOODLE_MANAGER_ROLE_ID", default=1)  # built-in "manager"
+MOODLE_TEACHER_ROLE_ID = env.int("MOODLE_TEACHER_ROLE_ID", default=3)  # built-in "editingteacher"
 
 # SSO: TWings is the OAuth 2.0 provider for Moodle's "Log in with TWings" button. Empty secret = off.
 SSO_CLIENT_ID = env("SSO_CLIENT_ID", default="moodle")

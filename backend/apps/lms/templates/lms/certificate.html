@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if certificate %}Chứng chỉ {{ certificate.code }} – {{ certificate.learner_name }}{% else %}Không tìm thấy chứng chỉ{% endif %} | TWings Academy</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#eef2f7;color:#0f172a}
+    .card{width:100%;max-width:640px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,.10)}
+    .top{background:linear-gradient(135deg,#0D2B5B,#0073C1);color:#fff;padding:24px 28px}
+    .brand{font-weight:800;letter-spacing:.08em;font-size:13px;opacity:.9}
+    .top h1{margin:6px 0 0;font-size:22px}
+    .body{padding:28px}
+    .status{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font-weight:700;font-size:13px}
+    .ok{background:#ecfdf5;color:#047857}.bad{background:#fef2f2;color:#b91c1c}
+    .name{font-size:28px;font-weight:800;margin:18px 0 4px}
+    .muted{color:#64748b;font-size:14px}
+    .course{font-size:18px;font-weight:700;margin:4px 0 0}
+    dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:22px 0 0;font-size:14px}
+    dt{color:#64748b}dd{margin:0;font-weight:600}
+    .foot{padding:16px 28px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b}
+    a{color:#0073C1}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="top">
+      <div class="brand">TWINGS ACADEMY</div>
+      <h1>Xác minh chứng chỉ</h1>
+    </div>
+    <div class="body">
+      {% if certificate %}
+        {% if certificate.revoked %}
+          <span class="status bad">✕ Chứng chỉ đã bị thu hồi</span>
+        {% else %}
+          <span class="status ok">✓ Chứng chỉ hợp lệ, do TWings Academy cấp</span>
+        {% endif %}
+        <div class="name">{{ certificate.learner_name }}</div>
+        <div class="muted">đã hoàn thành khóa học</div>
+        <div class="course">{{ certificate.course_title }}</div>
+        <dl>
+          {% if certificate.cohort_name %}<dt>Đợt học</dt><dd>{{ certificate.cohort_name }}</dd>{% endif %}
+          <dt>Ngày cấp</dt><dd>{{ certificate.issued_at|date:"d/m/Y" }}</dd>
+          <dt>Mã chứng chỉ</dt><dd>{{ certificate.code }}</dd>
+          {% if certificate.revoked and certificate.revoked_reason %}<dt>Lý do thu hồi</dt><dd>{{ certificate.revoked_reason }}</dd>{% endif %}
+        </dl>
+      {% else %}
+        <span class="status bad">Không tìm thấy chứng chỉ</span>
+        <p class="muted">Không có chứng chỉ nào với mã <strong>{{ code }}</strong>. Vui lòng kiểm tra lại mã (dạng TWC-XXXXXXXXXX).</p>
+      {% endif %}
+    </div>
+    <div class="foot">Trang xác minh chính thức của TWings Academy · <a href="/">Trang chủ</a></div>
+  </main>
+</body>
+</html>

@@ -24,6 +24,7 @@ import {
 const STATUS_STYLE: Record<string, string> = {
   done: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  waiting: 'bg-amber-50 text-amber-700 border-amber-200',
   failed: 'bg-red-50 text-red-700 border-red-200',
   skipped: 'bg-slate-50 text-slate-600 border-slate-200',
   removed: 'bg-slate-100 text-slate-600 border-slate-300'
@@ -136,7 +137,12 @@ export const LmsLearningPanel: React.FC<{ orderId: string }> = ({ orderId }) => 
               ) : (
                 <span className="text-slate-500">{data.paid ? 'Chưa xử lý' : 'Đơn chưa thanh toán'}</span>
               )}
-              {enrollment?.lastError && <div className="text-red-600 break-words">{enrollment.lastError}</div>}
+              {enrollment?.cohortName && <div className="text-slate-700">Đợt: <strong>{enrollment.cohortName}</strong></div>}
+              {enrollment?.lastError && (
+                <div className={`${enrollment.status === 'waiting' ? 'text-amber-700' : 'text-red-600'} break-words`}>
+                  {enrollment.lastError}
+                </div>
+              )}
             </div>
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
               <div className="text-slate-500 font-semibold">Tài khoản LMS</div>
@@ -154,6 +160,16 @@ export const LmsLearningPanel: React.FC<{ orderId: string }> = ({ orderId }) => 
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
               <div className="text-slate-500 font-semibold">Truy cập gần nhất</div>
               <div className="font-bold text-slate-900">{formatMoodleTime(user?.lastaccess ?? null)}</div>
+              {enrollment?.completedAt && (
+                <div className="text-emerald-700 font-bold">
+                  Hoàn thành ngày {new Date(enrollment.completedAt).toLocaleDateString('vi-VN')}
+                </div>
+              )}
+              {enrollment?.certificate && (
+                <a href={enrollment.certificate.url} target="_blank" rel="noopener" className="text-[#0073C1] font-bold hover:underline">
+                  Chứng chỉ {enrollment.certificate.code}{enrollment.certificate.revoked ? ' (đã thu hồi)' : ''}
+                </a>
+              )}
               {enrollment?.accessEmailedAt && (
                 <div className="text-slate-500">
                   Đã gửi email vào học: {new Date(enrollment.accessEmailedAt).toLocaleDateString('vi-VN')}

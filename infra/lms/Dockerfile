@@ -16,6 +16,19 @@ RUN git init -q /moodle \
  && test "$(git -C /moodle rev-parse HEAD)" = "$MOODLE_COMMIT" \
  && rm -rf /moodle/.git
 
+# Third-party plugins, each pinned to a reviewed commit (Moodle 5.x: plugins live under public/).
+#   mod_customcert           certificates (PDF) issued on completion            5.2.9
+#   mod_attendance           attendance for in-person / hybrid sessions          5.1/5.2
+#   block_completion_progress  visual progress bar for learners and teachers     4.5–5.2
+#   report_customsql         ad-hoc SQL reports for training managers           4.5+/5.x
+RUN set -e; fetch() { \
+      git init -q "$2" && git -C "$2" fetch -q --depth 1 "https://github.com/$1.git" "$3" \
+      && git -C "$2" checkout -q FETCH_HEAD && test "$(git -C "$2" rev-parse HEAD)" = "$3" && rm -rf "$2/.git"; }; \
+    fetch mdjnelson/moodle-mod_customcert         /moodle/public/mod/customcert            73ec9301a9281f4fea4eef9091bb0720e042b07c; \
+    fetch danmarsden/moodle-mod_attendance        /moodle/public/mod/attendance            6d159c2c1051d509123e581e18a92d1ea4894f0c; \
+    fetch jonof/moodle-block_completion_progress  /moodle/public/blocks/completion_progress 76cd2058b68865811976df20fa1b22cddf1b6fe8; \
+    fetch moodleou/moodle-report_customsql        /moodle/public/report/customsql          54e5b6b547265bfd4903252e465c451287e22111
+
 # ---------------------------------------------------------------- runtime
 FROM ${PHP_IMAGE}
 LABEL org.opencontainers.image.source="https://github.com/peopleflowvn/TWings-Academy" \

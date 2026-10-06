@@ -33,7 +33,7 @@ export interface OrderLearning {
   paid: boolean;
   email: string;
   enrollment: {
-    status: 'pending' | 'done' | 'failed' | 'skipped' | 'removed';
+    status: 'pending' | 'waiting' | 'done' | 'failed' | 'skipped' | 'removed';
     statusLabel: string;
     lastError: string;
     attempts: number;
@@ -41,6 +41,10 @@ export interface OrderLearning {
     moodleCourseId: number | null;
     enrolledAt: string | null;
     accessEmailedAt: string | null;
+    cohortName: string;
+    progress: number | null;
+    completedAt: string | null;
+    certificate: { code: string; url: string; revoked: boolean } | null;
   } | null;
   user: {
     id: number;
@@ -54,12 +58,33 @@ export interface OrderLearning {
   courses: LmsCourseProgress[];
 }
 
+export interface MoodleCourseRef {
+  id: number;
+  fullname: string;
+  visible: boolean;
+  students: number;
+  links: MoodleLinks;
+}
+
+export interface LmsIntakeRow {
+  id: string;
+  name: string;
+  status: string;
+  startDate: string | null;
+  capacity: number;
+  paidOrders: number;
+  moodle: MoodleCourseRef | null;
+}
+
 export interface LmsCatalogRow {
   courseId: string;
   title: string;
   slug: string;
   paidOrders: number;
-  moodle: { id: number; fullname: string; visible: boolean; students: number; links: MoodleLinks } | null;
+  waitingForIntake: number;
+  /** The course's template Moodle course (also where self-paced learners study). */
+  moodle: MoodleCourseRef | null;
+  cohorts: LmsIntakeRow[];
 }
 
 export interface LmsLearner {
@@ -83,6 +108,8 @@ export const lmsApi = {
     api.post<OrderLearning>(`/staff/lms/orders/${orderId}/actions/`, { action }),
   catalog: () => api.get<LmsCatalogRow[]>('/staff/lms/courses/'),
   learners: (moodleCourseId: number) => api.get<LmsLearner[]>(`/staff/lms/courses/${moodleCourseId}/learners/`),
+  provisionCohort: (cohortId: string) =>
+    api.post<{ moodleCourseId: number; teachers: number; enrolled: number }>(`/staff/lms/cohorts/${cohortId}/provision/`, {}),
   prepareStaffAccess: () => api.post<{ moodleUserId: number; manager: boolean }>('/staff/lms/open/', {}),
 };
 

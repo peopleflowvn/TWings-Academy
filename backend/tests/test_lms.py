@@ -48,6 +48,21 @@ class FakeMoodle:
     def enrol_manual_enrol_users(self, enrolments):
         self.enrolments.extend(enrolments)
 
+    def enrol_manual_unenrol_users(self, enrolments):
+        unenrolled = getattr(self, "unenrolled", [])
+        unenrolled += [(e["userid"], e["courseid"]) for e in enrolments]
+        self.unenrolled = unenrolled
+
+    def core_course_duplicate_course(self, courseid, fullname, shortname, categoryid, visible, options):
+        self.duplicates = [*getattr(self, "duplicates", []), courseid]
+        course = {"id": 100 + len(self.courses), "fullname": fullname, "shortname": shortname, "idnumber": ""}
+        self.courses.append(course)
+        return {"id": course["id"], "shortname": shortname}
+
+    def core_course_update_courses(self, courses):
+        for update in courses:
+            next(c for c in self.courses if c["id"] == update["id"]).update(update)
+
 
 @pytest.fixture
 def fake_moodle(settings, monkeypatch):
@@ -110,7 +125,7 @@ def test_moodle_outage_keeps_payment_and_is_retried(fake_moodle, course, django_
     assert enrollment.status == "failed" and "ConnectionError" in enrollment.last_error
 
     fake_moodle.down = False
-    assert retry_pending() == {"done": 1, "failed": 0, "skipped": 0}
+    assert retry_pending() == {"done": 1, "failed": 0, "skipped": 0, "waiting": 0}
     assert LmsEnrollment.objects.get(order=order).status == "done"
 
 
@@ -343,3 +358,138 @@ def test_lms_endpoints_report_unconfigured(settings, staff_client, db):
 
     settings.MOODLE_INTERNAL_URL = ""
     assert staff_client(Role.SUPER_ADMIN).get("/api/v1/staff/lms/courses/").status_code == 503
+
+
+# ---------------------------------------------------------------- intakes, teachers, completion
+def _student_enrolments(fake):
+    return [e for e in fake.enrolments if e["roleid"] == 5]
+
+
+def test_intake_gets_its_own_moodle_course_copied_from_the_template(
+    fake_moodle, course, django_capture_on_commit_callbacks
+):
+    import datetime
+
+    from apps.catalog.models import Cohort
+
+    with django_capture_on_commit_callbacks(execute=True):
+        k10 = Cohort.objects.create(
+            course=course, name="Khóa 10", status="opening", start_date=datetime.date(2026, 11, 2)
+        )
+    template = next(c for c in fake_moodle.courses if c.get("idnumber") == course.id)
+    intake = next(c for c in fake_moodle.courses if c.get("idnumber") == f"cohort:{k10.id}")
+    assert fake_moodle.duplicates == [template["id"]]
+    assert intake["startdate"] > 0 and "Khóa 10" in intake["fullname"]
+
+    with django_capture_on_commit_callbacks(execute=True):
+        order = _paid_order(course, cohort=k10)
+    enrollment = LmsEnrollment.objects.get(order=order)
+    assert enrollment.status == "done" and enrollment.cohort_id == k10.id
+    assert _student_enrolments(fake_moodle)[-1]["courseid"] == intake["id"]
+    assert fake_moodle.duplicates == [template["id"]]  # copied once
+
+
+def test_order_waits_for_an_intake_then_moves_between_intakes(
+    fake_moodle, course, django_capture_on_commit_callbacks
+):
+    from apps.catalog.models import Cohort
+
+    with django_capture_on_commit_callbacks(execute=True):
+        k9 = Cohort.objects.create(course=course, name="Khóa 9", status="opening")
+        k10 = Cohort.objects.create(course=course, name="Khóa 10", status="upcoming")
+        order = _paid_order(course)
+    enrollment = LmsEnrollment.objects.get(order=order)
+    assert enrollment.status == "waiting" and enrollment.attempts == 0
+    assert _student_enrolments(fake_moodle) == []
+
+    with django_capture_on_commit_callbacks(execute=True):
+        order.cohort = k9
+        order.save()
+    enrollment.refresh_from_db()
+    k9_course = next(c["id"] for c in fake_moodle.courses if c.get("idnumber") == f"cohort:{k9.id}")
+    assert enrollment.status == "done" and enrollment.moodle_course_id == k9_course
+
+    with django_capture_on_commit_callbacks(execute=True):
+        order.cohort = k10
+        order.save()
+    enrollment.refresh_from_db()
+    k10_course = next(c["id"] for c in fake_moodle.courses if c.get("idnumber") == f"cohort:{k10.id}")
+    assert enrollment.moodle_course_id == k10_course and enrollment.cohort_id == k10.id
+    assert fake_moodle.unenrolled == [(enrollment.moodle_user_id, k9_course)]
+    assert order.timeline_activities.filter(title__icontains="chuyển sang").exists()
+
+
+def test_instructors_become_editing_teachers(fake_moodle, course, django_capture_on_commit_callbacks):
+    from apps.catalog.models import Cohort, Instructor
+
+    teacher = Instructor.objects.create(name="Trần Minh Đức", title="GĐ Khối", email="duc@msb.example")
+    Instructor.objects.create(name="Nghỉ", title="x", email="off@msb.example", status="on_leave")
+    lead = Instructor.objects.create(name="Lê Hà", title="Trưởng nhóm", email="ha@msb.example")
+    course.instructors.add(teacher, Instructor.objects.get(email="off@msb.example"))
+    with django_capture_on_commit_callbacks(execute=True):
+        Cohort.objects.create(course=course, name="Khóa 11", status="opening", lead_instructor=lead)
+    teachers = {u["email"] for u in fake_moodle.users}
+    assert {"duc@msb.example", "ha@msb.example"} <= teachers and "off@msb.example" not in teachers
+    assert any(e["roleid"] == 3 for e in fake_moodle.enrolments)
+
+
+def test_completion_issues_a_verifiable_certificate(
+    fake_moodle, course, django_capture_on_commit_callbacks, client
+):
+    from apps.lms.completion import sync_all
+    from apps.lms.models import Certificate
+    from apps.notifications.models import EmailLog
+
+    with django_capture_on_commit_callbacks(execute=True):
+        order = _paid_order(course)
+    enrollment = LmsEnrollment.objects.get(order=order)
+
+    fake_moodle.core_enrol_get_users_courses = lambda userid, returnusercount: [
+        {"id": enrollment.moodle_course_id, "progress": 42.4, "completed": False}
+    ]
+    assert sync_all() == {"synced": 1, "completed": 0}
+    enrollment.refresh_from_db()
+    assert enrollment.progress == 42 and enrollment.completed_at is None
+
+    fake_moodle.core_enrol_get_users_courses = lambda userid, returnusercount: [
+        {"id": enrollment.moodle_course_id, "progress": 100, "completed": True}
+    ]
+    assert sync_all() == {"synced": 1, "completed": 1}
+    certificate = Certificate.objects.get(enrollment=enrollment)
+    order.refresh_from_db()
+    assert order.training_status == "Hoàn thành"
+    assert EmailLog.objects.filter(order=order, template_code="lms_certificate").count() == 1
+    assert sync_all() == {"synced": 0, "completed": 0}  # completed ones are not polled again
+
+    page = client.get(f"/xac-minh/{certificate.code.lower()}/")
+    assert page.status_code == 200 and "Nguyễn Văn An" in page.content.decode()
+    assert (
+        "Chứng chỉ hợp lệ" in page.content.decode() and "frame-ancestors" in page["Content-Security-Policy"]
+    )
+    assert client.get("/xac-minh/TWC-NOTEXISTING/").status_code == 404
+    data = client.get(f"/api/v1/public/certificates/{certificate.code}/").json()
+    assert data["valid"] is True and data["courseTitle"] == course.title
+
+    certificate.revoked = True
+    certificate.save()
+    assert "thu hồi" in client.get(f"/xac-minh/{certificate.code}/").content.decode()
+
+
+def test_catalog_lists_intakes_and_provision_endpoint(fake_admin_moodle, course, staff_client):
+    from apps.accounts.rbac import Role
+    from apps.catalog.models import Cohort
+
+    k12 = Cohort.objects.create(course=course, name="Khóa 12", status="completed")  # no auto provision
+    rows = staff_client(Role.ACADEMIC_MANAGEMENT).get("/api/v1/staff/lms/courses/").json()
+    row = next(r for r in rows if r["courseId"] == course.id)
+    assert row["cohorts"][0]["id"] == k12.id and row["cohorts"][0]["moodle"] is None
+    res = staff_client(Role.ACADEMIC_MANAGEMENT).post(
+        f"/api/v1/staff/lms/cohorts/{k12.id}/provision/", {}, format="json"
+    )
+    assert res.status_code == 200 and res.json()["moodleCourseId"]
+    assert (
+        staff_client(Role.SALES_CRM)
+        .post(f"/api/v1/staff/lms/cohorts/{k12.id}/provision/", {}, format="json")
+        .status_code
+        == 403
+    )

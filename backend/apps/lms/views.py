@@ -47,6 +47,23 @@ def _enrollment_data(enrollment: LmsEnrollment | None) -> dict | None:
         "moodleCourseId": enrollment.moodle_course_id,
         "enrolledAt": enrollment.enrolled_at,
         "accessEmailedAt": enrollment.access_emailed_at,
+        "cohortName": enrollment.cohort.name if enrollment.cohort_id else "",
+        "progress": enrollment.progress,
+        "completedAt": enrollment.completed_at,
+        "certificate": _certificate_data(enrollment),
+    }
+
+
+def _certificate_data(enrollment: LmsEnrollment) -> dict | None:
+    from .completion import certificate_url
+
+    certificate = getattr(enrollment, "certificate", None)
+    if certificate is None:
+        return None
+    return {
+        "code": certificate.code,
+        "url": certificate_url(certificate.code),
+        "revoked": certificate.revoked,
     }
 
 
@@ -147,6 +164,22 @@ class CourseLearnersView(_LmsView):
 
     def get(self, request, moodle_course_id: int):
         return Response(overview.course_learners(moodle_course_id))
+
+
+class ProvisionCohortView(_LmsView):
+    """Create (or refresh) an intake's Moodle course + teachers, and enrol its waiting learners."""
+
+    permission_classes = [require_perms("lms.manage")]
+
+    def post(self, request, pk):
+        from apps.catalog.models import Cohort
+
+        from .services import provision_cohort
+
+        cohort = get_object_or_404(Cohort.objects.select_related("course", "lead_instructor"), pk=pk)
+        result = provision_cohort(cohort)
+        audit(request, "lms.provision_cohort", cohort, **result)
+        return Response(result)
 
 
 class OpenMoodleView(_LmsView):

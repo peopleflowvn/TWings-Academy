@@ -178,3 +178,13 @@ def test_userinfo_requires_valid_token(db):
 def test_disabled_without_secret(settings, db):
     settings.SSO_CLIENT_SECRET = ""
     assert _authorize(Client()).status_code == 404
+
+
+def test_instructor_can_sign_in_with_an_email_code(db, sent):
+    from apps.catalog.models import Instructor
+
+    Instructor.objects.create(name="Trần Minh Đức", title="GV", email="duc@msb.example")
+    client = Client()
+    _authorize(client)
+    client.post("/api/v1/sso/login/", {"action": "send", "email": "duc@msb.example"})
+    assert len(sent) == 1

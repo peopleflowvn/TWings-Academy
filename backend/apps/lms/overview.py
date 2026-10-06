@@ -15,6 +15,7 @@ from apps.catalog.models import Course
 from apps.crm.models import Order
 
 from . import moodle
+from .models import LmsEnrollment
 from .services import split_vietnamese_name
 
 LEARN_PATH = "/learn"
@@ -91,8 +92,26 @@ def _students(enrolled: list[dict]) -> list[dict]:
     return [u for u in enrolled if any(r.get("shortname") == "student" for r in u.get("roles", []))]
 
 
+def _mapped(mc: dict | None) -> dict | None:
+    if mc is None:
+        return None
+    enrolled = moodle.call("core_enrol_get_enrolled_users", courseid=mc["id"])
+    return {
+        "id": mc["id"],
+        "fullname": mc["fullname"],
+        "visible": bool(mc.get("visible")),
+        "students": len(_students(enrolled)),
+        "links": links(course_id=mc["id"]),
+    }
+
+
 def course_catalog() -> list[dict]:
-    """Every TWings course with the Moodle course it maps to (idnumber = id, or shortname = slug)."""
+    """
+    Every TWings course with its template Moodle course (idnumber = id, or shortname = slug) and each
+    intake with its own Moodle course (idnumber = "cohort:<id>"), against paid orders.
+    """
+    from .services import COHORT_PREFIX
+
     moodle_courses = [
         c
         for c in moodle.call("core_course_get_courses_by_field", field="", value="")["courses"]
@@ -100,32 +119,47 @@ def course_catalog() -> list[dict]:
     ]
     by_idnumber = {c["idnumber"]: c for c in moodle_courses if c.get("idnumber")}
     by_shortname = {c["shortname"]: c for c in moodle_courses}
-    paid = dict(
+    paid_by_course = dict(
         Order.objects.filter(status="paid", course__isnull=False)
         .values("course_id")
         .annotate(n=Count("id"))
         .values_list("course_id", "n")
     )
+    paid_by_cohort = dict(
+        Order.objects.filter(status="paid", cohort__isnull=False)
+        .values("cohort_id")
+        .annotate(n=Count("id"))
+        .values_list("cohort_id", "n")
+    )
+    waiting = dict(
+        LmsEnrollment.objects.filter(status="waiting")
+        .values("order__course_id")
+        .annotate(n=Count("id"))
+        .values_list("order__course_id", "n")
+    )
     rows = []
-    for course in Course.objects.order_by("title"):
-        mc = by_idnumber.get(course.id) or by_shortname.get(course.slug)
-        mapped = None
-        if mc:
-            enrolled = moodle.call("core_enrol_get_enrolled_users", courseid=mc["id"])
-            mapped = {
-                "id": mc["id"],
-                "fullname": mc["fullname"],
-                "visible": bool(mc.get("visible")),
-                "students": len(_students(enrolled)),
-                "links": links(course_id=mc["id"]),
-            }
+    for course in Course.objects.prefetch_related("cohorts").order_by("title"):
+        cohorts = sorted(course.cohorts.all(), key=lambda c: (c.start_date is None, c.start_date, c.name))
         rows.append(
             {
                 "courseId": course.id,
                 "title": course.title,
                 "slug": course.slug,
-                "paidOrders": paid.get(course.id, 0),
-                "moodle": mapped,
+                "paidOrders": paid_by_course.get(course.id, 0),
+                "waitingForIntake": waiting.get(course.id, 0),
+                "moodle": _mapped(by_idnumber.get(course.id) or by_shortname.get(course.slug)),
+                "cohorts": [
+                    {
+                        "id": c.id,
+                        "name": c.name,
+                        "status": c.status,
+                        "startDate": c.start_date,
+                        "capacity": c.capacity,
+                        "paidOrders": paid_by_cohort.get(c.id, 0),
+                        "moodle": _mapped(by_idnumber.get(f"{COHORT_PREFIX}{c.id}")),
+                    }
+                    for c in cohorts
+                ],
             }
         )
     return rows

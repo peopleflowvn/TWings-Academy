@@ -10,14 +10,17 @@ import {
   Users
 } from 'lucide-react';
 import { isBackendEnabled } from '../../lib/api';
-import { formatMoodleTime, lmsApi, LmsCatalogRow, LmsLearner, openInMoodle } from '../../lib/lms';
+import { formatMoodleTime, lmsApi, LmsCatalogRow, LmsIntakeRow, LmsLearner, MoodleCourseRef, openInMoodle, useStaffCan } from '../../lib/lms';
 
 /** "Học tập (LMS)": every course's Moodle space, students vs. paid orders, and per-learner progress. */
 export const CMSLmsTab: React.FC = () => {
   const [rows, setRows] = useState<LmsCatalogRow[] | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<LmsCatalogRow | null>(null);
+  // What the learner list shows: a course's template course or one intake's course.
+  const [selected, setSelected] = useState<{ key: string; title: string; moodle: MoodleCourseRef } | null>(null);
+  const canManage = useStaffCan('lms.manage');
+  const [provisioning, setProvisioning] = useState<string | null>(null);
   const [learners, setLearners] = useState<LmsLearner[] | null>(null);
   const [learnersLoading, setLearnersLoading] = useState(false);
   const [onlyInactive, setOnlyInactive] = useState(false);
@@ -36,13 +39,13 @@ export const CMSLmsTab: React.FC = () => {
     if (isBackendEnabled()) load();
   }, []);
 
-  const openCourse = (row: LmsCatalogRow) => {
-    if (!row.moodle) return;
-    setSelected(row);
+  const openCourse = (key: string, title: string, moodle: MoodleCourseRef | null) => {
+    if (!moodle) return;
+    setSelected({ key, title, moodle });
     setLearners(null);
     setLearnersLoading(true);
     lmsApi
-      .learners(row.moodle.id)
+      .learners(moodle.id)
       .then(setLearners)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLearnersLoading(false));
@@ -61,10 +64,27 @@ export const CMSLmsTab: React.FC = () => {
     (acc, r) => ({
       paid: acc.paid + r.paidOrders,
       students: acc.students + (r.moodle?.students || 0),
-      unmapped: acc.unmapped + (r.moodle ? 0 : r.paidOrders > 0 ? 1 : 0)
+      unmapped: acc.unmapped + (r.moodle ? 0 : r.paidOrders > 0 ? 1 : 0),
+      waiting: acc.waiting + (r.waitingForIntake || 0)
     }),
-    { paid: 0, students: 0, unmapped: 0 }
+    { paid: 0, students: 0, unmapped: 0, waiting: 0 }
   );
+
+  const provision = async (intake: LmsIntakeRow) => {
+    setProvisioning(intake.id);
+    setError('');
+    try {
+      const res = await lmsApi.provisionCohort(intake.id);
+      window.alert(
+        `Đã chuẩn bị khóa Moodle cho ${intake.name}: ${res.teachers} giảng viên, ghi danh thêm ${res.enrolled} học viên đang chờ.`
+      );
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không tạo được khóa Moodle');
+    } finally {
+      setProvisioning(null);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -106,9 +126,9 @@ export const CMSLmsTab: React.FC = () => {
             <div className="text-[11px] font-semibold text-slate-500">Học viên trên Moodle</div>
             <div className="text-2xl font-black text-slate-900">{totals.students}</div>
           </div>
-          <div className={`p-4 rounded-2xl border ${totals.unmapped ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}>
-            <div className="text-[11px] font-semibold text-slate-500">Khóa có học viên nhưng chưa có trên Moodle</div>
-            <div className="text-2xl font-black text-slate-900">{totals.unmapped}</div>
+          <div className={`p-4 rounded-2xl border ${totals.waiting ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}>
+            <div className="text-[11px] font-semibold text-slate-500">Đã thanh toán, chờ xếp đợt khai giảng</div>
+            <div className="text-2xl font-black text-slate-900">{totals.waiting}</div>
           </div>
         </div>
       )}
@@ -127,12 +147,18 @@ export const CMSLmsTab: React.FC = () => {
           </thead>
           <tbody>
             {(rows || []).map((r) => (
-              <tr key={r.courseId}
-                className={`border-t border-slate-100 ${r.moodle ? 'hover:bg-blue-50/40 cursor-pointer' : ''} ${selected?.courseId === r.courseId ? 'bg-blue-50/60' : ''}`}
-                onClick={() => openCourse(r)}>
+              <React.Fragment key={r.courseId}>
+              <tr
+                className={`border-t border-slate-100 ${r.moodle ? 'hover:bg-blue-50/40 cursor-pointer' : ''} ${selected?.key === r.courseId ? 'bg-blue-50/60' : ''}`}
+                onClick={() => openCourse(r.courseId, r.title, r.moodle)}>
                 <td className="p-3">
                   <div className="font-bold text-slate-900">{r.title}</div>
-                  <div className="text-[10px] font-mono text-slate-400">{r.slug}</div>
+                  <div className="text-[10px] font-mono text-slate-400">
+                    {r.slug} · {r.cohorts.length ? 'khóa mẫu của các đợt' : 'học theo tiến độ riêng'}
+                  </div>
+                  {r.waitingForIntake > 0 && (
+                    <div className="text-[11px] font-bold text-amber-700">{r.waitingForIntake} học viên chờ xếp đợt</div>
+                  )}
                 </td>
                 <td className="p-3">
                   {r.moodle ? (
@@ -159,6 +185,44 @@ export const CMSLmsTab: React.FC = () => {
                   )}
                 </td>
               </tr>
+              {r.cohorts.map((c) => (
+                <tr key={c.id}
+                  className={`border-t border-slate-50 bg-slate-50/50 ${c.moodle ? 'hover:bg-blue-50/40 cursor-pointer' : ''} ${selected?.key === c.id ? 'bg-blue-50/60' : ''}`}
+                  onClick={() => openCourse(c.id, `${r.title} – ${c.name}`, c.moodle)}>
+                  <td className="p-3 pl-8">
+                    <div className="font-semibold text-slate-800">↳ {c.name}</div>
+                    <div className="text-[10px] text-slate-500">
+                      {c.startDate ? `Khai giảng ${new Date(c.startDate).toLocaleDateString('vi-VN')}` : 'Chưa có ngày khai giảng'} · {c.capacity} chỗ
+                    </div>
+                  </td>
+                  <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                    {c.moodle ? (
+                      <span className="text-emerald-700 font-bold">Đã có khóa riêng</span>
+                    ) : canManage ? (
+                      <button type="button" disabled={provisioning === c.id} onClick={() => provision(c)}
+                        className="px-2.5 py-1 rounded-lg border border-[#0073C1] text-[#0073C1] font-bold hover:bg-blue-50 disabled:opacity-50 cursor-pointer">
+                        {provisioning === c.id ? 'Đang tạo…' : 'Tạo khóa Moodle'}
+                      </button>
+                    ) : (
+                      <span className="text-slate-400">Chưa có khóa Moodle</span>
+                    )}
+                  </td>
+                  <td className="p-3 text-right font-mono">{c.paidOrders}</td>
+                  <td className={`p-3 text-right font-mono font-bold ${c.moodle && c.moodle.students < c.paidOrders ? 'text-amber-600' : ''}`}>
+                    {c.moodle ? c.moodle.students : '–'}
+                  </td>
+                  <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    {c.moodle && (
+                      <div className="flex justify-end gap-2 text-[11px] font-bold text-[#0073C1]">
+                        <button type="button" className="hover:underline cursor-pointer" onClick={() => openInMoodle(c.moodle!.links.course)}>Khóa</button>
+                        <button type="button" className="hover:underline cursor-pointer" onClick={() => openInMoodle(c.moodle!.links.grades)}>Sổ điểm</button>
+                        <button type="button" className="hover:underline cursor-pointer" onClick={() => openInMoodle(c.moodle!.links.completion)}>Tiến độ</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              </React.Fragment>
             ))}
             {rows && rows.length === 0 && (
               <tr><td colSpan={5} className="p-6 text-center text-slate-500">Chưa có khóa học.</td></tr>
@@ -168,7 +232,7 @@ export const CMSLmsTab: React.FC = () => {
       </div>
 
       {/* Learners of the selected course */}
-      {selected?.moodle && (
+      {selected && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">

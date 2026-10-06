@@ -69,6 +69,8 @@ chmod 644 /etc/cron.d/twings-backup
 echo "==> LMS enrollment retries every 10 minutes (paid orders whose Moodle enrolment failed)"
 cat > /etc/cron.d/twings-lms <<EOF
 */10 * * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py sync_lms_enrollments >/dev/null 2>&1
+# Progress/completion from Moodle; certificates for newly completed learners.
+*/30 * * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py sync_lms_completion >/dev/null 2>&1
 EOF
 chmod 644 /etc/cron.d/twings-lms
 

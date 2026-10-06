@@ -52,6 +52,13 @@ Disallow: /
 			}
 		}
 
+		# Public certificate verification pages (rendered by Django).
+		handle /xac-minh/* {
+			reverse_proxy backend:8000 {
+				header_up X-Real-IP {client_ip}
+			}
+		}
+
 		# Moodle LMS. Its web service API is for the TWings backend only (internal network): never
 		# reachable from the internet, so a leaked token is useless from outside.
 		handle /learn* {
