@@ -233,6 +233,10 @@ for p in Program.objects.all():
 '"
     ;;
 
+  seed-sales)
+    remote "cd $APP && sudo docker compose exec -T backend python manage.py seed_sales_setup"
+    ;;
+
   logs)
     remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
     ;;

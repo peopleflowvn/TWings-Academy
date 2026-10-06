@@ -350,3 +350,23 @@ def test_cohort_counts_include_installment_learners(api, registration_payload, c
     rows = staff_client(Role.ACADEMIC_MANAGEMENT).get("/api/v1/staff/cohorts/").json()
     rows = rows["results"] if isinstance(rows, dict) else rows
     assert next(r for r in rows if r["id"] == cohort.pk)["enrolledCount"] == 1
+
+
+def test_seed_sales_setup_runs_once_and_keeps_staff_changes(db):
+    from django.core.management import call_command
+
+    retail = Course.objects.create(slug="quan-he-khach-hang-ca-nhan", title="RM CN", price=7_599_000)
+    sme = Course.objects.create(slug="quan-he-khach-hang-doanh-nghiep-msb", title="RM DN", price=7_999_000)
+    cheap = Course.objects.create(slug="ai", title="AI", price=1_390_000)
+    call_command("seed_sales_setup")
+    retail.refresh_from_db()
+    cheap.refresh_from_db()
+    assert retail.installment_count == 2 and cheap.installment_count == 1
+    program = Program.objects.get()
+    assert program.is_published and program.installment_count == 3
+    assert [link.course for link in program.program_courses.all()] == [retail, sme]
+    retail.installment_count = 1  # staff turned installments off again
+    retail.save()
+    call_command("seed_sales_setup")
+    retail.refresh_from_db()
+    assert Program.objects.count() == 1 and retail.installment_count == 1
