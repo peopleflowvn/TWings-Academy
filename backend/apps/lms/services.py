@@ -120,7 +120,9 @@ def ensure_cohort_course(cohort) -> int:
         shortname=shortname,
         categoryid=_category_id(),
         visible=1,
-        options=[{"name": "users", "value": 0}],  # content only, never the template's people
+        # No options: Moodle's duplicate defaults copy content only (users=0, no enrolments, no logs).
+        # Passing users=0 explicitly fails with setting_locked_by_permission, since the integration
+        # deliberately lacks moodle/backup:userinfo (it can never copy people).
     )
     update = {"id": copy["id"], "idnumber": idnumber}
     if cohort.start_date:

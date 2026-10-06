@@ -53,7 +53,9 @@ class FakeMoodle:
         unenrolled += [(e["userid"], e["courseid"]) for e in enrolments]
         self.unenrolled = unenrolled
 
-    def core_course_duplicate_course(self, courseid, fullname, shortname, categoryid, visible, options):
+    def core_course_duplicate_course(self, courseid, fullname, shortname, categoryid, visible, options=None):
+        # Real Moodle rejects options touching settings locked by permission (e.g. users).
+        assert not options, "duplicate options must stay at Moodle's defaults"
         self.duplicates = [*getattr(self, "duplicates", []), courseid]
         course = {"id": 100 + len(self.courses), "fullname": fullname, "shortname": shortname, "idnumber": ""}
         self.courses.append(course)
