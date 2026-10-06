@@ -201,6 +201,26 @@ print(\"staff access:\", overview.ensure_staff_access(admin))
 '"
     ;;
 
+  lms-intake-check)
+    # Plugins present, one real intake provisioned (copied from its template), completion sync run.
+    remote "cd $APP && sudo docker compose exec -T lms php -r '
+define(\"CLI_SCRIPT\", true);
+require \"/var/www/moodle/config.php\";
+foreach ([\"mod_customcert\", \"mod_attendance\", \"block_completion_progress\", \"report_customsql\"] as \$p) {
+    \$i = core_plugin_manager::instance()->get_plugin_info(\$p);
+    echo \$p, \": \", \$i ? (\$i->versiondb ?: \"NOT INSTALLED\") : \"MISSING\", PHP_EOL;
+}
+' && sudo docker compose exec -T backend python manage.py shell -c '
+from apps.catalog.models import Cohort
+from apps.lms.services import provision_cohort
+c = Cohort.objects.exclude(status=\"completed\").select_related(\"course\").order_by(\"start_date\").first()
+print(\"intake:\", c and (c.course.title[:40], c.name, c.start_date))
+if c:
+    print(\"provision:\", provision_cohort(c))
+    print(\"again (idempotent):\", provision_cohort(c))
+' && sudo docker compose exec -T backend python manage.py sync_lms_completion"
+    ;;
+
   logs)
     remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
     ;;
