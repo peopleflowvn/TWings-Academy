@@ -5,7 +5,9 @@ from rest_framework.routers import SimpleRouter
 
 from apps.accounts.views import StaffUserViewSet
 from apps.catalog.views import (
+    CohortSessionsView,
     CohortViewSet,
+    IntakesOverviewView,
     CouponViewSet,
     CourseViewSet,
     InstructorViewSet,
@@ -52,6 +54,8 @@ urlpatterns = [
     ),
     path("orders/<str:pk>/billing/", OrderBillingView.as_view(), name="staff-order-billing"),
     path("orders/<str:pk>/refund/", RefundOrderView.as_view(), name="staff-order-refund"),
+    path("intakes/", IntakesOverviewView.as_view(), name="staff-intakes"),
+    path("cohorts/<str:pk>/sessions/", CohortSessionsView.as_view(), name="staff-cohort-sessions"),
     path("cohorts/<str:pk>/rollover/", CohortRolloverView.as_view(), name="staff-cohort-rollover"),
     path("lms/", include("apps.lms.urls")),
     path("dashboard/", DashboardView.as_view(), name="staff-dashboard"),
