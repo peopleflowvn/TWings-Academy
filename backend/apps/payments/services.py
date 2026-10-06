@@ -7,15 +7,19 @@ from django.utils import timezone
 
 from apps.crm.models import ORDER_CODE_ALPHABET, Activity, Order
 
-from .models import BankTransaction, Payment
+from .models import BankTransaction, Payment, Refund
 
 ORDER_CODE_RE = re.compile(rf"TW[{ORDER_CODE_ALPHABET}]{{8}}")
 
 
 def vietqr_payload(order: Order) -> dict:
-    """Payment instructions for the checkout screen. Amount and memo always come from the database."""
+    """
+    Payment instructions (checkout screen, learner account, reminders). Amount and memo always come
+    from the database: the amount due now (next installment, or the rest of the price).
+    """
+    amount = order.amount_due_now() if order.status == "pending" else order.amount
     query = urlencode(
-        {"amount": order.amount, "addInfo": order.order_code, "accountName": settings.VIETQR_ACCOUNT_NAME},
+        {"amount": amount, "addInfo": order.order_code, "accountName": settings.VIETQR_ACCOUNT_NAME},
         quote_via=quote,
     )
     image = (
@@ -24,7 +28,7 @@ def vietqr_payload(order: Order) -> dict:
     )
     return {
         "order_code": order.order_code,
-        "amount": order.amount,
+        "amount": amount,
         "bank_bin": settings.VIETQR_BANK_BIN,
         "bank_name": settings.VIETQR_BANK_NAME,
         "account_number": settings.VIETQR_ACCOUNT_NUMBER,
@@ -99,13 +103,19 @@ def ingest_bank_transaction(payload: dict, provider: str = "sepay") -> tuple[Ban
                 "unmatched",
                 "Không tìm thấy mã đơn trong nội dung chuyển khoản",
             )
-        elif order.status == "cancelled":
-            txn.order, txn.match_status, txn.match_note = order, "unmatched", "Đơn đã hủy – cần kế toán xử lý"
+        elif order.status in ("cancelled", "refunded"):
+            txn.order, txn.match_status = order, "unmatched"
+            txn.match_note = f"Đơn {order.get_status_display().lower()} – cần kế toán xử lý"
         else:
+            due = order.amount_due_now()
             txn.order, txn.match_status = order, "matched"
             _credit(order, txn.amount, source="bank_webhook", txn=txn)
-            if txn.amount < order.amount:
-                txn.match_note = "Thanh toán thiếu so với số phải thu"
+            if txn.amount < due:
+                txn.match_note = (
+                    "Thanh toán thiếu so với kỳ trả góp"
+                    if order.installment_count > 1
+                    else "Thanh toán thiếu so với số phải thu"
+                )
     txn.save()
     return txn, True
 
@@ -118,3 +128,51 @@ def confirm_manual_payment(request, order: Order, amount: int, note: str) -> Pay
     payment = _credit(order, amount, source="manual", user=request.user, note=note)
     audit(request, "payment.confirm_manual", order, amount=amount, note=note)
     return payment
+
+
+class RefundError(Exception):
+    pass
+
+
+@transaction.atomic
+def refund_order(
+    request, order: Order, *, amount: int, reason: str, reference: str, revoke_access: bool
+) -> Refund:
+    """
+    Record a refund. A full refund (or one that ends the enrolment) marks the order refunded, which
+    revokes LMS access (signals) and passes on to a program's course components.
+    """
+    from apps.core.models import audit
+
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    if order.parent_id:
+        raise RefundError("Hoàn tiền trên đơn chương trình gốc, không phải đơn thành phần.")
+    refundable = order.total_paid_amount - order.refunded_amount
+    if amount <= 0 or amount > refundable:
+        raise RefundError(f"Số tiền hoàn tối đa là {refundable:,}đ.".replace(",", "."))
+    refund = Refund.objects.create(
+        order=order,
+        amount=amount,
+        reason=reason,
+        reference=reference,
+        revoke_access=revoke_access,
+        refunded_by=request.user,
+    )
+    order.refunded_amount += amount
+    full = order.refunded_amount >= order.total_paid_amount
+    if full or revoke_access:
+        order.status = "refunded"
+        order.payment_status_detail = "Đã hoàn tiền"
+        order.crm_status = "7. Đã hủy"
+    order.save()
+    Activity.objects.create(
+        order=order,
+        type="payment",
+        title=f"Hoàn tiền {amount:,}đ".replace(",", ".")
+        + (" – kết thúc ghi danh" if order.status == "refunded" else ""),
+        content=reason + (f" (tham chiếu: {reference})" if reference else ""),
+        actor=request.user.name or request.user.email,
+        actor_user=request.user,
+    )
+    audit(request, "payment.refund", order, amount=amount, revoke=order.status == "refunded")
+    return refund

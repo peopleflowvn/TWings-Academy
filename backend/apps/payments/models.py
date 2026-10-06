@@ -54,3 +54,19 @@ class Payment(BaseModel):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class Refund(BaseModel):
+    """Money paid back to the learner (transferred by finance; recorded here). Never deleted."""
+
+    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name="refunds")
+    amount = models.PositiveBigIntegerField()
+    reason = models.CharField(max_length=300)
+    reference = models.CharField(max_length=100, blank=True)  # the outgoing bank transfer's reference
+    revoke_access = models.BooleanField(default=True)
+    refunded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ["-created_at"]

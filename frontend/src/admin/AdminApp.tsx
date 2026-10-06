@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Image,
   LayoutDashboard,
+  Layers,
   LayoutTemplate,
   LogOut,
   Mail,
@@ -49,6 +50,7 @@ import { CouponsPage, TransactionsPage } from './pages/FinancePages';
 import { HealthPage, MoodleHubPage } from './pages/SystemPages';
 import { BannersPage } from './pages/BannersPage';
 import { LayoutPage } from './pages/LayoutPage';
+import { ProgramsPage } from './pages/ProgramsPage';
 
 interface NavItem {
   path: string;
@@ -74,6 +76,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: 'Sản phẩm đào tạo',
     items: [
       { path: '/catalog/courses', label: 'Khóa học', icon: BookOpen, perms: ['courses.view'] },
+      { path: '/catalog/programs', label: 'Chương trình (gói khóa)', icon: Layers, perms: ['courses.view'] },
       { path: '/catalog/instructors', label: 'Giảng viên', icon: Award, perms: ['courses.view', 'courses.instructors'] }
     ]
   },
@@ -166,6 +169,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
             onDeleteCourse={courses.remove}
           />
         );
+      case '/catalog/programs':
+        return <ProgramsPage courses={courses.courses} canEdit={can('courses.programs')} />;
       case '/catalog/instructors':
         return <CMSInstructorsTab />;
       case '/learning/progress':

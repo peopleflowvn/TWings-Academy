@@ -54,7 +54,24 @@ class Instructor(BaseModel):
         return self.name
 
 
-class Course(BaseModel):
+class InstallmentPlan(models.Model):
+    """
+    Optional pay-in-installments plan offered at checkout: the price split into `installment_count`
+    payments `installment_interval_days` apart (the first is due at once and opens the learning).
+    """
+
+    installment_count = models.PositiveSmallIntegerField(
+        default=1, validators=[MinValueValidator(1), MaxValueValidator(12)]
+    )
+    installment_interval_days = models.PositiveSmallIntegerField(
+        default=30, validators=[MinValueValidator(7), MaxValueValidator(180)]
+    )
+
+    class Meta:
+        abstract = True
+
+
+class Course(InstallmentPlan, BaseModel):
     DELIVERY_CHOICES = [
         ("offline", "Trực tiếp"),
         ("hybrid", "Kết hợp"),
@@ -146,6 +163,41 @@ class Cohort(BaseModel):
 
     def __str__(self):
         return self.name
+
+
+class Program(InstallmentPlan, BaseModel):
+    """A program ("Chương trình"): several courses sold together at one price, Coursera-style."""
+
+    slug = models.SlugField(max_length=200, unique=True)
+    title = models.CharField(max_length=300)
+    subtitle = models.CharField(max_length=500, blank=True)
+    description = models.TextField(blank=True)
+    thumbnail = models.CharField(max_length=500, blank=True)
+    highlights = models.JSONField(default=list, blank=True)
+    courses = models.ManyToManyField(Course, through="ProgramCourse", related_name="programs")
+    price = models.PositiveBigIntegerField(default=0)
+    original_price = models.PositiveBigIntegerField(default=0)
+    is_published = models.BooleanField(default=False)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
+class ProgramCourse(models.Model):
+    program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name="program_courses")
+    course = models.ForeignKey(Course, on_delete=models.PROTECT, related_name="+")
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "id"]
+        constraints = [models.UniqueConstraint(fields=["program", "course"], name="uniq_program_course")]
+
+    def __str__(self):
+        return f"{self.program_id} #{self.position}: {self.course_id}"
 
 
 class Coupon(BaseModel):

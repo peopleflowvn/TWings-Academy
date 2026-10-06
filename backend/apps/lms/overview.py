@@ -120,13 +120,13 @@ def course_catalog() -> list[dict]:
     by_idnumber = {c["idnumber"]: c for c in moodle_courses if c.get("idnumber")}
     by_shortname = {c["shortname"]: c for c in moodle_courses}
     paid_by_course = dict(
-        Order.objects.filter(status="paid", course__isnull=False)
+        Order.objects.filter(learning_access=True, course__isnull=False)
         .values("course_id")
         .annotate(n=Count("id"))
         .values_list("course_id", "n")
     )
     paid_by_cohort = dict(
-        Order.objects.filter(status="paid", cohort__isnull=False)
+        Order.objects.filter(learning_access=True, cohort__isnull=False)
         .values("cohort_id")
         .annotate(n=Count("id"))
         .values_list("cohort_id", "n")
@@ -177,7 +177,7 @@ def course_learners(moodle_course_id: int) -> list[dict]:
                 progress, completed = _progress(c), bool(c.get("completed"))
         last = u.get("lastcourseaccess") or None
         order = (
-            Order.objects.filter(customer_email__iexact=u.get("email", ""), status="paid")
+            Order.objects.filter(customer_email__iexact=u.get("email", ""), learning_access=True)
             .order_by("-paid_at")
             .first()
         )

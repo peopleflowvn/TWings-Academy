@@ -116,6 +116,15 @@ export const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
     riskLevel: 'high'
   },
   {
+    id: 'perm-courses-8',
+    code: 'courses.programs',
+    name: 'Quản lý chương trình (gói khóa học)',
+    description: 'Tạo, định giá và xuất bản các chương trình gồm nhiều khóa học bán theo gói',
+    category: 'courses',
+    categoryLabel: '2. Khóa Học & Nhúng YouTube',
+    riskLevel: 'medium'
+  },
+  {
     id: 'perm-lms-1',
     code: 'lms.view',
     name: 'Xem tiến độ học tập (LMS)',
@@ -220,6 +229,15 @@ export const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
     categoryLabel: '5. Kế Toán & Đối Soát Tài Chính',
     riskLevel: 'high'
   },
+  {
+    id: 'perm-finance-4',
+    code: 'finance.refund',
+    name: 'Hoàn tiền & kết thúc ghi danh',
+    description: 'Ghi nhận hoàn tiền cho học viên; hoàn toàn bộ sẽ tự hủy ghi danh trên LMS và thu hồi chứng chỉ',
+    category: 'finance',
+    categoryLabel: '5. Kế Toán & Đối Soát Tài Chính',
+    riskLevel: 'high'
+  },
 
   // Category 6: Quản trị hệ thống & RBAC
   {
@@ -294,6 +312,7 @@ export const DEFAULT_ROLE_CONFIGS: Record<UserRole, RolePermissionConfig> = {
     allowedPermissionCodes: [
       'courses.view',
       'courses.edit_info',
+      'courses.programs',
       'courses.embed_youtube',
       'courses.instructors',
       'courses.curriculum',
@@ -351,6 +370,7 @@ export const DEFAULT_ROLE_CONFIGS: Record<UserRole, RolePermissionConfig> = {
       'finance.transactions',
       'finance.confirm_manual',
       'finance.referral_bonus',
+      'finance.refund',
       'courses.view'
     ]
   }

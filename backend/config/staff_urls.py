@@ -4,18 +4,31 @@ from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
 from apps.accounts.views import StaffUserViewSet
-from apps.catalog.views import CohortViewSet, CouponViewSet, CourseViewSet, InstructorViewSet, PartnerViewSet
+from apps.catalog.views import (
+    CohortViewSet,
+    CouponViewSet,
+    CourseViewSet,
+    InstructorViewSet,
+    PartnerViewSet,
+    ProgramViewSet,
+)
 from apps.cms.views import ArticleViewSet, HeroBannerViewSet, SiteConfigViewSet
 from apps.core.dashboard import DashboardView, SystemHealthView
 from apps.core.uploads import ImageUploadView
 from apps.core.views import AuditLogViewSet
 from apps.crm.views import AdmissionCampaignViewSet, CohortRolloverView, OrderViewSet
 from apps.notifications.views import EmailLogViewSet, EmailTemplateViewSet, SendEmailView
-from apps.payments.views import BankTransactionViewSet, ConfirmManualPaymentView
+from apps.payments.views import (
+    BankTransactionViewSet,
+    ConfirmManualPaymentView,
+    OrderBillingView,
+    RefundOrderView,
+)
 
 router = SimpleRouter()
 router.register("users", StaffUserViewSet, basename="staff-user")
 router.register("courses", CourseViewSet, basename="staff-course")
+router.register("programs", ProgramViewSet, basename="staff-program")
 router.register("instructors", InstructorViewSet, basename="staff-instructor")
 router.register("partners", PartnerViewSet, basename="staff-partner")
 router.register("cohorts", CohortViewSet, basename="staff-cohort")
@@ -36,6 +49,8 @@ urlpatterns = [
     path(
         "orders/<str:pk>/confirm-payment/", ConfirmManualPaymentView.as_view(), name="staff-confirm-payment"
     ),
+    path("orders/<str:pk>/billing/", OrderBillingView.as_view(), name="staff-order-billing"),
+    path("orders/<str:pk>/refund/", RefundOrderView.as_view(), name="staff-order-refund"),
     path("cohorts/<str:pk>/rollover/", CohortRolloverView.as_view(), name="staff-cohort-rollover"),
     path("lms/", include("apps.lms.urls")),
     path("dashboard/", DashboardView.as_view(), name="staff-dashboard"),

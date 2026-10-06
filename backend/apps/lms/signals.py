@@ -8,7 +8,7 @@ from apps.catalog.models import Cohort
 from apps.crm.models import Order
 
 from . import moodle
-from .services import enroll_paid_order, provision_cohort
+from .services import enroll_paid_order, provision_cohort, revoke_access
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +16,21 @@ logger = logging.getLogger(__name__)
 @receiver(post_save, sender=Order, dispatch_uid="lms_enroll_paid_order")
 def enroll_when_paid(sender, instance: Order, **kwargs):
     """
-    Any path that marks an order paid (bank webhook, manual confirmation, CMS) grants LMS access;
+    Any path that opens learning (paid in full, or first installment paid) grants LMS access;
     assigning an intake later (or moving to another one) enrols / moves the learner accordingly.
+    A refunded or cancelled order loses it again.
     """
-    if instance.status != "paid" or not moodle.is_configured():
-        return
+    if not moodle.is_configured() or instance.is_program_order:
+        return  # a program order has no course: its components are enrolled
     enrollment = getattr(instance, "lms_enrollment", None)
+    if not instance.learning_access:
+        if (
+            instance.status in ("refunded", "cancelled")
+            and enrollment is not None
+            and enrollment.status != "removed"
+        ):
+            transaction.on_commit(lambda: _safe(revoke_access, instance.pk))
+        return
     if enrollment is not None:
         # Removed by staff: later edits of the order must not re-enrol.
         if enrollment.status == "removed":

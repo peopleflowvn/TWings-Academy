@@ -16,6 +16,7 @@ PERMISSIONS: dict[str, str] = {
     "courses.curriculum": "Sửa đề cương / bài giảng",
     "courses.reviews": "Quản lý đánh giá",
     "courses.delete": "Xóa khóa học",
+    "courses.programs": "Quản lý chương trình (gói khóa học)",
     "banner.carousel": "Quản lý banner trang chủ",
     "homepage.intro_about": "Biên tập nội dung trang chủ",
     "homepage.partners": "Quản lý đối tác",
@@ -25,6 +26,7 @@ PERMISSIONS: dict[str, str] = {
     "finance.transactions": "Xem giao dịch & đối soát",
     "finance.confirm_manual": "Xác nhận thanh toán thủ công",
     "finance.referral_bonus": "Duyệt thưởng giới thiệu",
+    "finance.refund": "Hoàn tiền & kết thúc ghi danh",
     "rbac.view_users": "Xem người dùng",
     "rbac.manage_roles": "Gán vai trò người dùng",
     "rbac.edit_matrix": "Sửa quyền tùy chỉnh",
@@ -57,6 +59,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         {
             "courses.view",
             "courses.edit_info",
+            "courses.programs",
             "courses.embed_youtube",
             "courses.instructors",
             "courses.curriculum",
@@ -96,6 +99,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             "finance.transactions",
             "finance.confirm_manual",
             "finance.referral_bonus",
+            "finance.refund",
             "courses.view",
         }
     ),

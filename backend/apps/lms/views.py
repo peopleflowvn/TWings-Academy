@@ -70,7 +70,7 @@ def _certificate_data(enrollment: LmsEnrollment) -> dict | None:
 def _order_learning(order: Order) -> dict:
     return {
         "orderId": order.id,
-        "paid": order.status == "paid",
+        "paid": order.learning_access,
         "email": order.customer_email,
         "enrollment": _enrollment_data(LmsEnrollment.objects.filter(order=order).first()),
         **overview.learner_overview(order.customer_email),
@@ -112,8 +112,10 @@ class OrderLearningActionView(_LmsView):
         enrollment = LmsEnrollment.objects.filter(order=order).first()
 
         if action == "enroll":
-            if order.status != "paid":
-                raise serializers.ValidationError({"detail": "Chỉ ghi danh đơn đã thanh toán."})
+            if not order.learning_access:
+                raise serializers.ValidationError(
+                    {"detail": "Chỉ ghi danh đơn đã thanh toán (hoặc đã đóng kỳ trả góp đầu)."}
+                )
             enrollment = enrollment or LmsEnrollment.objects.create(order=order)
             enrollment.status = "pending"
             process(enrollment)

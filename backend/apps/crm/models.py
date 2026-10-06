@@ -2,8 +2,9 @@ import secrets
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
-from apps.catalog.models import Cohort, Course
+from apps.catalog.models import Cohort, Course, Program
 from apps.core.crypto import EncryptedTextField, blind_index
 from apps.core.models import BaseModel
 
@@ -60,13 +61,19 @@ class Order(BaseModel):
     mirroring the 6-section CRM sheet used by the admissions team (frontend type `Order`).
     """
 
-    STATUS_CHOICES = [("pending", "Chờ thanh toán"), ("paid", "Đã thanh toán"), ("cancelled", "Đã hủy")]
+    STATUS_CHOICES = [
+        ("pending", "Chờ thanh toán"),
+        ("paid", "Đã thanh toán"),
+        ("cancelled", "Đã hủy"),
+        ("refunded", "Đã hoàn tiền"),
+    ]
     PAYMENT_METHOD_CHOICES = [
         ("vietqr", "VietQR"),
         ("free", "Miễn phí"),
         ("card", "Thẻ"),
         ("transfer", "Chuyển khoản"),
         ("cash", "Tiền mặt"),
+        ("bundle", "Trong gói chương trình"),
     ]
     CRM_STATUS_CHOICES = [
         ("1. Mới", "1. Mới"),
@@ -96,6 +103,18 @@ class Order(BaseModel):
     campaign = models.ForeignKey(
         AdmissionCampaign, null=True, blank=True, on_delete=models.SET_NULL, related_name="orders"
     )
+    # A program order is paid once; each of its courses gets a component order (parent = the program
+    # order, amount 0) so intakes and LMS enrolment work per course exactly like single purchases.
+    program = models.ForeignKey(
+        Program, null=True, blank=True, on_delete=models.SET_NULL, related_name="orders"
+    )
+    parent = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.CASCADE, related_name="components"
+    )
+    installment_count = models.PositiveSmallIntegerField(default=1)
+    refunded_amount = models.PositiveBigIntegerField(default=0)
+    # May the learner study? Paid in full, or (installment plan) first installment paid. Kept by save().
+    learning_access = models.BooleanField(default=False, db_index=True)
 
     amount = models.PositiveBigIntegerField(default=0)
     original_amount = models.PositiveBigIntegerField(default=0)
@@ -222,7 +241,37 @@ class Order(BaseModel):
             self.course_title = self.course.title
         if self.cohort_id and not self.batch_cohort:
             self.batch_cohort = self.cohort.name
+        self.learning_access = self.compute_learning_access()
+        if "update_fields" in kwargs and kwargs["update_fields"] is not None:
+            kwargs["update_fields"] = {*kwargs["update_fields"], "learning_access"}
         super().save(*args, **kwargs)
+
+    def compute_learning_access(self) -> bool:
+        if self.parent_id:
+            return Order.objects.filter(pk=self.parent_id, learning_access=True).exists()
+        if self.status == "paid":
+            return True
+        if self.status != "pending" or self.installment_count <= 1 or not self.pk:
+            return False
+        first = self.installments.order_by("sequence").first()
+        return first is not None and self.total_paid_amount >= first.amount
+
+    @property
+    def is_program_order(self) -> bool:
+        return bool(self.program_id and not self.parent_id)
+
+    def amount_due_now(self) -> int:
+        """What the learner should transfer now: the next installment (minus any overpayment) or the rest."""
+        if self.status != "pending":
+            return 0
+        if self.installment_count > 1:
+            running = 0
+            for installment in self.installments.order_by("sequence"):
+                running += installment.amount
+                if running > self.total_paid_amount:
+                    return running - self.total_paid_amount
+            return 0
+        return max((self.total_receivable or self.amount) - self.total_paid_amount, 0)
 
     def find_duplicates(self):
         q = models.Q()
@@ -245,6 +294,28 @@ class Order(BaseModel):
             self.crm_status = "5. Đã đóng phí"
         elif self.total_paid_amount > 0:
             self.payment_status_detail = "Đã đóng 1 phần"
+        if self.installment_count > 1:
+            running = 0
+            for installment in self.installments.order_by("sequence"):
+                running += installment.amount
+                if installment.paid_at is None and self.total_paid_amount >= running:
+                    installment.paid_at = timezone.now()
+                    installment.save(update_fields=["paid_at", "updated_at"])
+
+
+class Installment(BaseModel):
+    """One scheduled payment of an installment order. Paid in order, from the order's cumulative total."""
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="installments")
+    sequence = models.PositiveSmallIntegerField()
+    amount = models.PositiveBigIntegerField()
+    due_date = models.DateField()
+    paid_at = models.DateTimeField(null=True, blank=True)
+    reminded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["order", "sequence"]
+        constraints = [models.UniqueConstraint(fields=["order", "sequence"], name="uniq_installment_seq")]
 
 
 class Activity(BaseModel):

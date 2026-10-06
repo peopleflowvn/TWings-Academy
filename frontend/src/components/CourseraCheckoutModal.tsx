@@ -17,6 +17,7 @@ import {
 import confetti from 'canvas-confetti';
 import { Course, Order } from '../types';
 import { api, ApiError, isBackendEnabled } from '../lib/api';
+import { InstallmentRow, installmentPreview, Program } from '../lib/commerce';
 
 export interface CheckoutPrefill {
   customerName?: string;
@@ -25,7 +26,9 @@ export interface CheckoutPrefill {
 }
 
 interface CourseraCheckoutModalProps {
-  course: Course;
+  /** What is bought: a course, or a program (bundle of courses) when `program` is given. */
+  course?: Course;
+  program?: Program;
   prefill?: CheckoutPrefill;
   onClose: () => void;
   onPaymentSuccess: (order: Order) => void;
@@ -42,6 +45,9 @@ interface CheckoutInfo {
   accountName: string;
   transferContent: string;
   qrImageUrl: string;
+  /** Whole price after discount; `amount` is what to transfer now (first installment when paying in installments). */
+  totalAmount?: number;
+  installments?: InstallmentRow[];
 }
 
 // Offline demo only (no backend configured): mirrors the seeded coupons.
@@ -62,11 +68,23 @@ const newDemoOrderCode = () => {
 
 export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
   course,
+  program,
   prefill,
   onClose,
   onPaymentSuccess,
 }) => {
   const liveMode = isBackendEnabled();
+  const item = {
+    id: program?.id ?? course!.id,
+    title: program?.title ?? course!.title,
+    thumbnail: program?.thumbnail || course?.thumbnail || '',
+    caption: program
+      ? `Chương trình · ${program.courses.length} khóa học`
+      : `${course!.partner?.name ?? 'TWings'} · ${course!.level}`,
+    price: program?.price ?? course!.price,
+    installmentCount: (program?.installmentCount ?? course!.installmentCount) || 1
+  };
+  const [payInInstallments, setPayInInstallments] = useState(false);
   const [customerName, setCustomerName] = useState(prefill?.customerName || '');
   const [customerEmail, setCustomerEmail] = useState(prefill?.customerEmail || '');
   const [customerPhone, setCustomerPhone] = useState(prefill?.customerPhone || '');
@@ -100,13 +118,13 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
         setFormError('Mã ưu đãi không hợp lệ hoặc đã hết hạn.');
         return;
       }
-      const discount = code ? Math.round((course.price * DEMO_COUPONS[code]) / 100) : 0;
+      const discount = code ? Math.round((item.price * DEMO_COUPONS[code]) / 100) : 0;
       const demoCode = newDemoOrderCode();
-      const amount = course.price - discount;
+      const amount = item.price - discount;
       setCheckout({
         orderCode: demoCode,
         amount,
-        originalAmount: course.price,
+        originalAmount: item.price,
         discountAmount: discount,
         bankName: DEMO_BANK.bankName,
         accountNumber: DEMO_BANK.accountNumber,
@@ -120,7 +138,8 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
     setSubmitting(true);
     try {
       const info = await api.post<CheckoutInfo>('/public/checkout/', {
-        courseId: course.id,
+        ...(program ? { programId: program.id } : { courseId: course!.id }),
+        payInInstallments: payInInstallments && item.installmentCount > 1,
         customerName: customerName.trim(),
         customerEmail: customerEmail.trim(),
         customerPhone: customerPhone.trim(),
@@ -143,8 +162,8 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
     onPaymentSuccess({
       id: info.orderCode,
       orderCode: info.orderCode,
-      courseId: course.id,
-      courseTitle: course.title,
+      courseId: item.id,
+      courseTitle: item.title,
       amount: info.amount,
       originalAmount: info.originalAmount,
       discountAmount: info.discountAmount,
@@ -164,8 +183,11 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
     if (!liveMode || !checkout || paymentStatus === 'paid') return;
     const timer = setInterval(async () => {
       try {
-        const res = await api.get<{ status: string }>(`/public/orders/${checkout.orderCode}/status/`);
-        if (res.status === 'paid') {
+        const res = await api.get<{ status: string; learningAccess?: boolean }>(
+          `/public/orders/${checkout.orderCode}/status/`
+        );
+        // Paid in full, or (installments) the first installment opened the learning.
+        if (res.status === 'paid' || res.learningAccess) {
           clearInterval(timer);
           markPaid(checkout);
         }
@@ -252,13 +274,19 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                 <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
                   {liveMode ? (
                     <>
-                      Khóa học <strong className="text-slate-900">{course.title}</strong> đã được mở trên hệ thống học
-                      TWings LMS. Thông tin đăng nhập được gửi tới email bạn đã đăng ký trong ít phút (kiểm tra cả
-                      thư mục Spam).
+                      {program ? 'Chương trình' : 'Khóa học'} <strong className="text-slate-900">{item.title}</strong> đã
+                      được mở trên hệ thống học TWings LMS. Thông tin đăng nhập được gửi tới email bạn đã đăng ký trong
+                      ít phút (kiểm tra cả thư mục Spam).
+                      {(checkout?.installments?.length ?? 0) > 1 && (
+                        <>
+                          {' '}Lịch đóng các kỳ tiếp theo và mã QR luôn có trong{' '}
+                          <a href="/tai-khoan" className="text-[#0056D2] font-bold hover:underline">Tài khoản của tôi</a>.
+                        </>
+                      )}
                     </>
                   ) : (
                     <>
-                      Khóa học <strong className="text-slate-900">{course.title}</strong> đã được kích hoạt ngay lập tức vào tài khoản học của bạn.
+                      Khóa học <strong className="text-slate-900">{item.title}</strong> đã được kích hoạt ngay lập tức vào tài khoản học của bạn.
                     </>
                   )}
                 </p>
@@ -269,13 +297,21 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
 
               <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                 {liveMode ? (
-                  <a
-                    href="/learn/"
-                    className="w-full sm:w-auto px-6 py-3 bg-[#0056D2] hover:bg-[#00419E] text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
-                  >
-                    <span>Vào Học Ngay (TWings LMS)</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </a>
+                  <>
+                    <a
+                      href="/learn/"
+                      className="w-full sm:w-auto px-6 py-3 bg-[#0056D2] hover:bg-[#00419E] text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                    >
+                      <span>Vào Học Ngay (TWings LMS)</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </a>
+                    <a
+                      href="/tai-khoan"
+                      className="w-full sm:w-auto px-6 py-3 border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                      Tài khoản của tôi
+                    </a>
+                  </>
                 ) : (
                   <button
                     onClick={onClose}
@@ -291,20 +327,20 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
             <>
               {/* Order Course Summary Box */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 flex gap-4 items-center">
-                <img
-                  src={course.thumbnail}
-                  alt={course.title}
-                  className="w-20 h-16 rounded-xl object-cover border border-slate-200 shrink-0"
-                />
+                {item.thumbnail && (
+                  <img
+                    src={item.thumbnail}
+                    alt={item.title}
+                    className="w-20 h-16 rounded-xl object-cover border border-slate-200 shrink-0"
+                  />
+                )}
                 <div className="space-y-1 min-w-0 flex-1">
-                  <div className="text-[11px] font-bold text-[#0056D2]">
-                    {course.partner?.name} · {course.level}
-                  </div>
+                  <div className="text-[11px] font-bold text-[#0056D2]">{item.caption}</div>
                   <h4 className="font-bold text-sm text-slate-900 line-clamp-1">
-                    {course.title}
+                    {item.title}
                   </h4>
                   <div className="text-xs text-slate-500 font-mono">
-                    Học phí: <strong className="text-slate-900">{formatVND(course.price)}</strong>
+                    Học phí: <strong className="text-slate-900">{formatVND(item.price)}</strong>
                   </div>
                 </div>
               </div>
@@ -352,6 +388,34 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                     />
                     <Tag className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   </div>
+                  {liveMode && item.installmentCount > 1 && item.price > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {[false, true].map((split) => (
+                        <label
+                          key={String(split)}
+                          className={`p-3 rounded-xl border cursor-pointer ${
+                            payInInstallments === split ? 'border-[#0056D2] bg-blue-50' : 'border-slate-200'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="plan"
+                            checked={payInInstallments === split}
+                            onChange={() => setPayInInstallments(split)}
+                            className="mr-2"
+                          />
+                          {split ? (
+                            <>
+                              <strong>Trả góp {item.installmentCount} kỳ</strong> – kỳ đầu{' '}
+                              {formatVND(installmentPreview(item.price, item.installmentCount)[0])}, vào học ngay
+                            </>
+                          ) : (
+                            <strong>Thanh toán một lần</strong>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                   {/* Honeypot: hidden from people, filled in by bots */}
                   <input
                     type="text"
@@ -387,6 +451,22 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                 </form>
               ) : (
               <>
+              {(checkout.installments?.length ?? 0) > 1 && (
+                <div className="p-3 bg-blue-50 text-slate-700 text-xs rounded-xl border border-blue-200 space-y-1">
+                  <div className="font-bold text-[#0056D2]">
+                    Trả góp {checkout.installments!.length} kỳ – tổng {formatVND(checkout.totalAmount ?? checkout.amount)}
+                  </div>
+                  {checkout.installments!.map((i) => (
+                    <div key={i.sequence} className="flex justify-between font-mono">
+                      <span>Kỳ {i.sequence} · {new Date(`${i.dueDate}T00:00:00`).toLocaleDateString('vi-VN')}</span>
+                      <span className={i.sequence === 1 ? 'font-bold text-slate-900' : ''}>{formatVND(i.amount)}</span>
+                    </div>
+                  ))}
+                  <div className="text-[11px] text-slate-500">
+                    Chuyển khoản kỳ 1 bên dưới để vào học ngay; hệ thống nhắc các kỳ sau qua email.
+                  </div>
+                </div>
+              )}
               {checkout.discountAmount > 0 && (
                 <div className="p-2.5 bg-emerald-50 text-emerald-700 text-xs rounded-xl border border-emerald-200 flex items-center justify-between">
                   <span className="font-semibold">Đã áp dụng mã ưu đãi</span>

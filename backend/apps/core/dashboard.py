@@ -22,16 +22,16 @@ class DashboardView(APIView):
 
     def get(self, request):
         from apps.catalog.models import Cohort
-        from apps.crm.models import FollowupTask, Order
+        from apps.crm.models import FollowupTask, Installment, Order
         from apps.lms.models import LmsEnrollment
-        from apps.payments.models import BankTransaction, Payment
+        from apps.payments.models import BankTransaction, Payment, Refund
 
         user, now = request.user, timezone.now()
         today, month_start = timezone.localdate(), timezone.localdate().replace(day=1)
         data: dict = {"generatedAt": now}
 
         if has_perm_code(user, "crm.view_leads"):
-            orders = Order.objects.all()
+            orders = Order.objects.filter(parent__isnull=True)  # program components are not sales
             last30 = orders.filter(created_at__gte=now - timedelta(days=30))
             data["sales"] = {
                 "pipeline": dict(orders.values_list("crm_status").annotate(n=Count("id")).order_by()),
@@ -68,12 +68,19 @@ class DashboardView(APIView):
                     for o in pending.only("total_receivable", "total_paid_amount")
                 ),
                 "unmatchedTransactions": BankTransaction.objects.filter(match_status="unmatched").count(),
+                "refundsMonth": Refund.objects.filter(created_at__date__gte=month_start).aggregate(
+                    s=Sum("amount")
+                )["s"]
+                or 0,
+                "overdueInstallments": Installment.objects.filter(
+                    paid_at__isnull=True, due_date__lt=today, order__status="pending"
+                ).count(),
             }
 
         if has_perm_code(user, "courses.view") or has_perm_code(user, "lms.view"):
             soon = Cohort.objects.filter(
                 start_date__gte=today, start_date__lte=today + timedelta(days=45)
-            ).annotate(paid=Count("orders", filter=Q(orders__status="paid")))
+            ).annotate(paid=Count("orders", filter=Q(orders__learning_access=True)))
             data["training"] = {
                 "enrollments": dict(
                     LmsEnrollment.objects.values_list("status").annotate(n=Count("id")).order_by()

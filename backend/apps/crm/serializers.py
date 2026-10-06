@@ -1,7 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.catalog.models import Cohort, Course
+from apps.catalog.models import Cohort, Course, Program
 
 from .models import Activity, AdmissionCampaign, CampaignPosition, FollowupTask, Order
 
@@ -40,6 +40,11 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "order_code",
             "total_paid_amount",
+            "refunded_amount",
+            "learning_access",
+            "installment_count",
+            "program",
+            "parent",
             "paid_at",
             "is_duplicate",
             "privacy_consent_at",
@@ -86,7 +91,9 @@ ASSIGN_FIELDS = {"pic", "assigned_to"}
 class PublicRegistrationSerializer(serializers.Serializer):
     """Fields an anonymous visitor may submit. Everything else is set server-side."""
 
-    course_id = serializers.CharField(max_length=64)
+    course_id = serializers.CharField(max_length=64, required=False)
+    program_id = serializers.CharField(max_length=64, required=False)
+    pay_in_installments = serializers.BooleanField(default=False)
     customer_name = serializers.CharField(max_length=200)
     customer_phone = serializers.RegexField(r"^\+?[0-9 .\-]{8,20}$", max_length=32)
     customer_email = serializers.EmailField(max_length=254)
@@ -121,6 +128,19 @@ class PublicRegistrationSerializer(serializers.Serializer):
         if course is None:
             raise serializers.ValidationError("Khóa học không tồn tại.")
         return course
+
+    def validate_program_id(self, value):
+        program = Program.objects.filter(is_published=True).filter(pk=value).first() or (
+            Program.objects.filter(is_published=True, slug=value).first()
+        )
+        if program is None:
+            raise serializers.ValidationError("Chương trình không tồn tại.")
+        return program
+
+    def validate(self, attrs):
+        if bool(attrs.get("course_id")) == bool(attrs.get("program_id")):
+            raise serializers.ValidationError({"detail": "Chọn một khóa học hoặc một chương trình."})
+        return attrs
 
     def consent_fields(self):
         return {"privacy_consent_at": timezone.now(), "privacy_consent_version": PRIVACY_POLICY_VERSION}

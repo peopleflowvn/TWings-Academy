@@ -1,19 +1,23 @@
-from django.db.models import Count, Q
+from django.db.models import Count, Prefetch, Q
 from rest_framework import mixins, viewsets
 from rest_framework.permissions import AllowAny
 
 from apps.accounts.permissions import ActionPermission
 
-from .models import Cohort, Coupon, Course, Instructor, Partner
+from .models import Cohort, Coupon, Course, Instructor, Partner, Program, ProgramCourse
 from .serializers import (
     CohortSerializer,
     CouponSerializer,
     CourseSerializer,
     InstructorSerializer,
     PartnerSerializer,
+    ProgramSerializer,
     PublicCourseSerializer,
     PublicInstructorSerializer,
+    PublicProgramSerializer,
 )
+
+PROGRAM_COURSES = Prefetch("program_courses", queryset=ProgramCourse.objects.select_related("course"))
 
 READ = ["list", "retrieve"]
 
@@ -39,6 +43,17 @@ class PublicCourseViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
         return (
             Course.objects.filter(is_published=True).select_related("partner").prefetch_related("instructors")
         )
+
+
+class PublicProgramViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    serializer_class = PublicProgramSerializer
+    lookup_field = "slug"
+    pagination_class = None
+
+    def get_queryset(self):
+        return Program.objects.filter(is_published=True).prefetch_related(PROGRAM_COURSES)
 
 
 class PublicInstructorViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -69,6 +84,19 @@ class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.select_related("partner").prefetch_related("instructors")
 
 
+class ProgramViewSet(viewsets.ModelViewSet):
+    serializer_class = ProgramSerializer
+    permission_classes = [ActionPermission]
+    permission_map = perm_map(["courses.view"], ["courses.programs"])
+    search_fields = ["title", "slug"]
+    pagination_class = None
+
+    def get_queryset(self):
+        return Program.objects.prefetch_related(PROGRAM_COURSES).annotate(
+            orders_count=Count("orders", filter=Q(orders__parent__isnull=True, orders__learning_access=True))
+        )
+
+
 class InstructorViewSet(viewsets.ModelViewSet):
     serializer_class = InstructorSerializer
     permission_classes = [ActionPermission]
@@ -92,7 +120,7 @@ class CohortViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Cohort.objects.select_related("course", "lead_instructor", "next_cohort").annotate(
-            enrolled_count=Count("orders", filter=Q(orders__status="paid"))
+            enrolled_count=Count("orders", filter=Q(orders__learning_access=True))
         )
 
 

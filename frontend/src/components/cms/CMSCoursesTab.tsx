@@ -547,6 +547,32 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                   />
                 </div>
 
+                {/* Installment plan */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Trả góp (số kỳ)</label>
+                  <select
+                    value={editForm.installmentCount || 1}
+                    onChange={(e) => setEditForm({ ...editForm, installmentCount: Number(e.target.value) })}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl"
+                  >
+                    {[1, 2, 3, 4, 6].map((n) => (
+                      <option key={n} value={n}>{n === 1 ? 'Không trả góp' : `${n} kỳ (kỳ đầu mở khóa học)`}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Khoảng cách giữa các kỳ (ngày)</label>
+                  <input
+                    type="number"
+                    min={7}
+                    max={180}
+                    disabled={(editForm.installmentCount || 1) <= 1}
+                    value={editForm.installmentIntervalDays || 30}
+                    onChange={(e) => setEditForm({ ...editForm, installmentIntervalDays: Number(e.target.value) })}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl disabled:bg-slate-50"
+                  />
+                </div>
+
                 {/* Location text */}
                 <div className="sm:col-span-2">
                   <label className="font-bold text-slate-700 block mb-1">Địa điểm / Địa chỉ đào tạo</label>

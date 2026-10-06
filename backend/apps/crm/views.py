@@ -207,7 +207,7 @@ class AdmissionCampaignViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return AdmissionCampaign.objects.prefetch_related("positions").annotate(
-            total_enrolled=Count("orders", filter=Q(orders__status="paid"))
+            total_enrolled=Count("orders", filter=Q(orders__learning_access=True))
         )
 
 

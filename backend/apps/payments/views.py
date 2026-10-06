@@ -14,8 +14,15 @@ from apps.crm.models import Order
 from apps.crm.serializers import PublicRegistrationSerializer
 from apps.crm.services import CheckoutError, create_public_order
 
+from .billing import order_billing
 from .models import BankTransaction
-from .services import confirm_manual_payment, ingest_bank_transaction, vietqr_payload
+from .services import (
+    RefundError,
+    confirm_manual_payment,
+    ingest_bank_transaction,
+    refund_order,
+    vietqr_payload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +51,10 @@ class PublicCheckoutView(APIView):
                 "course_title": order.course_title,
                 "original_amount": order.original_amount,
                 "discount_amount": order.discount_amount,
+                "total_amount": order.amount,
                 "status": order.status,
+                "learning_access": order.learning_access,
+                "installments": order_billing(order)["installments"],
             },
             status=status.HTTP_201_CREATED,
         )
@@ -58,7 +68,14 @@ class PublicOrderStatusView(APIView):
 
     def get(self, request, order_code):
         order = get_object_or_404(Order, order_code=order_code.upper())
-        return Response({"order_code": order.order_code, "status": order.status, "amount": order.amount})
+        return Response(
+            {
+                "order_code": order.order_code,
+                "status": order.status,
+                "amount": order.amount,
+                "learning_access": order.learning_access,
+            }
+        )
 
 
 class BankWebhookView(APIView):
@@ -131,3 +148,34 @@ class ConfirmManualPaymentView(APIView):
             },
             status=201,
         )
+
+
+class OrderBillingView(APIView):
+    """Installment schedule, payments, refunds and program components of one order (staff app)."""
+
+    permission_classes = [require_perms("crm.view_leads")]
+
+    def get(self, request, pk):
+        return Response(order_billing(get_object_or_404(Order, pk=pk), staff=True))
+
+
+class RefundSerializer(serializers.Serializer):
+    amount = serializers.IntegerField(min_value=1)
+    reason = serializers.CharField(max_length=300)
+    reference = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    revoke_access = serializers.BooleanField(default=True)
+
+
+class RefundOrderView(APIView):
+    permission_classes = [require_perms("finance.refund")]
+
+    def post(self, request, pk):
+        order = get_object_or_404(Order, pk=pk)
+        ser = RefundSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            refund_order(request, order, **{"reference": "", **ser.validated_data})
+        except RefundError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        order.refresh_from_db()
+        return Response(order_billing(order, staff=True), status=201)

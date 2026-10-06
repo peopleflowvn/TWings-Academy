@@ -247,6 +247,9 @@ export interface Course {
   badgeType?: 'bestseller' | 'recommended' | 'new' | 'useful';
   price: number;
   originalPrice: number;
+  /** Pay-in-installments plan offered at checkout (1 = pay in full only). */
+  installmentCount?: number;
+  installmentIntervalDays?: number;
   isFreeEnrollmentAvailable?: boolean;
   youtubeTrialUrl?: string; // e.g. "https://www.youtube.com/watch?v=sal78ACtGTc"
   youtubeVideoId?: string;  // e.g. "sal78ACtGTc"

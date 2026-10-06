@@ -53,6 +53,7 @@ import { Order, CRMStatus, PaymentStatus } from '../../types';
 import { COMP_AI_PIPELINE_STAGES, runCompAIEvidenceEnrichment } from '../../utils/compAiCrm';
 import { SendResendEmailModal } from './SendResendEmailModal';
 import { LmsLearningPanel } from './LmsLearningPanel';
+import { OrderBillingPanel } from './OrderBillingPanel';
 
 interface CompAILeadDetailModalProps {
   order: Order;
@@ -69,7 +70,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 }) => {
   const [order, setOrder] = useState<Order>(initialOrder);
   const [isDirty, setIsDirty] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'agent' | 'timeline' | 'tasks' | 'vietqr' | 'lms' | 'training'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'agent' | 'timeline' | 'tasks' | 'billing' | 'vietqr' | 'lms' | 'training'>('profile');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -674,6 +675,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                 { id: 'agent', label: 'Bằng Chứng AI (Evidence)', icon: Bot, count: order.agentResearch?.verifiedFacts.length },
                 { id: 'timeline', label: 'Nhật Ký Tương Tác', icon: FileText, count: order.timelineActivities?.length },
                 { id: 'tasks', label: 'Lịch Nhắc Hẹn', icon: CheckSquare, count: order.followupTasks?.filter(t => !t.isCompleted).length },
+                { id: 'billing', label: 'Học Phí & Hoàn Tiền', icon: CreditCard, count: null },
                 { id: 'vietqr', label: 'Thanh Toán & VietQR', icon: CreditCard, count: null },
                 { id: 'lms', label: 'Học Tập (LMS)', icon: BookOpen, count: null },
                 { id: 'training', label: 'Đào Tạo & Tuyển Dụng MSB', icon: GraduationCap, count: null }
@@ -1448,6 +1450,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
             {/* ============================================================= */}
             {/* TAB: LEARNING ON THE MOODLE LMS (live data, staff actions) */}
             {activeTab === 'lms' && <LmsLearningPanel orderId={order.id} />}
+            {activeTab === 'billing' && <OrderBillingPanel orderId={order.id} />}
 
             {/* TAB 5: VIETQR BILLING & INVOICING */}
             {/* ============================================================= */}

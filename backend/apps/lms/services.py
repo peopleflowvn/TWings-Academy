@@ -196,7 +196,7 @@ def _enrol(user_id: int, course_id: int) -> None:
 
 def process(enrollment: LmsEnrollment) -> LmsEnrollment:
     order = enrollment.order
-    if order.status != "paid":
+    if not order.learning_access:
         enrollment.status, enrollment.last_error = "skipped", "Đơn chưa thanh toán"
         enrollment.save()
         return enrollment
@@ -277,6 +277,39 @@ def enroll_paid_order(order_id: str) -> None:
         if enrollment.status == "done" and enrollment.cohort_id == order.cohort_id:
             return
         process(enrollment)
+
+
+def revoke_access(order_id: str) -> None:
+    """Refunded / cancelled order: leave the Moodle course, revoke the certificate, keep the history."""
+    with transaction.atomic():
+        enrollment = (
+            LmsEnrollment.objects.select_for_update()
+            .select_related("order")
+            .filter(order_id=order_id)
+            .first()
+        )
+        if enrollment is None or enrollment.status == "removed" or enrollment.order.learning_access:
+            return
+        order = enrollment.order
+        if enrollment.status == "done" and enrollment.moodle_user_id and enrollment.moodle_course_id:
+            moodle.call(
+                "enrol_manual_unenrol_users",
+                enrolments=[{"userid": enrollment.moodle_user_id, "courseid": enrollment.moodle_course_id}],
+            )
+        reason = order.get_status_display()
+        enrollment.status, enrollment.last_error = "removed", f"Đơn {reason.lower()}"
+        enrollment.save(update_fields=["status", "last_error", "updated_at"])
+        certificate = getattr(enrollment, "certificate", None)
+        if certificate is not None and not certificate.revoked:
+            certificate.revoked, certificate.revoked_reason = True, f"Đơn {reason.lower()}"
+            certificate.save(update_fields=["revoked", "revoked_reason", "updated_at"])
+        Activity.objects.create(
+            order=order,
+            type="note",
+            title="Đã hủy ghi danh LMS" + (" và thu hồi chứng chỉ" if certificate is not None else ""),
+            content=f"Lý do: đơn {reason.lower()}.",
+            actor="Hệ thống LMS",
+        )
 
 
 def provision_cohort(cohort) -> dict:

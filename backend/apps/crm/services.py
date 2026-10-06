@@ -1,10 +1,12 @@
+from datetime import timedelta
+
 from django.db import transaction
 from django.utils import timezone
 
-from apps.catalog.models import Cohort, Coupon, Course
+from apps.catalog.models import Cohort, Coupon, Course, Program
 from apps.core.models import audit
 
-from .models import Activity, Order
+from .models import Activity, Installment, Order
 
 
 class CheckoutError(Exception):
@@ -28,9 +30,9 @@ def resolve_cohort(course: Course, preferred_label: str = "") -> tuple[Cohort | 
 
 
 @transaction.atomic
-def price_with_coupon(course: Course, coupon_code: str) -> tuple[int, int, str]:
-    """Server-side pricing. Returns (final_amount, discount, applied_code). Locks the coupon row."""
-    amount = course.price
+def price_with_coupon(item: Course | Program, coupon_code: str) -> tuple[int, int, str]:
+    """Server-side pricing of a course or program. Returns (final_amount, discount, applied_code)."""
+    amount = item.price
     code = (coupon_code or "").strip().upper()
     if not code:
         return amount, 0, ""
@@ -48,34 +50,58 @@ def price_with_coupon(course: Course, coupon_code: str) -> tuple[int, int, str]:
     return amount - discount, discount, coupon.code
 
 
+def installment_amounts(amount: int, count: int) -> list[int]:
+    """Equal installments rounded down to 1.000đ; the first one carries the remainder."""
+    if count <= 1 or amount <= 0:
+        return [amount]
+    base = (amount // count) // 1000 * 1000
+    return [amount - base * (count - 1)] + [base] * (count - 1)
+
+
+def create_installments(order: Order, interval_days: int) -> None:
+    start = timezone.localdate()
+    Installment.objects.bulk_create(
+        Installment(
+            order=order, sequence=i + 1, amount=part, due_date=start + timedelta(days=interval_days * i)
+        )
+        for i, part in enumerate(installment_amounts(order.total_receivable, order.installment_count))
+    )
+
+
 @transaction.atomic
 def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Order:
-    course: Course = data.pop("course_id")
+    course: Course | None = data.pop("course_id", None)
+    program: Program | None = data.pop("program_id", None)
+    pay_in_installments = data.pop("pay_in_installments", False)
     coupon_code = data.pop("coupon_code", "")
     data.pop("privacy_consent", None)
     data.pop("website", None)
     preferred_cohort = data.pop("batch_cohort", "")
     source = data.pop("source", "") or "Website"
+    item = course or program
+    if item is None:
+        raise CheckoutError("Vui lòng chọn khóa học hoặc chương trình.")
 
-    amount, discount, applied = (
-        price_with_coupon(course, coupon_code) if with_payment else (course.price, 0, "")
-    )
-    cohort, rerouted = resolve_cohort(course, preferred_cohort)
+    amount, discount, applied = price_with_coupon(item, coupon_code) if with_payment else (item.price, 0, "")
+    cohort, rerouted = resolve_cohort(course, preferred_cohort) if course else (None, False)
+    installments = item.installment_count if with_payment and pay_in_installments and amount > 0 else 1
 
     order = Order(
         **data,
         **consent,
         course=course,
-        course_title=course.title,
-        interested_course=course.title,
+        program=program,
+        course_title=item.title,
+        interested_course=item.title,
         cohort=cohort,
         batch_cohort=cohort.name if cohort else preferred_cohort,
-        original_amount=course.price,
+        original_amount=item.price,
         discount_amount=discount,
         discount_code=applied,
         amount=amount,
-        tuition_fee=course.price,
+        tuition_fee=item.price,
         total_receivable=amount,
+        installment_count=installments,
         payment_method="free" if amount == 0 else "vietqr",
         source=source,
         crm_status="1. Mới",
@@ -84,7 +110,10 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
         order.status = "paid"
         order.payment_status_detail = "Đã đóng phí"
         order.crm_status = "5. Đã đóng phí"
+        order.paid_at = timezone.now()
     order.save()
+    if installments > 1:
+        create_installments(order, item.installment_interval_days)
 
     duplicates = order.find_duplicates()
     if duplicates.exists():
@@ -95,7 +124,9 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     Activity.objects.create(
         order=order,
         type="note",
-        title="Đăng ký từ website" + (" (thanh toán VietQR)" if with_payment else ""),
+        title="Đăng ký từ website"
+        + (" (thanh toán VietQR)" if with_payment else "")
+        + (f" – trả góp {installments} kỳ" if installments > 1 else ""),
         content=(f"Lớp mong muốn đã đủ/đóng, tự chuyển sang {cohort.name}." if rerouted and cohort else ""),
         actor="Website",
     )
@@ -108,7 +139,7 @@ def rollover_cohort(request, cohort: Cohort) -> int:
     target = cohort.next_cohort
     if target is None:
         raise CheckoutError("Lớp này chưa có lớp kế nhiệm.")
-    pending = Order.objects.select_for_update().filter(cohort=cohort).exclude(status="paid")
+    pending = Order.objects.select_for_update().filter(cohort=cohort).exclude(learning_access=True)
     moved = 0
     for order in pending:
         order.cohort = target
@@ -125,3 +156,49 @@ def rollover_cohort(request, cohort: Cohort) -> int:
         moved += 1
     audit(request, "cohort.rollover", cohort, to=target.pk, moved=moved)
     return moved
+
+
+COMPONENT_STATUS = {"paid": "paid", "refunded": "refunded", "cancelled": "cancelled"}
+
+
+def sync_program_components(order: Order) -> int:
+    """
+    Program orders: one component order per course of the program, created once the learner may
+    study, then kept in step with the program order (status, learner details). Each component flows
+    through intakes and LMS enrolment like a single-course order. Returns the number of components.
+    """
+    if not order.is_program_order:
+        return 0
+    existing = {c.course_id: c for c in order.components.all()}
+    if not existing and not order.learning_access:
+        return 0
+    status = COMPONENT_STATUS.get(order.status, "pending")
+    links = order.program.program_courses.select_related("course") if order.program_id else []
+    for link in links:
+        component = existing.get(link.course_id)
+        if component is None:
+            cohort, _ = resolve_cohort(link.course)
+            component = Order(
+                parent=order,
+                program=order.program,
+                course=link.course,
+                course_title=link.course.title,
+                interested_course=link.course.title,
+                cohort=cohort,
+                batch_cohort=cohort.name if cohort else "",
+                payment_method="bundle",
+                source=f"Chương trình: {order.program.title}"[:100],
+                privacy_consent_at=order.privacy_consent_at,
+                privacy_consent_version=order.privacy_consent_version,
+            )
+        component.customer_name = order.customer_name
+        component.customer_email = order.customer_email
+        component.customer_phone = order.customer_phone
+        if component.status != status:
+            component.status = status
+            component.paid_at = order.paid_at if status == "paid" else component.paid_at
+            component.crm_status = order.crm_status
+            component.payment_status_detail = order.payment_status_detail
+        component.save()
+        existing[link.course_id] = component
+    return len(existing)

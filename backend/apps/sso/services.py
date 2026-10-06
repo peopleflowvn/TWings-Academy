@@ -34,14 +34,18 @@ def normalize_email(email: str) -> str:
 
 # ---------------------------------------------------------------- who may sign in
 def identity_for_email(email: str) -> dict | None:
-    """A learner with a paid order, or an active staff member; None otherwise."""
+    """A learner who may study (paid / installment started), staff, or an instructor; None otherwise."""
     email = normalize_email(email)
     if not email:
         return None
     staff = User.objects.filter(email=email, is_active=True).first()
     if staff:
         return staff_identity(staff)
-    order = Order.objects.filter(customer_email__iexact=email, status="paid").order_by("-paid_at").first()
+    order = (
+        Order.objects.filter(customer_email__iexact=email, learning_access=True)
+        .order_by("-created_at")
+        .first()
+    )
     if order is None:
         return _instructor_identity(email)
     given, family = split_vietnamese_name(order.customer_name)

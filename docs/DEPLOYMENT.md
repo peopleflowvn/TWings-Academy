@@ -237,6 +237,19 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   nâng cấp DB của Moodle không đảo ngược được khi rollback.
 - **Backup:** `backup.sh` sao lưu DB `twings`, DB `moodle` và `moodledata` (bỏ cache), mã hóa `age`, đẩy lên R2.
 
+## Bán hàng: chương trình, trả góp, hoàn tiền, tài khoản học viên
+
+- **Chương trình** (`/app` → Chương trình): nhiều khóa bán một giá. Khi học viên được học, mỗi khóa tự có một
+  *đơn thành phần* (số tiền 0, gắn đơn gốc) để xếp lớp và ghi danh Moodle như mua lẻ. Trang bán: `/chuong-trinh`.
+- **Trả góp**: bật ở khóa học/chương trình (số kỳ, khoảng cách ngày). VietQR luôn hiển thị số tiền *đến hạn*
+  (kỳ kế tiếp). Đóng kỳ 1 là mở khóa học (`learning_access`); đóng đủ thì đơn chuyển "Đã thanh toán".
+  Cron `remind_installments` (09:00 hằng ngày) gửi email nhắc trước hạn 3 ngày và tạo việc cần làm khi quá hạn.
+- **Hoàn tiền** (quyền `finance.refund`, tab "Học phí & hoàn tiền" của đơn): ghi nhận sau khi đã chuyển trả.
+  Hoàn toàn bộ (hoặc chọn kết thúc ghi danh) → đơn "Đã hoàn tiền", hủy ghi danh LMS, thu hồi chứng chỉ,
+  áp dụng cho mọi khóa của chương trình. Chuyển khoản tới đơn đã hoàn không được ghi nhận tự động.
+- **Tài khoản học viên** `/tai-khoan`: đăng nhập bằng mã email (cùng phiên với SSO, nên "Vào học" không hỏi
+  lại mã), xem đơn, lịch trả góp + QR, tiến độ, chứng chỉ, gửi yêu cầu hoàn tiền (tạo việc ưu tiên cao).
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị
