@@ -150,6 +150,10 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             Khóa học
           </button>
 
+          <a href="/chuong-trinh" className="hidden lg:inline hover:text-[#0073C1] transition-colors">
+            Chương trình
+          </a>
+
           <button
             onClick={() => onNavigate('about')}
             className={`hidden lg:inline hover:text-[#0073C1] transition-colors cursor-pointer ${
@@ -168,6 +172,11 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             <Newspaper className="w-3.5 h-3.5" />
             <span>Tin tức & SEO</span>
           </button>
+
+          {/* Learner account: orders, installments, certificates (/tai-khoan) */}
+          <a href="/tai-khoan" className="hidden md:inline hover:text-[#0073C1] transition-colors">
+            Tài khoản
+          </a>
 
           {/* Learners: the Moodle LMS (full page, served at /learn on the same domain) */}
           <a
@@ -249,6 +258,9 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           >
             Khám Phá Tất Cả Khóa Học
           </button>
+          <a href="/chuong-trinh" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50">
+            Chương Trình Đào Tạo (Gói Khóa Học)
+          </a>
           <button
             onClick={() => {
               setMobileMenuOpen(false);
@@ -276,6 +288,9 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           >
             Đăng Ký Tư Vấn Khóa Học
           </button>
+          <a href="/tai-khoan" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50">
+            Tài Khoản Học Viên
+          </a>
           <a href="/learn/" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-slate-800 font-bold">
             Vào Học (TWings LMS)
           </a>

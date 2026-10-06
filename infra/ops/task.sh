@@ -221,6 +221,18 @@ if c:
 ' && sudo docker compose exec -T backend python manage.py sync_lms_completion"
     ;;
 
+  catalog-report)
+    # Courses, programs and sales per course: input for pricing / bundling decisions.
+    remote "cd $APP && sudo docker compose exec -T backend python manage.py shell -c '
+from django.db.models import Count, Q
+from apps.catalog.models import Course, Program
+for c in Course.objects.annotate(n=Count(\"orders\", filter=Q(orders__learning_access=True))).order_by(\"category\", \"sort_order\"):
+    print(\"course\", c.slug, \"|\", c.title[:60], \"|\", c.category, \"|\", c.level, \"|\", c.price, \"/\", c.original_price, \"| pub\", c.is_published, \"| inst\", c.installment_count, \"| sold\", c.n)
+for p in Program.objects.all():
+    print(\"program\", p.slug, \"|\", p.title, \"|\", p.price, \"| pub\", p.is_published, \"|\", [x.course.slug for x in p.program_courses.all()])
+'"
+    ;;
+
   logs)
     remote "cd $APP && sudo docker compose logs --no-color --tail=300; sudo tail -n 50 /var/log/twings-backup.log 2>/dev/null || true"
     ;;
