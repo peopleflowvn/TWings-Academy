@@ -345,7 +345,7 @@ export interface AdmissionCampaign {
 // -------------------------------------------------------------
 // CRM COURSE COHORT & CLASS LIFECYCLE (Đóng/Mở lớp & Định tuyến)
 // -------------------------------------------------------------
-export type CohortStatus = 'opening' | 'full' | 'in_progress' | 'completed' | 'upcoming';
+export type CohortStatus = 'opening' | 'full' | 'closed' | 'in_progress' | 'completed' | 'upcoming';
 
 export interface CourseCohort {
   id: string;

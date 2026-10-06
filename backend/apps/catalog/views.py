@@ -136,6 +136,10 @@ class CourseViewSet(viewsets.ModelViewSet):
             audit(self.request, "course.update", course, fields=other)
 
     def perform_destroy(self, instance):
+        if instance.orders.exists():
+            raise serializers.ValidationError(
+                {"detail": "Khóa học đã có đơn hàng / học viên: không xóa được, hãy chuyển sang Ngừng bán."}
+            )
         audit(self.request, "course.delete", instance, title=instance.title)
         instance.delete()
 

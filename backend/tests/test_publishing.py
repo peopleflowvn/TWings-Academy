@@ -118,3 +118,28 @@ def test_program_publish_and_live_price_need_permissions(staff_client, course):
     program = Program.objects.create(slug="goi2", title="Gói 2", price=1000, is_published=True)
     res = editor.patch(f"/api/v1/staff/programs/{program.pk}/", {"price": 1}, format="json")
     assert res.status_code == 400
+
+
+def test_course_with_orders_or_intakes_cannot_be_deleted(staff_client, ready_course):
+    from apps.crm.models import Order
+
+    admin = staff_client(Role.SUPER_ADMIN)
+    Cohort.objects.create(course=ready_course, name="K1")
+    res = admin.delete(f"{URL}{ready_course.pk}/")
+    assert res.status_code == 400 and "Không xóa được" in res.json()["detail"]  # intake protects it (no 500)
+    Order.objects.create(customer_name="A", course=ready_course)
+    res = admin.delete(f"{URL}{ready_course.pk}/")
+    assert res.status_code == 400 and "Ngừng bán" in res.json()["detail"]
+
+
+def test_journey_audit_command_runs(ready_course):
+    import json
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    out = StringIO()
+    call_command("journey_audit", stdout=out)
+    data = json.loads(out.getvalue())
+    assert data["step1_courses"][ready_course.slug]["missing_required"] == []
+    assert "consultants_receiving_leads" in data["step4"]

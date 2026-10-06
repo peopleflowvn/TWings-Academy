@@ -197,6 +197,7 @@ REST_FRAMEWORK = {
         "webhook": env("THROTTLE_WEBHOOK", default="600/min"),
         "track": env("THROTTLE_TRACK", default="120/min"),
     },
+    "EXCEPTION_HANDLER": "apps.core.exceptions.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,  # ratings are numbers in the frontend types
     "DATE_FORMAT": "%d/%m/%Y",
     "DATE_INPUT_FORMATS": ["%d/%m/%Y", "iso-8601"],

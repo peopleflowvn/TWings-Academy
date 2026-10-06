@@ -139,6 +139,13 @@ export const COHORT_STATUS_CONFIG: Record<
     dotClass: 'bg-emerald-500',
     description: 'Lớp đang nhận đăng ký mới bình thường. Học viên đăng ký sẽ được xếp thẳng vào lớp này.'
   },
+  closed: {
+    label: 'Đã Đóng Tuyển Sinh',
+    badgeBg: 'bg-slate-100 text-slate-700 border-slate-300',
+    textClass: 'text-slate-700',
+    dotClass: 'bg-slate-500',
+    description: 'Đã quá hạn đăng ký: lớp không nhận đăng ký mới; học viên chưa đóng phí được chuyển sang lớp kế nhiệm (nếu bật).'
+  },
   full: {
     label: 'Đã Đủ Sĩ Số (Đóng Tuyển)',
     badgeBg: 'bg-amber-50 text-amber-800 border-amber-200',

@@ -233,6 +233,10 @@ for p in Program.objects.all():
 '"
     ;;
 
+  journey-audit)
+    remote "cd $APP && sudo docker compose exec -T backend python manage.py journey_audit"
+    ;;
+
   seed-sales)
     remote "cd $APP && sudo docker compose exec -T backend python manage.py seed_sales_setup"
     ;;

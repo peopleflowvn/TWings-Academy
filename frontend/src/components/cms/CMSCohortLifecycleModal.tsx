@@ -413,7 +413,7 @@ export const CMSCohortLifecycleModal: React.FC<CMSCohortLifecycleModalProps> = (
                     1. Trạng Thái Vòng Đời Lớp (Đóng / Mở Lớp Tuyển Sinh):
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                    {(['opening', 'full', 'in_progress', 'completed', 'upcoming'] as CohortStatus[]).map((st) => {
+                    {(['upcoming', 'opening', 'full', 'closed', 'in_progress', 'completed'] as CohortStatus[]).map((st) => {
                       const cfg = COHORT_STATUS_CONFIG[st];
                       const isCurrent = selectedCohort.status === st;
 
