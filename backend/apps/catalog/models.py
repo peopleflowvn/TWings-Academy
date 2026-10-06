@@ -155,6 +155,7 @@ class Cohort(BaseModel):
     STATUS_CHOICES = [
         ("opening", "Đang tuyển sinh"),
         ("full", "Đã đủ sĩ số"),
+        ("closed", "Đã đóng tuyển sinh"),
         ("in_progress", "Đang học"),
         ("completed", "Đã kết thúc"),
         ("upcoming", "Sắp mở"),
@@ -173,6 +174,13 @@ class Cohort(BaseModel):
     lead_instructor = models.ForeignKey(Instructor, null=True, blank=True, on_delete=models.SET_NULL)
     location = models.CharField(max_length=300, blank=True)
     notes = models.TextField(blank=True)
+    # Shown to visitors, e.g. "Tối thứ 2-4-6, 19:00–21:00" (filled by the session generator in /app).
+    schedule_text = models.CharField(max_length=200, blank=True)
+    # Early-bird price for this intake until the deadline (inclusive); otherwise the course price.
+    early_bird_price = models.PositiveBigIntegerField(null=True, blank=True)
+    early_bird_deadline = models.DateField(null=True, blank=True)
+    # Moodle calendar events of deleted sessions, removed at the next calendar sync.
+    calendar_cleanup = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["start_date", "name"]
@@ -180,6 +188,39 @@ class Cohort(BaseModel):
 
     def __str__(self):
         return self.name
+
+    def early_bird_active(self, today=None) -> bool:
+        from django.utils import timezone
+
+        today = today or timezone.localdate()
+        return bool(
+            self.early_bird_price is not None
+            and self.early_bird_deadline
+            and today <= self.early_bird_deadline
+            and self.early_bird_price < self.course.price
+        )
+
+    def price(self, today=None) -> int:
+        """What a learner pays for this intake today (before coupons)."""
+        return self.early_bird_price if self.early_bird_active(today) else self.course.price
+
+
+class CohortSession(BaseModel):
+    """One class session of an intake; mirrored as an event in the intake's Moodle course calendar."""
+
+    cohort = models.ForeignKey(Cohort, on_delete=models.CASCADE, related_name="sessions")
+    title = models.CharField(max_length=200, blank=True)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    location = models.CharField(max_length=300, blank=True)
+    online = models.BooleanField(default=False)
+    moodle_event_id = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["starts_at"]
+
+    def __str__(self):
+        return f"{self.cohort_id} {self.starts_at:%Y-%m-%d %H:%M}"
 
 
 class Program(InstallmentPlan, BaseModel):

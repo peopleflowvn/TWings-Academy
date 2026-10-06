@@ -280,6 +280,16 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 - Đề cương công khai lấy từ Moodle: /app → Học viên & tiến độ → "Đề cương → web" (tên chương / hoạt động
   của khóa mẫu, không lấy nội dung bài; điền mô tả khóa nếu trống).
 
+## Đợt khai giảng (hành trình khâu 2)
+
+- /app → Đợt khai giảng & chỉ tiêu: mở / sửa đợt, sĩ số, hạn đăng ký, **giá đăng ký sớm** (áp dụng khi
+  thanh toán tới hết hạn ưu đãi), đợt kế tiếp; tình hình chỗ / đã đóng phí / chờ thanh toán; chỉ tiêu chiến dịch.
+- **Lịch học**: tạo nhanh theo mẫu (thứ trong tuần, giờ, số buổi), lưu là đẩy sang lịch khóa Moodle của đợt
+  (`core_calendar_*`); xếp lại lịch thì sự kiện cũ trên Moodle được xóa.
+- **Tự chuyển trạng thái** (`refresh_intakes` 00:15 hằng ngày + ngay sau mỗi thanh toán): đủ chỗ → Đã đủ sĩ số,
+  quá hạn đăng ký → Đã đóng tuyển sinh, tới ngày khai giảng → Đang học; đợt đủ / đóng chuyển học viên chưa đóng
+  phí sang đợt kế tiếp nếu bật.
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị

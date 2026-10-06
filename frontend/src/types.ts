@@ -272,6 +272,11 @@ export interface Course {
     location: string;
     status: 'opening' | 'upcoming';
     seatsLeft: number;
+    /** e.g. "Trực tiếp thứ 2-4-6, 19:00–21:00" */
+    scheduleText?: string;
+    /** Price for this intake today (early bird until earlyBirdDeadline). */
+    price?: number;
+    earlyBirdDeadline?: string | null;
   }[];
   isFreeEnrollmentAvailable?: boolean;
   youtubeTrialUrl?: string; // e.g. "https://www.youtube.com/watch?v=sal78ACtGTc"

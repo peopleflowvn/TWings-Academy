@@ -1,11 +1,13 @@
 from django.db.models import Count, Prefetch, Q
+from django.shortcuts import get_object_or_404
 from rest_framework import mixins, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from apps.accounts.permissions import ActionPermission
+from apps.accounts.permissions import ActionPermission, require_perms
 from apps.accounts.rbac import has_perm_code
 from apps.core.models import AuditLog, audit
 
@@ -255,3 +257,71 @@ class CouponViewSet(viewsets.ModelViewSet):
     permission_classes = [ActionPermission]
     permission_map = perm_map(["finance.transactions", "crm.view_leads"], ["finance.confirm_manual"])
     queryset = Coupon.objects.all()
+
+
+# ---------------------------------------------------------------- intakes (journey step 2)
+class IntakesOverviewView(APIView):
+    """Intakes with seats, payments, early bird and schedule; campaign quotas vs enrolments."""
+
+    permission_classes = [require_perms("courses.view", "crm.view_leads")]
+
+    def get(self, request):
+        from .intakes import overview
+
+        return Response(overview())
+
+
+class SessionInputSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    starts_at = serializers.DateTimeField()
+    ends_at = serializers.DateTimeField()
+    location = serializers.CharField(max_length=300, required=False, allow_blank=True)
+    online = serializers.BooleanField(default=False)
+
+    def validate(self, attrs):
+        if attrs["ends_at"] <= attrs["starts_at"]:
+            raise serializers.ValidationError("Giờ kết thúc phải sau giờ bắt đầu.")
+        return attrs
+
+
+class SessionsPayloadSerializer(serializers.Serializer):
+    sessions = SessionInputSerializer(many=True)
+    schedule_text = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    sync = serializers.BooleanField(default=True)
+
+
+class CohortSessionsView(APIView):
+    """GET the intake's class sessions; PUT replaces them (and pushes them to the Moodle calendar)."""
+
+    def get_permissions(self):
+        codes = ["courses.view", "crm.view_leads"] if self.request.method == "GET" else ["courses.edit_info"]
+        return [require_perms(*codes)()]
+
+    def get(self, request, pk):
+        from .intakes import session_rows
+
+        return Response(session_rows(get_object_or_404(Cohort, pk=pk)))
+
+    def put(self, request, pk):
+        from apps.lms import moodle
+
+        from .intakes import replace_sessions, session_rows, sync_sessions
+
+        cohort = get_object_or_404(Cohort.objects.select_related("course"), pk=pk)
+        ser = SessionsPayloadSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        if len(data["sessions"]) > 200:
+            raise serializers.ValidationError({"sessions": "Tối đa 200 buổi."})
+        replace_sessions(cohort, data["sessions"])
+        if "schedule_text" in data:
+            cohort.schedule_text = data["schedule_text"]
+            cohort.save(update_fields=["schedule_text", "updated_at"])
+        sync = {"synced": 0}
+        if data["sync"]:
+            try:
+                sync = sync_sessions(cohort)
+            except moodle.MoodleError as exc:
+                sync = {"synced": 0, "detail": f"Chưa đồng bộ được lịch sang Moodle: {exc}"}
+        audit(request, "cohort.sessions", cohort, count=len(data["sessions"]), synced=sync.get("synced", 0))
+        return Response({"sessions": session_rows(cohort), "sync": sync})

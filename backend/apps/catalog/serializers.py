@@ -116,8 +116,11 @@ def upcoming_cohorts(course) -> list[dict]:
             "location": c.location,
             "status": c.status,
             "seats_left": max(c.capacity - c.taken, 0),
+            "schedule_text": c.schedule_text,
+            "price": c.price(today),
+            "early_bird_deadline": c.early_bird_deadline.isoformat() if c.early_bird_active(today) else None,
         }
-        for c in rows
+        for c in rows.select_related("course")
     ]
 
 
@@ -156,6 +159,7 @@ class CohortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cohort
         fields = "__all__"
+        read_only_fields = ["calendar_cleanup"]
 
 
 class CouponSerializer(serializers.ModelSerializer):

@@ -733,6 +733,12 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                         {c.startDate ? new Date(`${c.startDate}T00:00:00`).toLocaleDateString('vi-VN') : 'Sắp công bố ngày'}
                         {c.location ? ` · ${c.location}` : ''}
                       </div>
+                      {c.scheduleText && <div className="text-slate-500">{c.scheduleText}</div>}
+                      {c.earlyBirdDeadline && c.price !== undefined && c.price < course.price && (
+                        <div className="text-emerald-700 font-bold">
+                          Ưu đãi đăng ký sớm {formatVND(c.price)} tới {new Date(`${c.earlyBirdDeadline}T00:00:00`).toLocaleDateString('vi-VN')}
+                        </div>
+                      )}
                     </div>
                     <span className={`shrink-0 font-bold ${c.seatsLeft <= 5 ? 'text-red-600' : 'text-emerald-700'}`}>
                       {c.status === 'opening' ? (c.seatsLeft > 0 ? `Còn ${c.seatsLeft} chỗ` : 'Hết chỗ') : 'Sắp mở'}

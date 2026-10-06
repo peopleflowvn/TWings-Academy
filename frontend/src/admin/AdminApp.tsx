@@ -20,6 +20,7 @@ import {
   Menu,
   Award,
   BarChart3,
+  CalendarDays,
   Receipt,
   Send,
   ShieldCheck,
@@ -55,6 +56,7 @@ import { LayoutPage } from './pages/LayoutPage';
 import { ProgramsPage } from './pages/ProgramsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { JourneysPage } from './pages/JourneysPage';
+import { IntakesPage } from './pages/IntakesPage';
 
 interface NavItem {
   path: string;
@@ -75,7 +77,8 @@ const NAV: { title: string; items: NavItem[] }[] = [
   {
     title: 'Tuyển sinh & Bán hàng',
     items: [
-      { path: '/sales/crm', label: 'CRM, đơn hàng & khai giảng', icon: Users, perms: ['crm.view_leads'] },
+      { path: '/sales/crm', label: 'CRM & đơn hàng', icon: Users, perms: ['crm.view_leads'] },
+      { path: '/sales/intakes', label: 'Đợt khai giảng & chỉ tiêu', icon: CalendarDays, perms: ['courses.view', 'crm.view_leads'] },
       { path: '/sales/coupons', label: 'Mã giảm giá & học bổng', icon: Tag, perms: ['finance.transactions', 'crm.view_leads'] }
     ]
   },
@@ -170,6 +173,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <JourneysPage canEdit={can('crm.edit_status')} />;
       case '/sales/crm':
         return <CMSCRMOrdersTab orders={orders.orders} onUpdateOrderStatus={orders.updateStatus} onUpdateOrderCRM={orders.updateCRM} />;
+      case '/sales/intakes':
+        return <IntakesPage courses={courses.courses.map((c) => ({ id: c.id, title: c.title }))} />;
       case '/sales/coupons':
         return <CouponsPage canEdit={can('finance.confirm_manual')} />;
       case '/catalog/courses':

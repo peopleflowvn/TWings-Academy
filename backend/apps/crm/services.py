@@ -30,9 +30,14 @@ def resolve_cohort(course: Course, preferred_label: str = "") -> tuple[Cohort | 
 
 
 @transaction.atomic
-def price_with_coupon(item: Course | Program, coupon_code: str) -> tuple[int, int, str]:
-    """Server-side pricing of a course or program. Returns (final_amount, discount, applied_code)."""
-    amount = item.price
+def price_with_coupon(
+    item: Course | Program, coupon_code: str, base: int | None = None
+) -> tuple[int, int, str]:
+    """
+    Server-side pricing of a course or program. `base` overrides the list price (an intake's
+    early-bird price). Returns (final_amount, discount, applied_code).
+    """
+    amount = item.price if base is None else base
     code = (coupon_code or "").strip().upper()
     if not code:
         return amount, 0, ""
@@ -82,8 +87,12 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     if item is None:
         raise CheckoutError("Vui lòng chọn khóa học hoặc chương trình.")
 
-    amount, discount, applied = price_with_coupon(item, coupon_code) if with_payment else (item.price, 0, "")
     cohort, rerouted = resolve_cohort(course, preferred_cohort) if course else (None, False)
+    # The intake decides the price (early bird until its deadline), then the coupon applies.
+    list_price = cohort.price() if cohort else item.price
+    amount, discount, applied = (
+        price_with_coupon(item, coupon_code, base=list_price) if with_payment else (list_price, 0, "")
+    )
     installments = item.installment_count if with_payment and pay_in_installments and amount > 0 else 1
 
     order = Order(
@@ -96,7 +105,7 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
         cohort=cohort,
         batch_cohort=cohort.name if cohort else preferred_cohort,
         original_amount=item.price,
-        discount_amount=discount,
+        discount_amount=discount + (item.price - list_price),
         discount_code=applied,
         amount=amount,
         tuition_fee=item.price,
@@ -135,11 +144,20 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
 
 @transaction.atomic
 def rollover_cohort(request, cohort: Cohort) -> int:
-    """Move every unpaid applicant of a closed cohort to its successor cohort."""
+    """
+    Move every unpaid applicant of a closed / full cohort to its successor cohort. `request` is None
+    when the system does it (intake auto-close, see apps.catalog.intakes).
+    """
     target = cohort.next_cohort
     if target is None:
         raise CheckoutError("Lớp này chưa có lớp kế nhiệm.")
-    pending = Order.objects.select_for_update().filter(cohort=cohort).exclude(learning_access=True)
+    pending = (
+        Order.objects.select_for_update()
+        .filter(cohort=cohort)
+        .exclude(learning_access=True)
+        .exclude(status__in=("cancelled", "refunded"))
+    )
+    user = getattr(request, "user", None)
     moved = 0
     for order in pending:
         order.cohort = target
@@ -150,8 +168,8 @@ def rollover_cohort(request, cohort: Cohort) -> int:
             type="note",
             title="Tự động chuyển tiếp lớp",
             content=f"{cohort.name} đã đóng tuyển sinh. Hồ sơ được chuyển sang {target.name}.",
-            actor=request.user.email,
-            actor_user=request.user,
+            actor=user.email if user else "Hệ thống tuyển sinh",
+            actor_user=user,
         )
         moved += 1
     audit(request, "cohort.rollover", cohort, to=target.pk, moved=moved)

@@ -85,6 +85,11 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
     installmentCount: (program?.installmentCount ?? course!.installmentCount) || 1
   };
   const [payInInstallments, setPayInInstallments] = useState(false);
+  // Course sold in intakes: the learner picks one (its early-bird price applies until the deadline).
+  const intakes = (course?.upcomingCohorts || []).filter((c) => c.status === 'opening' && c.seatsLeft > 0);
+  const [intakeName, setIntakeName] = useState(intakes[0]?.name || '');
+  const chosenIntake = intakes.find((c) => c.name === intakeName);
+  if (chosenIntake?.price !== undefined) item.price = chosenIntake.price;
   const [customerName, setCustomerName] = useState(prefill?.customerName || '');
   const [customerEmail, setCustomerEmail] = useState(prefill?.customerEmail || '');
   const [customerPhone, setCustomerPhone] = useState(prefill?.customerPhone || '');
@@ -140,6 +145,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
       const info = await api.post<CheckoutInfo>('/public/checkout/', {
         ...(program ? { programId: program.id } : { courseId: course!.id }),
         payInInstallments: payInInstallments && item.installmentCount > 1,
+        ...(chosenIntake ? { batchCohort: chosenIntake.name } : {}),
         customerName: customerName.trim(),
         customerEmail: customerEmail.trim(),
         customerPhone: customerPhone.trim(),
@@ -388,6 +394,23 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                     />
                     <Tag className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   </div>
+                  {liveMode && intakes.length > 0 && (
+                    <label className="block text-xs">
+                      <span className="font-bold text-slate-700">Đợt khai giảng</span>
+                      <select value={intakeName} onChange={(e) => setIntakeName(e.target.value)}
+                        className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-xl">
+                        {intakes.map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.name}
+                            {c.startDate ? ` – khai giảng ${new Date(`${c.startDate}T00:00:00`).toLocaleDateString('vi-VN')}` : ''}
+                            {c.price !== undefined ? ` – ${formatVND(c.price)}` : ''}
+                            {c.earlyBirdDeadline ? ' (ưu đãi sớm)' : ''}
+                            {` – còn ${c.seatsLeft} chỗ`}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   {liveMode && item.installmentCount > 1 && item.price > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                       {[false, true].map((split) => (
@@ -469,7 +492,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
               )}
               {checkout.discountAmount > 0 && (
                 <div className="p-2.5 bg-emerald-50 text-emerald-700 text-xs rounded-xl border border-emerald-200 flex items-center justify-between">
-                  <span className="font-semibold">Đã áp dụng mã ưu đãi</span>
+                  <span className="font-semibold">Ưu đãi đã áp dụng</span>
                   <span className="font-bold font-mono">-{formatVND(checkout.discountAmount)}</span>
                 </div>
               )}

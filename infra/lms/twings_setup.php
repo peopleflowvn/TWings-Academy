@@ -96,6 +96,8 @@ $capabilities = [
     // Learners' e-mail must be visible to the integration: users are looked up by e-mail (an existing
     // account must be reused, never duplicated) and the CMS lists learners with their e-mail.
     'moodle/site:viewuseridentity', 'moodle/course:useremail', 'moodle/site:viewfullnames',
+    // Intake class sessions as course calendar events.
+    'moodle/calendar:manageentries',
     // One Moodle course per intake, copied from the course's template (backup/restore) and dated.
     'moodle/backup:backupcourse', 'moodle/backup:configure', 'moodle/restore:restorecourse',
     'moodle/restore:configure', 'moodle/restore:rolldates', 'moodle/course:update',
@@ -158,6 +160,8 @@ $functions = [
     'core_course_duplicate_course', 'core_course_update_courses',
     // Public syllabus on the website: section and activity names of the template course
     'core_course_get_contents',
+    // Intake class sessions in the course calendar
+    'core_calendar_create_calendar_events', 'core_calendar_delete_calendar_events',
 ];
 $service = $DB->get_record('external_services', ['shortname' => 'twings']);
 if (!$service) {
