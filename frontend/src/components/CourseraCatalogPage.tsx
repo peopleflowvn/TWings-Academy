@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Course, CourseLevel, CourseType } from '../types';
 import { CourseraCourseCard } from './CourseraCourseCard';
+import { ProgramsStrip } from './ProgramsStrip';
 
 interface CourseraCatalogPageProps {
   courses: Course[];
@@ -143,7 +144,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Khám Phá Danh Mục Khóa Học & Chứng Chỉ
+                Khóa Học & Chương Trình Đào Tạo
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
                 Tìm kiếm chương trình phù hợp từ Google, Stanford, IBM, DeepLearning.AI và hơn 350+ đối tác hàng đầu.
@@ -189,6 +190,9 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Programs (bundles) first, then the course grid */}
+      <ProgramsStrip />
 
       {/* Main Content: Left Filter Sidebar + Right Course Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
   Search, 
-  ChevronDown, 
   Menu, 
   X, 
   BookOpen,
@@ -9,6 +8,7 @@ import {
   PhoneCall,
   Sparkles
 } from 'lucide-react';
+import { useSiteLogo } from '../lib/siteSeo';
 
 interface CourseraHeaderProps {
   currentView: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about';
@@ -27,22 +27,13 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
   onSearchSubmit,
   onOpenConsultation,
 }) => {
-  const [exploreMenuOpen, setExploreMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const categories = [
-    'Ngân Hàng & Tín Dụng',
-    'Trí tuệ nhân tạo (AI)',
-    'Khoa học dữ liệu',
-    'Khoa học máy tính',
-    'Kinh doanh & Quản lý',
-    'Quản lý dự án'
-  ];
+  const logoUrl = useSiteLogo();
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
-        {/* Left Section: Logo & Explore Dropdown */}
+        {/* Left Section: Logo */}
         <div className="flex items-center gap-4 sm:gap-6">
           {/* Logo Brand: TWINGS ACADEMY */}
           <button
@@ -50,6 +41,10 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             className="flex items-center gap-2.5 cursor-pointer focus:outline-none group text-left"
             title="Trang Chủ TWings Academy"
           >
+            {logoUrl ? (
+              <img src={logoUrl} alt="TWings Academy" className="h-10 max-w-[200px] object-contain" />
+            ) : (
+            <>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00388A] via-[#0050D8] to-[#0073C1] flex items-center justify-center text-white font-black text-sm shadow-sm group-hover:scale-105 transition-transform shrink-0">
               TW
             </div>
@@ -66,51 +61,9 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
                 Học Viện Thực Chiến
               </div>
             </div>
-          </button>
-
-          {/* "Khám phá" Dropdown Button */}
-          <div className="relative hidden md:block">
-            <button
-              onClick={() => setExploreMenuOpen(!exploreMenuOpen)}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#0073C1] bg-blue-50/80 hover:bg-blue-100/70 border border-blue-200 rounded-lg transition-colors cursor-pointer"
-            >
-              <span>Khám phá</span>
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${exploreMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {/* Dropdown Menu */}
-            {exploreMenuOpen && (
-              <div className="absolute left-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-50 animate-fadeIn">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 py-1.5">
-                  Chủ đề hàng đầu
-                </div>
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => {
-                      setExploreMenuOpen(false);
-                      onSearchChange(cat);
-                      onNavigate('catalog');
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:text-[#0073C1] hover:bg-blue-50/60 rounded-lg transition-colors cursor-pointer"
-                  >
-                    {cat}
-                  </button>
-                ))}
-                <div className="border-t border-slate-100 mt-2 pt-2">
-                  <button
-                    onClick={() => {
-                      setExploreMenuOpen(false);
-                      onNavigate('catalog');
-                    }}
-                    className="w-full text-center px-3 py-1.5 text-xs font-bold text-[#0073C1] hover:underline"
-                  >
-                    Xem tất cả khóa học →
-                  </button>
-                </div>
-              </div>
+            </>
             )}
-          </div>
+          </button>
         </div>
 
         {/* Center: Search Bar */}
@@ -150,10 +103,6 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             Khóa học
           </button>
 
-          <a href="/chuong-trinh" className="hidden lg:inline hover:text-[#0073C1] transition-colors">
-            Chương trình
-          </a>
-
           <button
             onClick={() => onNavigate('about')}
             className={`hidden lg:inline hover:text-[#0073C1] transition-colors cursor-pointer ${
@@ -170,13 +119,8 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             }`}
           >
             <Newspaper className="w-3.5 h-3.5" />
-            <span>Tin tức & SEO</span>
+            <span>Tin tức & Cẩm nang</span>
           </button>
-
-          {/* Learner account: orders, installments, certificates (/tai-khoan) */}
-          <a href="/tai-khoan" className="hidden md:inline hover:text-[#0073C1] transition-colors">
-            Tài khoản
-          </a>
 
           {/* Learners: the Moodle LMS (full page, served at /learn on the same domain) */}
           <a
@@ -256,11 +200,8 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             }}
             className="w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-[#0073C1]"
           >
-            Khám Phá Tất Cả Khóa Học
+            Khóa Học & Chương Trình
           </button>
-          <a href="/chuong-trinh" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50">
-            Chương Trình Đào Tạo (Gói Khóa Học)
-          </a>
           <button
             onClick={() => {
               setMobileMenuOpen(false);
@@ -288,9 +229,6 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           >
             Đăng Ký Tư Vấn Khóa Học
           </button>
-          <a href="/tai-khoan" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50">
-            Tài Khoản Học Viên
-          </a>
           <a href="/learn/" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-slate-800 font-bold">
             Vào Học (TWings LMS)
           </a>

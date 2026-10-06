@@ -12,6 +12,7 @@ import {
   Check, 
   ExternalLink 
 } from 'lucide-react';
+import { ImageUploadField } from './ImageUploadField';
 import { SiteSEOSettings } from '../../types';
 import { INITIAL_SEO_SETTINGS } from '../../data/courseraData';
 
@@ -68,39 +69,22 @@ export const CMSSiteSEOSettingsTab: React.FC = () => {
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Favicon URL (16x16 / 32x32)</label>
-                <div className="flex items-center gap-2">
-                  <img
-                    src={settings.faviconUrl}
-                    alt="Favicon"
-                    className="w-8 h-8 rounded border border-slate-200 p-0.5 object-contain bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={settings.faviconUrl}
-                    onChange={(e) => setSettings({ ...settings, faviconUrl: e.target.value })}
-                    className="flex-1 p-2 border border-slate-300 rounded-lg text-xs font-mono"
-                  />
-                </div>
-              </div>
+              <ImageUploadField
+                label="Favicon (32x32 hoặc 48x48)"
+                value={settings.faviconUrl}
+                onChange={(url) => setSettings({ ...settings, faviconUrl: url })}
+                accept="image/png,image/x-icon,image/vnd.microsoft.icon,.ico"
+                hint="PNG hoặc ICO, nền trong suốt."
+                previewClassName="w-8 h-8 object-contain"
+              />
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Logo Website (Header)</label>
-                <div className="flex items-center gap-2">
-                  <img
-                    src={settings.logoUrl}
-                    alt="Logo"
-                    className="w-16 h-8 rounded border border-slate-200 p-0.5 object-contain bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={settings.logoUrl}
-                    onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
-                    className="flex-1 p-2 border border-slate-300 rounded-lg text-xs font-mono"
-                  />
-                </div>
-              </div>
+              <ImageUploadField
+                label="Logo Website (Header)"
+                value={settings.logoUrl}
+                onChange={(url) => setSettings({ ...settings, logoUrl: url })}
+                hint="PNG/WebP, nền trong suốt, tối đa 5 MB."
+                previewClassName="w-16 h-8 object-contain"
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -219,17 +203,13 @@ export const CMSSiteSEOSettingsTab: React.FC = () => {
               <span>Mô Phỏng Thẻ Chia Sẻ Mạng Xã Hội (OpenGraph Thumbnail)</span>
             </div>
 
-            <div>
-              <label className="font-bold text-slate-700 block mb-1 text-xs">
-                Ảnh đại diện khi chia sẻ (1200x630 px) *
-              </label>
-              <input
-                type="text"
-                value={settings.ogImageUrl}
-                onChange={(e) => setSettings({ ...settings, ogImageUrl: e.target.value })}
-                className="w-full p-2 border border-slate-300 rounded-lg text-xs font-mono"
-              />
-            </div>
+            <ImageUploadField
+              label="Ảnh đại diện khi chia sẻ (1200x630 px) *"
+              value={settings.ogImageUrl}
+              onChange={(url) => setSettings({ ...settings, ogImageUrl: url })}
+              hint="JPEG/PNG/WebP, tỷ lệ 1.91:1, tối đa 5 MB."
+              previewClassName="w-16 h-9 object-cover"
+            />
 
             {/* Facebook/Zalo Social Share Card Preview */}
             <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm bg-slate-50">

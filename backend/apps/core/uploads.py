@@ -13,7 +13,12 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import require_perms
 
-FORMATS = {"JPEG": ("jpg", "image/jpeg"), "PNG": ("png", "image/png"), "WEBP": ("webp", "image/webp")}
+FORMATS = {
+    "JPEG": ("jpg", "image/jpeg"),
+    "PNG": ("png", "image/png"),
+    "WEBP": ("webp", "image/webp"),
+    "ICO": ("ico", "image/x-icon"),  # favicons
+}
 MAX_PIXELS = 40_000_000  # decompression-bomb guard
 
 
@@ -57,7 +62,7 @@ class ImageUploadView(APIView):
                 save_img = img.convert("RGB") if fmt == "JPEG" and img.mode not in ("RGB", "L") else img
                 save_img.save(out, format=fmt, optimize=True)
         except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
-            return Response({"detail": "Chỉ chấp nhận ảnh JPEG, PNG hoặc WebP hợp lệ."}, status=400)
+            return Response({"detail": "Chỉ chấp nhận ảnh JPEG, PNG, WebP hoặc ICO hợp lệ."}, status=400)
 
         ext, content_type = FORMATS[fmt]
         name = f"uploads/{timezone.now():%Y/%m}/{secrets.token_hex(12)}.{ext}"

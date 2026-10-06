@@ -41,7 +41,9 @@ type View = 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail'
 
 export default function App() {
   // Navigation View State (the staff app lives at /app as its own bundle, see main.tsx)
-  const [currentView, setCurrentView] = useState<View>('home');
+  const [currentView, setCurrentView] = useState<View>(() =>
+    /^\/khoa-hoc\/?$/.test(window.location.pathname) ? 'catalog' : 'home'
+  );
 
   // Core Data
   const [courses, setCourses] = useState<Course[]>(COURSES);

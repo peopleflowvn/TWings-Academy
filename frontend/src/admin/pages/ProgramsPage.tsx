@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, ExternalLink, Plus, Save, Trash2, X } from 'lucide-react';
 import { Course } from '../../types';
 import { commerceApi, formatVND, Program } from '../../lib/commerce';
+import { ImageUploadField } from '../../components/cms/ImageUploadField';
 
 type Draft = Partial<Program> & { courseIds: string[] };
 
@@ -138,9 +139,8 @@ export const ProgramsPage: React.FC<{ courses: Course[]; canEdit: boolean }> = (
               <label>Đường dẫn (slug)
                 <input className={input} value={draft.slug} placeholder={slugify(draft.title || '')} onChange={(e) => setDraft({ ...draft, slug: slugify(e.target.value) })} />
               </label>
-              <label>Ảnh đại diện (URL)
-                <input className={input} value={draft.thumbnail} onChange={(e) => setDraft({ ...draft, thumbnail: e.target.value })} />
-              </label>
+              <ImageUploadField label="Ảnh đại diện" value={draft.thumbnail || ''}
+                onChange={(url) => setDraft({ ...draft, thumbnail: url })} previewClassName="w-12 h-8 object-cover" />
               <label className="sm:col-span-2">Mô tả ngắn
                 <input className={input} value={draft.subtitle} onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })} />
               </label>

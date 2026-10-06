@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { lazy, Suspense } from 'react';
 import App from './App.tsx';
 import './index.css';
+import { applySiteSeo } from './lib/siteSeo';
 
 // The staff app (/app) and the program / learner-account pages are separate bundles: visitors of the
 // homepage never download them.
@@ -10,6 +11,9 @@ const StorefrontApp = lazy(() => import('./storefront/StorefrontApp'));
 const path = window.location.pathname;
 const isAdmin = /^\/app(\/|$)/.test(path);
 const isStorefront = /^\/(chuong-trinh|tai-khoan)(\/|$)/.test(path);
+
+// Favicon, logo, default title/description from /app → Cài đặt SEO (not for the staff app).
+if (!isAdmin) applySiteSeo();
 
 const loading = <div className="min-h-screen flex items-center justify-center text-slate-500">Đang tải…</div>;
 

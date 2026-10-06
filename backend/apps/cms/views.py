@@ -47,10 +47,12 @@ class PublicBannerViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 
 class PublicSiteConfigViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    """Only the documents the public site renders (not e.g. the journey e-mail switches)."""
+
     permission_classes = [AllowAny]
     authentication_classes = []
     serializer_class = SiteConfigSerializer
-    queryset = SiteConfig.objects.all()
+    queryset = SiteConfig.objects.filter(key__in=[SiteConfig.KEY_HOMEPAGE_SECTIONS, SiteConfig.KEY_SITE_SEO])
 
 
 # ---------------------------------------------------------------- staff

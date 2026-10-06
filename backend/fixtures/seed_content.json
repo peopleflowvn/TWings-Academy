@@ -1165,8 +1165,8 @@
  "siteSeo": {
   "siteName": "TWINGS ACADEMY - Học Viện Đào Tạo Thực Chiến",
   "siteSlogan": "Nâng tầm năng lực, kiến tạo tương lai",
-  "faviconUrl": "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=64&q=80",
-  "logoUrl": "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=200&q=80",
+  "faviconUrl": "",
+  "logoUrl": "",
   "defaultMetaTitle": "Twings Academy - Đào Tạo Nghiệp Vụ Ngân Hàng & Khóa Học Chuyên Nghiệp",
   "defaultMetaDescription": "Học viện tiên phong đào tạo thực chiến ngành tài chính ngân hàng, công nghệ AI và chứng chỉ quốc tế. Kết nối việc làm trực tiếp tại MSB, ROX Group.",
   "defaultKeywords": [
@@ -1177,7 +1177,7 @@
    "chứng chỉ Coursera",
    "AI ngân hàng"
   ],
-  "ogImageUrl": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80",
+  "ogImageUrl": "",
   "canonicalDomain": "https://twings.edu.vn",
   "googleAnalyticsId": "G-TWINGS2026",
   "facebookPixelId": "1098245582910",

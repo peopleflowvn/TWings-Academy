@@ -30,8 +30,7 @@ const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNod
             </span>
           </a>
           <nav className="flex items-center gap-1">
-            {link('/chuong-trinh', 'Chương trình', active === 'programs')}
-            {link('/tai-khoan', 'Tài khoản', active === 'account')}
+            {link('/khoa-hoc', 'Khóa học', active === 'programs')}
             <a href="/learn/" className="ml-1 px-3 py-2 rounded-xl text-sm font-bold bg-[#0056D2] text-white hover:bg-[#00419E]">
               Vào học
             </a>
@@ -42,7 +41,10 @@ const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNod
       <footer className="border-t border-slate-200 bg-white text-xs text-slate-500">
         <div className="max-w-6xl mx-auto px-4 py-5 flex flex-wrap gap-4 justify-between">
           <span>© TWings Academy</span>
-          <a href="/" className="hover:text-slate-800">Trang chủ & khóa học</a>
+          <span className="flex gap-4">
+            <a href="/khoa-hoc" className="hover:text-slate-800">Khóa học & chương trình</a>
+            <a href="/tai-khoan" className="hover:text-slate-800">Tài khoản học viên</a>
+          </span>
         </div>
       </footer>
     </div>
@@ -126,7 +128,7 @@ const ProgramDetail: React.FC<{ slug: string }> = ({ slug }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-5">
-        <a href="/chuong-trinh" className="text-xs font-bold text-[#0056D2]">← Tất cả chương trình</a>
+        <a href="/khoa-hoc" className="text-xs font-bold text-[#0056D2]">← Khóa học & chương trình</a>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{program.title}</h1>
         {program.subtitle && <p className="text-slate-600">{program.subtitle}</p>}
         {program.description && <p className="text-sm text-slate-700 whitespace-pre-line">{program.description}</p>}

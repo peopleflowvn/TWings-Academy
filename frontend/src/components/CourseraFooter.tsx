@@ -95,7 +95,6 @@ export const CourseraFooter: React.FC<CourseraFooterProps> = ({ onNavigate }) =>
               <li><button onClick={() => onNavigate('home')} className="hover:text-white transition-colors cursor-pointer">Trang chủ</button></li>
               <li><button onClick={() => onNavigate('about')} className="hover:text-white transition-colors cursor-pointer text-[#38bdf8] font-semibold">Giới thiệu về chúng tôi</button></li>
               <li><button onClick={() => onNavigate('catalog')} className="hover:text-white transition-colors cursor-pointer">Khóa học thực chiến</button></li>
-              <li><a href="/chuong-trinh" className="hover:text-white transition-colors">Chương trình đào tạo</a></li>
               <li><a href="/tai-khoan" className="hover:text-white transition-colors">Tài khoản học viên</a></li>
               <li><button onClick={() => onNavigate('articles')} className="hover:text-white transition-colors cursor-pointer">Tin tức & Cẩm nang</button></li>
               <li><span className="hover:text-white transition-colors cursor-pointer">Đội ngũ giảng viên MSB</span></li>
