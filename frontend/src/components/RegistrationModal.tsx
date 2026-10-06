@@ -18,6 +18,7 @@ import {
 import confetti from 'canvas-confetti';
 import { Course, Order } from '../types';
 import { api, ApiError, isBackendEnabled } from '../lib/api';
+import { getAttribution } from '../lib/attribution';
 import type { CheckoutPrefill } from './CourseraCheckoutModal';
 
 interface RegistrationModalProps {
@@ -98,6 +99,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
           consultNeed: consultNote,
           source: 'Website Form Tư vấn',
           privacyConsent,
+          attribution: getAttribution(),
           website: honeypot
         });
         registrationCode = res.registrationCode;

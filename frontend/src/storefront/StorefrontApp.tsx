@@ -13,6 +13,7 @@ import { AccountPage } from './AccountPage';
 import { LegalPage } from './LegalPage';
 import { FloatingContact } from '../components/FloatingContact';
 import { applyPageMeta } from '../lib/siteSeo';
+import { trackView } from '../lib/attribution';
 
 const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNode }> = ({ active, children }) => {
   const link = (href: string, label: string, on: boolean) => (
@@ -194,6 +195,7 @@ export default function StorefrontApp() {
   // Canonical, description and share tags (bots get the same from the server).
   useEffect(() => {
     applyPageMeta(path || '/');
+    trackView(path || '/');
   }, [path]);
   const programMatch = path.match(/^\/chuong-trinh\/([a-z0-9-]+)$/i);
   if (path === '/tai-khoan') {

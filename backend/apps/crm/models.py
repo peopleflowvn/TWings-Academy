@@ -219,6 +219,10 @@ class Order(BaseModel):
     retake_payment_status = models.CharField(max_length=50, blank=True)
     retake_note = models.TextField(blank=True)
 
+    # Where the lead came from: first and last touch (utm_*, referrer, landing page, ?ref= code),
+    # captured in the visitor's browser and sent with the form (apps.crm.attribution).
+    attribution = models.JSONField(default=dict, blank=True)
+
     # Consent to personal-data processing (Nghị định 13/2023/NĐ-CP), captured by the public form
     privacy_consent_at = models.DateTimeField(null=True, blank=True)
     privacy_consent_version = models.CharField(max_length=20, blank=True)

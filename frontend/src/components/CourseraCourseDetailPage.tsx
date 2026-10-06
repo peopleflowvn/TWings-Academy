@@ -27,6 +27,7 @@ import { ShareButtons } from './ShareButtons';
 import confetti from 'canvas-confetti';
 import { Course, Module, Lesson, Order, Instructor, CourseReview } from '../types';
 import { api, ApiError, isBackendEnabled } from '../lib/api';
+import { getAttribution } from '../lib/attribution';
 
 interface CourseraCourseDetailPageProps {
   course: Course;
@@ -123,6 +124,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
           consultNeed: consultNote,
           source: 'Form Chi Tiết Khóa Học',
           privacyConsent,
+          attribution: getAttribution(),
           website: honeypot
         });
         registrationCode = res.registrationCode;

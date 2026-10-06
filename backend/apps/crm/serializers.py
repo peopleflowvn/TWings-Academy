@@ -112,9 +112,16 @@ class PublicRegistrationSerializer(serializers.Serializer):
     referrer_staff_code = serializers.CharField(max_length=50, required=False, allow_blank=True)
     source = serializers.CharField(max_length=100, required=False, allow_blank=True)
     coupon_code = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    # First / last marketing touch kept by the browser (utm_*, ref, referrer, landing page).
+    attribution = serializers.JSONField(required=False)
     privacy_consent = serializers.BooleanField()
     # Honeypot: real users never see or fill this field.
     website = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_attribution(self, value):
+        from .attribution import clean
+
+        return clean(value)
 
     def validate_privacy_consent(self, value):
         if value is not True:

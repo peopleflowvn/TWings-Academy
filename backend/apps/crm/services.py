@@ -82,6 +82,7 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     data.pop("privacy_consent", None)
     data.pop("website", None)
     preferred_cohort = data.pop("batch_cohort", "")
+    attribution = data.pop("attribution", None) or {}
     source = data.pop("source", "") or "Website"
     item = course or program
     if item is None:
@@ -95,6 +96,10 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     )
     installments = item.installment_count if with_payment and pay_in_installments and amount > 0 else 1
 
+    from .attribution import apply as apply_attribution
+
+    data = apply_attribution({**data, "source": source}, attribution)
+    source = data.pop("source")
     order = Order(
         **data,
         **consent,

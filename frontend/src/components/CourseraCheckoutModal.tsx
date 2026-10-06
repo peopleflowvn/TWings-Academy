@@ -17,6 +17,7 @@ import {
 import confetti from 'canvas-confetti';
 import { Course, Order } from '../types';
 import { api, ApiError, isBackendEnabled } from '../lib/api';
+import { getAttribution } from '../lib/attribution';
 import { InstallmentRow, installmentPreview, Program } from '../lib/commerce';
 
 export interface CheckoutPrefill {
@@ -151,6 +152,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
         customerPhone: customerPhone.trim(),
         couponCode: couponCode.trim(),
         privacyConsent,
+        attribution: getAttribution(),
         website: honeypot,
         source: 'Website Checkout'
       });

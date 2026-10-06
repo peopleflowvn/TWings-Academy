@@ -83,6 +83,9 @@ export interface AccountCourse {
   progress: number | null;
   completedAt: string | null;
   certificate: { code: string; url: string } | null;
+  orderCode: string;
+  canReview: boolean;
+  review: { rating: number; comment: string; status: 'pending' | 'approved' | 'rejected' } | null;
 }
 
 export interface AccountOrder extends OrderBilling {
@@ -116,6 +119,8 @@ export const commerceApi = {
   sendCode: (email: string) => api.post<{ sent: boolean }>('/public/account/send-code/', { email }),
   verify: (email: string, code: string) => api.post<{ authenticated: boolean }>('/public/account/verify/', { email, code }),
   logout: () => api.post<{ authenticated: boolean }>('/public/account/logout/'),
+  review: (body: { orderCode: string; rating: number; comment: string; displayName: string; role: string; consent: boolean }) =>
+    api.post<AccountCourse>('/public/account/reviews/', body),
   requestRefund: (orderCode: string, reason: string) =>
     api.post<AccountOrder>(`/public/account/orders/${orderCode}/refund-request/`, { reason })
 };

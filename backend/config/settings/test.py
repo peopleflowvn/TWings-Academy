@@ -29,4 +29,5 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
     "anon": "10000/min",
     "public_form": "10000/min",
     "login": "10000/min",
+    "track": "10000/min",
 }

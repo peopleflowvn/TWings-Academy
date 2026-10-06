@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Award, BookOpen, CheckCircle2, Copy, Loader2, LogOut, Mail, RotateCcw } from 'lucide-react';
 import { ApiError, isBackendEnabled, resetCsrfToken } from '../lib/api';
-import { Account, AccountOrder, commerceApi, formatDate, formatVND } from '../lib/commerce';
+import { Account, AccountCourse, AccountOrder, commerceApi, formatDate, formatVND } from '../lib/commerce';
 
 const STATUS_STYLE: Record<string, string> = {
   paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -154,7 +154,67 @@ const RefundRequest: React.FC<{ order: AccountOrder; onSent: (o: AccountOrder) =
   );
 };
 
-const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; onChange: (o: AccountOrder) => void }> = ({ order, learnUrl, onChange }) => (
+/** A learner reviews a course they took; shown on the course page after TWings approves it. */
+const ReviewBox: React.FC<{ course: AccountCourse; learnerName: string }> = ({ course, learnerName }) => {
+  const [review, setReview] = useState(course.review);
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(course.review?.rating || 5);
+  const [comment, setComment] = useState(course.review?.comment || '');
+  const [name, setName] = useState(learnerName);
+  const [role, setRole] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  if (!course.canReview) return null;
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="text-xs text-[#0056D2] font-bold hover:underline cursor-pointer">
+        {review ? `Đánh giá của bạn: ${review.rating}★ (${{ pending: 'chờ duyệt', approved: 'đã đăng', rejected: 'không đăng' }[review.status]}) – sửa` : 'Viết đánh giá khóa học'}
+      </button>
+    );
+  }
+  const submit = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const next = await commerceApi.review({ orderCode: course.orderCode, rating, comment: comment.trim(), displayName: name.trim(), role: role.trim(), consent });
+      setReview(next.review);
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không gửi được đánh giá.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const field = 'w-full p-2 text-xs border border-slate-300 rounded-xl';
+  return (
+    <div className="space-y-2 border-t border-slate-100 pt-2 text-xs">
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} type="button" onClick={() => setRating(n)} className={`text-lg cursor-pointer ${n <= rating ? 'text-amber-500' : 'text-slate-300'}`}>★</button>
+        ))}
+      </div>
+      <textarea rows={3} maxLength={2000} value={comment} onChange={(e) => setComment(e.target.value)} className={field}
+        placeholder="Điều bạn thấy hữu ích nhất, giảng viên, bài tập… (ít nhất 20 ký tự)" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <input className={field} value={name} maxLength={100} onChange={(e) => setName(e.target.value)} placeholder="Tên hiển thị (VD: Hà N.)" />
+        <input className={field} value={role} maxLength={150} onChange={(e) => setRole(e.target.value)} placeholder="Vị trí / nơi làm việc (tùy chọn)" />
+      </div>
+      <label className="flex items-start gap-2 text-slate-600">
+        <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
+        <span>Tôi đồng ý để TWings Academy đăng đánh giá này (kèm tên hiển thị và vị trí ở trên) trên website.</span>
+      </label>
+      {error && <p className="text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button type="button" disabled={busy || comment.trim().length < 20 || !name.trim() || !consent} onClick={submit}
+          className="px-3 py-1.5 rounded-xl bg-[#0056D2] text-white font-bold cursor-pointer disabled:opacity-50">Gửi đánh giá</button>
+        <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-slate-500 cursor-pointer">Hủy</button>
+      </div>
+    </div>
+  );
+};
+
+const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: string; onChange: (o: AccountOrder) => void }> = ({ order, learnUrl, learnerName, onChange }) => (
   <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
@@ -224,6 +284,7 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; onChange: (o:
               <Award className="w-4 h-4" /> Chứng chỉ {c.certificate.code}
             </a>
           )}
+          <ReviewBox course={c} learnerName={learnerName} />
         </div>
       ))}
     </div>
@@ -273,7 +334,7 @@ export const AccountPage: React.FC = () => {
       </div>
       {account.orders.length === 0 && <p className="text-sm text-slate-600">Chưa có đơn đăng ký nào với email này.</p>}
       {account.orders.map((o) => (
-        <OrderCard key={o.orderCode} order={o} learnUrl={account.learnUrl} onChange={replace} />
+        <OrderCard key={o.orderCode} order={o} learnUrl={account.learnUrl} learnerName={account.name} onChange={replace} />
       ))}
     </div>
   );

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Cohort, Coupon, Course, Instructor, Partner, Program, ProgramCourse
+from .models import Cohort, Coupon, Course, CourseReview, Instructor, Partner, Program, ProgramCourse
 
 LESSON_TYPES = {"video", "reading", "quiz", "project", "audio_listening", "flashcard", "pdf_material"}
 # JSON keys are stored snake_case (the camelCase parser converts nested keys too) and camelised on output.
@@ -127,6 +127,7 @@ def upcoming_cohorts(course) -> list[dict]:
 class PublicCourseSerializer(serializers.ModelSerializer):
     instructors = PublicInstructorSerializer(many=True, read_only=True)
     upcoming_cohorts = serializers.SerializerMethodField()
+    reviews = serializers.SerializerMethodField()
     instructor = serializers.SerializerMethodField()
     partner = PartnerSerializer(read_only=True)
     syllabus = serializers.SerializerMethodField()
@@ -138,6 +139,23 @@ class PublicCourseSerializer(serializers.ModelSerializer):
 
     def get_upcoming_cohorts(self, obj):
         return upcoming_cohorts(obj)
+
+    def get_reviews(self, obj):
+        """Approved reviews from learners who took the course first, then any written in /app."""
+        learner = [
+            {
+                "id": r.id,
+                "student_name": r.display_name,
+                "role": r.role,
+                "avatar": "",
+                "rating": r.rating,
+                "date": r.created_at.strftime("%d/%m/%Y"),
+                "comment": r.comment,
+                "verified_student": True,
+            }
+            for r in obj.learner_reviews.filter(status="approved")[:50]
+        ]
+        return learner + list(obj.reviews or [])
 
     def get_instructor(self, obj):
         first = next(iter(obj.instructors.all()), None)
@@ -273,3 +291,27 @@ class PublicProgramSerializer(_ProgramBase):
         return ProgramCourseSummarySerializer(
             [c for c in self._ordered(obj) if c.is_published], many=True
         ).data
+
+
+class CourseReviewSerializer(serializers.ModelSerializer):
+    course_title = serializers.CharField(source="course.title", read_only=True)
+    order_code = serializers.CharField(source="order.order_code", read_only=True)
+    learner_email = serializers.CharField(source="order.customer_email", read_only=True)
+
+    class Meta:
+        model = CourseReview
+        fields = [
+            "id",
+            "course_title",
+            "order_code",
+            "learner_email",
+            "display_name",
+            "role",
+            "rating",
+            "comment",
+            "completed",
+            "status",
+            "moderation_note",
+            "created_at",
+        ]
+        read_only_fields = ["rating", "comment", "completed", "created_at"]

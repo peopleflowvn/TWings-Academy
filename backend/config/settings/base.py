@@ -195,6 +195,7 @@ REST_FRAMEWORK = {
         "login": env("THROTTLE_LOGIN", default="20/hour"),
         "email_send": env("THROTTLE_EMAIL_SEND", default="60/hour"),
         "webhook": env("THROTTLE_WEBHOOK", default="600/min"),
+        "track": env("THROTTLE_TRACK", default="120/min"),
     },
     "COERCE_DECIMAL_TO_STRING": False,  # ratings are numbers in the frontend types
     "DATE_FORMAT": "%d/%m/%Y",

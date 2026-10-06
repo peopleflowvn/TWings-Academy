@@ -18,6 +18,14 @@ interface Reports {
     sources: { source: string; leads: number; converted: number }[];
     items: { title: string; kind: 'course' | 'program'; orders: number; refunded: number; net: number }[];
   };
+  marketing?: {
+    days: number;
+    views: number;
+    leads: number;
+    paid: number;
+    pages: { title: string; path: string; views: number; leads: number; paid: number; leadRate: number | null }[];
+    channels: { key: string; label: string; views: number; leads: number; paid: number; leadRate: number | null }[];
+  };
   learning?: {
     courses: {
       title: string;
@@ -102,7 +110,7 @@ export const ReportsPage: React.FC = () => {
 
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!data) return <p className="text-sm text-slate-500">Đang tải báo cáo…</p>;
-  const { finance, sales, learning } = data;
+  const { finance, sales, learning, marketing } = data;
   const th = 'text-left text-xs text-slate-500 font-semibold py-1.5';
   const td = 'py-1.5 border-t border-slate-100';
 
@@ -186,6 +194,36 @@ export const ReportsPage: React.FC = () => {
             {Object.entries(sales.pipeline).sort().map(([k, v]) => (
               <div key={k} className="flex justify-between text-sm border-t border-slate-100 py-1.5"><span>{k}</span><strong>{v}</strong></div>
             ))}
+          </Card>
+        </div>
+      )}
+
+      {marketing && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+          <Card title={`Phễu marketing ${marketing.days} ngày: ${marketing.views.toLocaleString('vi-VN')} lượt xem → ${marketing.leads} lead → ${marketing.paid} đóng phí`}
+            onExport={() => downloadCsv('phieu-kenh', ['Kênh', 'Lượt xem', 'Lead', 'Tỷ lệ lead %', 'Đóng phí'], marketing.channels.map((r) => [r.label, r.views, r.leads, r.leadRate, r.paid]))}>
+            <table className="w-full text-sm">
+              <thead><tr><th className={th}>Kênh</th><th className={`${th} text-right`}>Lượt xem</th><th className={`${th} text-right`}>Lead</th><th className={`${th} text-right`}>Tỷ lệ</th><th className={`${th} text-right`}>Đóng phí</th></tr></thead>
+              <tbody>
+                {marketing.channels.map((r) => (
+                  <tr key={r.key}><td className={td}>{r.label}</td><td className={`${td} text-right`}>{r.views}</td><td className={`${td} text-right`}>{r.leads}</td>
+                    <td className={`${td} text-right font-bold`}>{r.leadRate !== null ? `${r.leadRate}%` : '–'}</td><td className={`${td} text-right`}>{r.paid}</td></tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-[11px] text-slate-500">Lượt xem đếm ẩn danh (không cookie). Kênh của lead lấy từ link UTM / trang giới thiệu lúc khách đăng ký.</p>
+          </Card>
+          <Card title="Trang khóa học: lượt xem → lead → đóng phí"
+            onExport={() => downloadCsv('phieu-khoa-hoc', ['Khóa học', 'Lượt xem', 'Lead', 'Tỷ lệ lead %', 'Đóng phí'], marketing.pages.map((r) => [r.title, r.views, r.leads, r.leadRate, r.paid]))}>
+            <table className="w-full text-sm">
+              <thead><tr><th className={th}>Khóa học</th><th className={`${th} text-right`}>Lượt xem</th><th className={`${th} text-right`}>Lead</th><th className={`${th} text-right`}>Tỷ lệ</th><th className={`${th} text-right`}>Đóng phí</th></tr></thead>
+              <tbody>
+                {marketing.pages.map((r) => (
+                  <tr key={r.path}><td className={td}>{r.title}</td><td className={`${td} text-right`}>{r.views}</td><td className={`${td} text-right`}>{r.leads}</td>
+                    <td className={`${td} text-right font-bold`}>{r.leadRate !== null ? `${r.leadRate}%` : '–'}</td><td className={`${td} text-right`}>{r.paid}</td></tr>
+                ))}
+              </tbody>
+            </table>
           </Card>
         </div>
       )}

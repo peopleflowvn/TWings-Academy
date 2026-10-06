@@ -149,4 +149,8 @@ class ReportsView(APIView):
             data["sales"] = sales_report(start, keys)
         if has_perm_code(user, "lms.view"):
             data["learning"] = learning_report()
+        if has_perm_code(user, "crm.view_leads"):
+            from apps.cms.analytics import marketing_report
+
+            data["marketing"] = marketing_report(min(30 * q.validated_data["months"], 365))
         return Response(data)

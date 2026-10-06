@@ -46,6 +46,25 @@ class Article(BaseModel):
         )
 
 
+class PageViewDaily(models.Model):
+    """
+    Cookie-less page views: one counter per day, page and traffic source. No IP, no identifier, no
+    personal data, so no consent is needed; enough for views -> leads -> paid funnels.
+    """
+
+    date = models.DateField()
+    path = models.CharField(max_length=200)
+    source = models.CharField(max_length=60)
+    views = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["date", "path", "source"], name="uniq_pageview_day")]
+        indexes = [models.Index(fields=["date"])]
+
+    def __str__(self):
+        return f"{self.date} {self.path} {self.source}: {self.views}"
+
+
 class HeroBanner(BaseModel):
     title = models.CharField(max_length=300)
     subtitle = models.TextField(blank=True)

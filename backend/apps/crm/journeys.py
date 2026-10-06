@@ -212,8 +212,9 @@ def _completed_next(order: Order) -> tuple[str, str]:
 <p>Chào {escape(order.customer_name)},</p>
 <p>Chúc mừng bạn đã hoàn thành <strong>{escape(order.course_title)}</strong>!</p>
 {cert}
-<p>Cảm nhận của bạn giúp TWings dạy tốt hơn: trả lời email này với vài dòng về khóa học (điều bạn thích, điều
-cần cải thiện). Với sự đồng ý của bạn, TWings có thể giới thiệu cảm nhận này trên website.</p>
+<p>Cảm nhận của bạn giúp TWings dạy tốt hơn và giúp người đến sau chọn đúng khóa học:
+<a href="{_site()}/tai-khoan">viết đánh giá trong Tài khoản học viên</a>
+(vài phút, chỉ đăng lên website khi bạn đồng ý).</p>
 {next_steps}
 <p>TWings Academy</p>
 """

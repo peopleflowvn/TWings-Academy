@@ -21,6 +21,8 @@ import {
   Award,
   BarChart3,
   CalendarDays,
+  Link2,
+  MessageSquareQuote,
   Receipt,
   Send,
   ShieldCheck,
@@ -57,6 +59,7 @@ import { ProgramsPage } from './pages/ProgramsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { JourneysPage } from './pages/JourneysPage';
 import { IntakesPage } from './pages/IntakesPage';
+import { CampaignLinksPage, ReviewsPage } from './pages/MarketingPages';
 
 interface NavItem {
   path: string;
@@ -110,6 +113,8 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { path: '/content/layout', label: 'Bố cục trang chủ', icon: LayoutDashboard, perms: ['system.sections_toggle'] },
       { path: '/content/articles', label: 'Bài viết & SEO', icon: FileText, perms: ['articles.create_edit', 'articles.publish'] },
       { path: '/content/seo', label: 'Cài đặt SEO website', icon: Globe, perms: ['seo.settings'] },
+      { path: '/content/links', label: 'Link chiến dịch (UTM)', icon: Link2, perms: ['crm.view_leads', 'homepage.intro_about'] },
+      { path: '/content/reviews', label: 'Đánh giá của học viên', icon: MessageSquareQuote, perms: ['courses.reviews', 'courses.view'] },
       { path: '/content/journeys', label: 'Email tự động theo hành trình', icon: Send, perms: ['crm.view_leads'] },
       { path: '/content/email', label: 'Mẫu email & lịch sử gửi', icon: Mail, perms: ['crm.view_leads', 'crm.edit_status'] }
     ]
@@ -169,6 +174,10 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <DashboardPage user={user} />;
       case '/reports':
         return <ReportsPage />;
+      case '/content/links':
+        return <CampaignLinksPage courses={courses.courses} />;
+      case '/content/reviews':
+        return <ReviewsPage />;
       case '/content/journeys':
         return <JourneysPage canEdit={can('crm.edit_status')} />;
       case '/sales/crm':

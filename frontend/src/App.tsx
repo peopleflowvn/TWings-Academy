@@ -16,6 +16,7 @@ import { DEFAULT_CMS_SECTIONS } from './data/coursesData';
 import { api, isBackendEnabled, Paginated } from './lib/api';
 import { parseRoute, routePath, View } from './lib/routes';
 import { applyPageMeta } from './lib/siteSeo';
+import { trackView } from './lib/attribution';
 
 // Coursera Components
 import { CourseraHeader } from './components/CourseraHeader';
@@ -201,6 +202,7 @@ export default function App() {
   // Title, description, canonical and share tags of the page (same data the server gives bots).
   useEffect(() => {
     applyPageMeta(window.location.pathname);
+    trackView(window.location.pathname);
   }, [currentView, selectedCourse, selectedArticle]);
 
   const handleNavigate = (view: View) => go(view);

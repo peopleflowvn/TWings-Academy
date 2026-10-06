@@ -36,7 +36,9 @@ def _learner_orders(email: str):
     return (
         Order.objects.filter(customer_email__iexact=email, parent__isnull=True)
         .exclude(status="cancelled", total_paid_amount=0)
-        .select_related("cohort", "lms_enrollment", "lms_enrollment__certificate", "lms_enrollment__cohort")
+        .select_related(
+            "cohort", "lms_enrollment", "lms_enrollment__certificate", "lms_enrollment__cohort", "review"
+        )
         .prefetch_related(
             Prefetch(
                 "components",
@@ -49,8 +51,13 @@ def _learner_orders(email: str):
     )
 
 
+def _can_review(order: Order, enrollment) -> bool:
+    return bool(order.course_id and order.learning_access and enrollment and enrollment.status == "done")
+
+
 def _course_item(order: Order) -> dict:
     enrollment = getattr(order, "lms_enrollment", None)
+    review = getattr(order, "review", None)
     certificate = getattr(enrollment, "certificate", None) if enrollment else None
     cohort = (enrollment.cohort if enrollment and enrollment.cohort_id else None) or order.cohort
     return {
@@ -67,6 +74,11 @@ def _course_item(order: Order) -> dict:
             {"code": certificate.code, "url": f"/xac-minh/{certificate.code}/"}
             if certificate and not certificate.revoked
             else None
+        ),
+        "order_code": order.order_code,
+        "can_review": _can_review(order, enrollment),
+        "review": (
+            {"rating": review.rating, "comment": review.comment, "status": review.status} if review else None
         ),
     }
 
@@ -192,3 +204,59 @@ class RefundRequestView(_LearnerView):
             order=order, type="note", title="Học viên gửi yêu cầu hoàn tiền", content=reason, actor=email
         )
         return Response(_order_item(order))
+
+
+class ReviewSerializer(serializers.Serializer):
+    order_code = serializers.CharField(max_length=20)
+    rating = serializers.IntegerField(min_value=1, max_value=5)
+    comment = serializers.CharField(min_length=20, max_length=2000)
+    display_name = serializers.CharField(max_length=100)
+    role = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    consent = serializers.BooleanField()
+
+    def validate_consent(self, value):
+        if value is not True:
+            raise serializers.ValidationError("Cần bạn đồng ý cho TWings đăng đánh giá lên website.")
+        return value
+
+
+class ReviewView(_LearnerView):
+    """A learner reviews a course they study / studied; published after staff approval."""
+
+    def post(self, request):
+        from apps.catalog.models import CourseReview
+
+        email = learner_email(request)
+        if email is None:
+            return Response({"detail": "Vui lòng đăng nhập."}, status=401)
+        ser = ReviewSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        order = (
+            Order.objects.filter(order_code=data["order_code"].upper(), customer_email__iexact=email)
+            .select_related("lms_enrollment")
+            .first()
+        )
+        enrollment = getattr(order, "lms_enrollment", None) if order else None
+        if order is None or not _can_review(order, enrollment):
+            return Response({"detail": "Bạn chỉ đánh giá được khóa học mình đang / đã học."}, status=403)
+        review, _ = CourseReview.objects.update_or_create(
+            order=order,
+            defaults={
+                "course_id": order.course_id,
+                "display_name": data["display_name"].strip(),
+                "role": data.get("role", "").strip(),
+                "rating": data["rating"],
+                "comment": data["comment"].strip(),
+                "completed": bool(enrollment.completed_at),
+                "status": "pending",  # every edit goes through moderation again
+            },
+        )
+        Activity.objects.create(
+            order=order,
+            type="note",
+            title=f"Học viên gửi đánh giá {review.rating}★",
+            content=review.comment[:500],
+            actor=email,
+        )
+        return Response(_course_item(order))

@@ -11,10 +11,11 @@ from apps.accounts.permissions import ActionPermission, require_perms
 from apps.accounts.rbac import has_perm_code
 from apps.core.models import AuditLog, audit
 
-from .models import Cohort, Coupon, Course, Instructor, Partner, Program, ProgramCourse
+from .models import Cohort, Coupon, Course, CourseReview, Instructor, Partner, Program, ProgramCourse
 from .serializers import (
     CohortSerializer,
     CouponSerializer,
+    CourseReviewSerializer,
     CourseSerializer,
     InstructorSerializer,
     PartnerSerializer,
@@ -325,3 +326,21 @@ class CohortSessionsView(APIView):
                 sync = {"synced": 0, "detail": f"Chưa đồng bộ được lịch sang Moodle: {exc}"}
         audit(request, "cohort.sessions", cohort, count=len(data["sessions"]), synced=sync.get("synced", 0))
         return Response({"sessions": session_rows(cohort), "sync": sync})
+
+
+class CourseReviewViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    """Learner reviews to approve before they appear on the course page."""
+
+    serializer_class = CourseReviewSerializer
+    permission_classes = [ActionPermission]
+    permission_map = {
+        "list": ["courses.reviews", "courses.view"],
+        "update": ["courses.reviews"],
+        "partial_update": ["courses.reviews"],
+    }
+    filterset_fields = ["status", "course"]
+    queryset = CourseReview.objects.select_related("course", "order")
+
+    def perform_update(self, serializer):
+        review = serializer.save()
+        audit(self.request, "review.moderate", review, status=review.status)

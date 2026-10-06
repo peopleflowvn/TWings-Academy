@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import App from './App.tsx';
 import './index.css';
 import { applySiteSeo } from './lib/siteSeo';
+import { captureAttribution } from './lib/attribution';
 
 // The staff app (/app) and the program / learner-account pages are separate bundles: visitors of the
 // homepage never download them.
@@ -13,7 +14,10 @@ const isAdmin = /^\/app(\/|$)/.test(path);
 const isStorefront = /^\/(chuong-trinh|tai-khoan|chinh-sach-bao-mat|dieu-khoan)(\/|$)/.test(path);
 
 // Favicon, logo, default title/description from /app → Cài đặt SEO (not for the staff app).
-if (!isAdmin) applySiteSeo();
+if (!isAdmin) {
+  applySiteSeo();
+  captureAttribution(); // utm / ref / referrer of this visit, sent with a form the visitor submits
+}
 
 const loading = <div className="min-h-screen flex items-center justify-center text-slate-500">Đang tải…</div>;
 

@@ -290,6 +290,16 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   quá hạn đăng ký → Đã đóng tuyển sinh, tới ngày khai giảng → Đang học; đợt đủ / đóng chuyển học viên chưa đóng
   phí sang đợt kế tiếp nếu bật.
 
+## Tiếp thị & đo lường (hành trình khâu 3)
+
+- **Nguồn khách**: trình duyệt giữ lần chạm đầu / cuối (utm_*, `?ref=`, trang giới thiệu, trang đích) 90 ngày
+  trong localStorage và gửi kèm form đăng ký / thanh toán → `Order.attribution`; `utm_campaign` trùng mã chiến dịch
+  tuyển sinh thì gắn luôn chiến dịch; `ref` → mã người giới thiệu. /app → Link chiến dịch (UTM) tạo link sẵn.
+- **Lượt xem không cookie**: `POST /api/v1/public/track/` cộng bộ đếm theo ngày / trang / kênh (`PageViewDaily`, không IP,
+  không định danh); trang Báo cáo có phễu lượt xem → lead → đóng phí theo kênh và theo khóa học.
+- **Đánh giá thật**: học viên (đã ghi danh LMS) viết trong Tài khoản, đồng ý đăng → /app → Đánh giá của học viên duyệt
+  → hiện trên trang khóa học với nhãn “Học viên đã học”.
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị

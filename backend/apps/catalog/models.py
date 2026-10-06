@@ -258,6 +258,31 @@ class ProgramCourse(models.Model):
         return f"{self.program_id} #{self.position}: {self.course_id}"
 
 
+class CourseReview(BaseModel):
+    """
+    A review written by a learner who took the course (from the learner account), published on the
+    course page only after staff approval and with the learner's consent.
+    """
+
+    STATUS_CHOICES = [("pending", "Chờ duyệt"), ("approved", "Đã đăng"), ("rejected", "Không đăng")]
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="learner_reviews")
+    order = models.OneToOneField("crm.Order", on_delete=models.CASCADE, related_name="review")
+    display_name = models.CharField(max_length=100)
+    role = models.CharField(max_length=150, blank=True)  # e.g. "Chuyên viên QHKH – MSB"
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.TextField(max_length=2000)
+    completed = models.BooleanField(default=False)  # the learner had finished the course when writing
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True)
+    moderation_note = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.course_id} {self.rating}★ {self.display_name}"
+
+
 class Coupon(BaseModel):
     code = models.CharField(max_length=50, unique=True)
     description = models.CharField(max_length=300, blank=True)

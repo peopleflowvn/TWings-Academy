@@ -7,10 +7,11 @@ from apps.accounts.views import StaffUserViewSet
 from apps.catalog.views import (
     CohortSessionsView,
     CohortViewSet,
-    IntakesOverviewView,
     CouponViewSet,
+    CourseReviewViewSet,
     CourseViewSet,
     InstructorViewSet,
+    IntakesOverviewView,
     PartnerViewSet,
     ProgramViewSet,
 )
@@ -36,6 +37,7 @@ router.register("instructors", InstructorViewSet, basename="staff-instructor")
 router.register("partners", PartnerViewSet, basename="staff-partner")
 router.register("cohorts", CohortViewSet, basename="staff-cohort")
 router.register("coupons", CouponViewSet, basename="staff-coupon")
+router.register("reviews", CourseReviewViewSet, basename="staff-review")
 router.register("articles", ArticleViewSet, basename="staff-article")
 router.register("banners", HeroBannerViewSet, basename="staff-banner")
 router.register("site-config", SiteConfigViewSet, basename="staff-site-config")
