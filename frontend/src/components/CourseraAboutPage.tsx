@@ -18,7 +18,7 @@ import { CMSSectionsConfig } from '../types';
 
 interface CourseraAboutPageProps {
   aboutData?: CMSSectionsConfig['about'];
-  onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'cms') => void;
+  onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about') => void;
   onOpenConsultation: () => void;
 }
 

@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 
 interface CourseraHeaderProps {
-  currentView: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'cms';
-  onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'cms') => void;
+  currentView: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about';
+  onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about') => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onSearchSubmit: () => void;

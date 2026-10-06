@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 interface CourseraFooterProps {
-  onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'cms') => void;
+  onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about') => void;
 }
 
 export const CourseraFooter: React.FC<CourseraFooterProps> = ({ onNavigate }) => {
