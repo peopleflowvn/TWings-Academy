@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 interface CourseraFooterProps {
-  onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'cms') => void;
+  onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'cms') => void;
 }
 
 export const CourseraFooter: React.FC<CourseraFooterProps> = ({ onNavigate }) => {
@@ -93,6 +93,7 @@ export const CourseraFooter: React.FC<CourseraFooterProps> = ({ onNavigate }) =>
             <h4 className="font-bold text-white text-xs uppercase tracking-wider">Về TWings</h4>
             <ul className="space-y-2">
               <li><button onClick={() => onNavigate('home')} className="hover:text-white transition-colors cursor-pointer">Trang chủ</button></li>
+              <li><button onClick={() => onNavigate('about')} className="hover:text-white transition-colors cursor-pointer text-[#38bdf8] font-semibold">Giới thiệu về chúng tôi</button></li>
               <li><button onClick={() => onNavigate('catalog')} className="hover:text-white transition-colors cursor-pointer">Khóa học thực chiến</button></li>
               <li><button onClick={() => onNavigate('articles')} className="hover:text-white transition-colors cursor-pointer">Tin tức & Cẩm nang</button></li>
               <li><span className="hover:text-white transition-colors cursor-pointer">Đội ngũ giảng viên MSB</span></li>

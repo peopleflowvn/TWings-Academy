@@ -33,6 +33,7 @@ import { CourseraCatalogPage } from './components/CourseraCatalogPage';
 import { CourseraCourseDetailPage } from './components/CourseraCourseDetailPage';
 import { CourseraArticlesPage } from './components/CourseraArticlesPage';
 import { CourseraArticleDetailPage } from './components/CourseraArticleDetailPage';
+import { CourseraAboutPage } from './components/CourseraAboutPage';
 import { CourseraCheckoutModal, CheckoutPrefill } from './components/CourseraCheckoutModal';
 import { StaffLoginGate } from './components/cms/StaffLoginGate';
 import { RegistrationModal } from './components/RegistrationModal';
@@ -43,7 +44,7 @@ const CourseraCMSAdmin = lazy(() =>
   import('./components/CourseraCMSAdmin').then((m) => ({ default: m.CourseraCMSAdmin }))
 );
 
-type View = 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'cms';
+type View = 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'cms';
 
 // The staff CMS & CRM lives at /app only; the public site has no link to it.
 const CMS_PATH = '/app';
@@ -427,6 +428,15 @@ export default function App() {
         />
       )}
 
+      {/* 4c. Subpage: Standalone About Us Page (Về Chúng Tôi) */}
+      {currentView === 'about' && (
+        <CourseraAboutPage
+          aboutData={cmsSections.about}
+          onNavigate={handleNavigate}
+          onOpenConsultation={() => handleOpenRegistration()}
+        />
+      )}
+
       {/* 5. Subpage: Coursera Official Homepage */}
       {currentView === 'home' && (
         <main className="flex-1">
@@ -538,9 +548,13 @@ export default function App() {
             />
           )}
 
-          {/* About TWings Academy: PDF Trang 11 - Tầm Nhìn, Sứ Mệnh, Giá Trị Cốt Lõi */}
+          {/* About TWings Academy: Brand Pitch & Highlights */}
           {cmsSections.about?.enabled !== false && (
-            <AboutSection aboutData={cmsSections.about} />
+            <AboutSection 
+              aboutData={cmsSections.about} 
+              onNavigateToAbout={() => handleNavigate('about')}
+              onOpenConsultation={() => handleOpenRegistration()}
+            />
           )}
 
           {/* Learner Outcomes & Testimonials */}

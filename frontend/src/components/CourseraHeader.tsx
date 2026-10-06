@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 
 interface CourseraHeaderProps {
-  currentView: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'cms';
-  onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'cms') => void;
+  currentView: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'cms';
+  onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'cms') => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onSearchSubmit: () => void;
@@ -151,6 +151,15 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           </button>
 
           <button
+            onClick={() => onNavigate('about')}
+            className={`hidden lg:inline hover:text-[#0073C1] transition-colors cursor-pointer ${
+              currentView === 'about' ? 'text-[#0073C1] font-bold' : ''
+            }`}
+          >
+            Về chúng tôi
+          </button>
+
+          <button
             onClick={() => onNavigate('articles')}
             className={`hidden lg:flex items-center gap-1.5 hover:text-[#0073C1] transition-colors cursor-pointer ${
               currentView === 'articles' ? 'text-[#0073C1] font-bold' : ''
@@ -239,6 +248,15 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             className="w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-[#0073C1]"
           >
             Khám Phá Tất Cả Khóa Học
+          </button>
+          <button
+            onClick={() => {
+              setMobileMenuOpen(false);
+              onNavigate('about');
+            }}
+            className="w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50"
+          >
+            Về Chúng Tôi
           </button>
           <button
             onClick={() => {
