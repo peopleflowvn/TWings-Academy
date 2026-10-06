@@ -74,10 +74,11 @@ cat > /etc/cron.d/twings-lms <<EOF
 EOF
 chmod 644 /etc/cron.d/twings-lms
 
-echo "==> installment reminders daily at 09:00 Asia/Ho_Chi_Minh"
+echo "==> installment reminders (09:00) and journey e-mails (09:30) daily, Asia/Ho_Chi_Minh"
 cat > /etc/cron.d/twings-billing <<EOF
 CRON_TZ=Asia/Ho_Chi_Minh
 0 9 * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py remind_installments >/dev/null 2>&1
+30 9 * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py run_journeys >/dev/null 2>&1
 EOF
 chmod 644 /etc/cron.d/twings-billing
 

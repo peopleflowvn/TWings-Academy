@@ -3,7 +3,7 @@ import csv
 from django.db.models import Count, Q
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework import status, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
@@ -15,6 +15,7 @@ from apps.accounts.rbac import has_perm_code
 from apps.catalog.models import Cohort
 from apps.core.models import audit
 
+from . import journeys
 from .models import AdmissionCampaign, Order
 from .serializers import (
     ASSIGN_FIELDS,
@@ -221,3 +222,31 @@ class CohortRolloverView(APIView):
         except CheckoutError as exc:
             return Response({"detail": str(exc)}, status=400)
         return Response({"migrated_count": moved, "target_cohort_id": cohort.next_cohort_id})
+
+
+class JourneyToggleSerializer(serializers.Serializer):
+    key = serializers.ChoiceField(choices=list(journeys.JOURNEYS))
+    enabled = serializers.BooleanField()
+
+
+class JourneysView(APIView):
+    """Automated journey e-mails: stats (GET), switch on/off (PATCH), send what is due now (POST)."""
+
+    def get_permissions(self):
+        codes = ["crm.view_leads"] if self.request.method == "GET" else ["crm.edit_status"]
+        return [require_perms(*codes)()]
+
+    def get(self, request):
+        return Response(journeys.overview())
+
+    def patch(self, request):
+        ser = JourneyToggleSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        journeys.set_enabled(ser.validated_data["key"], ser.validated_data["enabled"])
+        audit(request, "journeys.toggle", None, **ser.validated_data)
+        return Response(journeys.overview())
+
+    def post(self, request):
+        result = journeys.run()
+        audit(request, "journeys.run", None, result=result)
+        return Response({"result": result, "journeys": journeys.overview()})

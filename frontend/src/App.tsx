@@ -1,11 +1,10 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Course, 
   Order, 
   CMSSectionsConfig,
   HeroBannerItem,
-  Article,
-  AdminUser
+  Article
 } from './types';
 import { 
   COURSES, 
@@ -35,40 +34,14 @@ import { CourseraArticlesPage } from './components/CourseraArticlesPage';
 import { CourseraArticleDetailPage } from './components/CourseraArticleDetailPage';
 import { CourseraAboutPage } from './components/CourseraAboutPage';
 import { CourseraCheckoutModal, CheckoutPrefill } from './components/CourseraCheckoutModal';
-import { StaffLoginGate } from './components/cms/StaffLoginGate';
 import { RegistrationModal } from './components/RegistrationModal';
 import { YouTubeTrialModal } from './components/YouTubeTrialModal';
 
-// The CMS is only needed by staff: keep it out of the public bundle.
-const CourseraCMSAdmin = lazy(() =>
-  import('./components/CourseraCMSAdmin').then((m) => ({ default: m.CourseraCMSAdmin }))
-);
-
-type View = 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'cms';
-
-// The staff CMS & CRM lives at /app only; the public site has no link to it.
-const CMS_PATH = '/app';
-const PUBLIC_TITLE = document.title;
-const isCmsPath = () => {
-  const path = window.location.pathname.replace(/\/+$/, '');
-  return path === CMS_PATH || path.startsWith(`${CMS_PATH}/`);
-};
+type View = 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about';
 
 export default function App() {
-  // Navigation View State (User: "Bỏ chế độ bàn học của tôi đi", thêm bài viết chuẩn SEO, CMS CRM)
-  const [currentView, setCurrentView] = useState<View>(() => (isCmsPath() ? 'cms' : 'home'));
-
-  // Keep the URL in step with the CMS: /app for staff, / for the public site (browser back/forward too).
-  useEffect(() => {
-    const onPopState = () => setCurrentView(isCmsPath() ? 'cms' : 'home');
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-  useEffect(() => {
-    const wantCms = currentView === 'cms';
-    if (wantCms !== isCmsPath()) window.history.pushState(null, '', wantCms ? CMS_PATH : '/');
-    document.title = wantCms ? 'TWings CMS Quản trị & CRM' : PUBLIC_TITLE;
-  }, [currentView]);
+  // Navigation View State (the staff app lives at /app as its own bundle, see main.tsx)
+  const [currentView, setCurrentView] = useState<View>('home');
 
   // Core Data
   const [courses, setCourses] = useState<Course[]>(COURSES);
@@ -129,162 +102,6 @@ export default function App() {
     };
   }, []);
 
-  // ---- Staff (CMS) actions: persisted through the API when a backend is configured ----
-  const live = isBackendEnabled();
-  const reportError = (err: unknown) =>
-    window.alert(err instanceof Error ? err.message : 'Thao tác thất bại, vui lòng thử lại.');
-
-  const loadStaffData = (user: AdminUser) => {
-    if (!user.permissions.includes('crm.view_leads')) return;
-    api
-      .get<Paginated<Order>>('/staff/orders/?pageSize=200')
-      .then((res) => setOrders(res.results))
-      .catch(reportError);
-  };
-
-  const handleAddCourse = async (newC: Course) => {
-    if (!live) return setCourses([newC, ...courses]);
-    try {
-      const saved = await api.post<Course>('/staff/courses/', newC);
-      setCourses([saved, ...courses]);
-    } catch (err) {
-      reportError(err);
-    }
-  };
-
-  const handleUpdateCourse = async (updC: Course) => {
-    let saved = updC;
-    if (live) {
-      try {
-        saved = await api.patch<Course>(`/staff/courses/${updC.id}/`, updC);
-      } catch (err) {
-        return reportError(err);
-      }
-    }
-    setCourses(courses.map((c) => (c.id === saved.id ? saved : c)));
-    if (selectedCourse?.id === saved.id) setSelectedCourse(saved);
-  };
-
-  const handleDeleteCourse = async (id: string) => {
-    if (live) {
-      try {
-        await api.delete(`/staff/courses/${id}/`);
-      } catch (err) {
-        return reportError(err);
-      }
-    }
-    setCourses(courses.filter((c) => c.id !== id));
-  };
-
-  // Fields the server owns or that have their own endpoints: never sent in a PATCH.
-  const ORDER_READ_ONLY = new Set([
-    'id', 'orderCode', 'totalPaidAmount', 'paidAt', 'isDuplicate', 'duplicateCount', 'createdAt', 'updatedAt',
-    'privacyConsentAt', 'privacyConsentVersion', 'timelineActivities', 'followupTasks', 'agentResearch'
-  ]);
-  // Set by the UI when it marks an order paid; the server derives them from the recorded payment.
-  const PAYMENT_DERIVED = new Set(['status', 'paymentStatusDetail', 'crmStatus', 'paymentDate']);
-
-  /**
-   * Persist a CRM edit made anywhere in the CMS. Only changed fields are sent (so a sales user editing
-   * notes never trips the finance-field guard), "mark as paid" becomes a real recorded payment (audit
-   * log, totals, LMS enrolment), and new activities / follow-ups go to their endpoints. The order is
-   * then reloaded from the server, which stays the source of truth.
-   */
-  const handleUpdateOrderCRM = async (updated: Order) => {
-    const previous = orders.find((o) => o.id === updated.id);
-    setOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)));
-    if (!live || !previous) return;
-    const prev = previous as unknown as Record<string, unknown>;
-    const next = updated as unknown as Record<string, unknown>;
-    const changed: Record<string, unknown> = {};
-    for (const key of Object.keys(next)) {
-      if (!ORDER_READ_ONLY.has(key) && JSON.stringify(next[key]) !== JSON.stringify(prev[key])) changed[key] = next[key];
-    }
-    const errors: string[] = [];
-    try {
-      if (updated.status === 'paid' && previous.status !== 'paid') {
-        PAYMENT_DERIVED.forEach((k) => delete changed[k]);
-        const outstanding = (previous.totalReceivable || previous.amount || 0) - (previous.totalPaidAmount || 0);
-        if (outstanding > 0) {
-          await api.post(`/staff/orders/${updated.id}/confirm-payment/`, {
-            amount: outstanding,
-            note: 'Xác nhận thanh toán từ CMS'
-          });
-        } else {
-          await api.patch(`/staff/orders/${updated.id}/`, { status: 'paid' });
-        }
-      }
-      if (Object.keys(changed).length) await api.patch(`/staff/orders/${updated.id}/`, changed);
-
-      const knownActivity = new Set((previous.timelineActivities || []).map((a) => a.id));
-      for (const a of updated.timelineActivities || []) {
-        // Payment entries are written by the server when it records the payment.
-        if (knownActivity.has(a.id) || a.type === 'payment') continue;
-        await api.post(`/staff/orders/${updated.id}/activities/`, { type: a.type, title: a.title, content: a.content });
-      }
-      // Follow-up tasks: create new ones, save edits (e.g. ticked as done), delete removed ones.
-      const prevTasks = new Map((previous.followupTasks || []).map((t) => [t.id, t]));
-      const nextTaskIds = new Set((updated.followupTasks || []).map((t) => t.id));
-      for (const task of updated.followupTasks || []) {
-        const before = prevTasks.get(task.id);
-        const body = {
-          title: task.title,
-          dueDate: /^\d{4}-\d{2}-\d{2}/.test(task.dueDate) ? task.dueDate.slice(0, 10) : null,
-          priority: task.priority,
-          isCompleted: task.isCompleted,
-          assignedTo: task.assignedTo
-        };
-        try {
-          if (!before) await api.post(`/staff/orders/${updated.id}/followups/`, body);
-          else if (JSON.stringify(before) !== JSON.stringify(task))
-            await api.patch(`/staff/orders/${updated.id}/followups/${task.id}/`, body);
-        } catch (err) {
-          errors.push(err instanceof Error ? err.message : String(err));
-        }
-      }
-      for (const taskId of prevTasks.keys()) {
-        if (nextTaskIds.has(taskId)) continue;
-        try {
-          await api.delete(`/staff/orders/${updated.id}/followups/${taskId}/`);
-        } catch (err) {
-          errors.push(err instanceof Error ? err.message : String(err));
-        }
-      }
-    } catch (err) {
-      errors.push(err instanceof Error ? err.message : String(err));
-    }
-    try {
-      const fresh = await api.get<Order>(`/staff/orders/${updated.id}/`);
-      setOrders((list) => list.map((o) => (o.id === fresh.id ? fresh : o)));
-    } catch {
-      setOrders((list) => list.map((o) => (o.id === previous.id ? previous : o)));
-    }
-    if (errors.length) reportError(new Error(`Chưa lưu được một phần thay đổi: ${errors.join('; ')}`));
-  };
-
-  const handleUpdateOrderStatus = async (id: string, status: Order['status']) => {
-    if (live) {
-      try {
-        await api.patch(`/staff/orders/${id}/`, { status });
-      } catch (err) {
-        return reportError(err);
-      }
-    }
-    setOrders(orders.map((o) => (o.id === id ? { ...o, status } : o)));
-  };
-
-  // Homepage content, section toggles and partners are one 'homepage_sections' document: save it a
-  // moment after the last edit (the editors update on every keystroke).
-  const sectionsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleUpdateCMSSections = (sections: CMSSectionsConfig) => {
-    setCmsSections(sections);
-    if (!live) return;
-    if (sectionsTimer.current) clearTimeout(sectionsTimer.current);
-    sectionsTimer.current = setTimeout(() => {
-      api.patch('/staff/site-config/homepage_sections/', { data: sections }).catch(reportError);
-    }, 800);
-  };
-
   // Shelves
   const mostPopularCourses = courses.filter((c) => c.badgeSection === 'most_popular' || c.reviewsCount > 50000);
   const trendingAICourses = courses.filter((c) => c.category === 'Trí tuệ nhân tạo (AI)' || c.badgeSection === 'trending_ai');
@@ -322,42 +139,6 @@ export default function App() {
   const handleRegistrationSuccess = (newOrder: Order) => {
     setOrders([newOrder, ...orders]);
   };
-
-  // CMS Portal View
-  if (currentView === 'cms') {
-    const renderCms = (staffUser?: AdminUser, logout?: () => void) => (
-        <CourseraCMSAdmin
-          courses={courses}
-          orders={orders}
-          cmsSections={cmsSections}
-          onUpdateCMSSections={handleUpdateCMSSections}
-          onAddCourse={handleAddCourse}
-          onUpdateCourse={handleUpdateCourse}
-          onDeleteCourse={handleDeleteCourse}
-          onUpdateOrderStatus={handleUpdateOrderStatus}
-          onUpdateOrderCRM={handleUpdateOrderCRM}
-          onPreviewCourse={(course) => {
-            setSelectedCourse(course);
-            setCurrentView('course-detail');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          onBackToHome={() => handleNavigate('home')}
-          staffUser={staffUser}
-          onLogout={logout}
-        />
-    );
-    return (
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Đang tải CMS…</div>}>
-        {isBackendEnabled() ? (
-          <StaffLoginGate onBackToHome={() => handleNavigate('home')} onAuthenticated={loadStaffData}>
-            {(user, logout) => renderCms(user, logout)}
-          </StaffLoginGate>
-        ) : (
-          renderCms()
-        )}
-      </Suspense>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans text-slate-800">

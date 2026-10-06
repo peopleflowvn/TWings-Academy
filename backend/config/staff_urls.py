@@ -14,9 +14,10 @@ from apps.catalog.views import (
 )
 from apps.cms.views import ArticleViewSet, HeroBannerViewSet, SiteConfigViewSet
 from apps.core.dashboard import DashboardView, SystemHealthView
+from apps.core.reports import ReportsView
 from apps.core.uploads import ImageUploadView
 from apps.core.views import AuditLogViewSet
-from apps.crm.views import AdmissionCampaignViewSet, CohortRolloverView, OrderViewSet
+from apps.crm.views import AdmissionCampaignViewSet, CohortRolloverView, JourneysView, OrderViewSet
 from apps.notifications.views import EmailLogViewSet, EmailTemplateViewSet, SendEmailView
 from apps.payments.views import (
     BankTransactionViewSet,
@@ -54,6 +55,8 @@ urlpatterns = [
     path("cohorts/<str:pk>/rollover/", CohortRolloverView.as_view(), name="staff-cohort-rollover"),
     path("lms/", include("apps.lms.urls")),
     path("dashboard/", DashboardView.as_view(), name="staff-dashboard"),
+    path("reports/", ReportsView.as_view(), name="staff-reports"),
+    path("journeys/", JourneysView.as_view(), name="staff-journeys"),
     path("system/health/", SystemHealthView.as_view(), name="staff-system-health"),
     *router.urls,
 ]

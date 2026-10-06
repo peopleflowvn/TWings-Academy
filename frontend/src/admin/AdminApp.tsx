@@ -19,7 +19,9 @@ import {
   Mail,
   Menu,
   Award,
+  BarChart3,
   Receipt,
+  Send,
   ShieldCheck,
   Tag,
   Users,
@@ -51,6 +53,8 @@ import { HealthPage, MoodleHubPage } from './pages/SystemPages';
 import { BannersPage } from './pages/BannersPage';
 import { LayoutPage } from './pages/LayoutPage';
 import { ProgramsPage } from './pages/ProgramsPage';
+import { ReportsPage } from './pages/ReportsPage';
+import { JourneysPage } from './pages/JourneysPage';
 
 interface NavItem {
   path: string;
@@ -63,7 +67,10 @@ interface NavItem {
 const NAV: { title: string; items: NavItem[] }[] = [
   {
     title: '',
-    items: [{ path: '/', label: 'Tổng quan', icon: LayoutDashboard, perms: [] }]
+    items: [
+      { path: '/', label: 'Tổng quan', icon: LayoutDashboard, perms: [] },
+      { path: '/reports', label: 'Báo cáo', icon: BarChart3, perms: ['finance.transactions', 'crm.view_leads', 'lms.view'] }
+    ]
   },
   {
     title: 'Tuyển sinh & Bán hàng',
@@ -100,6 +107,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { path: '/content/layout', label: 'Bố cục trang chủ', icon: LayoutDashboard, perms: ['system.sections_toggle'] },
       { path: '/content/articles', label: 'Bài viết & SEO', icon: FileText, perms: ['articles.create_edit', 'articles.publish'] },
       { path: '/content/seo', label: 'Cài đặt SEO website', icon: Globe, perms: ['seo.settings'] },
+      { path: '/content/journeys', label: 'Email tự động theo hành trình', icon: Send, perms: ['crm.view_leads'] },
       { path: '/content/email', label: 'Mẫu email & lịch sử gửi', icon: Mail, perms: ['crm.view_leads', 'crm.edit_status'] }
     ]
   },
@@ -156,6 +164,10 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
     switch (path) {
       case '/':
         return <DashboardPage user={user} />;
+      case '/reports':
+        return <ReportsPage />;
+      case '/content/journeys':
+        return <JourneysPage canEdit={can('crm.edit_status')} />;
       case '/sales/crm':
         return <CMSCRMOrdersTab orders={orders.orders} onUpdateOrderStatus={orders.updateStatus} onUpdateOrderCRM={orders.updateCRM} />;
       case '/sales/coupons':

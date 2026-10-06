@@ -250,6 +250,17 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 - **Tài khoản học viên** `/tai-khoan`: đăng nhập bằng mã email (cùng phiên với SSO, nên "Vào học" không hỏi
   lại mã), xem đơn, lịch trả góp + QR, tiến độ, chứng chỉ, gửi yêu cầu hoàn tiền (tạo việc ưu tiên cao).
 
+## Email tự động & báo cáo
+
+- **Email theo hành trình** (`/app` → Email tự động theo hành trình), cron `run_journeys` 09:30 hằng ngày:
+  nhắc hoàn tất thanh toán (đơn VietQR chưa chuyển sau 1–7 ngày), sắp khai giảng (3 ngày trước), nhắc bắt đầu
+  học (7 ngày, tiến độ 0%), chúc mừng hoàn thành + gợi ý học tiếp. Mỗi đơn nhận mỗi email tối đa một lần
+  (EmailLog `journey_<key>` là dấu đã gửi); bật/tắt từng hành trình, có nút gửi ngay.
+- **Báo cáo** (`/app` → Báo cáo): doanh thu thuần theo tháng, còn phải thu và trả góp quá hạn, lead/chuyển đổi
+  theo tháng và theo nguồn, doanh thu theo khóa/chương trình, kết quả học tập; xuất CSV từng bảng.
+  Mỗi phần chỉ hiện với quyền tương ứng (tài chính / CRM / LMS).
+- Thiết lập bán hàng ban đầu: ops task `seed-sales` (chạy một lần; chạy lại không thay đổi gì).
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị
