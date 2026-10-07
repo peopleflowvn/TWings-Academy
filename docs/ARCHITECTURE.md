@@ -204,11 +204,13 @@ health check và rollback. Mọi đồng bộ đều idempotent.
 | 1 | Gọi Moodle **ngay trong tiến trình web** (`transaction.on_commit` sau thanh toán, khi lưu đợt khai giảng). Một lần sao chép khóa có thể mất hàng chục giây | Chiếm worker gunicorn (chỉ có 8 luồng), nhân viên chờ lâu. Moodle chậm thì website chậm theo |
 | 2 | Moodle → TWings **chỉ đọc định kỳ** (30 phút) và gọi API **theo từng học viên** | Chứng chỉ và cảnh báo rủi ro trễ tới 30 phút. Số lượt gọi tăng tuyến tính theo số học viên |
 | 3 | Tác vụ định kỳ nằm trong **cron của host** (`/etc/cron.d/twings-*`), lỗi bị nuốt (`>/dev/null`) | Cấu hình nằm ngoài Compose, khó quan sát, phải chạy lại `setup-shared` khi thêm lịch |
-| 4 | **Vòng đời danh tính chưa khép kín**: quyền *manager* trên Moodle không bị thu hồi. Tài khoản Moodle `auth=manual` vẫn đặt lại được mật khẩu ngoài SSO | Nhân sự nghỉ việc có thể vẫn vào được LMS |
+| 4 | **Vòng đời danh tính chưa khép kín**: quyền *manager* trên Moodle không bị thu hồi. Tài khoản Moodle `auth=manual` vẫn đặt lại được mật khẩu ngoài SSO | Nhân sự nghỉ việc có thể vẫn vào được LMS. **Đã xử lý cho nhân sự và đơn hoàn/hủy (07/10/2026)**, xem 10.3 |
 | 5 | SSO: Moodle gọi `token`/`userinfo` qua **tên miền công khai** (đi vòng ra gateway) | Phụ thuộc DNS và gateway cho một lời gọi nội bộ |
-| 6 | **Ngân sách RAM** chưa khớp: Apache 10 worker × `memory_limit` 256 MB trong container 512 MB. Postgres dùng chung 320 MB và 50 kết nối | Có thể bị kill khi nhiều thao tác nặng chạy cùng lúc |
+| 6 | **Ngân sách RAM** chưa khớp: Apache 10 worker × `memory_limit` 256 MB trong container 512 MB. Postgres dùng chung 320 MB và 50 kết nối | Có thể bị kill khi nhiều thao tác nặng chạy cùng lúc. **Apache đã giảm còn 4 worker (07/10/2026)** |
 | 7 | **Quan sát** chỉ có log của container | Không có cảnh báo lỗi, không đo được độ trễ hay tác vụ thất bại |
 | 8 | Giao diện Moodle (Boost mặc định) khác website | Trải nghiệm học viên không liền mạch |
+| 9 | **Trùng chức năng với Moodle** ở mảng học tập: hai hệ chứng chỉ (`TWC-…` và `mod_customcert`), /app dựng lại sổ điểm, điểm danh, tiến độ chi tiết, email thông báo cho lớp | Hai nơi cùng một thông tin, dễ lệch, nhiều code phải bảo trì. Xem 10.7 |
+| 10 | **Nội dung mẫu của template** còn trên website: lời chứng thực bịa, danh sách đối tác dự phòng (Google, IBM, Stanford…), banner "Learn AI… Google, OpenAI, Anthropic", mẫu email nhắc "Coursera LMS", từ khóa SEO "chứng chỉ Coursera" | Rủi ro pháp lý (quảng cáo sai sự thật) và uy tín. **Đã gỡ khỏi code và DB (07/10/2026)**. Còn chờ quyết định: điểm sao nhập tay khi chưa có đánh giá, ảnh stock của giảng viên và thư viện ảnh |
 
 ## 10. Kiến trúc đề xuất
 
@@ -252,10 +254,13 @@ flowchart LR
 
 ### 10.3 TWings là nhà cung cấp danh tính duy nhất (ưu tiên 1)
 
-- Tài khoản Moodle của học viên, giảng viên và nhân sự dùng `auth=oauth2`: không còn email mật khẩu Moodle, không
-  "quên mật khẩu" ngoài SSO. Chỉ giữ một tài khoản `admin` khẩn cấp với mật khẩu.
-- Khi nhân sự bị khóa hoặc đổi vai trò, khi đơn bị hoàn hay hủy: task `suspend` tài khoản Moodle và gỡ *manager*.
-  Tất cả ghi vào audit log.
+- **Đã làm (07/10/2026):** `apps.lms.overview.sync_account(email)` áp đúng quy tắc đăng nhập SSO
+  (`identity_for_email`) lên tài khoản Moodle. Ai không còn quyền gì (nhân sự bị khóa hoặc xóa, học viên có đơn cuối
+  cùng bị hoàn hay hủy) thì bị tạm khóa và gỡ *manager*. Nhân sự đang hoạt động có `auth=oauth2` (không còn mật khẩu
+  Moodle để đặt lại) và *manager* chỉ khi thuộc vai trò Đào tạo hoặc Quản trị. Hàm chạy khi `is_active` hoặc `role`
+  của nhân sự đổi, và sau khi thu hồi một đơn. Học viên bị nhân viên khóa tay trong /app không bao giờ tự mở lại.
+- Còn lại: học viên và giảng viên vẫn có mật khẩu Moodle làm phương án dự phòng khi SSO gặp sự cố. Chuyển họ sang
+  `auth=oauth2` khi SSO đã ổn định. Giữ một tài khoản `admin` khẩn cấp với mật khẩu.
 - `token_endpoint` và `userinfo_endpoint` trỏ vào `http://backend:8000` (thêm `backend` vào `ALLOWED_HOSTS`). Chỉ
   `authorization_endpoint` cần tên miền công khai vì trình duyệt mở nó.
 - Về sau: nâng SSO thành OpenID Connect đầy đủ (id_token, PKCE) để dùng lại cho ứng dụng khác của TWings.
@@ -267,7 +272,7 @@ flowchart LR
 | db | 320 MB | 384 MB | `max_connections` 50 → giữ. Theo dõi kết nối của Moodle |
 | backend | 448 MB | 384 MB | Bớt việc nặng nhờ đã chuyển sang worker |
 | worker | – | 192 MB | 1 tiến trình, chạy tuần tự |
-| lms | 512 MB | 512 MB | `MaxRequestWorkers` 10 → **4**, `memory_limit` giữ 256 MB |
+| lms | 512 MB | 512 MB | `MaxRequestWorkers` 10 → **4** (đã áp dụng), `memory_limit` giữ 256 MB |
 | lms-cron | 256 MB | 256 MB | – |
 | web | 64 MB | 64 MB | – |
 | **Tổng** | 1,6 GB | 1,8 GB | Phần còn lại dành cho các sản phẩm khác trên host |
@@ -295,7 +300,36 @@ flowchart LR
 | Cần nhiều hơn 1 node Moodle hoặc backend | Redis cho cache và session của Moodle (MUC), `moodledata` dùng chung, nhiều replica sau gateway |
 | Hơn khoảng 2.000 học viên đang học cùng lúc | Tách LMS sang máy riêng. TWings và Moodle vẫn chỉ nói chuyện qua WS, sự kiện và OAuth2, nên không phải sửa code |
 
+### 10.7 Loại bỏ trùng lặp với Moodle (ưu tiên 1)
+
+Không gộp TWings vào Moodle và cũng không viết lại LMS trong Django. Khoảng 80% chức năng TWings (website, SEO, CRM,
+VietQR, trả góp, hoàn tiền, email hành trình, việc làm) Moodle không có (Moodle 5.2 chỉ có `enrol_fee` với cổng
+PayPal). Phần trùng nằm ở mảng học tập, và quy tắc là: **việc học dùng tính năng sẵn có của Moodle; TWings chỉ giữ số
+liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc làm) và **liên kết thẳng** sang trang Moodle tương ứng.
+
+| Chỗ trùng | Quyết định |
+|---|---|
+| Chứng chỉ `TWC-…` và `mod_customcert` | Giữ `TWC-…` (gắn quy tắc chuyên cần, thu hồi khi hoàn tiền, trang xác minh, hồ sơ gửi HR). Gỡ cài `customcert` trên Moodle rồi xóa khỏi `lms/` (`vendor.py`) |
+| Sổ điểm, điểm danh, tiến độ chi tiết trong /app | /app hiện %, chuyên cần, mức rủi ro và nút mở Moodle. Không dựng lại sổ điểm |
+| Email thông báo cho cả lớp | Diễn đàn **Thông báo** của khóa Moodle. TWings chỉ gửi email hành chính |
+| Tiến độ trong `/tai-khoan` | Tóm tắt và nút "Vào học" |
+| Cảnh báo rủi ro | Giữ ở TWings (kết hợp học phí, tư vấn viên). Bật thêm Analytics của Moodle cho giảng viên |
+| Chế độ demo của frontend | Bỏ khỏi bản production: mỗi màn hình chỉ một nguồn dữ liệu (API) |
+
 ## 11. Lộ trình
+
+| Giai đoạn | Việc | Trạng thái | Kết quả đo được |
+|---|---|---|---|
+| **0. Ổn định** (1 tuần) | Gỡ nội dung mẫu (lời chứng thực thật từ `/public/reviews/`, bỏ đối tác dự phòng, website không bao giờ hiện dữ liệu demo khi có backend, FAQ sửa được trong /app, migration dọn banner, email, SEO). 10.3 phần nhân sự và đơn hoàn. 10.4 Apache 4 worker | **Xong 07/10/2026**. Chờ quyết định nội dung: điểm sao nhập tay, ảnh stock. Tắt squash/rebase merge trên GitHub. Chốt Django 6.1 hay 5.2 LTS | Không còn nội dung sai sự thật. Không còn đường vào LMS cho người đã nghỉ |
+| **1. Loại trùng** (1–2 tuần) | 10.7 | Chưa bắt đầu | Mỗi thông tin một nơi đúng. Bớt code học tập phải bảo trì |
+| **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | Chưa bắt đầu | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
+| **3. Trải nghiệm thống nhất** (2–3 tuần) | Theme Moodle theo TWings, email Moodle tiếng Việt cùng giọng, quyết định Moodle Mobile (10.5) | Đang có người làm phần theme trong `twings_setup.php` | Học viên đi từ website → tài khoản → lớp học như một sản phẩm |
+| **4. Vận hành và tuân thủ** (song song) | Quan sát, 2FA (10.5). Diễn tập khôi phục backup. Rà soát Nghị định 13/2023 (thời hạn lưu, quy trình xóa dữ liệu chạy cả TWings và Moodle) | Chưa bắt đầu | Có cảnh báo. Khôi phục được backup trong thời gian đã định |
+| **Khi chạm ngưỡng** | 10.6 | – | Theo bảng ngưỡng |
+
+**Thế nào là hoàn chỉnh:** một bộ test end-to-end cho cả hành trình 10 khâu chạy trong CI với Moodle thật (lead → tư
+vấn → thanh toán → xếp lớp → học → điểm danh → tốt nghiệp → chứng chỉ → giới thiệu việc làm). Khi bộ test này xanh
+thì hệ thống liền mạch, và mọi thay đổi sau đó đều được kiểm chứng trên toàn bộ luồng.
 
 | Giai đoạn | Việc | Kết quả đo được |
 |---|---|---|
@@ -308,6 +342,7 @@ flowchart LR
 
 | Quyết định | Lý do | Đã cân nhắc |
 |---|---|---|
+| Không gộp TWings vào Moodle: Moodle lo việc học, TWings lo phần còn lại (10.7) | Moodle không có website bán hàng, CRM, VietQR, trả góp, việc làm. Gộp vào là viết lại bằng PHP và sửa lõi nhiều, khó vá bảo mật. Hai phần cô lập: Moodle lỗi vẫn thu được tiền | Viết mọi thứ thành plugin Moodle |
 | Dùng Moodle cho LMS, không tự viết trong Django | Quiz, ngân hàng đề, sổ điểm, điểm danh, SCORM/H5P, ứng dụng di động là hàng chục năm-người công sức | Tự viết: tốn kém, kém tính năng |
 | Mã nguồn Moodle **trong repo** (`lms/`, git subtree squash) | Tùy biến mọi chỗ, review và CI như code khác, vẫn gộp được bản vá bảo mật (`vendor.py update`) | Tải lúc build (khó tùy biến). Bản tách rời bỏ upstream (không vá được) |
 | Tùy biến ưu tiên plugin (`local_twings`, `theme_twings`), sửa lõi phải khai báo (`patches.txt`) | Giữ chi phí nâng cấp thấp. Biết chính xác TWings lệch khỏi bản gốc ở đâu | – |
