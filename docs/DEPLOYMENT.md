@@ -223,9 +223,9 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   khóa mẫu (tự học). Giảng viên đăng nhập Moodle bằng mã gửi qua email (SSO).
 - **Hoàn thành & chứng chỉ:** cron 30 phút đồng bộ % tiến độ; khi Moodle ghi nhận hoàn thành, TWings cấp chứng chỉ
   `TWC-XXXXXXXXXX` có trang xác minh công khai `/xac-minh/<mã>/`, cập nhật CRM và gửi email chúc mừng.
-- **Mã nguồn trong repo** (`lms/`, xem [LMS.md](LMS.md)): lõi Moodle 5.2.4 và các plugin Custom certificate
-  (chứng chỉ PDF), Attendance (điểm danh), Completion Progress (thanh tiến độ), Ad-hoc database queries (báo cáo
-  SQL cho cán bộ quản lý), cùng plugin riêng `local_twings`.
+- **Mã nguồn trong repo** (`lms/`, xem [LMS.md](LMS.md)): lõi Moodle 5.2.4 và các plugin Attendance
+  (điểm danh), Completion Progress (thanh tiến độ), Ad-hoc database queries (báo cáo SQL cho cán bộ quản lý), cùng
+  plugin riêng `local_twings`. Chứng chỉ chính thức là `TWC-…` của TWings (không dùng plugin chứng chỉ của Moodle).
 - **Soạn nội dung:** đăng nhập `/learn` bằng `admin` (mật khẩu `PROD_LMS__MOODLE_ADMIN_PASSWORD` trong `.env`). Dùng
   các tính năng sẵn có của Moodle: bài giảng, video YouTube, quiz, bài tập, hoàn thành khóa học, huy hiệu.
 - **Bảo mật:** `/learn/webservice/*` bị chặn từ Internet, chỉ backend gọi được qua mạng nội bộ. Token có giới hạn IP

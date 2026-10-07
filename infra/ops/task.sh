@@ -226,7 +226,7 @@ print(\"staff access:\", overview.ensure_staff_access(admin))
     remote "cd $APP && sudo docker compose exec -T lms php -r '
 define(\"CLI_SCRIPT\", true);
 require \"/var/www/moodle/config.php\";
-foreach ([\"mod_customcert\", \"mod_attendance\", \"block_completion_progress\", \"report_customsql\"] as \$p) {
+foreach ([\"mod_attendance\", \"block_completion_progress\", \"report_customsql\", \"local_twings\"] as \$p) {
     \$i = core_plugin_manager::instance()->get_plugin_info(\$p);
     echo \$p, \": \", \$i ? (\$i->versiondb ?: \"NOT INSTALLED\") : \"MISSING\", PHP_EOL;
 }

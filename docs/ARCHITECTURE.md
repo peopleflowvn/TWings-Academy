@@ -57,7 +57,7 @@ flowchart LR
 |---|---|---|---|
 | Website + CMS/CRM `/app` | React 19, TypeScript, Vite 8, Tailwind 4 | `frontend/` | Container `web` (Caddy). Bản sao tùy chọn trên Cloudflare Pages |
 | API, trang Django, SSO | Django 6.1, DRF, gunicorn (2 worker × 4 thread) | `backend/` | Container `backend` (non-root, FS chỉ đọc) |
-| LMS | Moodle 5.2.4, PHP 8.3, Apache (tối đa 10 worker) + 4 plugin + `local_twings` | `lms/` | Container `lms`, `lms-cron` |
+| LMS | Moodle 5.2.4, PHP 8.3, Apache (tối đa 4 worker) + 3 plugin + `local_twings` | `lms/` | Container `lms`, `lms-cron` |
 | CSDL | PostgreSQL 18 (DB `twings` và `moodle`, role riêng) | – | Container `db`, volume `pgdata` |
 | File | R2 (2 bucket) hoặc volume `appdata`. File Moodle trong volume `moodledata` | – | – |
 | Email | Resend (API từ Django, SMTP từ Moodle) | – | – |
@@ -209,7 +209,7 @@ health check và rollback. Mọi đồng bộ đều idempotent.
 | 6 | **Ngân sách RAM** chưa khớp: Apache 10 worker × `memory_limit` 256 MB trong container 512 MB. Postgres dùng chung 320 MB và 50 kết nối | Có thể bị kill khi nhiều thao tác nặng chạy cùng lúc. **Apache đã giảm còn 4 worker (07/10/2026)** |
 | 7 | **Quan sát** chỉ có log của container | Không có cảnh báo lỗi, không đo được độ trễ hay tác vụ thất bại |
 | 8 | Giao diện Moodle (Boost mặc định) khác website | Trải nghiệm học viên không liền mạch |
-| 9 | **Trùng chức năng với Moodle** ở mảng học tập: hai hệ chứng chỉ (`TWC-…` và `mod_customcert`), /app dựng lại sổ điểm, điểm danh, tiến độ chi tiết, email thông báo cho lớp | Hai nơi cùng một thông tin, dễ lệch, nhiều code phải bảo trì. Xem 10.7 |
+| 9 | **Trùng chức năng với Moodle** ở mảng học tập: hai hệ chứng chỉ (`TWC-…` và `mod_customcert`), /app dựng lại sổ điểm, điểm danh, tiến độ chi tiết, email thông báo cho lớp | Hai nơi cùng một thông tin, dễ lệch, nhiều code phải bảo trì. Xem 10.7. **Đã xử lý chứng chỉ, sổ điểm, thông báo lớp (07/10/2026)** |
 | 10 | **Nội dung mẫu của template** còn trên website: lời chứng thực bịa, danh sách đối tác dự phòng (Google, IBM, Stanford…), banner "Learn AI… Google, OpenAI, Anthropic", mẫu email nhắc "Coursera LMS", từ khóa SEO "chứng chỉ Coursera" | Rủi ro pháp lý (quảng cáo sai sự thật) và uy tín. **Đã gỡ khỏi code và DB (07/10/2026)**. Còn chờ quyết định: điểm sao nhập tay khi chưa có đánh giá, ảnh stock của giảng viên và thư viện ảnh |
 
 ## 10. Kiến trúc đề xuất
@@ -282,8 +282,8 @@ flowchart LR
 - **`theme_twings`** (kế thừa Boost): dùng chung màu, font (Plus Jakarta Sans) và logo với website. Nên gom màu thương
   hiệu thành biến CSS dùng chung cho cả `frontend/` và theme. Header có liên kết về `/tai-khoan`. Quyết định có hỗ trợ ứng dụng Moodle Mobile hay
   không (nếu có thì mở `webservice/pluginfile.php` và `login/token.php` ở Caddy).
-- **Một hệ chứng chỉ**: chứng chỉ do TWings cấp (`TWC-…`, có trang xác minh) là bản chính thức. Tắt `mod_customcert`
-  trong khóa, hoặc chỉ dùng nó để in đúng mẫu `TWC-…`.
+- **Một hệ chứng chỉ**: chứng chỉ do TWings cấp (`TWC-…`, có trang xác minh) là bản chính thức. `mod_customcert`
+  đã được gỡ (07/10/2026, xem 10.7).
 - **Test hợp đồng với Moodle thật**: bước CI đang cài Moodle từ đầu sẽ chạy thêm bộ test `apps.lms` của backend
   nhắm vào container đó. Mọi hàm Web Service mà backend dùng được kiểm tra trên đúng phiên bản Moodle trong `lms/`.
   Sửa lõi hoặc cập nhật Moodle mà làm hỏng tích hợp thì CI báo lỗi ngay.
@@ -309,9 +309,9 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 
 | Chỗ trùng | Quyết định |
 |---|---|
-| Chứng chỉ `TWC-…` và `mod_customcert` | Giữ `TWC-…` (gắn quy tắc chuyên cần, thu hồi khi hoàn tiền, trang xác minh, hồ sơ gửi HR). Gỡ cài `customcert` trên Moodle rồi xóa khỏi `lms/` (`vendor.py`) |
-| Sổ điểm, điểm danh, tiến độ chi tiết trong /app | /app hiện %, chuyên cần, mức rủi ro và nút mở Moodle. Không dựng lại sổ điểm |
-| Email thông báo cho cả lớp | Diễn đàn **Thông báo** của khóa Moodle. TWings chỉ gửi email hành chính |
+| Chứng chỉ `TWC-…` và `mod_customcert` | Giữ `TWC-…` (gắn quy tắc chuyên cần, thu hồi khi hoàn tiền, trang xác minh, hồ sơ gửi HR). **Đã làm:** `customcert` xóa khỏi `lms/` (`vendor.py remove`), `twings_setup.php` gỡ nó khỏi Moodle khi không có hoạt động nào (production: 0) |
+| Sổ điểm, điểm danh, tiến độ chi tiết trong /app | /app hiện %, chuyên cần, mức rủi ro và nút mở Moodle. Không dựng lại sổ điểm. **Đã làm:** modal Học tập của đợt đọc số liệu đã đồng bộ (không gọi Moodle trực tiếp), có nút Sổ điểm, Tiến độ, Khóa học, từng học viên |
+| Email thông báo cho cả lớp | Diễn đàn **Thông báo** của khóa Moodle. TWings chỉ gửi email hành chính. **Đã làm:** nút mở trang đăng bài trong diễn đàn Thông báo, bỏ chức năng gửi email lớp của TWings |
 | Tiến độ trong `/tai-khoan` | Tóm tắt và nút "Vào học" |
 | Cảnh báo rủi ro | Giữ ở TWings (kết hợp học phí, tư vấn viên). Bật thêm Analytics của Moodle cho giảng viên |
 | Chế độ demo của frontend | Bỏ khỏi bản production: mỗi màn hình chỉ một nguồn dữ liệu (API) |
@@ -321,7 +321,7 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 | Giai đoạn | Việc | Trạng thái | Kết quả đo được |
 |---|---|---|---|
 | **0. Ổn định** (1 tuần) | Gỡ nội dung mẫu (lời chứng thực thật từ `/public/reviews/`, bỏ đối tác dự phòng, website không bao giờ hiện dữ liệu demo khi có backend, FAQ sửa được trong /app, migration dọn banner, email, SEO). 10.3 phần nhân sự và đơn hoàn. 10.4 Apache 4 worker | **Xong 07/10/2026**. Chờ quyết định nội dung: điểm sao nhập tay, ảnh stock. Tắt squash/rebase merge trên GitHub. Chốt Django 6.1 hay 5.2 LTS | Không còn nội dung sai sự thật. Không còn đường vào LMS cho người đã nghỉ |
-| **1. Loại trùng** (1–2 tuần) | 10.7 | Chưa bắt đầu | Mỗi thông tin một nơi đúng. Bớt code học tập phải bảo trì |
+| **1. Loại trùng** (1–2 tuần) | 10.7 | **Đang làm**: xong chứng chỉ, sổ điểm, thông báo lớp. Còn: `/tai-khoan` (đang được làm lại song song), Analytics của Moodle, bỏ chế độ demo | Mỗi thông tin một nơi đúng. Bớt code học tập phải bảo trì |
 | **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | Chưa bắt đầu | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
 | **3. Trải nghiệm thống nhất** (2–3 tuần) | Theme Moodle theo TWings, email Moodle tiếng Việt cùng giọng, quyết định Moodle Mobile (10.5) | Đang có người làm phần theme trong `twings_setup.php` | Học viên đi từ website → tài khoản → lớp học như một sản phẩm |
 | **4. Vận hành và tuân thủ** (song song) | Quan sát, 2FA (10.5). Diễn tập khôi phục backup. Rà soát Nghị định 13/2023 (thời hạn lưu, quy trình xóa dữ liệu chạy cả TWings và Moodle) | Chưa bắt đầu | Có cảnh báo. Khôi phục được backup trong thời gian đã định |

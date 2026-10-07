@@ -11,7 +11,7 @@ Toàn bộ mã nguồn Moodle nằm trong `lms/`, sửa trực tiếp được n
 lms/                                 Moodle 5.2.4 (PHP 8.3); web root là lms/public/
   admin/cli/  config.php*  lib/…     *config.php thật nằm ở infra/lms/ (đọc secret từ env)
   public/
-    mod/customcert/  mod/attendance/  blocks/completion_progress/  report/customsql/   plugin bên thứ ba
+    mod/attendance/  blocks/completion_progress/  report/customsql/   plugin bên thứ ba
     local/twings/                    plugin riêng của TWings  ← code tùy biến đặt ở đây
     theme/twings/                    (khi cần) giao diện TWings
 infra/lms/
@@ -21,7 +21,7 @@ infra/lms/
   vendor.py                          công cụ kiểm tra / so sánh / cập nhật
 ```
 
-Moodle và 4 plugin được đưa vào bằng `git subtree --squash`. Mỗi thành phần có một commit
+Moodle và 3 plugin được đưa vào bằng `git subtree --squash`. Mỗi thành phần có một commit
 `Squashed '<path>/' …` trong lịch sử, chứa **đúng nguyên văn** mã nguồn gốc. Commit này là mốc để:
 - biết chính xác TWings đã sửa gì so với bản gốc (`vendor.py status`, `vendor.py diff`);
 - gộp bản vá bảo mật của Moodle về sau bằng merge 3 chiều, giữ nguyên các chỉnh sửa của TWings.
@@ -64,7 +64,8 @@ python infra/lms/vendor.py check
 `update` tải đúng commit đó (chỉ bản mới nhất, không kéo cả lịch sử), merge 3 chiều vào `lms/`, rồi ghi
 lại `vendor.json` và danh sách commit gốc trong `.gitleaks.toml`. Nếu bị conflict thì sửa xong, `git commit`,
 rồi chạy `vendor.py record core`. Plugin bên thứ ba cập nhật cùng cách (`update mod_attendance …`).
-Thêm plugin mới: `vendor.py add <tên> lms/public/<loại>/<tên> <repo> <commit>`.
+Thêm plugin mới: `vendor.py add <tên> lms/public/<loại>/<tên> <repo> <commit>`. Bỏ một plugin: `vendor.py remove
+<tên>` rồi thêm nó vào bước gỡ plugin trong `twings_setup.php` (chỉ gỡ khi không còn hoạt động nào dùng nó).
 
 ## Quy tắc git cho `lms/`
 
@@ -80,6 +81,6 @@ Thêm plugin mới: `vendor.py add <tên> lms/public/<loại>/<tên> <repo> <com
 
 - `lms-vendor`: chạy `vendor.py check`.
 - `docker`: build image từ `lms/`, kiểm tra cú pháp PHP của config và plugin TWings, kiểm tra Apache, rồi
-  **cài Moodle từ đầu trên Postgres** (lõi, 4 plugin, `local_twings`, `twings_setup.php`) trước khi cho deploy.
+  **cài Moodle từ đầu trên Postgres** (lõi, 3 plugin, `local_twings`, `twings_setup.php`) trước khi cho deploy.
 - Image chép `lms/` vào `/var/www/moodle` (thuộc root, chỉ đọc với www-data), bỏ công cụ dev của Moodle
   (`.github`, `.grunt`, `node_modules`). Không còn tải mã nguồn từ GitHub lúc build.

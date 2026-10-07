@@ -786,5 +786,26 @@ if ($ssosecret && $ssohosts) {
     $out('SSO issuers: ' . implode(', ', $ssohosts));
 }
 
+// ---------------------------------------------------------------- plugins removed from lms/
+// Code deleted from the repository (infra/lms/vendor.py remove) leaves the plugin "missing from disk":
+// uninstall it, but only while it holds no activity (TWings issues the official certificates).
+require_once($CFG->libdir . '/adminlib.php');
+$pluginman = core_plugin_manager::instance();
+foreach (['mod_customcert' => 'customcert'] as $component => $table) {
+    $info = $pluginman->get_plugin_info($component);
+    if (!$info || $info->get_status() !== core_plugin_manager::PLUGIN_STATUS_MISSING) {
+        continue;
+    }
+    $used = $DB->get_manager()->table_exists($table) ? $DB->count_records($table) : 0;
+    if ($used > 0 || !$pluginman->can_uninstall_plugin($component)) {
+        $out("WARNING: {$component} is missing from disk but kept ({$used} activities): remove them in Moodle first");
+        continue;
+    }
+    $progress = new progress_trace_buffer(new text_progress_trace(), false);
+    $pluginman->uninstall_plugin($component, $progress);
+    $progress->finished();
+    $out("uninstalled {$component} (removed from lms/)");
+}
+
 purge_caches();
 $out('done');

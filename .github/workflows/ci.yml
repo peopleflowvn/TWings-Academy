@@ -190,7 +190,7 @@ jobs:
                 --adminpass="Ci-only-password-1" --adminemail=admin@example.invalid --fullname="TWings CI" --shortname=CI >/dev/null
               php /var/www/moodle/twings_setup.php
               php $cli/upgrade.php --non-interactive >/dev/null
-              for c in mod_customcert mod_attendance block_completion_progress report_customsql local_twings; do
+              for c in mod_attendance block_completion_progress report_customsql local_twings; do
                 v=$(php $cli/cfg.php --component=$c --name=version) || { echo "::error::$c not installed"; exit 1; }
                 echo "$c $v"
               done'
