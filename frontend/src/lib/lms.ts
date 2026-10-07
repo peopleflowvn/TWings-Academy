@@ -44,7 +44,15 @@ export interface OrderLearning {
     cohortName: string;
     progress: number | null;
     completedAt: string | null;
-    certificate: { code: string; url: string; revoked: boolean } | null;
+    certificate: { code: string; url: string; printUrl?: string; revoked: boolean } | null;
+    /** Step 7-8 learning signals (synced from Moodle every 30 minutes). */
+    attendanceRate?: number | null;
+    attendance?: string;
+    gradePercent?: number | null;
+    lastAccess?: string | null;
+    riskLevel?: 'ok' | 'watch' | 'risk';
+    riskFlags?: string[];
+    certificateHold?: string;
   } | null;
   user: {
     id: number;
@@ -100,12 +108,55 @@ export interface LmsLearner {
   links: MoodleLinks;
 }
 
-export type LmsAction = 'enroll' | 'unenroll' | 'suspend' | 'unsuspend' | 'send_access_email';
+export interface CohortGradebook {
+  cohort: string;
+  course: string;
+  moodleCourseId: number | null;
+  attendanceEnabled: boolean;
+  expectedProgress: number | null;
+  columns: string[];
+  rows: {
+    orderId: string;
+    name: string;
+    email: string;
+    progress: number | null;
+    attendanceRate: number | null;
+    attendance: string;
+    coursePercent: number | null;
+    items: (number | null)[];
+    riskLevel: 'ok' | 'watch' | 'risk';
+    riskFlags: string[];
+    lastAccess: string | null;
+    completedAt: string | null;
+    certificateHold: string;
+  }[];
+}
+
+export interface AtRiskRow {
+  orderId: string;
+  name: string;
+  phone: string;
+  email: string;
+  course: string;
+  cohort: string;
+  riskLevel: 'watch' | 'risk';
+  flags: string[];
+  progress: number | null;
+  attendanceRate: number | null;
+  lastAccess: string | null;
+}
+
+export type LmsAction = 'enroll' | 'unenroll' | 'suspend' | 'unsuspend' | 'send_access_email' | 'issue_certificate';
 
 export const lmsApi = {
   order: (orderId: string) => api.get<OrderLearning>(`/staff/lms/orders/${orderId}/`),
-  act: (orderId: string, action: LmsAction) =>
-    api.post<OrderLearning>(`/staff/lms/orders/${orderId}/actions/`, { action }),
+  act: (orderId: string, action: LmsAction, note?: string) =>
+    api.post<OrderLearning>(`/staff/lms/orders/${orderId}/actions/`, { action, ...(note ? { note } : {}) }),
+  gradebook: (cohortId: string) => api.get<CohortGradebook>(`/staff/lms/cohorts/${cohortId}/gradebook/`),
+  announce: (cohortId: string, subject: string, message: string) =>
+    api.post<{ sent: number }>(`/staff/lms/cohorts/${cohortId}/announce/`, { subject, message }),
+  atRisk: () => api.get<AtRiskRow[]>('/staff/lms/at-risk/'),
+  refreshLearning: () => api.post<{ learners: number; courses: number; releasedHolds: number }>('/staff/lms/refresh/', {}),
   catalog: () => api.get<LmsCatalogRow[]>('/staff/lms/courses/'),
   learners: (moodleCourseId: number) => api.get<LmsLearner[]>(`/staff/lms/courses/${moodleCourseId}/learners/`),
   provisionCohort: (cohortId: string) =>

@@ -43,6 +43,17 @@ class LmsEnrollment(BaseModel):
     progress = models.PositiveSmallIntegerField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     last_synced_at = models.DateTimeField(null=True, blank=True)
+    # Step 7 – learning signals from Moodle (apps.lms.learning): attendance, grades, last access, risk.
+    attendance_taken = models.PositiveSmallIntegerField(default=0)  # sessions already marked
+    attendance_attended = models.PositiveSmallIntegerField(default=0)  # present / late
+    attendance_rate = models.PositiveSmallIntegerField(null=True, blank=True)  # % of taken sessions
+    grade_percent = models.PositiveSmallIntegerField(null=True, blank=True)  # course total %
+    last_access = models.DateTimeField(null=True, blank=True)
+    RISK_CHOICES = [("ok", "Ổn"), ("watch", "Cần theo dõi"), ("risk", "Có nguy cơ")]
+    risk_level = models.CharField(max_length=10, choices=RISK_CHOICES, default="ok", db_index=True)
+    risk_flags = models.JSONField(default=list, blank=True)
+    # Step 8 – completed on Moodle but not (yet) eligible for the certificate, e.g. low attendance.
+    certificate_hold = models.CharField(max_length=300, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

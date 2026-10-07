@@ -55,21 +55,49 @@ def sync_enrollment(enrollment: LmsEnrollment, courses: list[dict]) -> bool:
     return just_completed
 
 
-def _on_completed(enrollment: LmsEnrollment) -> None:
+def certificate_hold_reason(enrollment: LmsEnrollment) -> str:
+    """Why a learner who completed on Moodle cannot get the certificate yet ('' = eligible)."""
+    course = enrollment.order.course
+    required = course.min_attendance_rate if course else 0
+    if required and enrollment.attendance_taken and (enrollment.attendance_rate or 0) < required:
+        return f"Chuyên cần {enrollment.attendance_rate}% chưa đạt mức {required}% của khóa"
+    return ""
+
+
+def _on_completed(enrollment: LmsEnrollment, *, override_by=None, note: str = "") -> None:
     from apps.notifications.resend import ResendError
 
     from .emails import send_certificate_email
 
-    certificate = issue_certificate(enrollment)
     order = enrollment.order
+    hold = "" if override_by else certificate_hold_reason(enrollment)
+    if hold:
+        enrollment.certificate_hold = hold
+        enrollment.save(update_fields=["certificate_hold", "updated_at"])
+        order.training_status = "Chờ xét tốt nghiệp"
+        order.save(update_fields=["training_status", "updated_at"])
+        Activity.objects.create(
+            order=order,
+            type="note",
+            title="Hoàn thành trên LMS – chưa cấp chứng chỉ",
+            content=hold + ". Đào tạo có thể cấp ngoại lệ trong tab Học tập (LMS).",
+            actor="Hệ thống LMS",
+        )
+        return
+    if enrollment.certificate_hold:
+        enrollment.certificate_hold = ""
+        enrollment.save(update_fields=["certificate_hold", "updated_at"])
+    certificate = issue_certificate(enrollment)
     order.training_status = "Hoàn thành"
     order.save(update_fields=["training_status", "updated_at"])
     Activity.objects.create(
         order=order,
         type="note",
-        title="Hoàn thành khóa học trên LMS – đã cấp chứng chỉ",
-        content=f"Mã chứng chỉ {certificate.code}: {certificate_url(certificate.code)}",
-        actor="Hệ thống LMS",
+        title="Hoàn thành khóa học – đã cấp chứng chỉ" + (" (ngoại lệ)" if override_by else ""),
+        content=f"Mã chứng chỉ {certificate.code}: {certificate_url(certificate.code)}"
+        + (f". Lý do: {note}" if note else ""),
+        actor=(override_by.name or override_by.email) if override_by else "Hệ thống LMS",
+        actor_user=override_by,
     )
     try:
         send_certificate_email(order, certificate)
@@ -98,3 +126,25 @@ def sync_all(limit: int = 500) -> dict:
             counts["synced"] += 1
             counts["completed"] += int(sync_enrollment(enrollment, courses))
     return counts
+
+
+def release_holds() -> int:
+    """Certificates held for attendance are issued once the (updated) attendance reaches the minimum."""
+    released = 0
+    held = LmsEnrollment.objects.filter(completed_at__isnull=False, certificate__isnull=True).exclude(
+        certificate_hold=""
+    )
+    for enrollment in held.select_related("order", "order__course", "cohort"):
+        if not certificate_hold_reason(enrollment):
+            _on_completed(enrollment)
+            released += 1
+    return released
+
+
+def issue_with_override(enrollment: LmsEnrollment, user, note: str) -> Certificate:
+    """Training staff grant the certificate despite a hold (or before Moodle completion), with a reason."""
+    if enrollment.completed_at is None:
+        enrollment.completed_at = timezone.now()
+        enrollment.save(update_fields=["completed_at", "updated_at"])
+    _on_completed(enrollment, override_by=user, note=note)
+    return enrollment.certificate

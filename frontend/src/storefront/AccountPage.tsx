@@ -431,6 +431,11 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: 
               <Award className="w-4 h-4" /> Chứng chỉ {c.certificate.code}
             </a>
           )}
+          {c.certificate && (
+            <a href={`${c.certificate.url}in/`} target="_blank" rel="noopener" className="text-xs text-slate-600 hover:underline">
+              In / lưu PDF chứng chỉ
+            </a>
+          )}
           <ReviewBox course={c} learnerName={learnerName} />
         </div>
       ))}

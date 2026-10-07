@@ -14,6 +14,7 @@ import {
   Image,
   LayoutDashboard,
   Layers,
+  LifeBuoy,
   LayoutTemplate,
   LogOut,
   Mail,
@@ -63,6 +64,7 @@ import { JourneysPage } from './pages/JourneysPage';
 import { IntakesPage } from './pages/IntakesPage';
 import { CampaignLinksPage, ReviewsPage } from './pages/MarketingPages';
 import { ConsultingPage, InvoicesPage } from './pages/JourneyPages';
+import { LearningSupportPage } from './pages/LearningPages';
 
 interface NavItem {
   path: string;
@@ -101,6 +103,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: 'Đào tạo (Moodle)',
     items: [
       { path: '/learning/progress', label: 'Học viên & tiến độ', icon: GraduationCap, perms: ['lms.view'] },
+      { path: '/learning/support', label: 'Học viên cần hỗ trợ', icon: LifeBuoy, perms: ['lms.view'] },
       { path: '/learning/moodle', label: 'Ngân hàng đề, khóa & báo cáo', icon: Wrench, perms: ['lms.view'] }
     ]
   },
@@ -213,6 +216,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <CMSInstructorsTab />;
       case '/learning/progress':
         return <CMSLmsTab />;
+      case '/learning/support':
+        return <LearningSupportPage />;
       case '/learning/moodle':
         return <MoodleHubPage />;
       case '/finance/transactions':

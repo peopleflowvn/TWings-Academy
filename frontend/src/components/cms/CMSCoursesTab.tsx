@@ -580,6 +580,20 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                   />
                 </div>
 
+                {/* Graduation rule */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Chuyên cần tối thiểu để cấp chứng chỉ (%)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={editForm.minAttendanceRate ?? 80}
+                    onChange={(e) => setEditForm({ ...editForm, minAttendanceRate: Number(e.target.value) })}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">Áp dụng khi đợt học có điểm danh trên Moodle; 0 = không yêu cầu.</p>
+                </div>
+
                 {/* Installment plan */}
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Trả góp (số kỳ)</label>

@@ -121,6 +121,16 @@ class FakeCalendar:
             return None
         if function == "core_course_update_courses":
             return None
+        if function == "mod_attendance_add_attendance":
+            self.attendance = params
+            return {"attendanceid": 55}
+        if function == "mod_attendance_add_session":
+            self.next_id += 1
+            self.att_sessions = [*getattr(self, "att_sessions", []), params]
+            return {"sessionid": self.next_id}
+        if function == "mod_attendance_remove_session":
+            self.att_removed = [*getattr(self, "att_removed", []), params["sessionid"]]
+            return True
         raise AssertionError(function)
 
 
@@ -141,13 +151,17 @@ def test_sessions_are_pushed_to_the_moodle_calendar(course, staff_client, settin
     url = f"/api/v1/staff/cohorts/{cohort.pk}/sessions/"
     res = editor.put(url, {"sessions": sessions, "scheduleText": "Tối thứ 2-4-6, 19:00–21:00"}, format="json")
     assert res.status_code == 200, res.content
-    assert res.json()["sync"] == {"synced": 3, "moodleCourseId": 77}
+    assert res.json()["sync"] == {"synced": 3, "moodleCourseId": 77, "attendanceSessions": 3}
+    assert fake.attendance["name"] == "Điểm danh" and all(
+        a["addcalendarevent"] == 0 for a in fake.att_sessions
+    )
     assert all(s["synced"] for s in res.json()["sessions"])
     assert fake.created[0]["courseid"] == 77 and fake.created[0]["description"] == "Địa điểm: ROX Tower"
     first_ids = list(CohortSession.objects.values_list("moodle_event_id", flat=True))
 
     res = editor.put(url, {"sessions": sessions[:1]}, format="json")  # reschedule: old events removed
     assert set(fake.deleted) == set(first_ids) and res.json()["sync"]["synced"] == 1
+    assert len(fake.att_removed) == 3  # the old attendance sessions are removed too
     cohort.refresh_from_db()
     assert cohort.calendar_cleanup == [] and cohort.schedule_text == "Tối thứ 2-4-6, 19:00–21:00"
     bad = {"sessions": [{"startsAt": start.isoformat(), "endsAt": start.isoformat()}]}

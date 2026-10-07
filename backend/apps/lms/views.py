@@ -50,6 +50,17 @@ def _enrollment_data(enrollment: LmsEnrollment | None) -> dict | None:
         "cohortName": enrollment.cohort.name if enrollment.cohort_id else "",
         "progress": enrollment.progress,
         "completedAt": enrollment.completed_at,
+        "attendanceRate": enrollment.attendance_rate,
+        "attendance": (
+            f"{enrollment.attendance_attended}/{enrollment.attendance_taken}"
+            if enrollment.attendance_taken
+            else ""
+        ),
+        "gradePercent": enrollment.grade_percent,
+        "lastAccess": enrollment.last_access,
+        "riskLevel": enrollment.risk_level,
+        "riskFlags": enrollment.risk_flags,
+        "certificateHold": enrollment.certificate_hold,
         "certificate": _certificate_data(enrollment),
     }
 
@@ -63,6 +74,7 @@ def _certificate_data(enrollment: LmsEnrollment) -> dict | None:
     return {
         "code": certificate.code,
         "url": certificate_url(certificate.code),
+        "printUrl": certificate_url(certificate.code) + "in/",
         "revoked": certificate.revoked,
     }
 
@@ -87,7 +99,10 @@ class OrderLearningView(_LmsView):
 
 
 class OrderLearningActionSerializer(serializers.Serializer):
-    action = serializers.ChoiceField(["enroll", "unenroll", "suspend", "unsuspend", "send_access_email"])
+    action = serializers.ChoiceField(
+        ["enroll", "unenroll", "suspend", "unsuspend", "send_access_email", "issue_certificate"]
+    )
+    note = serializers.CharField(max_length=300, required=False, allow_blank=True)
 
 
 ACTION_TITLES = {
@@ -96,6 +111,7 @@ ACTION_TITLES = {
     "suspend": "Tạm khóa tài khoản LMS",
     "unsuspend": "Mở khóa tài khoản LMS",
     "send_access_email": "Gửi email hướng dẫn vào học",
+    "issue_certificate": "Cấp chứng chỉ (ngoại lệ)",
 }
 
 
@@ -127,6 +143,15 @@ class OrderLearningActionView(_LmsView):
             overview.unenrol(enrollment.moodle_user_id, enrollment.moodle_course_id)
             enrollment.status = "removed"
             enrollment.save(update_fields=["status", "updated_at"])
+        elif action == "issue_certificate":
+            from .completion import issue_with_override
+
+            if not (enrollment and enrollment.status == "done"):
+                raise serializers.ValidationError({"detail": "Học viên chưa được ghi danh trên LMS."})
+            note = ser.validated_data.get("note", "").strip()
+            if not note:
+                raise serializers.ValidationError({"detail": "Nhập lý do cấp chứng chỉ ngoại lệ."})
+            issue_with_override(enrollment, request.user, note)
         elif action in ("suspend", "unsuspend"):
             user = overview.find_user(order.customer_email)
             if user is None:
@@ -212,3 +237,64 @@ class ImportOutlineView(_LmsView):
             return Response({"detail": str(exc)}, status=400)
         audit(request, "lms.import_outline", course, **result)
         return Response(result)
+
+
+class CohortGradebookView(_LmsView):
+    """Intake gradebook from Moodle: learners x graded activities, attendance, risk."""
+
+    permission_classes = [require_perms("lms.view")]
+
+    def get(self, request, pk):
+        from apps.catalog.models import Cohort
+
+        from .learning import cohort_gradebook
+
+        return Response(cohort_gradebook(get_object_or_404(Cohort.objects.select_related("course"), pk=pk)))
+
+
+class AtRiskView(_LmsView):
+    """Learners who need support (no access, low attendance / grades, behind schedule)."""
+
+    permission_classes = [require_perms("lms.view")]
+
+    def get(self, request):
+        from .learning import at_risk_rows
+
+        return Response(at_risk_rows())
+
+
+class RefreshLearningView(_LmsView):
+    """Pull attendance / grades / last access from Moodle now (otherwise every 30 minutes)."""
+
+    permission_classes = [require_perms("lms.manage")]
+
+    def post(self, request):
+        from .completion import release_holds
+        from .learning import refresh_learning
+
+        result = {**refresh_learning(), "releasedHolds": release_holds()}
+        audit(request, "lms.refresh_learning", None, **result)
+        return Response(result)
+
+
+class AnnouncementSerializer(serializers.Serializer):
+    subject = serializers.CharField(max_length=150)
+    message = serializers.CharField(max_length=5000)
+
+
+class CohortAnnouncementView(_LmsView):
+    """E-mail one message to every learner of an intake."""
+
+    permission_classes = [require_perms("lms.manage", "crm.edit_status")]
+
+    def post(self, request, pk):
+        from apps.catalog.models import Cohort
+
+        from .learning import announce
+
+        cohort = get_object_or_404(Cohort.objects.select_related("course"), pk=pk)
+        ser = AnnouncementSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        sent = announce(cohort, ser.validated_data["subject"], ser.validated_data["message"], request.user)
+        audit(request, "lms.announce", cohort, sent=sent)
+        return Response({"sent": sent})

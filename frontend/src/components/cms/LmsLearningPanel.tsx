@@ -57,14 +57,14 @@ export const LmsLearningPanel: React.FC<{ orderId: string }> = ({ orderId }) => 
     if (isBackendEnabled()) load();
   }, [load]);
 
-  const run = async (action: LmsAction, success: string) => {
+  const run = async (action: LmsAction, success: string, note?: string) => {
     const confirmText = ACTION_CONFIRM[action];
     if (confirmText && !window.confirm(confirmText)) return;
     setBusy(action);
     setError('');
     setNotice('');
     try {
-      setData(await lmsApi.act(orderId, action));
+      setData(await lmsApi.act(orderId, action, note));
       setNotice(success);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Thao tác thất bại');
@@ -170,12 +170,44 @@ export const LmsLearningPanel: React.FC<{ orderId: string }> = ({ orderId }) => 
                   Chứng chỉ {enrollment.certificate.code}{enrollment.certificate.revoked ? ' (đã thu hồi)' : ''}
                 </a>
               )}
+              {enrollment?.certificate?.printUrl && !enrollment.certificate.revoked && (
+                <a href={enrollment.certificate.printUrl} target="_blank" rel="noopener" className="block text-slate-600 hover:underline">
+                  Bản in / PDF
+                </a>
+              )}
               {enrollment?.accessEmailedAt && (
                 <div className="text-slate-500">
                   Đã gửi email vào học: {new Date(enrollment.accessEmailedAt).toLocaleDateString('vi-VN')}
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {enrollment && enrollment.status === 'done' && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-slate-500 font-semibold">Chuyên cần</div>
+              <div className="font-bold text-slate-900">{enrollment.attendanceRate != null ? `${enrollment.attendanceRate}% (${enrollment.attendance})` : 'Chưa điểm danh'}</div>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-slate-500 font-semibold">Điểm tổng (Moodle)</div>
+              <div className="font-bold text-slate-900">{enrollment.gradePercent != null ? `${enrollment.gradePercent}%` : '–'}</div>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-slate-500 font-semibold">Vào khóa gần nhất</div>
+              <div className="font-bold text-slate-900">{enrollment.lastAccess ? new Date(enrollment.lastAccess).toLocaleDateString('vi-VN') : 'Chưa vào'}</div>
+            </div>
+            <div className={`p-3 rounded-xl border ${enrollment.riskLevel === 'risk' ? 'bg-red-50 border-red-200' : enrollment.riskLevel === 'watch' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+              <div className="text-slate-500 font-semibold">Mức độ</div>
+              <div className="font-bold">{enrollment.riskLevel === 'risk' ? 'Có nguy cơ' : enrollment.riskLevel === 'watch' ? 'Cần theo dõi' : 'Ổn'}</div>
+              {(enrollment.riskFlags || []).map((f) => <div key={f} className="text-[11px] text-slate-700">• {f}</div>)}
+            </div>
+          </div>
+        )}
+        {enrollment?.certificateHold && !enrollment.certificate && (
+          <div className="text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3">
+            <strong>Chưa cấp chứng chỉ:</strong> {enrollment.certificateHold}. Hệ thống tự cấp khi chuyên cần đạt mức (giảng viên cập nhật điểm danh trên Moodle).
           </div>
         )}
 
@@ -203,6 +235,16 @@ export const LmsLearningPanel: React.FC<{ orderId: string }> = ({ orderId }) => 
               <button type="button" disabled={busy !== null} onClick={() => run('unsuspend', 'Đã mở khóa tài khoản LMS.')}
                 className={`${btn} border-emerald-300 text-emerald-700 hover:bg-emerald-50`}>
                 <Unlock className="w-3.5 h-3.5" /> Mở khóa tài khoản
+              </button>
+            )}
+            {enrollment?.status === 'done' && !enrollment.certificate && (
+              <button type="button" disabled={busy !== null}
+                onClick={() => {
+                  const note = window.prompt('Cấp chứng chỉ ngoại lệ – lý do (ghi vào lịch sử học viên):');
+                  if (note && note.trim()) run('issue_certificate', 'Đã cấp chứng chỉ.', note.trim());
+                }}
+                className={`${btn} border-emerald-300 text-emerald-700 hover:bg-emerald-50`}>
+                Cấp chứng chỉ (ngoại lệ)
               </button>
             )}
             {enrollment?.status === 'done' && (

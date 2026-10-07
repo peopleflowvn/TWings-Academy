@@ -1,7 +1,8 @@
 from django.core.management.base import BaseCommand
 
 from apps.lms import moodle
-from apps.lms.completion import sync_all
+from apps.lms.completion import release_holds, sync_all
+from apps.lms.learning import refresh_learning
 
 
 class Command(BaseCommand):
@@ -11,4 +12,7 @@ class Command(BaseCommand):
         if not moodle.is_configured():
             self.stdout.write("LMS not configured; nothing to do.")
             return
-        self.stdout.write(f"{sync_all()}")
+        # Attendance / grades / risk first, so completion sees fresh attendance.
+        self.stdout.write(f"learning: {refresh_learning()}")
+        self.stdout.write(f"completion: {sync_all()}")
+        self.stdout.write(f"released holds: {release_holds()}")

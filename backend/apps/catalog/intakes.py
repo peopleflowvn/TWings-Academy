@@ -105,7 +105,18 @@ def sync_sessions(cohort: Cohort) -> dict:
     for session, event in zip(sessions, created, strict=False):
         session.moodle_event_id = event["id"]
         session.save(update_fields=["moodle_event_id", "updated_at"])
-    return {"synced": len(created), "moodleCourseId": course_id}
+    # Step 7: one attendance session per class session in the intake's "Điểm danh" activity.
+    from apps.lms.learning import sync_attendance_sessions
+
+    try:
+        attendance = sync_attendance_sessions(cohort, course_id)
+    except moodle.MoodleError as exc:
+        return {
+            "synced": len(created),
+            "moodleCourseId": course_id,
+            "detail": f"Chưa tạo được điểm danh: {exc}",
+        }
+    return {"synced": len(created), "moodleCourseId": course_id, "attendanceSessions": attendance}
 
 
 # ---------------------------------------------------------------- overview for /app
@@ -214,9 +225,13 @@ def session_rows(cohort: Cohort) -> list[dict]:
 def replace_sessions(cohort: Cohort, rows: list[dict]) -> None:
     """Replace the intake's sessions; their Moodle events are removed on the next sync."""
     old_events = [s.moodle_event_id for s in cohort.sessions.all() if s.moodle_event_id]
-    if old_events:
+    old_attendance = [
+        s.moodle_attendance_session_id for s in cohort.sessions.all() if s.moodle_attendance_session_id
+    ]
+    if old_events or old_attendance:
         cohort.calendar_cleanup = [*cohort.calendar_cleanup, *old_events]
-        cohort.save(update_fields=["calendar_cleanup", "updated_at"])
+        cohort.attendance_cleanup = [*cohort.attendance_cleanup, *old_attendance]
+        cohort.save(update_fields=["calendar_cleanup", "attendance_cleanup", "updated_at"])
     cohort.sessions.all().delete()
     CohortSession.objects.bulk_create(
         CohortSession(

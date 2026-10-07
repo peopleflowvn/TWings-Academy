@@ -264,6 +264,8 @@ export interface Course {
   /** Pay-in-installments plan offered at checkout (1 = pay in full only). */
   installmentCount?: number;
   installmentIntervalDays?: number;
+  /** Certificate requires at least this attendance % (0 = no requirement). */
+  minAttendanceRate?: number;
   /** Intakes still open for registration (public API). */
   upcomingCohorts?: {
     name: string;

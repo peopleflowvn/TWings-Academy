@@ -98,6 +98,9 @@ $capabilities = [
     'moodle/site:viewuseridentity', 'moodle/course:useremail', 'moodle/site:viewfullnames',
     // Intake class sessions as course calendar events.
     'moodle/calendar:manageentries',
+    // Attendance activity + sessions, reading marks; gradebook of every learner.
+    'moodle/course:manageactivities', 'mod/attendance:addinstance', 'mod/attendance:manageattendances',
+    'mod/attendance:takeattendances', 'mod/attendance:view', 'gradereport/user:view',
     // One Moodle course per intake, copied from the course's template (backup/restore) and dated.
     'moodle/backup:backupcourse', 'moodle/backup:configure', 'moodle/restore:restorecourse',
     'moodle/restore:configure', 'moodle/restore:rolldates', 'moodle/course:update',
@@ -162,6 +165,9 @@ $functions = [
     'core_course_get_contents',
     // Intake class sessions in the course calendar
     'core_calendar_create_calendar_events', 'core_calendar_delete_calendar_events',
+    // Attendance (mod_attendance) per intake, and the gradebook per learner
+    'mod_attendance_add_attendance', 'mod_attendance_add_session', 'mod_attendance_remove_session',
+    'mod_attendance_get_session', 'gradereport_user_get_grade_items',
 ];
 $service = $DB->get_record('external_services', ['shortname' => 'twings']);
 if (!$service) {

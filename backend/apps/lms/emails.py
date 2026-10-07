@@ -77,7 +77,7 @@ def send_certificate_email(order, certificate):
 {f"({escape(certificate.cohort_name)})" if certificate.cohort_name else ""}.</p>
 <p>Chứng chỉ của bạn: mã <strong>{escape(certificate.code)}</strong>.<br>
 Trang xác minh (có thể gửi cho nhà tuyển dụng): <a href="{url}">{url}</a></p>
-<p>Bản PDF chứng chỉ (nếu khóa học có cấp) tải trong khóa học trên <a href="{learn_url()}">TWings LMS</a>.</p>
+<p>Bản chứng chỉ để in / lưu PDF: <a href="{url}in/">{url}in/</a></p>
 <p>TWings Academy</p>
 """
     return send_logged(

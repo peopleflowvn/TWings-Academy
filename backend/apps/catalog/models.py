@@ -109,6 +109,9 @@ class Course(InstallmentPlan, BaseModel):
     price = models.PositiveBigIntegerField(default=0)
     original_price = models.PositiveBigIntegerField(default=0)
     is_free_enrollment_available = models.BooleanField(default=False)
+    # Step 8 – certificate only with at least this attendance (% of sessions taken) when the intake
+    # takes attendance; 0 = no attendance requirement.
+    min_attendance_rate = models.PositiveSmallIntegerField(default=80, validators=[MaxValueValidator(100)])
 
     youtube_trial_url = models.URLField(max_length=500, blank=True)
     youtube_video_id = models.CharField(max_length=32, blank=True)
@@ -181,6 +184,9 @@ class Cohort(BaseModel):
     early_bird_deadline = models.DateField(null=True, blank=True)
     # Moodle calendar events of deleted sessions, removed at the next calendar sync.
     calendar_cleanup = models.JSONField(default=list, blank=True)
+    # Step 7 – the intake's "Điểm danh" activity (mod_attendance instance) and sessions to remove.
+    moodle_attendance_id = models.PositiveIntegerField(null=True, blank=True)
+    attendance_cleanup = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["start_date", "name"]
@@ -215,6 +221,7 @@ class CohortSession(BaseModel):
     location = models.CharField(max_length=300, blank=True)
     online = models.BooleanField(default=False)
     moodle_event_id = models.PositiveIntegerField(null=True, blank=True)
+    moodle_attendance_session_id = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["starts_at"]

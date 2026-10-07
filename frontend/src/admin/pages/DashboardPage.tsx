@@ -20,6 +20,9 @@ interface DashboardData {
   };
   finance?: { revenueMonth: number; revenueToday: number; receivable: number; unmatchedTransactions: number };
   training?: {
+    atRisk: number;
+    watch: number;
+    certificateHolds: number;
     enrollments: Record<string, number>;
     upcomingCohorts: { id: string; name: string; courseTitle: string; startDate: string; capacity: number; paid: number; status: string }[];
   };
@@ -104,6 +107,13 @@ export const DashboardPage: React.FC<{ user: AdminUser }> = ({ user }) => {
           )}
           {s && <Stat label="Lead đang mở của tôi" value={s.myOpenLeads} icon={Users} to="/sales/crm" />}
           {s && <Stat label="Lịch hẹn tư vấn hôm nay" value={s.appointmentsToday} icon={CalendarClock} to="/sales/consulting" />}
+          {data?.training && (
+            <Stat label="Học viên có nguy cơ / cần theo dõi" value={`${data.training.atRisk} / ${data.training.watch}`} icon={GraduationCap}
+              tone={data.training.atRisk ? 'text-red-700 bg-red-50' : 'text-slate-600 bg-slate-100'} to="/learning/support" />
+          )}
+          {data?.training && data.training.certificateHolds > 0 && (
+            <Stat label="Chứng chỉ đang giữ (chuyên cần)" value={data.training.certificateHolds} icon={AlertTriangle} tone="text-amber-700 bg-amber-50" to="/learning/support" />
+          )}
           {f && (
             <Stat
               label="Giao dịch chưa khớp"

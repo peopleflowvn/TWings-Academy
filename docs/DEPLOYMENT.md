@@ -312,6 +312,14 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 - **Khâu 6**: học viên tự hoàn thiện **hồ sơ nhập học** + CV (kho riêng tư, nhân viên tải trong hồ sơ lead); email vào học
   kèm lịch lớp; /app → Đợt khai giảng → **Danh sách lớp** (học phí, hồ sơ thiếu, LMS, CSV).
 
+## Học tập & tốt nghiệp (hành trình khâu 7–8)
+
+- Lưu lịch học cho đợt sẽ tạo hoạt động **“Điểm danh”** (mod_attendance) trong khóa Moodle, mỗi buổi học thành một phiên điểm danh. Giảng viên điểm danh ngay trên Moodle.
+- Cron `sync_lms_completion` (30 phút/lần) đọc từ Moodle: chuyên cần, điểm tổng (gradereport_user), lần vào khóa gần nhất. Hệ thống gắn mức **cần theo dõi** hoặc **có nguy cơ** khi có các dấu hiệu: không vào học ≥ 7 ngày, chuyên cần dưới mức, tiến độ chậm, điểm dưới 50%.
+- /app → Học viên cần hỗ trợ: danh sách kèm nút gọi/Zalo, xuất CSV. Đợt khai giảng → “Học tập”: xem sổ điểm và gửi email thông báo cho cả lớp.
+- Tốt nghiệp: khóa học có ngưỡng “chuyên cần tối thiểu” (mặc định 80%, 0 = không yêu cầu). Học viên đã hoàn thành nhưng thiếu chuyên cần sẽ bị giữ chứng chỉ; chứng chỉ tự cấp khi điểm danh được bổ sung. Có thể cấp ngoại lệ (bắt buộc ghi lý do, lưu vào lịch sử).
+- Chứng chỉ có bản in A4 tại `/xac-minh/<mã>/in/`, dùng để in hoặc lưu PDF.
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị

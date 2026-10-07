@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 
 from apps.cms import seo
-from apps.lms.public import certificate_json, certificate_page
+from apps.lms.public import certificate_json, certificate_page, certificate_print
 from apps.payments.receipts import receipt_page
 
 admin.site.site_header = "TWings Academy – Quản trị hệ thống"
@@ -14,6 +14,7 @@ urlpatterns = [
     path("api/v1/", include("config.api_urls")),
     # Public certificate verification (served on the site domains through the web container).
     path("xac-minh/<str:code>/", certificate_page, name="certificate-page"),
+    path("xac-minh/<str:code>/in/", certificate_print, name="certificate-print"),
     path("bien-nhan/<str:token>/", receipt_page, name="payment-receipt"),
     path("api/v1/public/certificates/<str:code>/", certificate_json, name="certificate-json"),
     path("api/v1/public/seo/", seo.page_meta, name="public-seo"),

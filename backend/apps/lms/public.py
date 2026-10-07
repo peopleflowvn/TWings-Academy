@@ -47,5 +47,28 @@ def certificate_page(request, code):
 
 
 @require_GET
+def certificate_print(request, code: str):
+    """A4 landscape certificate to print / save as PDF (same data as the verification page)."""
+    from django.http import Http404
+    from django.shortcuts import render
+
+    from .completion import certificate_url
+    from .models import Certificate
+
+    cert = Certificate.objects.filter(code=code.upper(), revoked=False).first()
+    if cert is None:
+        raise Http404
+    response = render(
+        request, "lms/certificate_print.html", {"cert": cert, "verify_url": certificate_url(cert.code)}
+    )
+    response["Content-Security-Policy"] = (
+        "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src https://fonts.gstatic.com; "
+        "img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'"
+    )
+    response["X-Robots-Tag"] = "noindex"
+    return response
+
+
 def certificate_json(request, code):
     return JsonResponse(_data(_lookup(code)))
