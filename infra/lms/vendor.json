@@ -9,13 +9,6 @@
       "commit": "2df605b1e093248e8f8d1e2fc081fb3b1f65665f"
     },
     {
-      "name": "mod_customcert",
-      "path": "lms/public/mod/customcert",
-      "repo": "https://github.com/mdjnelson/moodle-mod_customcert.git",
-      "ref": "5.2.9",
-      "commit": "73ec9301a9281f4fea4eef9091bb0720e042b07c"
-    },
-    {
       "name": "mod_attendance",
       "path": "lms/public/mod/attendance",
       "repo": "https://github.com/danmarsden/moodle-mod_attendance.git",
