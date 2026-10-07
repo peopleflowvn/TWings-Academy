@@ -44,3 +44,7 @@ desktop.ini
 
 # ---- VPS env files: only *.example templates are tracked ----
 infra/env/*.env
+
+# ---- Moodle (lms/): tracked exactly as upstream ships it (Moodle's own lms/.gitignore still applies,
+# e.g. lms/config.php). Without this, rules above such as build/ would hide Moodle's amd/build files.
+!lms/**

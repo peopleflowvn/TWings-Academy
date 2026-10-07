@@ -3,3 +3,9 @@
 *.jpg binary
 *.ico binary
 *.zip binary
+
+# Moodle (lms/) is kept byte-for-byte as shipped upstream (some files use CRLF), so diffs against the
+# upstream snapshot only ever show TWings' own changes. TWings' plugins use the repository convention.
+lms/** -text
+lms/public/local/twings/** text=auto eol=lf
+lms/public/theme/twings/** text=auto eol=lf

@@ -7,6 +7,10 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      # Vendored upstream code (lms/, see docs/LMS.md) ships its own test keys and large bundles;
+      # TWings' own Moodle plugins are still checked.
       - id: detect-private-key
+        exclude: ^lms/(?!public/(local|theme)/twings/)
       - id: check-added-large-files
         args: ["--maxkb=1024"]
+        exclude: ^lms/(?!public/(local|theme)/twings/)
