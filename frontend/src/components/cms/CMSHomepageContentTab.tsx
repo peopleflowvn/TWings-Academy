@@ -14,7 +14,8 @@ import {
   Plus,
   Trash2
 } from 'lucide-react';
-import { CMSSectionsConfig, FAQItem } from '../../types';
+import { CMSSectionsConfig, FAQItem, Testimonial } from '../../types';
+import { ImageUploadField } from './ImageUploadField';
 import { FAQ_ITEMS } from '../../data/courseraData';
 
 interface CMSHomepageContentTabProps {
@@ -28,7 +29,7 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
 }) => {
   const [sections, setSections] = useState<CMSSectionsConfig>(cmsSections);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [activeSubSection, setActiveSubSection] = useState<'intro' | 'shelves' | 'plus' | 'instructors' | 'about' | 'faq'>('intro');
+  const [activeSubSection, setActiveSubSection] = useState<'intro' | 'shelves' | 'plus' | 'instructors' | 'about' | 'faq' | 'testimonials'>('intro');
 
   // FAQ questions are edited here; until saved once, the editor starts from the website's default list.
   const faqItems: FAQItem[] = sections.faq?.items?.length ? sections.faq.items : FAQ_ITEMS;
@@ -42,6 +43,20 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
         items,
       },
     });
+  const testimonials: Testimonial[] = sections.testimonials?.items || [];
+  const setTestimonialSection = (patch: Partial<NonNullable<CMSSectionsConfig['testimonials']>>) =>
+    setSections({
+      ...sections,
+      testimonials: {
+        enabled: sections.testimonials?.enabled ?? true,
+        title: sections.testimonials?.title || '',
+        subtitle: sections.testimonials?.subtitle,
+        items: testimonials,
+        ...patch,
+      },
+    });
+  const updateTestimonial = (id: string, patch: Partial<Testimonial>) =>
+    setTestimonialSection({ items: testimonials.map((t) => (t.id === id ? { ...t, ...patch } : t)) });
   const updateFaq = (id: string, patch: Partial<FAQItem>) =>
     setFaqItems(faqItems.map((item) => (item.id === id ? { ...item, ...patch } : item)));
 
@@ -131,7 +146,112 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
         >
           5. Giải Đáp Thắc Mắc (FAQ)
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubSection('testimonials')}
+          className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+            activeSubSection === 'testimonials' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+          }`}
+        >
+          6. Cảm Nhận Học Viên
+        </button>
       </div>
+
+      {activeSubSection === 'testimonials' && (
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-4 text-xs">
+          <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">Cảm nhận học viên trên trang chủ</h3>
+          <p className="text-slate-500">
+            Nhập từ kết quả khảo sát của TWings (biên tập lại cho phù hợp). Đánh giá học viên viết từ tài khoản và đã được
+            duyệt ở mục Đánh giá của học viên sẽ tự hiện thêm sau các mục này.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Tiêu đề khối</label>
+              <input
+                type="text"
+                value={sections.testimonials?.title || ''}
+                placeholder="Cảm nhận của học viên TWings Academy"
+                onChange={(e) => setTestimonialSection({ title: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+              />
+            </div>
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Mô tả phụ (tùy chọn)</label>
+              <input
+                type="text"
+                value={sections.testimonials?.subtitle || ''}
+                onChange={(e) => setTestimonialSection({ subtitle: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-2">
+            <label className="font-bold text-slate-700">Danh sách cảm nhận ({testimonials.length})</label>
+            <button
+              type="button"
+              onClick={() =>
+                setTestimonialSection({
+                  items: [...testimonials, { id: `t-${Date.now()}`, name: '', role: '', avatar: '', quote: '', outcome: '' }],
+                })
+              }
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold"
+            >
+              <Plus className="w-3.5 h-3.5" /> Thêm cảm nhận
+            </button>
+          </div>
+          {testimonials.map((t, index) => (
+            <div key={t.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+              <div className="flex items-start gap-2">
+                <span className="font-bold text-slate-400 pt-2.5">{index + 1}.</span>
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={t.name}
+                    placeholder="Tên học viên"
+                    onChange={(e) => updateTestimonial(t.id, { name: e.target.value })}
+                    className="p-2.5 border border-slate-300 rounded-xl font-bold bg-white"
+                  />
+                  <input
+                    type="text"
+                    value={t.role}
+                    placeholder="Vị trí / nơi công tác"
+                    onChange={(e) => updateTestimonial(t.id, { role: e.target.value })}
+                    className="p-2.5 border border-slate-300 rounded-xl bg-white"
+                  />
+                </div>
+                <button
+                  type="button"
+                  title="Xóa"
+                  onClick={() => setTestimonialSection({ items: testimonials.filter((other) => other.id !== t.id) })}
+                  className="p-2.5 rounded-xl text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <textarea
+                value={t.quote}
+                placeholder="Cảm nhận"
+                rows={3}
+                onChange={(e) => updateTestimonial(t.id, { quote: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl bg-white"
+              />
+              <input
+                type="text"
+                value={t.outcome}
+                placeholder="Kết quả sau khóa học (tùy chọn)"
+                onChange={(e) => updateTestimonial(t.id, { outcome: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl bg-white"
+              />
+              <ImageUploadField
+                label="Ảnh (tùy chọn)"
+                value={t.avatar}
+                onChange={(url) => updateTestimonial(t.id, { avatar: url })}
+                previewClassName="w-10 h-10 rounded-full object-cover"
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* SUB-SECTION 1: INTRO (PDF Page 2) */}
       {activeSubSection === 'intro' && (

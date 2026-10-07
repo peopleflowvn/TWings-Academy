@@ -761,6 +761,8 @@ export interface CMSSectionsConfig {
     enabled: boolean;
     title: string;
     subtitle?: string;
+    /** Entered in /app from TWings' own surveys (edited for the website). */
+    items?: Testimonial[];
   };
   businessCTA?: {
     enabled: boolean;

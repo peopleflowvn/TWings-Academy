@@ -34,6 +34,7 @@ import { Course, Module, Lesson, Instructor, CourseReview } from '../../types';
 import { api, isBackendEnabled, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { CoursePublishingPanel } from './CoursePublishingPanel';
+import { ImageUploadField } from './ImageUploadField';
 
 interface CMSCoursesTabProps {
   courses: Course[];
@@ -1248,15 +1249,16 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                   type="button"
                   onClick={() => {
                     const currentReviews = editForm.reviews || [];
+                    // Blank: staff enter a review collected elsewhere (survey...), never placeholder text.
                     const newRev: CourseReview = {
                       id: `rev-${Date.now()}`,
-                      studentName: 'Học viên TWings mới',
-                      role: 'Chuyên viên Tín dụng - MSB',
-                      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+                      studentName: '',
+                      role: '',
+                      avatar: '',
                       rating: 5,
                       date: new Date().toLocaleDateString('vi-VN'),
-                      comment: 'Chương trình đào tạo rất thực tế, giúp em tự tin xử lý hồ sơ ngay trong tháng đầu làm việc tại ngân hàng.',
-                      verifiedStudent: true
+                      comment: '',
+                      verifiedStudent: false
                     };
                     setEditForm({ ...editForm, reviews: [...currentReviews, newRev] });
                   }}
@@ -1265,6 +1267,46 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                   <Plus className="w-3.5 h-3.5" />
                   <span>Thêm Review Mới</span>
                 </button>
+              </div>
+
+              {/* Figures shown on the course card and page: managed here (results of TWings' own surveys). */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-amber-50/60 border border-amber-100 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Điểm đánh giá hiển thị (0–5)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={5}
+                    step={0.01}
+                    value={editForm.rating ?? 0}
+                    onChange={(e) => setEditForm({ ...editForm, rating: Math.min(5, Math.max(0, Number(e.target.value) || 0)) })}
+                    className="w-full p-2 border border-slate-300 rounded-xl bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Số lượt đánh giá</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editForm.reviewsCount ?? 0}
+                    onChange={(e) => setEditForm({ ...editForm, reviewsCount: Math.max(0, Math.round(Number(e.target.value) || 0)) })}
+                    className="w-full p-2 border border-slate-300 rounded-xl bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Số học viên hiển thị</label>
+                  <input
+                    type="text"
+                    value={editForm.enrolledCount || ''}
+                    placeholder="VD: 2,400+ học viên"
+                    onChange={(e) => setEditForm({ ...editForm, enrolledCount: e.target.value })}
+                    className="w-full p-2 border border-slate-300 rounded-xl bg-white"
+                  />
+                </div>
+                <p className="sm:col-span-3 text-slate-500">
+                  Số liệu lấy từ khảo sát của TWings, biên tập tại đây. Đánh giá học viên viết từ tài khoản (đã duyệt ở mục
+                  Đánh giá của học viên) tự hiện thêm trên trang khóa học với nhãn "Xác thực".
+                </p>
               </div>
 
               {/* Reviews list */}
@@ -1323,22 +1365,16 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                         />
                       </div>
 
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Link Ảnh Avatar</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="url"
-                            value={rev.avatar}
-                            onChange={(e) => {
-                              const updated = [...(editForm.reviews || [])];
-                              updated[rIdx].avatar = e.target.value;
-                              setEditForm({ ...editForm, reviews: updated });
-                            }}
-                            className="w-full p-2 border border-slate-300 rounded-xl font-mono text-[11px]"
-                          />
-                          <img src={rev.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0" />
-                        </div>
-                      </div>
+                      <ImageUploadField
+                        label="Ảnh đại diện (tùy chọn)"
+                        value={rev.avatar || ''}
+                        onChange={(url) => {
+                          const updated = [...(editForm.reviews || [])];
+                          updated[rIdx] = { ...updated[rIdx], avatar: url };
+                          setEditForm({ ...editForm, reviews: updated });
+                        }}
+                        previewClassName="w-10 h-10 rounded-full object-cover"
+                      />
 
                       <div className="flex items-center gap-4 pt-4">
                         <div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Avatar } from './Avatar';
 import { 
   ArrowLeft, 
   Star, 
@@ -397,10 +398,10 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                     key={inst.id || idx}
                     className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-2xl bg-slate-50/70 border border-slate-100 hover:border-slate-200 transition-all"
                   >
-                    <img
+                    <Avatar
                       src={inst.avatar}
-                      alt={inst.name}
-                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-slate-200 shadow-xs shrink-0"
+                      name={inst.name}
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border border-slate-200 shadow-xs shrink-0"
                     />
                     <div className="space-y-1.5 flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -478,10 +479,10 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                     </div>
 
                     <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                      <img
+                      <Avatar
                         src={rev.avatar}
-                        alt={rev.studentName}
-                        className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
+                        name={rev.studentName}
+                        className="w-10 h-10 rounded-full border border-slate-200 shrink-0"
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">

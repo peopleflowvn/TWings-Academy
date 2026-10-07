@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Avatar } from '../Avatar';
 import { useServerCollection } from '../../lib/serverCollection';
 import { INSTRUCTORS } from '../../lib/cmsCollections';
 import {
@@ -27,6 +28,7 @@ import confetti from 'canvas-confetti';
 import { Instructor, CourseCohort } from '../../types';
 import { REAL_INSTRUCTORS } from '../../data/coursesData';
 import { CRM_COURSE_CATEGORIES } from './CMSCRMOrdersTab';
+import { ImageUploadField } from './ImageUploadField';
 
 export const INITIAL_EXTENDED_INSTRUCTORS: Instructor[] = [
   ...REAL_INSTRUCTORS.map((inst, index) => ({
@@ -92,21 +94,22 @@ export const CMSInstructorsTab: React.FC = () => {
   const handleOpenNew = () => {
     const newInst: Instructor = {
       id: `inst-${Date.now()}`,
+      // Blank: every figure and title shown publicly is entered by staff.
       name: '',
-      title: 'Giám đốc Khối / Chuyên gia Ngân hàng MSB',
-      organization: 'Ngân hàng TMCP Hàng Hải Việt Nam (MSB)',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-      credential: '15+ năm KN Quản trị Tài chính & Tín dụng',
+      title: '',
+      organization: '',
+      avatar: '',
+      credential: '',
       bio: '',
-      rating: 5.0,
-      studentsCount: 1200,
+      rating: 0,
+      studentsCount: 0,
       email: '',
       phone: '',
-      yearsOfExperience: 15,
+      yearsOfExperience: 0,
       status: 'active',
-      bankPosition: 'Giảng viên Chuyên gia',
-      expertiseCourses: ['twings-qhkh-doanh-nghiep'],
-      assignedCohorts: ['Khóa học 9 - Hà Nội']
+      bankPosition: '',
+      expertiseCourses: [],
+      assignedCohorts: []
     };
     setEditingInstructor(newInst);
     setIsModalOpen(true);
@@ -267,10 +270,10 @@ export const CMSInstructorsTab: React.FC = () => {
             <div className="space-y-3.5">
               {/* Profile Top Row */}
               <div className="flex items-start gap-4">
-                <img
+                <Avatar
                   src={inst.avatar}
-                  alt={inst.name}
-                  className="w-16 h-16 rounded-2xl object-cover border-2 border-slate-100 shadow-xs shrink-0"
+                  name={inst.name}
+                  className="w-16 h-16 rounded-2xl border-2 border-slate-100 shadow-xs shrink-0"
                 />
 
                 <div className="min-w-0 flex-1">
@@ -449,12 +452,11 @@ export const CMSInstructorsTab: React.FC = () => {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="font-bold text-slate-700 block mb-1">URL Ảnh đại diện (Avatar):</label>
-                  <input
-                    type="text"
-                    value={editingInstructor.avatar}
-                    onChange={(e) => setEditingInstructor({ ...editingInstructor, avatar: e.target.value })}
-                    className="w-full p-2.5 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white font-mono"
+                  <ImageUploadField
+                    label="Ảnh đại diện (ảnh thật của giảng viên, JPG/PNG/WebP, tối đa 5 MB)"
+                    value={editingInstructor.avatar || ''}
+                    onChange={(url) => setEditingInstructor({ ...editingInstructor, avatar: url })}
+                    previewClassName="w-16 h-16 rounded-full object-cover"
                   />
                 </div>
 
