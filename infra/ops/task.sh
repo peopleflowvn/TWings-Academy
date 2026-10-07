@@ -243,6 +243,15 @@ for p in Program.objects.all():
       done
     done
     curl -s -m 30 --resolve "twings.tunghr.io.vn:443:$ip" https://twings.tunghr.io.vn/api/v1/public/courses/ | head -c 160; echo
+    echo "--- details"
+    curl -sS -o /dev/null -m 20 -w "http:80 %{http_code}
+" --resolve "twings.tunghr.io.vn:80:$ip" http://twings.tunghr.io.vn/ 2>&1 | tail -1
+    curl -sS -o /dev/null -m 20 -w "https:443 %{http_code}
+" --resolve "twings.tunghr.io.vn:443:$ip" https://twings.tunghr.io.vn/ 2>&1 | tail -1
+    curl -sSk -o /dev/null -m 20 -w "https:443 (no cert check) %{http_code}
+" --resolve "twings.tunghr.io.vn:443:$ip" https://twings.tunghr.io.vn/ 2>&1 | tail -1
+    timeout 10 bash -c "</dev/tcp/$ip/443" && echo "tcp 443 open" || echo "tcp 443 closed/filtered"
+    timeout 10 bash -c "</dev/tcp/$ip/80" && echo "tcp 80 open" || echo "tcp 80 closed/filtered"
     ;;
 
   hostkey)
