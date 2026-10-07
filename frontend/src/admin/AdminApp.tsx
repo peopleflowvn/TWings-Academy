@@ -2,7 +2,7 @@
  * TWings staff app (/app): admissions & sales, products, training on Moodle, finance, marketing,
  * system. Always on live data (no demo mode); every page is also authorised again by the API.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
   Building2,
