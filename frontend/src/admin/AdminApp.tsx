@@ -54,13 +54,12 @@ import { CMSEmailTemplatesTab } from '../components/cms/CMSEmailTemplatesTab';
 import { CMSUsersTab } from '../components/cms/CMSUsersTab';
 import { useAppPath, linkProps } from './router';
 import { useCourses, useHomepageSections, useOrders } from './data';
-import { DashboardPage } from './pages/DashboardPage';
+import { OverviewReportsPage } from './pages/OverviewReportsPage';
 import { CouponsPage, TransactionsPage } from './pages/FinancePages';
 import { HealthPage, MoodleHubPage } from './pages/SystemPages';
 import { BannersPage } from './pages/BannersPage';
 import { LayoutPage } from './pages/LayoutPage';
 import { ProgramsPage } from './pages/ProgramsPage';
-import { ReportsPage } from './pages/ReportsPage';
 import { JourneysPage } from './pages/JourneysPage';
 import { IntakesPage } from './pages/IntakesPage';
 import { CampaignLinksPage, ReviewsPage } from './pages/MarketingPages';
@@ -70,6 +69,7 @@ import { JobOutcomesPage, JobsPage } from './pages/PlacementPages';
 
 interface NavItem {
   path: string;
+  aliasPaths?: string[];
   label: string;
   icon: React.ElementType;
   /** Any one of these permission codes shows the page. */
@@ -80,8 +80,13 @@ const NAV: { title: string; items: NavItem[] }[] = [
   {
     title: '',
     items: [
-      { path: '/', label: 'Tổng quan', icon: LayoutDashboard, perms: [] },
-      { path: '/reports', label: 'Báo cáo', icon: BarChart3, perms: ['finance.transactions', 'crm.view_leads', 'lms.view'] }
+      {
+        path: '/',
+        aliasPaths: ['/reports'],
+        label: 'Tổng quan & Báo cáo',
+        icon: LayoutDashboard,
+        perms: []
+      }
     ]
   },
   {
@@ -149,6 +154,10 @@ const NAV: { title: string; items: NavItem[] }[] = [
 
 const ALL_ITEMS = NAV.flatMap((s) => s.items);
 
+function isItemActive(item: NavItem, currentPath: string): boolean {
+  return item.path === currentPath || Boolean(item.aliasPaths?.includes(currentPath));
+}
+
 function makeCan(user: AdminUser) {
   return (code: string) => user.role === 'super_admin' || (user.permissions || []).includes(code);
 }
@@ -164,7 +173,17 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
   const [menuOpen, setMenuOpen] = useState(false);
   const can = useMemo(() => makeCan(user), [user]);
   const visible = (item: NavItem) => item.perms.length === 0 || item.perms.some(can);
-  const current = ALL_ITEMS.find((i) => i.path === path);
+  const current = ALL_ITEMS.find((i) => isItemActive(i, path));
+
+  const pageTitle = (() => {
+    if (path === '/') return 'Tổng quan & Báo cáo · Vận hành hôm nay';
+    if (path === '/reports') return 'Tổng quan & Báo cáo · Báo cáo phân tích';
+    return current?.label || 'TWings Quản trị';
+  })();
+
+  useEffect(() => {
+    document.title = `${pageTitle} | TWings Quản trị`;
+  }, [pageTitle]);
 
   const orders = useOrders(can('crm.view_leads'));
   const courses = useCourses(can('courses.view'));
@@ -190,9 +209,14 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
     }
     switch (path) {
       case '/':
-        return <DashboardPage user={user} />;
       case '/reports':
-        return <ReportsPage />;
+        return (
+          <OverviewReportsPage
+            user={user}
+            currentPath={path}
+            canViewReports={can('finance.transactions') || can('crm.view_leads') || can('lms.view')}
+          />
+        );
       case '/content/links':
         return <CampaignLinksPage courses={courses.courses} />;
       case '/content/reviews':
@@ -271,7 +295,7 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
           <div key={section.title || 'home'} className="space-y-1">
             {section.title && <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">{section.title}</div>}
             {items.map((item) => {
-              const active = item.path === path;
+              const active = isItemActive(item, path);
               return (
                 <a key={item.path} {...linkProps(item.path)} onClickCapture={() => setMenuOpen(false)}
                   className={`flex items-center gap-2.5 px-3 py-2 rounded-xl font-semibold transition-colors ${
@@ -310,7 +334,7 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
               <button type="button" className="lg:hidden p-2 -ml-2 cursor-pointer" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
                 {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
-              <span className="font-bold text-sm text-slate-900 truncate">{current?.label || 'TWings Quản trị'}</span>
+              <span className="font-bold text-sm text-slate-900 truncate">{pageTitle}</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
               {can('lms.view') && (

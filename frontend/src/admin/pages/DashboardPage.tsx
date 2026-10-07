@@ -73,11 +73,20 @@ export const DashboardPage: React.FC<{ user: AdminUser }> = ({ user }) => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-slate-900">
-          {greeting}, {user.name.split(' ').slice(-1)[0]}
-        </h1>
-        <p className="text-sm text-slate-500">Tổng quan hoạt động TWings Academy hôm nay.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900">
+            {greeting}, {user.name.split(' ').slice(-1)[0]}
+          </h1>
+          <p className="text-sm text-slate-500">Tổng quan hoạt động TWings Academy hôm nay.</p>
+        </div>
+        <a
+          {...linkProps('/reports')}
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:border-[#0073C1] hover:bg-blue-50 text-xs font-bold text-slate-700 hover:text-[#0073C1] transition-all shadow-xs self-start sm:self-auto cursor-pointer"
+        >
+          <TrendingUp className="w-4 h-4 text-[#0073C1]" />
+          <span>Xem báo cáo phân tích xu hướng →</span>
+        </a>
       </div>
 
       {error && (
@@ -120,7 +129,7 @@ export const DashboardPage: React.FC<{ user: AdminUser }> = ({ user }) => {
               value={f.unmatchedTransactions}
               icon={AlertTriangle}
               tone={f.unmatchedTransactions ? 'text-red-700 bg-red-50' : 'text-slate-600 bg-slate-100'}
-              to="/finance/transactions"
+              to="/finance/transactions?status=unmatched"
             />
           )}
         </div>

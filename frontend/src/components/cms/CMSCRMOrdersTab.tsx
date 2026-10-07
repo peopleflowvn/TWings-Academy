@@ -138,7 +138,30 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
   onUpdateOrderCRM,
 }) => {
   // View mode switcher: kanban, table, analytics, agent_queue
-  const [viewMode, setViewMode] = useState<'kanban' | 'table' | 'analytics' | 'agent_queue'>('kanban');
+  const [viewMode, setViewMode] = useState<'kanban' | 'table' | 'analytics' | 'agent_queue'>(() => {
+    const v = new URLSearchParams(window.location.search).get('view') as any;
+    return v && ['kanban', 'table', 'analytics', 'agent_queue'].includes(v) ? v : 'kanban';
+  });
+
+  // Keep viewMode synchronized with URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') !== viewMode) {
+      params.set('view', viewMode);
+      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
+    const sync = () => {
+      const v = new URLSearchParams(window.location.search).get('view') as any;
+      if (v && ['kanban', 'table', 'analytics', 'agent_queue'].includes(v)) {
+        setViewMode(v);
+      }
+    };
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, []);
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');

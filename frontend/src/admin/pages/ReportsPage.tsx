@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Download, RefreshCw } from 'lucide-react';
+import { Download, LayoutDashboard, RefreshCw } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatVND } from '../../lib/commerce';
+import { linkProps } from '../router';
 
 interface Reports {
   months: string[];
@@ -116,15 +117,24 @@ export const ReportsPage: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-slate-600">Khoảng thời gian:</span>
-        {[3, 6, 12].map((m) => (
-          <button key={m} type="button" onClick={() => setMonths(m)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${months === m ? 'bg-[#0073C1] text-white border-[#0073C1]' : 'border-slate-200 text-slate-600'}`}>
-            {m} tháng
-          </button>
-        ))}
-        <button type="button" onClick={load} className="p-2 rounded-xl border border-slate-200 cursor-pointer" title="Làm mới"><RefreshCw className="w-4 h-4" /></button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-600 font-medium">Khoảng thời gian:</span>
+          {[3, 6, 12].map((m) => (
+            <button key={m} type="button" onClick={() => setMonths(m)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${months === m ? 'bg-[#0073C1] text-white border-[#0073C1]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+              {m} tháng
+            </button>
+          ))}
+          <button type="button" onClick={load} className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer" title="Làm mới"><RefreshCw className="w-4 h-4" /></button>
+        </div>
+        <a
+          {...linkProps('/')}
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:border-[#0073C1] hover:bg-blue-50 text-xs font-bold text-slate-700 hover:text-[#0073C1] transition-all shadow-xs self-start sm:self-auto cursor-pointer"
+        >
+          <LayoutDashboard className="w-4 h-4 text-[#0073C1]" />
+          <span>Về vận hành hôm nay</span>
+        </a>
       </div>
 
       {finance && (

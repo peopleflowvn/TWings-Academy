@@ -173,7 +173,28 @@ type Tab = 'candidates' | 'open' | 'hired' | 'closed' | 'shares';
 /** Step 9: graduates -> referral -> partner HR -> interview -> offer -> start. */
 export const JobsPage: React.FC = () => {
   const canManage = useStaffCan('placement.manage');
-  const [tab, setTab] = useState<Tab>('candidates');
+  const [tab, setTab] = useState<Tab>(() => {
+    const p = new URLSearchParams(window.location.search).get('tab') as Tab | null;
+    return p && ['candidates', 'open', 'hired', 'closed', 'shares'].includes(p) ? p : 'candidates';
+  });
+
+  const handleSelectTab = (nextTab: Tab) => {
+    setTab(nextTab);
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', nextTab);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  };
+
+  useEffect(() => {
+    const sync = () => {
+      const p = new URLSearchParams(window.location.search).get('tab') as Tab | null;
+      if (p && ['candidates', 'open', 'hired', 'closed', 'shares'].includes(p)) {
+        setTab(p);
+      }
+    };
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, []);
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
   const [placements, setPlacements] = useState<Placement[] | null>(null);
   const [shares, setShares] = useState<PartnerShare[] | null>(null);
@@ -226,7 +247,7 @@ export const JobsPage: React.FC = () => {
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {tabs.map((t) => (
-          <button key={t.id} type="button" onClick={() => setTab(t.id)}
+          <button key={t.id} type="button" onClick={() => handleSelectTab(t.id)}
             className={`${btn} border ${tab === t.id ? 'bg-[#0073C1] text-white border-[#0073C1]' : 'border-slate-200 text-slate-700'}`}>
             {t.label}{t.count !== undefined ? ` (${t.count})` : ''}
           </button>

@@ -30,8 +30,29 @@ const MATCH_LABEL = { matched: 'Đã khớp', unmatched: 'Chưa khớp', ignored
 /** Incoming transfers reported by the bank webhook and how they were matched to orders. */
 export const TransactionsPage: React.FC = () => {
   const [rows, setRows] = useState<BankTransaction[] | null>(null);
-  const [filter, setFilter] = useState<'' | 'unmatched' | 'matched' | 'ignored'>('');
+  const [filter, setFilter] = useState<'' | 'unmatched' | 'matched' | 'ignored'>(() => {
+    const s = new URLSearchParams(window.location.search).get('status');
+    return s && ['unmatched', 'matched', 'ignored'].includes(s) ? (s as any) : '';
+  });
   const [error, setError] = useState('');
+
+  const handleFilterChange = (k: '' | 'unmatched' | 'matched' | 'ignored') => {
+    setFilter(k);
+    const params = new URLSearchParams(window.location.search);
+    if (k) params.set('status', k);
+    else params.delete('status');
+    const qs = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`);
+  };
+
+  useEffect(() => {
+    const sync = () => {
+      const s = new URLSearchParams(window.location.search).get('status');
+      setFilter(s && ['unmatched', 'matched', 'ignored'].includes(s) ? (s as any) : '');
+    };
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, []);
 
   const load = () => {
     setError('');
@@ -55,7 +76,7 @@ export const TransactionsPage: React.FC = () => {
         </div>
         <div className="flex gap-2 text-xs">
           {(['', 'unmatched', 'matched', 'ignored'] as const).map((k) => (
-            <button key={k || 'all'} type="button" onClick={() => setFilter(k)}
+            <button key={k || 'all'} type="button" onClick={() => handleFilterChange(k)}
               className={`px-3 py-1.5 rounded-xl border font-bold cursor-pointer ${filter === k ? 'bg-[#0073C1] text-white border-[#0073C1]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
               {k ? MATCH_LABEL[k] : 'Tất cả'}
             </button>

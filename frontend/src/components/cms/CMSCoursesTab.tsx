@@ -55,10 +55,45 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
 }) => {
   const canPrice = useStaffCan('courses.pricing');
   // Currently selected course to edit
-  const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(() => {
+    const p = new URLSearchParams(window.location.search).get('id');
+    return p && courses.some((c) => c.id === p) ? p : (courses[0]?.id || '');
+  });
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeSubTab, setActiveSubTab] = useState<'info' | 'youtube' | 'instructors' | 'modules' | 'reviews' | 'guarantees'>('info');
+  const [activeSubTab, setActiveSubTab] = useState<'info' | 'youtube' | 'instructors' | 'modules' | 'reviews' | 'guarantees'>(() => {
+    const t = new URLSearchParams(window.location.search).get('subtab') as any;
+    return t && ['info', 'youtube', 'instructors', 'modules', 'reviews', 'guarantees'].includes(t) ? t : 'info';
+  });
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
+
+  // Keep URL query params synchronized with course selection and sub-tab
+  useEffect(() => {
+    if (!selectedCourseId) return;
+    const params = new URLSearchParams(window.location.search);
+    let changed = false;
+    if (params.get('id') !== selectedCourseId) {
+      params.set('id', selectedCourseId);
+      changed = true;
+    }
+    if (params.get('subtab') !== activeSubTab) {
+      params.set('subtab', activeSubTab);
+      changed = true;
+    }
+    if (changed) {
+      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+    }
+  }, [selectedCourseId, activeSubTab]);
+
+  useEffect(() => {
+    const sync = () => {
+      const p = new URLSearchParams(window.location.search).get('id');
+      const t = new URLSearchParams(window.location.search).get('subtab') as any;
+      if (p && courses.some((c) => c.id === p)) setSelectedCourseId(p);
+      if (t && ['info', 'youtube', 'instructors', 'modules', 'reviews', 'guarantees'].includes(t)) setActiveSubTab(t);
+    };
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, [courses]);
 
   // Editable buffer for the selected course
   const currentCourse = courses.find((c) => c.id === selectedCourseId) || courses[0];
