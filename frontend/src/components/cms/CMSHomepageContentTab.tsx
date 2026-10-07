@@ -10,9 +10,12 @@ import {
   Award, 
   GraduationCap, 
   Building2,
-  Users
+  Users,
+  Plus,
+  Trash2
 } from 'lucide-react';
-import { CMSSectionsConfig } from '../../types';
+import { CMSSectionsConfig, FAQItem } from '../../types';
+import { FAQ_ITEMS } from '../../data/courseraData';
 
 interface CMSHomepageContentTabProps {
   cmsSections: CMSSectionsConfig;
@@ -26,6 +29,21 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
   const [sections, setSections] = useState<CMSSectionsConfig>(cmsSections);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [activeSubSection, setActiveSubSection] = useState<'intro' | 'shelves' | 'plus' | 'instructors' | 'about' | 'faq'>('intro');
+
+  // FAQ questions are edited here; until saved once, the editor starts from the website's default list.
+  const faqItems: FAQItem[] = sections.faq?.items?.length ? sections.faq.items : FAQ_ITEMS;
+  const setFaqItems = (items: FAQItem[]) =>
+    setSections({
+      ...sections,
+      faq: {
+        enabled: sections.faq?.enabled ?? true,
+        title: sections.faq?.title || 'Giải Đáp Thắc Mắc Thường Gặp (FAQ)',
+        subtitle: sections.faq?.subtitle,
+        items,
+      },
+    });
+  const updateFaq = (id: string, patch: Partial<FAQItem>) =>
+    setFaqItems(faqItems.map((item) => (item.id === id ? { ...item, ...patch } : item)));
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -421,6 +439,48 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
               })}
               className="w-full p-2.5 border border-slate-300 rounded-xl"
             />
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-slate-700">Câu hỏi & trả lời ({faqItems.length})</label>
+              <button
+                type="button"
+                onClick={() => setFaqItems([...faqItems, { id: `faq-${Date.now()}`, question: '', answer: '' }])}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold"
+              >
+                <Plus className="w-3.5 h-3.5" /> Thêm câu hỏi
+              </button>
+            </div>
+            {faqItems.map((item, index) => (
+              <div key={item.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-slate-400 pt-2.5">{index + 1}.</span>
+                  <input
+                    type="text"
+                    value={item.question}
+                    placeholder="Câu hỏi"
+                    onChange={(e) => updateFaq(item.id, { question: e.target.value })}
+                    className="flex-1 p-2.5 border border-slate-300 rounded-xl font-bold bg-white"
+                  />
+                  <button
+                    type="button"
+                    title="Xóa câu hỏi"
+                    onClick={() => setFaqItems(faqItems.filter((other) => other.id !== item.id))}
+                    className="p-2.5 rounded-xl text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <textarea
+                  value={item.answer}
+                  placeholder="Trả lời"
+                  rows={3}
+                  onChange={(e) => updateFaq(item.id, { answer: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl bg-white"
+                />
+              </div>
+            ))}
           </div>
         </div>
       )}

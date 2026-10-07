@@ -315,3 +315,25 @@ class CourseReviewSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["rating", "comment", "completed", "created_at"]
+
+
+class PublicReviewSerializer(serializers.ModelSerializer):
+    """An approved learner review for the home page: no e-mail, order or moderation data."""
+
+    course_title = serializers.CharField(source="course.title", read_only=True)
+    course_slug = serializers.CharField(source="course.slug", read_only=True)
+    date = serializers.DateTimeField(source="created_at", format="%d/%m/%Y", read_only=True)
+
+    class Meta:
+        model = CourseReview
+        fields = [
+            "id",
+            "display_name",
+            "role",
+            "rating",
+            "comment",
+            "completed",
+            "course_title",
+            "course_slug",
+            "date",
+        ]

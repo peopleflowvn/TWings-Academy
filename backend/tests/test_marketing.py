@@ -159,3 +159,24 @@ def test_only_learners_of_the_course_can_review(course, monkeypatch):
         HTTP_X_CSRFTOKEN=token,
     )
     assert res.status_code == 403
+
+
+def test_home_page_reviews_are_approved_learner_reviews_only(api, course):
+    def review(email, status, comment):
+        order = _learner(course, email)
+        return CourseReview.objects.create(
+            course=course, order=order, display_name="Hà N.", rating=5, comment=comment, status=status
+        )
+
+    review("a@example.com", "approved", "Bài tập sát thực tế.")
+    review("b@example.com", "pending", "Chưa duyệt.")
+    review("c@example.com", "rejected", "Không đăng.")
+
+    rows = api.get("/api/v1/public/reviews/").json()
+    assert [r["comment"] for r in rows] == ["Bài tập sát thực tế."]
+    assert rows[0]["courseSlug"] == course.slug and rows[0]["displayName"] == "Hà N."
+    assert "email" not in str(rows).lower() and "order" not in str(rows).lower()
+
+    course.status = "draft"  # unpublished course: its reviews leave the home page too
+    course.save()
+    assert api.get("/api/v1/public/reviews/").json() == []

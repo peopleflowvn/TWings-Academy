@@ -23,6 +23,7 @@ from .serializers import (
     PublicCourseSerializer,
     PublicInstructorSerializer,
     PublicProgramSerializer,
+    PublicReviewSerializer,
 )
 
 PROGRAM_COURSES = Prefetch("program_courses", queryset=ProgramCourse.objects.select_related("course"))
@@ -94,6 +95,20 @@ class PublicPartnerViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = PartnerSerializer
     pagination_class = None
     queryset = Partner.objects.filter(is_active=True)
+
+
+class PublicReviewViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """Latest approved reviews by verified learners (home page). Nothing is shown when there are none."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    serializer_class = PublicReviewSerializer
+    pagination_class = None
+    queryset = (
+        CourseReview.objects.filter(status="approved", course__is_published=True)
+        .select_related("course")
+        .order_by("-completed", "-rating", "-created_at")[:12]
+    )
 
 
 # ---------------------------------------------------------------- staff

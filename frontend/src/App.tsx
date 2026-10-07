@@ -41,6 +41,16 @@ import { RegistrationModal } from './components/RegistrationModal';
 import { YouTubeTrialModal } from './components/YouTubeTrialModal';
 import { FloatingContact } from './components/FloatingContact';
 
+const LIVE = isBackendEnabled();
+// Sections missing from the server config get their texts from the defaults, but never sample people,
+// partners or photos.
+const LIVE_SECTIONS: CMSSectionsConfig = {
+  ...DEFAULT_CMS_SECTIONS,
+  partners: { ...DEFAULT_CMS_SECTIONS.partners, items: [] },
+  instructors: { ...DEFAULT_CMS_SECTIONS.instructors, items: [] },
+  gallery: { ...DEFAULT_CMS_SECTIONS.gallery, photos: [] },
+};
+
 export default function App() {
   // Every page has its own URL (/khoa-hoc/<slug>, /tin-tuc/<slug>, /ve-chung-toi...): see lib/routes.ts.
   // The staff app (/app) and program / account pages are separate bundles (main.tsx).
@@ -56,11 +66,12 @@ export default function App() {
   const [articleMissing, setArticleMissing] = useState<string | undefined>();
 
   // Core Data
-  const [courses, setCourses] = useState<Course[]>(COURSES);
-  const [orders, setOrders] = useState<Order[]>(COURSERA_INITIAL_ORDERS);
-  const [articles, setArticles] = useState<Article[]>(INITIAL_ARTICLES);
-  const [cmsSections, setCmsSections] = useState<CMSSectionsConfig>(DEFAULT_CMS_SECTIONS);
-  const [banners, setBanners] = useState<HeroBannerItem[]>(HERO_BANNERS);
+  // Live site: only what the API returns, never the bundled samples (they are for demo mode only).
+  const [courses, setCourses] = useState<Course[]>(LIVE ? [] : COURSES);
+  const [orders, setOrders] = useState<Order[]>(LIVE ? [] : COURSERA_INITIAL_ORDERS);
+  const [articles, setArticles] = useState<Article[]>(LIVE ? [] : INITIAL_ARTICLES);
+  const [cmsSections, setCmsSections] = useState<CMSSectionsConfig>(LIVE ? LIVE_SECTIONS : DEFAULT_CMS_SECTIONS);
+  const [banners, setBanners] = useState<HeroBannerItem[]>(LIVE ? [] : HERO_BANNERS);
 
   // Active Selected Course & Article
   const [selectedCourse, setSelectedCourse] = useState<Course>(COURSES[0]);
@@ -83,7 +94,7 @@ export default function App() {
     'deeplearning-machine-learning'
   ]);
 
-  // Live content from the Django API; the bundled demo data stays as an offline fallback.
+  // Live content from the Django API (an empty list stays empty: no fallback to the demo samples).
   useEffect(() => {
     if (!isBackendEnabled()) return;
     let cancelled = false;
@@ -95,17 +106,17 @@ export default function App() {
         api.get<{ data: CMSSectionsConfig }>('/public/site-config/homepage_sections/')
       ]);
       if (cancelled) return;
-      if (courseRes.status === 'fulfilled' && courseRes.value.length) {
+      if (courseRes.status === 'fulfilled') {
         setCourses(courseRes.value);
-        setSelectedCourse(courseRes.value[0]);
+        if (courseRes.value.length) setSelectedCourse(courseRes.value[0]);
       }
-      if (articleRes.status === 'fulfilled' && articleRes.value.results.length) {
+      if (articleRes.status === 'fulfilled') {
         setArticles(articleRes.value.results);
-        setSelectedArticle(articleRes.value.results[0]);
+        if (articleRes.value.results.length) setSelectedArticle(articleRes.value.results[0]);
       }
-      if (bannerRes.status === 'fulfilled' && bannerRes.value.length) setBanners(bannerRes.value);
+      if (bannerRes.status === 'fulfilled') setBanners(bannerRes.value);
       if (sectionsRes.status === 'fulfilled' && sectionsRes.value.data?.hero) {
-        setCmsSections({ ...DEFAULT_CMS_SECTIONS, ...sectionsRes.value.data });
+        setCmsSections({ ...LIVE_SECTIONS, ...sectionsRes.value.data });
       }
       setContentLoaded(true);
     };

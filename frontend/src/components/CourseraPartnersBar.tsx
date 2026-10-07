@@ -1,7 +1,6 @@
 import React from 'react';
 import { Building2, ExternalLink } from 'lucide-react';
 import { PartnerItem } from '../types';
-import { DEFAULT_PARTNERS } from '../data/courseraData';
 
 interface CourseraPartnersBarProps {
   partners?: PartnerItem[];
@@ -9,10 +8,12 @@ interface CourseraPartnersBarProps {
 }
 
 export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
-  partners = DEFAULT_PARTNERS,
+  partners = [],
   title,
 }) => {
-  const displayPartners = partners && partners.length > 0 ? partners : DEFAULT_PARTNERS;
+  // Only the partners entered in /app (Đối tác): never a built-in sample list.
+  const displayPartners = partners;
+  if (displayPartners.length === 0) return null;
 
   return (
     <section className="bg-white py-8 border-b border-slate-100">

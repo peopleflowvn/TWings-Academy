@@ -40,7 +40,6 @@ import { openInMoodle, StaffUserContext } from '../lib/lms';
 import { useServerCollection } from '../lib/serverCollection';
 import { BANNERS } from '../lib/cmsCollections';
 import { AdminUser, CMSSectionsConfig, HeroBannerItem, PartnerItem } from '../types';
-import { DEFAULT_PARTNERS } from '../data/courseraData';
 import { StaffLoginGate } from '../components/cms/StaffLoginGate';
 import { CMSCRMOrdersTab } from '../components/cms/CMSCRMOrdersTab';
 import { CMSCoursesTab } from '../components/cms/CMSCoursesTab';
@@ -264,7 +263,7 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
       case '/content/banners':
         return <BannersRoute />;
       case '/content/partners':
-        return waitHomepage || <CMSPartnersTab partners={homepage.sections.partners.items || DEFAULT_PARTNERS} onUpdatePartners={updatePartners} />;
+        return waitHomepage || <CMSPartnersTab partners={homepage.sections.partners.items || []} onUpdatePartners={updatePartners} />;
       case '/content/layout':
         return waitHomepage || <LayoutPage sectionsState={homepage.sections} handleToggleSection={toggleSection} />;
       case '/content/articles':

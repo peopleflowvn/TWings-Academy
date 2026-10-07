@@ -173,3 +173,30 @@ def test_course_editor_saves_instructors_by_id(course, staff_client, api):
     assert list(course.instructors.values_list("name", flat=True)) == ["GV Lưu"]
     public = api.get(f"/api/v1/public/courses/{course.slug}/").json()
     assert [i["name"] for i in public["instructors"]] == ["GV Lưu"]
+
+
+def test_demo_banners_hidden_again_and_coursera_wording_removed():
+    back = HeroBanner.objects.create(title="Learn AI from the companies building it", is_active=True)
+    real = HeroBanner.objects.create(title="Đột phá Sự nghiệp Ngân hàng Thực chiến", is_active=True)
+    _migration("cms", "0004_hide_demo_banners_again").hide_demo_banners(django_apps, None)
+    assert not HeroBanner.objects.get(pk=back.pk).is_active and HeroBanner.objects.get(pk=real.pk).is_active
+
+    from apps.notifications.models import EmailTemplate
+
+    fix = _migration("notifications", "0002_remove_coursera_wording")
+    seeded = EmailTemplate.objects.create(
+        code="admission_welcome",
+        name="Giấy báo nhập học",
+        subject="x",
+        body="<p>Chào {{name}}</p>" + fix.REPLACEMENTS[1][0] + "<p>Lịch học do TWings gửi riêng.</p>",
+    )
+    fix.fix_templates(django_apps, None)
+    seeded.refresh_from_db()
+    assert "coursera" not in seeded.body.lower() and "TWings LMS" in seeded.body
+    assert seeded.body.startswith("<p>Chào {{name}}</p>") and "Lịch học do TWings gửi riêng." in seeded.body
+
+    SiteConfig.objects.create(
+        key=SiteConfig.KEY_SITE_SEO, data={"defaultKeywords": ["Twings Academy", "chứng chỉ Coursera"]}
+    )
+    _migration("core", "0005_drop_coursera_keyword").drop_keyword(django_apps, None)
+    assert SiteConfig.objects.get(key=SiteConfig.KEY_SITE_SEO).data["defaultKeywords"] == ["Twings Academy"]

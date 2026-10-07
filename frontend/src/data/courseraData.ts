@@ -1,7 +1,6 @@
 import { 
   Course, 
   Partner, 
-  Testimonial, 
   FAQItem, 
   Order, 
   HeroBannerItem, 
@@ -105,95 +104,6 @@ export const PARTNERS: Record<string, Partner> = {
     type: 'university'
   }
 };
-
-export const DEFAULT_PARTNERS: Partner[] = [
-  {
-    id: 'p-msb',
-    name: 'MSB Ngân hàng TMCP Hàng Hải',
-    logoText: 'MSB',
-    logoColor: '#EA580C',
-    logoUrl: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?auto=format&fit=crop&w=120&q=80',
-    type: 'company',
-    slogan: 'Đối tác chiến lược tuyển dụng & đào tạo thực chiến',
-    websiteUrl: 'https://www.msb.com.vn'
-  },
-  {
-    id: 'p-rox',
-    name: 'Tập đoàn ROX Group',
-    logoText: 'ROX GROUP',
-    logoColor: '#0073C1',
-    logoUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=120&q=80',
-    type: 'company',
-    slogan: 'Tập đoàn kinh tế đa ngành hàng đầu Việt Nam',
-    websiteUrl: 'https://roxgroup.vn'
-  },
-  {
-    id: 'p-tntalent',
-    name: 'TNtalent Human Resources',
-    logoText: 'TNTALENT',
-    logoColor: '#D97706',
-    logoUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=120&q=80',
-    type: 'company',
-    slogan: 'Đơn vị phát triển nguồn nhân lực chiến lược',
-    websiteUrl: 'https://tntalent.vn'
-  },
-  {
-    id: 'p-ba',
-    name: 'Học viện Ngân hàng (Banking Academy)',
-    logoText: 'HV NGÂN HÀNG',
-    logoColor: '#0F294D',
-    logoUrl: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=120&q=80',
-    type: 'university',
-    slogan: 'Cơ sở đào tạo tài chính - ngân hàng hàng đầu',
-    websiteUrl: 'https://www.hvnh.edu.vn'
-  },
-  {
-    id: 'p-neu',
-    name: 'Đại học Kinh tế Quốc dân (NEU)',
-    logoText: 'NEU',
-    logoColor: '#DC2626',
-    logoUrl: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=120&q=80',
-    type: 'university',
-    slogan: 'Trường đại học trọng điểm quốc gia',
-    websiteUrl: 'https://neu.edu.vn'
-  },
-  {
-    id: 'p-google',
-    name: 'Google Career Certificates',
-    logoText: 'Google',
-    logoColor: '#4285F4',
-    logoUrl: 'https://images.unsplash.com/photo-1572021335469-31706a17aaef?auto=format&fit=crop&w=120&q=80',
-    type: 'company',
-    websiteUrl: 'https://grow.google'
-  },
-  {
-    id: 'p-ibm',
-    name: 'IBM Skills Network',
-    logoText: 'IBM',
-    logoColor: '#052FAD',
-    logoUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=120&q=80',
-    type: 'company',
-    websiteUrl: 'https://www.ibm.com'
-  },
-  {
-    id: 'p-stanford',
-    name: 'Stanford Online',
-    logoText: 'Stanford',
-    logoColor: '#8C1515',
-    logoUrl: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=120&q=80',
-    type: 'university',
-    websiteUrl: 'https://online.stanford.edu'
-  },
-  {
-    id: 'p-illinois',
-    name: 'University of Illinois',
-    logoText: 'ILLINOIS',
-    logoColor: '#13294B',
-    logoUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=120&q=80',
-    type: 'university',
-    websiteUrl: 'https://illinois.edu'
-  }
-];
 
 // -------------------------------------------------------------
 // DYNAMIC HERO BANNERS (Horizontal Scrollable Carousel - User: "có thể có nhiều hơn 2 và cần chạy cuộn ngang")
@@ -1238,38 +1148,11 @@ export const INITIAL_SEO_SETTINGS: SiteSEOSettings = {
   address: 'Tòa ROX Tower, 54A Nguyễn Chí Thanh, Phường Láng, Hà Nội'
 };
 
-export const TESTIMONIALS: Testimonial[] = [
-  {
-    id: 't1',
-    name: 'Nguyễn Thị Khánh Linh',
-    role: 'Chuyên viên Tín dụng SME - MSB Sở Giao Dịch',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
-    quote: '"Nhờ chương trình thực chiến tại Twings Academy và sự hướng dẫn của các Giám đốc MSB, tôi tự tin xử lý trọn vẹn bộ hồ sơ cấp tín dụng 20 tỷ ngay tháng đầu thử việc."',
-    outcome: 'Được nhận chính thức tại MSB với mức thu nhập vượt chỉ tiêu 150%'
-  },
-  {
-    id: 't2',
-    name: 'Trần Quốc Huy',
-    role: 'RM Cá nhân Xuất sắc - Chi nhánh TP.HCM',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-    quote: '"Kỹ năng bóc tách CIC và tâm lý học chốt sale sản phẩm thẻ, tiền gửi tại Twings đã giúp tôi tăng gấp đôi lượng khách hàng Premier Banking."',
-    outcome: 'Thăng tiến lên vị trí Chuyên viên Quản lý Khách hàng Cao cấp sau 6 tháng'
-  },
-  {
-    id: 't3',
-    name: 'Sarah W.',
-    role: 'Data Analyst at Global Tech',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    quote: '"Coursera và Twings mang lại kiến thức thực tế, chuẩn chỉ và cập nhật sát nhất với nhu cầu thị trường."',
-    outcome: 'Chuyển đổi nghề nghiệp sang vai trò Phân tích Dữ liệu với mức lương tăng 40%'
-  }
-];
-
 export const FAQ_ITEMS: FAQItem[] = [
   {
     id: 'faq-1',
     question: 'Hình thức đào tạo của các khóa học tại Twings Academy như thế nào?',
-    answer: 'Các khóa học tại Twings Academy được phân chia rõ ràng theo 3 hình thức: 1) Học trực tiếp (Offline) tại Tòa nhà ROX Tower hoặc hội trường đào tạo ngân hàng MSB; 2) Học kết hợp (Hybrid) giữa trực tiếp và bài giảng số; 3) Khóa học Online chuyên biệt được vận hành trên hệ thống LMS riêng - Ban quản lý học tập sẽ liên hệ và cấp tài khoản riêng kèm lộ trình học 1-1 cho học viên sau khi đăng ký.',
+    answer: 'Các khóa học tại Twings Academy được phân chia rõ ràng theo 3 hình thức: 1) Học trực tiếp (Offline) tại Tòa nhà ROX Tower hoặc hội trường đào tạo ngân hàng MSB; 2) Học kết hợp (Hybrid) giữa trực tiếp và bài giảng số; 3) Khóa học Online trên hệ thống học trực tuyến (LMS) của TWings: tài khoản học được tạo tự động ngay khi học phí được ghi nhận, học viên vào học bằng nút "Vào học" và đăng nhập bằng mã gửi qua email.',
     isExpandedByDefault: true
   },
   {
@@ -1281,7 +1164,7 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     id: 'faq-3',
     question: 'Hệ thống thanh toán tự động VietQR hoạt động ra sao?',
-    answer: 'Hệ thống tạo mã VietQR động theo từng đơn hàng với số tiền và nội dung chuyển khoản tự động. Ngay khi bạn chuyển khoản qua bất kỳ app ngân hàng nào (MB Bank, Vietcombank, Techcombank...), hệ thống tự động ghi nhận và chuyển trạng thái đơn hàng sang "Đã đóng phí" trong 3 giây.',
+    answer: 'Hệ thống tạo mã VietQR động theo từng đơn hàng với số tiền và nội dung chuyển khoản tự động. Ngay khi bạn chuyển khoản qua bất kỳ app ngân hàng nào (MB Bank, Vietcombank, Techcombank...), hệ thống tự động ghi nhận và chuyển trạng thái đơn hàng sang "Đã đóng phí" ngay khi ngân hàng báo có (thường chỉ sau vài giây).',
   },
   {
     id: 'faq-4',

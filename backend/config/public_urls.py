@@ -8,6 +8,7 @@ from apps.catalog.views import (
     PublicInstructorViewSet,
     PublicPartnerViewSet,
     PublicProgramViewSet,
+    PublicReviewViewSet,
 )
 from apps.cms.analytics import TrackView
 from apps.cms.legal import legal_view
@@ -21,6 +22,7 @@ router.register("courses", PublicCourseViewSet, basename="public-course")
 router.register("programs", PublicProgramViewSet, basename="public-program")
 router.register("instructors", PublicInstructorViewSet, basename="public-instructor")
 router.register("partners", PublicPartnerViewSet, basename="public-partner")
+router.register("reviews", PublicReviewViewSet, basename="public-review")
 router.register("articles", PublicArticleViewSet, basename="public-article")
 router.register("banners", PublicBannerViewSet, basename="public-banner")
 router.register("site-config", PublicSiteConfigViewSet, basename="public-site-config")
