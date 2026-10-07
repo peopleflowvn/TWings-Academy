@@ -310,7 +310,7 @@ class CohortSessionsView(APIView):
     def put(self, request, pk):
         from apps.lms import moodle
 
-        from .intakes import replace_sessions, session_rows, sync_sessions
+        from .intakes import ScheduleError, replace_sessions, session_rows, sync_sessions
 
         cohort = get_object_or_404(Cohort.objects.select_related("course"), pk=pk)
         ser = SessionsPayloadSerializer(data=request.data)
@@ -318,7 +318,10 @@ class CohortSessionsView(APIView):
         data = ser.validated_data
         if len(data["sessions"]) > 200:
             raise serializers.ValidationError({"sessions": "Tối đa 200 buổi."})
-        replace_sessions(cohort, data["sessions"])
+        try:
+            replace_sessions(cohort, data["sessions"])
+        except ScheduleError as exc:
+            raise serializers.ValidationError({"detail": str(exc)}) from exc
         if "schedule_text" in data:
             cohort.schedule_text = data["schedule_text"]
             cohort.save(update_fields=["schedule_text", "updated_at"])

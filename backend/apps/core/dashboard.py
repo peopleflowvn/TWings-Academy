@@ -84,12 +84,14 @@ class DashboardView(APIView):
             ).annotate(paid=Count("orders", filter=Q(orders__learning_access=True)))
             data["training"] = {
                 "atRisk": LmsEnrollment.objects.filter(
-                    status="done", completed_at__isnull=True, risk_level="risk"
+                    status="done", completed_at__isnull=True, risk_level="risk", order__learning_access=True
                 ).count(),
                 "watch": LmsEnrollment.objects.filter(
-                    status="done", completed_at__isnull=True, risk_level="watch"
+                    status="done", completed_at__isnull=True, risk_level="watch", order__learning_access=True
                 ).count(),
-                "certificateHolds": LmsEnrollment.objects.filter(certificate__isnull=True)
+                "certificateHolds": LmsEnrollment.objects.filter(
+                    status="done", certificate__isnull=True, order__learning_access=True
+                )
                 .exclude(certificate_hold="")
                 .count(),
                 "enrollments": dict(

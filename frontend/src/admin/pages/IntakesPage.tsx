@@ -384,7 +384,7 @@ export const IntakesPage: React.FC<{ courses: { id: string; title: string }[] }>
                   </td>
                   <td className="py-3 pr-3 text-right whitespace-nowrap">
                     <button type="button" onClick={() => setRoster(r.id)} className="text-[#0073C1] font-bold hover:underline cursor-pointer mr-3">Danh sách lớp</button>
-                    {['in_progress', 'full', 'closed', 'opening'].includes(r.status) && (
+                    {r.status !== 'upcoming' && (
                       <button type="button" onClick={() => setGradebook(r.id)} className="text-[#0073C1] font-bold hover:underline cursor-pointer mr-3">Học tập</button>
                     )}
                     {canEdit && (

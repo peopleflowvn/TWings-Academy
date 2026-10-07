@@ -222,15 +222,42 @@ def session_rows(cohort: Cohort) -> list[dict]:
     ]
 
 
+class ScheduleError(ValueError):
+    pass
+
+
 def replace_sessions(cohort: Cohort, rows: list[dict]) -> None:
-    """Replace the intake's sessions; their Moodle events are removed on the next sync."""
-    old_events = [s.moodle_event_id for s in cohort.sessions.all() if s.moodle_event_id]
-    old_attendance = [
-        s.moodle_attendance_session_id for s in cohort.sessions.all() if s.moodle_attendance_session_id
+    """
+    Replace the intake's sessions; their Moodle events are removed on the next sync. A session that
+    keeps its start time keeps its Moodle attendance session (and the marks in it); a session that
+    already took place and has attendance cannot be removed or moved.
+    """
+    old = list(cohort.sessions.all())
+    new_starts = {r["starts_at"] for r in rows}
+    now = timezone.now()
+    locked = [
+        s
+        for s in old
+        if s.moodle_attendance_session_id and s.starts_at <= now and s.starts_at not in new_starts
     ]
-    if old_events or old_attendance:
+    if locked:
+        when = ", ".join(timezone.localtime(s.starts_at).strftime("%d/%m %H:%M") for s in locked[:3])
+        raise ScheduleError(
+            f"Không thể xóa hoặc đổi giờ buổi đã diễn ra có điểm danh ({when}). "
+            "Giữ nguyên giờ bắt đầu của các buổi này."
+        )
+    keep_attendance = {
+        s.starts_at: s.moodle_attendance_session_id for s in old if s.moodle_attendance_session_id
+    }
+    old_events = [s.moodle_event_id for s in old if s.moodle_event_id]
+    dropped_attendance = [
+        s.moodle_attendance_session_id
+        for s in old
+        if s.moodle_attendance_session_id and s.starts_at not in new_starts
+    ]
+    if old_events or dropped_attendance:
         cohort.calendar_cleanup = [*cohort.calendar_cleanup, *old_events]
-        cohort.attendance_cleanup = [*cohort.attendance_cleanup, *old_attendance]
+        cohort.attendance_cleanup = [*cohort.attendance_cleanup, *dropped_attendance]
         cohort.save(update_fields=["calendar_cleanup", "attendance_cleanup", "updated_at"])
     cohort.sessions.all().delete()
     CohortSession.objects.bulk_create(
@@ -241,6 +268,7 @@ def replace_sessions(cohort: Cohort, rows: list[dict]) -> None:
             ends_at=r["ends_at"],
             location=r.get("location", "")[:300],
             online=bool(r.get("online")),
+            moodle_attendance_session_id=keep_attendance.get(r["starts_at"]),
         )
         for r in rows
     )

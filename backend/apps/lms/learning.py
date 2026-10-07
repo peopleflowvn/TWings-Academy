@@ -168,7 +168,7 @@ def assess(enrollment: LmsEnrollment, expected: int | None, min_attendance: int)
     return flags
 
 
-def refresh_course(moodle_course_id: int, enrollments: list[LmsEnrollment], cohort=None) -> int:
+def refresh_course(moodle_course_id: int, enrollments: list[LmsEnrollment]) -> int:
     """Pull attendance / grades / last access for one Moodle course and reassess its learners."""
     try:
         last_access = read_last_access(moodle_course_id)
@@ -176,11 +176,14 @@ def refresh_course(moodle_course_id: int, enrollments: list[LmsEnrollment], coho
     except moodle.MoodleError as exc:
         logger.warning("Learning refresh for Moodle course %s failed: %s", moodle_course_id, exc)
         return 0
-    attendance = {}
-    if cohort is not None and cohort.moodle_attendance_id:
-        attendance = read_attendance(cohort)
-    expected = expected_progress(cohort)
+    # per intake: its attendance (only from its own Moodle course) and its schedule
+    per_cohort: dict = {}
     for e in enrollments:
+        if e.cohort_id and e.cohort_id not in per_cohort:
+            own = e.cohort.moodle_attendance_id and _is_cohort_course(e.cohort, moodle_course_id)
+            per_cohort[e.cohort_id] = (read_attendance(e.cohort) if own else {}, expected_progress(e.cohort))
+    for e in enrollments:
+        attendance, expected = per_cohort.get(e.cohort_id, ({}, None))
         uid = e.moodle_user_id
         ts = last_access.get(uid)
         e.last_access = datetime.fromtimestamp(ts, tz=UTC) if ts else None
@@ -206,6 +209,19 @@ def refresh_course(moodle_course_id: int, enrollments: list[LmsEnrollment], coho
     return len(enrollments)
 
 
+def _is_cohort_course(cohort, moodle_course_id: int) -> bool:
+    """The intake's attendance lives in its own Moodle course (idnumber cohort:<id>)."""
+    from .services import _find_course
+
+    if getattr(cohort, "_moodle_course_id", None) is None:
+        try:
+            found = _find_course("idnumber", f"cohort:{cohort.id}")
+        except moodle.MoodleError:
+            found = None
+        cohort._moodle_course_id = found["id"] if found else 0
+    return cohort._moodle_course_id == moodle_course_id
+
+
 def refresh_learning() -> dict:
     """Every Moodle course with enrolled TWings learners, one pass each."""
     from collections import defaultdict
@@ -218,8 +234,7 @@ def refresh_learning() -> dict:
         groups[e.moodle_course_id].append(e)
     refreshed = 0
     for course_id, enrollments in groups.items():
-        cohort = next((e.cohort for e in enrollments if e.cohort_id), None)
-        refreshed += refresh_course(course_id, enrollments, cohort)
+        refreshed += refresh_course(course_id, enrollments)
     return {"learners": refreshed, "courses": len(groups)}
 
 
@@ -273,12 +288,22 @@ def cohort_gradebook(cohort) -> dict:
 
 
 def at_risk_rows(limit: int = 200) -> list[dict]:
+    from django.db.models import Case, IntegerField, Value, When
+
     rows = (
         LmsEnrollment.objects.filter(
-            status="done", risk_level__in=("watch", "risk"), completed_at__isnull=True
+            status="done",
+            risk_level__in=("watch", "risk"),
+            completed_at__isnull=True,
+            order__learning_access=True,
         )
         .select_related("order", "cohort")
-        .order_by("-risk_level", "order__customer_name")[:limit]
+        .annotate(
+            severity=Case(
+                When(risk_level="risk", then=Value(0)), default=Value(1), output_field=IntegerField()
+            )
+        )
+        .order_by("severity", "order__customer_name")[:limit]
     )
     return [
         {
@@ -304,6 +329,7 @@ def announce(cohort, subject: str, message: str, sent_by) -> int:
     from apps.notifications.outbox import send_logged
     from apps.notifications.resend import ResendError
 
+    subject = " ".join(subject.split())  # one line: it becomes a mail header
     orders = Order.objects.filter(cohort=cohort, learning_access=True).exclude(customer_email="")
     header = f"<p>{escape(cohort.name)} – {escape(cohort.course.title)}</p>"
     html = f"{header}{linebreaks(escape(message))}<p>TWings Academy</p>"

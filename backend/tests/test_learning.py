@@ -53,6 +53,8 @@ class FakeLearning:
             }
         if function == "core_user_get_users_by_field":
             return []
+        if function == "core_course_get_courses_by_field":
+            return {"courses": [{"id": 77}]}
         if function == "mod_attendance_get_session":
             marks = self.marks.get(params["sessionid"], {})
             return {
@@ -192,3 +194,49 @@ def test_gradebook_at_risk_and_announcement(klass, staff_client, monkeypatch):
     assert EmailLog.objects.filter(template_code="class_announcement").count() == 2
     dash = staff_client(Role.SUPER_ADMIN).get("/api/v1/staff/dashboard/").json()["training"]
     assert dash["atRisk"] == 1
+
+
+def test_schedule_edit_keeps_marked_attendance(klass, staff_client):
+    from apps.catalog.intakes import ScheduleError, replace_sessions
+
+    cohort, fake, learners = klass
+    future = NOW + timedelta(days=3)
+    CohortSession.objects.filter(moodle_attendance_session_id=903).update(
+        starts_at=future, ends_at=future + timedelta(hours=2)
+    )
+    sessions = list(cohort.sessions.order_by("starts_at"))
+    rows = [{"starts_at": s.starts_at, "ends_at": s.ends_at, "title": "Đổi phòng"} for s in sessions]
+    rows[-1]["starts_at"] += timedelta(days=1)  # move only the future class
+    rows[-1]["ends_at"] += timedelta(days=1)
+    replace_sessions(cohort, rows)
+    kept = sorted(
+        cohort.sessions.exclude(moodle_attendance_session_id=None).values_list(
+            "moodle_attendance_session_id", flat=True
+        )
+    )
+    cohort.refresh_from_db()
+    assert kept == [900, 901, 902] and cohort.attendance_cleanup == [903]
+    # a class that already took place cannot be dropped
+    with pytest.raises(ScheduleError):
+        replace_sessions(cohort, rows[1:])
+    staff = staff_client(Role.ACADEMIC_MANAGEMENT)
+    res = staff.put(
+        f"/api/v1/staff/cohorts/{cohort.pk}/sessions/",
+        {
+            "sessions": [
+                {"startsAt": r["starts_at"].isoformat(), "endsAt": r["ends_at"].isoformat()} for r in rows[1:]
+            ],
+            "sync": False,
+        },
+        format="json",
+    )
+    assert res.status_code == 400 and "đã diễn ra" in res.json()["detail"]
+
+
+def test_at_risk_lists_risk_before_watch(klass):
+    cohort, fake, (good, drifting) = klass
+    LmsEnrollment.objects.filter(pk=good.pk).update(risk_level="watch", risk_flags=["x"])
+    LmsEnrollment.objects.filter(pk=drifting.pk).update(risk_level="risk", risk_flags=["x", "y"])
+    from apps.lms.learning import at_risk_rows
+
+    assert [r["risk_level"] for r in at_risk_rows()] == ["risk", "watch"]

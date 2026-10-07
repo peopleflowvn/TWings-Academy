@@ -131,9 +131,9 @@ def sync_all(limit: int = 500) -> dict:
 def release_holds() -> int:
     """Certificates held for attendance are issued once the (updated) attendance reaches the minimum."""
     released = 0
-    held = LmsEnrollment.objects.filter(completed_at__isnull=False, certificate__isnull=True).exclude(
-        certificate_hold=""
-    )
+    held = LmsEnrollment.objects.filter(
+        status="done", order__learning_access=True, completed_at__isnull=False, certificate__isnull=True
+    ).exclude(certificate_hold="")
     for enrollment in held.select_related("order", "order__course", "cohort"):
         if not certificate_hold_reason(enrollment):
             _on_completed(enrollment)

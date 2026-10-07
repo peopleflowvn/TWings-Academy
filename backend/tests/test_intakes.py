@@ -161,7 +161,7 @@ def test_sessions_are_pushed_to_the_moodle_calendar(course, staff_client, settin
 
     res = editor.put(url, {"sessions": sessions[:1]}, format="json")  # reschedule: old events removed
     assert set(fake.deleted) == set(first_ids) and res.json()["sync"]["synced"] == 1
-    assert len(fake.att_removed) == 3  # the old attendance sessions are removed too
+    assert len(fake.att_removed) == 2  # the dropped classes; the kept one keeps its marks
     cohort.refresh_from_db()
     assert cohort.calendar_cleanup == [] and cohort.schedule_text == "Tối thứ 2-4-6, 19:00–21:00"
     bad = {"sessions": [{"startsAt": start.isoformat(), "endsAt": start.isoformat()}]}

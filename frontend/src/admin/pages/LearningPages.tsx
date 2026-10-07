@@ -96,11 +96,13 @@ export const GradebookModal: React.FC<{ cohortId: string; onClose: () => void }>
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState('');
+  const [sending, setSending] = useState(false);
   useEffect(() => {
     lmsApi.gradebook(cohortId).then(setData).catch((e: Error) => setError(e.message));
   }, [cohortId]);
   const announce = async () => {
     if (!window.confirm('Gửi thông báo này tới email của toàn bộ học viên trong đợt?')) return;
+    setSending(true);
     try {
       const r = await lmsApi.announce(cohortId, subject.trim(), message.trim());
       setSent(`Đã gửi tới ${r.sent} học viên.`);
@@ -108,6 +110,8 @@ export const GradebookModal: React.FC<{ cohortId: string; onClose: () => void }>
       setMessage('');
     } catch (e) {
       setSent(e instanceof ApiError ? e.message : 'Gửi thất bại');
+    } finally {
+      setSending(false);
     }
   };
   const cell = (v: number | null) => (v === null ? <span className="text-slate-300">–</span> : <span className={v < 50 ? 'text-red-600 font-bold' : ''}>{v}%</span>);
@@ -163,7 +167,7 @@ export const GradebookModal: React.FC<{ cohortId: string; onClose: () => void }>
                 <input className="w-full p-2 border border-slate-300 rounded-lg" maxLength={150} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Tiêu đề, VD: Đổi phòng học buổi 5" />
                 <textarea className="w-full p-2 border border-slate-300 rounded-lg" rows={3} maxLength={5000} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Nội dung" />
                 <div className="flex items-center gap-3">
-                  <button type="button" disabled={!subject.trim() || !message.trim()} onClick={announce} className="px-3 py-1.5 rounded-xl bg-[#0073C1] text-white font-bold cursor-pointer disabled:opacity-50">Gửi</button>
+                  <button type="button" disabled={sending || !subject.trim() || !message.trim()} onClick={announce} className="px-3 py-1.5 rounded-xl bg-[#0073C1] text-white font-bold cursor-pointer disabled:opacity-50">Gửi</button>
                   {sent && <span className="text-emerald-700">{sent}</span>}
                 </div>
               </div>
