@@ -11,6 +11,7 @@ import {
   Globe
 } from 'lucide-react';
 import { Article, Course } from '../types';
+import { routePath } from '../lib/routes';
 
 interface CourseraArticlesPageProps {
   articles: Article[];
@@ -122,13 +123,17 @@ export const CourseraArticlesPage: React.FC<CourseraArticlesPageProps> = ({
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <button
-                    onClick={() => onSelectArticle(featuredArticle)}
+                  <a
+                    href={routePath('article-detail', featuredArticle.slug)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSelectArticle(featuredArticle);
+                    }}
                     className="flex items-center gap-2 text-xs font-bold text-[#0073C1] hover:underline cursor-pointer group"
                   >
                     <span>Đọc toàn bộ bài viết</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </button>
+                  </a>
 
                   <button
                     onClick={onOpenConsultation}
@@ -224,13 +229,17 @@ export const CourseraArticlesPage: React.FC<CourseraArticlesPageProps> = ({
                     <span>{art.viewsCount.toLocaleString()}</span>
                   </div>
 
-                  <button
-                    onClick={() => onSelectArticle(art)}
+                  <a
+                    href={routePath('article-detail', art.slug)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSelectArticle(art);
+                    }}
                     className="text-[#0073C1] font-bold hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>Đọc bài viết</span>
                     <ArrowRight className="w-3 h-3" />
-                  </button>
+                  </a>
                 </div>
               </div>
             </article>

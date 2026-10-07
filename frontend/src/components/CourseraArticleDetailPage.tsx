@@ -16,7 +16,9 @@ import {
   Clock
 } from 'lucide-react';
 import { ShareButtons } from './ShareButtons';
+import { MarkdownContent } from './MarkdownContent';
 import { Article, Course } from '../types';
+import { routePath } from '../lib/routes';
 
 interface CourseraArticleDetailPageProps {
   article: Article;
@@ -54,13 +56,17 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
       {/* 1. Breadcrumbs & Header Bar */}
       <div className="bg-white border-b border-slate-200 py-4 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 text-xs">
-          <button
-            onClick={onBackToArticles}
+          <a
+            href={routePath('articles')}
+            onClick={(e) => {
+              e.preventDefault();
+              onBackToArticles();
+            }}
             className="flex items-center gap-1.5 text-slate-600 hover:text-[#0073C1] font-bold transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Quay lại Danh sách Tin tức</span>
-          </button>
+          </a>
 
           <ShareButtons title={article.title} />
         </div>
@@ -123,9 +129,9 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
           "{article.excerpt}"
         </div>
 
-        {/* Article Full Content (Rich formatting) */}
-        <div className="prose prose-slate max-w-none text-slate-800 text-sm leading-relaxed space-y-4 whitespace-pre-line bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs">
-          {article.content}
+        {/* Article Full Content (Rich Markdown typography) */}
+        <div className="bg-white p-6 sm:p-10 rounded-3xl border border-slate-200 shadow-2xs">
+          <MarkdownContent content={article.content} />
         </div>
 
         {/* Tags */}
@@ -202,13 +208,17 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
                   <div className="font-mono font-bold text-xs text-slate-900">
                     {formatVND(c.price)}
                   </div>
-                  <button
-                    onClick={() => onSelectCourse(c)}
+                  <a
+                    href={routePath('course-detail', c.slug)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSelectCourse(c);
+                    }}
                     className="text-xs font-bold text-[#0073C1] hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>Xem khóa</span>
                     <ArrowRight className="w-3 h-3" />
-                  </button>
+                  </a>
                 </div>
               </div>
             ))}

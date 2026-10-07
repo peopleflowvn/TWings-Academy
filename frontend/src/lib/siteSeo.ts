@@ -68,7 +68,10 @@ interface PageMeta {
 
 let latest = '';
 
-export async function applyPageMeta(path: string): Promise<void> {
+export async function applyPageMeta(path: string, fallbackTitle?: string): Promise<void> {
+  if (fallbackTitle) {
+    document.title = fallbackTitle;
+  }
   if (!isBackendEnabled()) return;
   latest = path;
   let meta: PageMeta;

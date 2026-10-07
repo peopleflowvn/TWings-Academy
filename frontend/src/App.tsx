@@ -201,7 +201,20 @@ export default function App() {
 
   // Title, description, canonical and share tags of the page (same data the server gives bots).
   useEffect(() => {
-    applyPageMeta(window.location.pathname);
+    let fallback = 'TWings Academy – Đào tạo & Tuyển sinh Nhân sự Ngân hàng';
+    if (currentView === 'articles') {
+      fallback = 'Tin tức & Cẩm nang nghề nghiệp | TWings Academy';
+    } else if (currentView === 'article-detail' && selectedArticle) {
+      fallback = `${selectedArticle.metaTitle || selectedArticle.title} | TWings Academy`;
+    } else if (currentView === 'catalog') {
+      fallback = 'Khóa học & Chương trình đào tạo | TWings Academy';
+    } else if (currentView === 'course-detail' && selectedCourse) {
+      fallback = `${selectedCourse.title} | TWings Academy`;
+    } else if (currentView === 'about') {
+      fallback = 'Về chúng tôi | TWings Academy';
+    }
+
+    applyPageMeta(window.location.pathname, fallback);
     trackView(window.location.pathname);
   }, [currentView, selectedCourse, selectedArticle]);
 
