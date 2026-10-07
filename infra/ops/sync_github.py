@@ -70,11 +70,14 @@ def gh(*args: str, value: str) -> None:
 def main() -> None:
     e = read_env()
     read = lambda p: Path(p).read_text(encoding="utf-8").strip() + "\n"
+    # Ops tasks reach the machine named by ACTIVE_VPS (CORE / TA ...): <NAME>_ORACLE_HOST, <NAME>_SSH_KEY_PATH,
+    # <NAME>_KNOWN_HOSTS (pinned host key; empty = the next ops run scans and prints it to pin).
+    active = e.get("ACTIVE_VPS", "CORE").upper()
     secrets = {
         "ops": {
-            "VPS_HOST": e.get("CORE_ORACLE_HOST", ""),
-            "VPS_ADMIN_SSH_KEY": read(e["CORE_SSH_KEY_PATH"]),
-            "VPS_KNOWN_HOSTS": e.get("GH_VPS_KNOWN_HOSTS", ""),
+            "VPS_HOST": e.get(f"{active}_ORACLE_HOST", ""),
+            "VPS_ADMIN_SSH_KEY": read(e[f"{active}_SSH_KEY_PATH"]),
+            "VPS_KNOWN_HOSTS": e.get(f"{active}_KNOWN_HOSTS", ""),
             "OPS_OUTPUT_KEY": e.get("OPS_OUTPUT_KEY", ""),
             "VPS_ENV_BUNDLE": env_bundle(),
         },
@@ -98,6 +101,11 @@ def main() -> None:
             if value.strip():
                 gh("secret", "set", name, "--env", environment, value=value)
                 print(f"secret  {environment}/{name}")
+            elif name == "VPS_KNOWN_HOSTS":
+                # New machine: drop the old pin so the next ops run scans (and prints) the new host key.
+                subprocess.run([gh_exe(), "secret", "delete", name, "--env", environment], cwd=ROOT,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                print(f"deleted {environment}/{name} (host key will be scanned on the next ops run)")
             else:
                 skipped.append(f"{environment}/{name}")
     for name, value in variables.items():

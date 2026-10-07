@@ -233,6 +233,11 @@ for p in Program.objects.all():
 '"
     ;;
 
+  hostkey)
+    # Public host key of the machine, to pin in VPS_KNOWN_HOSTS (public data).
+    remote 'cat /etc/ssh/ssh_host_ed25519_key.pub; hostname'
+    ;;
+
   journey-audit)
     remote "cd $APP && sudo docker compose exec -T backend python manage.py journey_audit"
     ;;
