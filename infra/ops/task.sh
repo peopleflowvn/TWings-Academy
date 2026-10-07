@@ -131,6 +131,21 @@ for name, st in ((\"default\", default_storage), (\"private\", storages[\"privat
 '"
     ;;
 
+  lms-usage)
+    # Read-only: how much a vendored Moodle plugin is used, before removing it from lms/.
+    remote "cd $APP && sudo docker compose exec -T lms php -r '
+define(\"CLI_SCRIPT\", true);
+require \"/var/www/moodle/config.php\";
+\$dbman = \$DB->get_manager();
+foreach ([\"customcert\", \"attendance\"] as \$m) {
+    \$n = \$dbman->table_exists(\$m) ? \$DB->count_records(\$m) : \"no table\";
+    \$cm = \$DB->count_records_sql(\"SELECT COUNT(1) FROM {course_modules} cm JOIN {modules} m ON m.id = cm.module WHERE m.name = ?\", [\$m]);
+    echo \$m, \": instances=\", \$n, \" course_modules=\", \$cm, PHP_EOL;
+}
+echo \"customcert_issues: \", \$dbman->table_exists(\"customcert_issues\") ? \$DB->count_records(\"customcert_issues\") : \"no table\", PHP_EOL;
+'"
+    ;;
+
   lms-check)
     # Moodle install/setup log + a real web service call from the backend over the internal network.
     remote "sudo tail -n 40 /var/log/twings-lms.log; cd $APP && sudo docker compose ps lms lms-cron && sudo docker compose exec -T backend python -c '

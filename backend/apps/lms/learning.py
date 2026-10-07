@@ -7,7 +7,8 @@ Journey step 7 – learning, using what Moodle already does:
 - Last access: from the course's enrolled users.
 - Risk: no access for 7+ days, attendance under the course minimum, progress far behind the
   intake schedule, course grade under 50 % -> "watch" (one signal) or "risk" (two or more).
-- Class announcements: one e-mail to every learner of an intake.
+- Class announcements: posted in the course's Announcements forum on Moodle (Moodle e-mails the class);
+  /app links straight to it, TWings sends no class e-mail of its own.
 
 refresh_learning() runs with sync_lms_completion (every 30 minutes).
 """
@@ -16,7 +17,6 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from django.utils import timezone
-from django.utils.html import escape, linebreaks
 
 from . import moodle
 from .models import LmsEnrollment
@@ -240,51 +240,72 @@ def refresh_learning() -> dict:
 
 # ---------------------------------------------------------------- /app views
 def cohort_gradebook(cohort) -> dict:
-    """Learners x graded activities of an intake, with attendance and risk."""
+    """
+    Intake learning summary for /app, from the signals already synced every 30 minutes (progress,
+    attendance, course grade, risk): no live Moodle read. The detailed gradebook, attendance sheet and
+    class announcements stay in Moodle, linked from here (one place for each piece of information).
+    """
+    from . import overview
     from .services import _find_course
 
-    found = _find_course("idnumber", f"cohort:{cohort.id}")
     enrollments = list(
         LmsEnrollment.objects.filter(cohort=cohort, status="done")
         .select_related("order")
         .order_by("order__customer_name")
     )
-    grades = read_grades(found["id"]) if found else {}
-    columns: list[str] = []
-    for g in grades.values():
-        for item in g["items"]:
-            if item["name"] not in columns:
-                columns.append(item["name"])
-    rows = []
-    for e in enrollments:
-        g = grades.get(e.moodle_user_id) or {"items": [], "course_percent": None}
-        by_name = {i["name"]: i for i in g["items"]}
-        rows.append(
-            {
-                "order_id": e.order_id,
-                "name": e.order.customer_name,
-                "email": e.order.customer_email,
-                "progress": e.progress,
-                "attendance_rate": e.attendance_rate,
-                "attendance": f"{e.attendance_attended}/{e.attendance_taken}" if e.attendance_taken else "",
-                "course_percent": g["course_percent"],
-                "items": [by_name[c]["percent"] if c in by_name else None for c in columns],
-                "risk_level": e.risk_level,
-                "risk_flags": e.risk_flags,
-                "last_access": e.last_access.isoformat() if e.last_access else None,
-                "completed_at": e.completed_at.isoformat() if e.completed_at else None,
-                "certificate_hold": e.certificate_hold,
-            }
-        )
+    course_id = next((e.moodle_course_id for e in enrollments if e.moodle_course_id), None)
+    if course_id is None:
+        found = _find_course("idnumber", f"cohort:{cohort.id}")
+        course_id = found["id"] if found else None
+    links = overview.links(course_id=course_id) if course_id else {}
+    if course_id:
+        links["announcements"] = announcements_link(course_id)
+    rows = [
+        {
+            "order_id": e.order_id,
+            "name": e.order.customer_name,
+            "email": e.order.customer_email,
+            "progress": e.progress,
+            "attendance_rate": e.attendance_rate,
+            "attendance": f"{e.attendance_attended}/{e.attendance_taken}" if e.attendance_taken else "",
+            "course_percent": e.grade_percent,
+            "risk_level": e.risk_level,
+            "risk_flags": e.risk_flags,
+            "last_access": e.last_access.isoformat() if e.last_access else None,
+            "completed_at": e.completed_at.isoformat() if e.completed_at else None,
+            "certificate_hold": e.certificate_hold,
+            "links": overview.links(course_id=e.moodle_course_id, user_id=e.moodle_user_id)
+            if e.moodle_course_id and e.moodle_user_id
+            else {},
+        }
+        for e in enrollments
+    ]
+    synced = [e.last_synced_at for e in enrollments if e.last_synced_at]
     return {
         "cohort": cohort.name,
         "course": cohort.course.title,
-        "moodle_course_id": found["id"] if found else None,
+        "moodle_course_id": course_id,
         "attendance_enabled": bool(cohort.moodle_attendance_id),
         "expected_progress": expected_progress(cohort),
-        "columns": columns,
+        "synced_at": max(synced).isoformat() if synced else None,
+        "links": links,
         "rows": rows,
     }
+
+
+def announcements_link(moodle_course_id: int) -> str:
+    """New post in the course's Announcements forum (Moodle e-mails the class); else the course page."""
+    from .overview import LEARN_PATH
+
+    try:
+        forums = moodle.call("mod_forum_get_forums_by_courses", courseids=[moodle_course_id])
+    except moodle.MoodleError as exc:
+        logger.warning("Announcements forum of course %s not found: %s", moodle_course_id, exc)
+        forums = []
+    news = next((f for f in forums if f.get("type") == "news"), None)
+    if news:
+        return f"{LEARN_PATH}/mod/forum/post.php?forum={news['id']}"
+    return f"{LEARN_PATH}/course/view.php?id={moodle_course_id}"
 
 
 def at_risk_rows(limit: int = 200) -> list[dict]:
@@ -321,40 +342,3 @@ def at_risk_rows(limit: int = 200) -> list[dict]:
         }
         for e in rows
     ]
-
-
-def announce(cohort, subject: str, message: str, sent_by) -> int:
-    """E-mail every learner of the intake (paid / studying); logged on each order's timeline."""
-    from apps.crm.models import Activity, Order
-    from apps.notifications.outbox import send_logged
-    from apps.notifications.resend import ResendError
-
-    subject = " ".join(subject.split())  # one line: it becomes a mail header
-    orders = Order.objects.filter(cohort=cohort, learning_access=True).exclude(customer_email="")
-    header = f"<p>{escape(cohort.name)} – {escape(cohort.course.title)}</p>"
-    html = f"{header}{linebreaks(escape(message))}<p>TWings Academy</p>"
-    sent = 0
-    for order in orders:
-        try:
-            send_logged(
-                to=order.customer_email,
-                subject=f"[{cohort.name}] {subject}",
-                html=f"<p>Chào {escape(order.customer_name)},</p>{html}",
-                order=order,
-                sent_by=sent_by,
-                template_code="class_announcement",
-                name=order.customer_name,
-            )
-        except ResendError:
-            logger.warning("Announcement to %s not sent", order.order_code)
-            continue
-        Activity.objects.create(
-            order=order,
-            type="email",
-            title=f"Thông báo lớp: {subject}",
-            content=message[:1000],
-            actor=sent_by.name or sent_by.email,
-            actor_user=sent_by,
-        )
-        sent += 1
-    return sent

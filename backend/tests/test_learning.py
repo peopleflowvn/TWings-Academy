@@ -11,7 +11,6 @@ from apps.lms import moodle
 from apps.lms.completion import release_holds, sync_enrollment
 from apps.lms.learning import refresh_learning
 from apps.lms.models import Certificate, LmsEnrollment
-from apps.notifications.models import EmailLog
 from tests.conftest import Role
 
 pytestmark = pytest.mark.django_db
@@ -163,35 +162,36 @@ def test_staff_override_needs_a_reason(klass, staff_client):
     )
 
 
-def test_gradebook_at_risk_and_announcement(klass, staff_client, monkeypatch):
+def test_intake_learning_summary_links_to_moodle_and_at_risk(klass, staff_client, monkeypatch):
     cohort, fake, learners = klass
     refresh_learning()
     original = fake.__call__
+    calls = []
 
-    def with_course(function, **params):
-        if function == "core_course_get_courses_by_field":
-            return {"courses": [{"id": 77}]}
+    def moodle_call(function, **params):
+        calls.append(function)
+        if function == "mod_forum_get_forums_by_courses":
+            return [{"id": 31, "type": "general"}, {"id": 9, "type": "news"}]
         return original(function, **params)
 
-    monkeypatch.setattr(moodle, "call", with_course)
+    monkeypatch.setattr(moodle, "call", moodle_call)
     staff = staff_client(Role.ACADEMIC_MANAGEMENT)
     book = staff.get(f"/api/v1/staff/lms/cohorts/{cohort.pk}/gradebook/").json()
-    assert (
-        book["columns"] == ["Kiểm tra chương 1"]
-        and book["attendanceEnabled"]
-        and book["expectedProgress"] == 75
-    )
+    # Synced figures only: the per-activity gradebook stays in Moodle.
+    assert calls == ["mod_forum_get_forums_by_courses"]
+    assert "columns" not in book and book["attendanceEnabled"] and book["expectedProgress"] == 75
     row = next(r for r in book["rows"] if r["name"] == "Bình")
-    assert row["items"] == [30] and row["coursePercent"] == 30 and row["attendance"] == "1/3"
+    assert row["coursePercent"] == 30 and row["attendance"] == "1/3" and "items" not in row
+    assert book["links"]["grades"] == "/learn/grade/report/grader/index.php?id=77"
+    assert book["links"]["announcements"] == "/learn/mod/forum/post.php?forum=9"
+    assert row["links"]["userCourse"].startswith("/learn/user/view.php?id=")
+
     risky = staff.get("/api/v1/staff/lms/at-risk/").json()
     assert [r["name"] for r in risky] == ["Bình"] and risky[0]["riskLevel"] == "risk"
-    res = staff.post(
-        f"/api/v1/staff/lms/cohorts/{cohort.pk}/announce/",
-        {"subject": "Đổi phòng học", "message": "Buổi 5 học phòng 302."},
-        format="json",
+    # Class announcements are posted in Moodle: TWings no longer e-mails the class itself.
+    assert (
+        staff.post(f"/api/v1/staff/lms/cohorts/{cohort.pk}/announce/", {}, format="json").status_code == 404
     )
-    assert res.json() == {"sent": 2}
-    assert EmailLog.objects.filter(template_code="class_announcement").count() == 2
     dash = staff_client(Role.SUPER_ADMIN).get("/api/v1/staff/dashboard/").json()["training"]
     assert dash["atRisk"] == 1
 

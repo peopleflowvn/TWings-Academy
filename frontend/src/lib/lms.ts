@@ -108,13 +108,15 @@ export interface LmsLearner {
   links: MoodleLinks;
 }
 
+/** An intake's learning summary: synced figures (every 30 min) + links into Moodle for the details. */
 export interface CohortGradebook {
   cohort: string;
   course: string;
   moodleCourseId: number | null;
   attendanceEnabled: boolean;
   expectedProgress: number | null;
-  columns: string[];
+  syncedAt: string | null;
+  links: { course?: string; grades?: string; completion?: string; participants?: string; announcements?: string };
   rows: {
     orderId: string;
     name: string;
@@ -123,12 +125,12 @@ export interface CohortGradebook {
     attendanceRate: number | null;
     attendance: string;
     coursePercent: number | null;
-    items: (number | null)[];
     riskLevel: 'ok' | 'watch' | 'risk';
     riskFlags: string[];
     lastAccess: string | null;
     completedAt: string | null;
     certificateHold: string;
+    links: { userCourse?: string };
   }[];
 }
 
@@ -153,8 +155,6 @@ export const lmsApi = {
   act: (orderId: string, action: LmsAction, note?: string) =>
     api.post<OrderLearning>(`/staff/lms/orders/${orderId}/actions/`, { action, ...(note ? { note } : {}) }),
   gradebook: (cohortId: string) => api.get<CohortGradebook>(`/staff/lms/cohorts/${cohortId}/gradebook/`),
-  announce: (cohortId: string, subject: string, message: string) =>
-    api.post<{ sent: number }>(`/staff/lms/cohorts/${cohortId}/announce/`, { subject, message }),
   atRisk: () => api.get<AtRiskRow[]>('/staff/lms/at-risk/'),
   refreshLearning: () => api.post<{ learners: number; courses: number; releasedHolds: number }>('/staff/lms/refresh/', {}),
   catalog: () => api.get<LmsCatalogRow[]>('/staff/lms/courses/'),

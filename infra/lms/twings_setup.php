@@ -615,6 +615,8 @@ $capabilities = [
     'moodle/course:manageactivities', 'mod/attendance:addinstance', 'mod/attendance:manageattendances',
     'mod/attendance:takeattendances', 'mod/attendance:view', 'gradereport/user:view',
     // One Moodle course per intake, copied from the course's template (backup/restore) and dated.
+    // Find each intake course's Announcements forum.
+    'mod/forum:viewdiscussion',
     'moodle/backup:backupcourse', 'moodle/backup:configure', 'moodle/restore:restorecourse',
     'moodle/restore:configure', 'moodle/restore:rolldates', 'moodle/course:update',
     'moodle/course:changefullname', 'moodle/course:visibility',
@@ -683,6 +685,8 @@ $functions = [
     // Attendance (mod_attendance) per intake, and the gradebook per learner
     'mod_attendance_add_attendance', 'mod_attendance_add_session', 'mod_attendance_remove_session',
     'mod_attendance_get_session', 'gradereport_user_get_grade_items',
+    // Link /app straight to the course's Announcements forum (class announcements live in Moodle)
+    'mod_forum_get_forums_by_courses',
 ];
 $service = $DB->get_record('external_services', ['shortname' => 'twings']);
 if (!$service) {

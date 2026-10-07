@@ -240,7 +240,7 @@ class ImportOutlineView(_LmsView):
 
 
 class CohortGradebookView(_LmsView):
-    """Intake gradebook from Moodle: learners x graded activities, attendance, risk."""
+    """Intake learning summary (synced progress, attendance, grade, risk) with links into Moodle."""
 
     permission_classes = [require_perms("lms.view")]
 
@@ -275,26 +275,3 @@ class RefreshLearningView(_LmsView):
         result = {**refresh_learning(), "releasedHolds": release_holds()}
         audit(request, "lms.refresh_learning", None, **result)
         return Response(result)
-
-
-class AnnouncementSerializer(serializers.Serializer):
-    subject = serializers.CharField(max_length=150)
-    message = serializers.CharField(max_length=5000)
-
-
-class CohortAnnouncementView(_LmsView):
-    """E-mail one message to every learner of an intake."""
-
-    permission_classes = [require_perms("lms.manage", "crm.edit_status")]
-
-    def post(self, request, pk):
-        from apps.catalog.models import Cohort
-
-        from .learning import announce
-
-        cohort = get_object_or_404(Cohort.objects.select_related("course"), pk=pk)
-        ser = AnnouncementSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        sent = announce(cohort, ser.validated_data["subject"], ser.validated_data["message"], request.user)
-        audit(request, "lms.announce", cohort, sent=sent)
-        return Response({"sent": sent})

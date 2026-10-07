@@ -11,7 +11,6 @@ urlpatterns = [
     path("cohorts/<str:pk>/provision/", views.ProvisionCohortView.as_view(), name="lms-provision-cohort"),
     path("open/", views.OpenMoodleView.as_view(), name="lms-open"),
     path("cohorts/<str:pk>/gradebook/", views.CohortGradebookView.as_view(), name="lms-gradebook"),
-    path("cohorts/<str:pk>/announce/", views.CohortAnnouncementView.as_view(), name="lms-announce"),
     path("at-risk/", views.AtRiskView.as_view(), name="lms-at-risk"),
     path("refresh/", views.RefreshLearningView.as_view(), name="lms-refresh"),
 ]

@@ -11,7 +11,7 @@ on:
       task:
         description: What to run on the VPS
         type: choice
-        options: [status, hostkey, smoke-host, gateway-logs, setup-shared, sync-env, gateway-sync, smoke, backup, storage-check, lms-check, lms-admin-check, lms-intake-check, catalog-report, journey-audit, seed-sales, lms-e2e, test-learner, logs, seed-content, create-admin, restart, bootstrap]
+        options: [status, hostkey, smoke-host, gateway-logs, setup-shared, sync-env, gateway-sync, smoke, backup, storage-check, lms-check, lms-usage, lms-admin-check, lms-intake-check, catalog-report, journey-audit, seed-sales, lms-e2e, test-learner, logs, seed-content, create-admin, restart, bootstrap]
       arg:
         description: "create-admin / test-learner: e-mail address"
         required: false
