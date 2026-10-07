@@ -125,6 +125,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# Staff password-reset links (emailed from /app) expire after an hour and die once the password changes.
+PASSWORD_RESET_TIMEOUT = 60 * 60
+
 # Brute-force protection: lock a username+IP pair after 5 failures for 1 hour.
 AXES_FAILURE_LIMIT = env.int("AXES_FAILURE_LIMIT", default=5)
 AXES_COOLOFF_TIME = timedelta(hours=1)
@@ -170,7 +173,7 @@ MAX_UPLOAD_IMAGE_BYTES = env.int("MAX_UPLOAD_IMAGE_BYTES", default=5 * 1024 * 10
 # Django REST Framework: deny by default, session auth only, camelCase JSON for the SPA
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
+    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.accounts.authentication.StaffSessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["djangorestframework_camel_case.render.CamelCaseJSONRenderer"],
     "DEFAULT_PARSER_CLASSES": [

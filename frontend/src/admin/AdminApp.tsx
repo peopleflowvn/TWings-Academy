@@ -16,6 +16,7 @@ import {
   Layers,
   LifeBuoy,
   LayoutTemplate,
+  KeyRound,
   LogOut,
   Mail,
   Menu,
@@ -40,7 +41,7 @@ import { openInMoodle, StaffUserContext } from '../lib/lms';
 import { useServerCollection } from '../lib/serverCollection';
 import { BANNERS } from '../lib/cmsCollections';
 import { AdminUser, CMSSectionsConfig, HeroBannerItem, PartnerItem } from '../types';
-import { StaffLoginGate } from '../components/cms/StaffLoginGate';
+import { ChangePasswordDialog, StaffLoginGate } from '../components/cms/StaffLoginGate';
 import { CMSCRMOrdersTab } from '../components/cms/CMSCRMOrdersTab';
 import { CMSCoursesTab } from '../components/cms/CMSCoursesTab';
 import { CMSInstructorsTab } from '../components/cms/CMSInstructorsTab';
@@ -170,6 +171,7 @@ const BannersRoute: React.FC = () => {
 const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, logout }) => {
   const path = useAppPath();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const can = useMemo(() => makeCan(user), [user]);
   const visible = (item: NavItem) => item.perms.length === 0 || item.perms.some(can);
   const current = ALL_ITEMS.find((i) => isItemActive(i, path));
@@ -346,7 +348,11 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
                 Xem website
               </a>
               <span className="hidden md:inline font-bold text-slate-800">{user.name}</span>
-              <button type="button" onClick={logout} title="Đăng xuất"
+              <button type="button" onClick={() => setChangingPassword(true)} title="Đổi mật khẩu" aria-label="Đổi mật khẩu"
+                className="px-2.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer">
+                <KeyRound className="w-4 h-4" />
+              </button>
+              <button type="button" onClick={logout} title="Đăng xuất" aria-label="Đăng xuất"
                 className="px-2.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer">
                 <LogOut className="w-4 h-4" />
               </button>
@@ -354,6 +360,7 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
           </header>
           <main className="p-4 lg:p-6 max-w-[1600px]">{page}</main>
         </div>
+        {changingPassword && <ChangePasswordDialog onClose={() => setChangingPassword(false)} />}
       </div>
     </StaffUserContext.Provider>
   );

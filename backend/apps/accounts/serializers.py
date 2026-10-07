@@ -26,6 +26,56 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(trim_whitespace=False, max_length=256)
 
 
+def _check_new_password(password, user):
+    try:
+        validate_password(password, user)
+    except DjangoValidationError as e:
+        raise serializers.ValidationError({"new_password": list(e.messages)}) from e
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(trim_whitespace=False, max_length=256)
+    new_password = serializers.CharField(trim_whitespace=False, min_length=12, max_length=256)
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        if not user.check_password(attrs["current_password"]):
+            raise serializers.ValidationError({"current_password": "Mật khẩu hiện tại không đúng."})
+        if attrs["current_password"] == attrs["new_password"]:
+            raise serializers.ValidationError({"new_password": "Mật khẩu mới phải khác mật khẩu hiện tại."})
+        _check_new_password(attrs["new_password"], user)
+        return attrs
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uid = serializers.CharField(max_length=128)
+    token = serializers.CharField(max_length=128)
+    new_password = serializers.CharField(trim_whitespace=False, min_length=12, max_length=256)
+
+    def validate(self, attrs):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.encoding import force_str
+        from django.utils.http import urlsafe_base64_decode
+
+        invalid = serializers.ValidationError(
+            "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Hãy yêu cầu liên kết mới."
+        )
+        try:
+            pk = force_str(urlsafe_base64_decode(attrs["uid"]))
+            user = User.objects.get(pk=pk, is_active=True, is_staff=True)
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+            raise invalid from None
+        if not default_token_generator.check_token(user, attrs["token"]):
+            raise invalid
+        _check_new_password(attrs["new_password"], user)
+        attrs["user"] = user
+        return attrs
+
+
 class StaffUserSerializer(serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
     status = serializers.ChoiceField(

@@ -25,6 +25,9 @@ export class ApiError extends Error {
   }
 }
 
+/** Fired on window whenever the API answers 401 (session missing or expired). */
+export const SESSION_EXPIRED_EVENT = 'twings:session-expired';
+
 let csrfToken: string | null = null;
 
 async function ensureCsrfToken(): Promise<string> {
@@ -74,6 +77,8 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   const body = isJson ? await res.json() : await res.text();
   if (!res.ok) {
     if (res.status === 403) resetCsrfToken();
+    // No (or an expired) session: let the login gate take over instead of every screen showing toasts.
+    if (res.status === 401 && typeof window !== 'undefined') window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     const detail =
       (isJson && body && typeof body === 'object' && 'detail' in body && String((body as { detail: unknown }).detail)) ||
       (isJson && fieldErrorMessage(body)) ||
