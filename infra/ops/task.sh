@@ -73,6 +73,11 @@ case "$TASK" in
       curl -s -o /tmp/body -m 30 -w "%{http_code} $u -> %{redirect_url}\n" "$u" || echo "FAIL $u"
       head -c 200 /tmp/body; echo
     done
+    echo "--- Django pages behind the web container (an unknown token must be a Django 404, not the SPA)"
+    for u in "$web/doi-tac/khong-hop-le/" "$web/xac-minh/KHONGCO/" "$web/bien-nhan/x/"; do
+      curl -s -o /dev/null -m 30 -w "%{http_code} $u
+" "$u" || echo "FAIL $u"
+    done
     echo "--- web headers"; curl -sI -m 30 "$web/" | grep -i -E "strict|content-security|x-frame|cache-control|^server"
     echo "--- CORS preflight from the site"
     curl -s -o /dev/null -D - -m 30 -X OPTIONS -H "Origin: $web" -H "Access-Control-Request-Method: POST" \
