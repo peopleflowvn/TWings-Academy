@@ -123,6 +123,9 @@ interface AuditLogDTO {
 const AUDIT_ACTION_LABELS: Record<string, string> = {
   'staff_user.create': 'Tạo tài khoản nhân sự',
   'staff_user.update': 'Cập nhật tài khoản / quyền nhân sự',
+  'staff_user.password_reset_sent': 'Gửi liên kết đặt lại mật khẩu',
+  'auth.password_change': 'Tự đổi mật khẩu',
+  'auth.password_reset': 'Đặt lại mật khẩu qua email',
   'payment.confirm_manual': 'Xác nhận thanh toán thủ công',
   'order.delete': 'Xóa hồ sơ',
   'order.export_csv': 'Xuất dữ liệu CRM',
@@ -421,8 +424,55 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
     setAuditLogs([newLog, ...auditLogs]);
   };
 
+  // Password reset for another staff member (live backend only; own password: header key button)
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  const [tempPassword, setTempPassword] = useState('');
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const openPasswordReset = (u: AdminUser) => {
+    setTempPassword('');
+    setResetError('');
+    setResetTarget(u);
+  };
+  const runPasswordReset = async (call: () => Promise<unknown>, okMessage: string) => {
+    setResetBusy(true);
+    setResetError('');
+    try {
+      await call();
+      setResetTarget(null);
+      showToast(okMessage, 'success');
+      loadAuditLogs();
+    } catch (e) {
+      // Shown inside the dialog: the page toast sits behind the overlay.
+      setResetError(e instanceof Error ? e.message : 'Thao tác thất bại');
+    } finally {
+      setResetBusy(false);
+    }
+  };
+  const handleSendResetLink = () => {
+    if (!resetTarget) return;
+    const target = resetTarget;
+    runPasswordReset(
+      () => api.post(`/staff/users/${target.id}/send-password-reset/`),
+      `Đã gửi liên kết đặt lại mật khẩu tới ${target.email} (hiệu lực 1 giờ).`
+    );
+  };
+  const handleSetTempPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    if (tempPassword.length < 12) {
+      showToast('Mật khẩu tạm thời cần tối thiểu 12 ký tự.', 'warning');
+      return;
+    }
+    const target = resetTarget;
+    runPasswordReset(
+      () => api.patch(`/staff/users/${target.id}/`, { password: tempPassword }),
+      `Đã đặt mật khẩu tạm thời cho "${target.name}". Mọi phiên đăng nhập cũ của họ đã bị đăng xuất; hãy gửi mật khẩu qua kênh riêng và đề nghị đổi ngay.`
+    );
+  };
+
   // Handle adding new user
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser =(e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim()) return;
     if (live) {
@@ -848,6 +898,18 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
                             <Sliders className="w-3.5 h-3.5 inline mr-1" />
                             <span>Phân quyền riêng</span>
                           </button>
+
+                          {live && !isCurrentActor && (
+                            <button
+                              type="button"
+                              onClick={() => openPasswordReset(u)}
+                              className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px] transition-colors cursor-pointer"
+                              title="Gửi liên kết đặt lại mật khẩu hoặc đặt mật khẩu tạm thời"
+                            >
+                              <Key className="w-3.5 h-3.5 inline mr-1" />
+                              <span>Đặt lại mật khẩu</span>
+                            </button>
+                          )}
 
                           <button
                             type="button"
@@ -1427,6 +1489,90 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
       {/* =============================================================== */}
       {/* MODAL 1: THÊM NHÂN SỰ MỚI */}
       {/* =============================================================== */}
+      {resetTarget && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => !resetBusy && setResetTarget(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <Key className="w-4 h-4 text-amber-400" />
+                <span>Đặt lại mật khẩu</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setResetTarget(null)}
+                disabled={resetBusy}
+                className="p-1 rounded-full hover:bg-slate-800 text-slate-300 cursor-pointer"
+                aria-label="Đóng"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 text-xs">
+              <p className="text-slate-600">
+                Nhân sự: <strong className="text-slate-900">{resetTarget.name}</strong>{' '}
+                <span className="font-mono">({resetTarget.email})</span>
+              </p>
+
+              <div className="space-y-2">
+                <div className="font-bold text-slate-800">Cách 1 (khuyến nghị): gửi liên kết qua email</div>
+                <p className="text-slate-500">
+                  Nhân sự tự đặt mật khẩu mới qua liên kết dùng một lần, hiệu lực 1 giờ. Quản trị viên không biết mật khẩu.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSendResetLink}
+                  disabled={resetBusy || resetTarget.status !== 'active'}
+                  className="px-4 py-2 bg-[#0073C1] hover:bg-[#005FA0] disabled:opacity-50 text-white font-bold rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <Mail className="w-3.5 h-3.5" /> Gửi liên kết đặt lại
+                </button>
+                {resetTarget.status !== 'active' && (
+                  <p className="text-amber-700">Tài khoản đang tạm khóa: hãy mở khóa trước khi gửi liên kết.</p>
+                )}
+              </div>
+
+              <form onSubmit={handleSetTempPassword} className="space-y-2 border-t border-slate-200 pt-4">
+                <div className="font-bold text-slate-800">Cách 2: đặt mật khẩu tạm thời</div>
+                <p className="text-slate-500">
+                  Dùng khi email không nhận được. Các phiên đăng nhập hiện tại của nhân sự sẽ bị đăng xuất.
+                </p>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={tempPassword}
+                  onChange={(e) => setTempPassword(e.target.value)}
+                  minLength={12}
+                  required
+                  placeholder="Tối thiểu 12 ký tự"
+                  aria-label="Mật khẩu tạm thời"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl font-mono"
+                />
+                <button
+                  type="submit"
+                  disabled={resetBusy}
+                  className="px-4 py-2 border border-slate-300 hover:bg-slate-100 disabled:opacity-50 rounded-xl font-bold text-slate-800 cursor-pointer"
+                >
+                  Đặt mật khẩu tạm thời
+                </button>
+              </form>
+
+              {resetError && (
+                <p role="alert" className="text-red-600 font-medium">
+                  {resetError}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">

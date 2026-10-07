@@ -195,11 +195,17 @@ REST_FRAMEWORK = {
         "anon": env("THROTTLE_ANON", default="120/min"),
         "user": env("THROTTLE_USER", default="1200/min"),
         "public_form": env("THROTTLE_PUBLIC_FORM", default="10/hour"),
-        "login": env("THROTTLE_LOGIN", default="20/hour"),
+        # Per client IP; a whole office behind one public IP shares it. Guessing one account's
+        # password is stopped separately by django-axes (5 failures per account + IP).
+        "login": env("THROTTLE_LOGIN", default="100/hour"),
+        "password_reset": env("THROTTLE_PASSWORD_RESET", default="20/hour"),
         "email_send": env("THROTTLE_EMAIL_SEND", default="60/hour"),
         "webhook": env("THROTTLE_WEBHOOK", default="600/min"),
         "track": env("THROTTLE_TRACK", default="120/min"),
     },
+    # Throttle on REMOTE_ADDR, which ProxyRealIPMiddleware already set to the real client (the raw
+    # X-Forwarded-For chain is client-controlled and would let anyone reset their own bucket).
+    "NUM_PROXIES": 0,
     "EXCEPTION_HANDLER": "apps.core.exceptions.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,  # ratings are numbers in the frontend types
     "DATE_FORMAT": "%d/%m/%Y",

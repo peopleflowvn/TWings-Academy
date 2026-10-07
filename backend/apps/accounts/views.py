@@ -6,6 +6,7 @@ from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -100,7 +101,7 @@ class PasswordResetRequestView(APIView):
     """Email a one-hour reset link. Same answer whether or not the email exists."""
 
     permission_classes = [AllowAny]
-    throttle_scope = "login"
+    throttle_scope = "password_reset"
 
     def post(self, request):
         ser = PasswordResetRequestSerializer(data=request.data)
@@ -119,7 +120,7 @@ class PasswordResetRequestView(APIView):
 @method_decorator(csrf_protect, name="dispatch")
 class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
-    throttle_scope = "login"
+    throttle_scope = "password_reset"
 
     def post(self, request):
         from apps.core.models import audit
@@ -188,6 +189,7 @@ class StaffUserViewSet(viewsets.ModelViewSet):
         "create": ["rbac.manage_roles"],
         "update": ["rbac.manage_roles"],
         "partial_update": ["rbac.manage_roles"],
+        "send_password_reset": ["rbac.manage_roles"],
     }
     http_method_names = ["get", "post", "put", "patch", "head", "options"]  # deactivate instead of delete
     search_fields = ["name", "email"]
@@ -205,6 +207,25 @@ class StaffUserViewSet(viewsets.ModelViewSet):
         self._guard_privileged_change(serializer)
         user = serializer.save()
         self._audit("staff_user.create", user, serializer.validated_data)
+
+    @action(detail=True, methods=["post"], url_path="send-password-reset")
+    def send_password_reset(self, request, pk=None):
+        """Email the staff member their own reset link: the admin never learns the new password."""
+        from apps.core.models import audit
+        from apps.notifications.resend import ResendError
+
+        user = self.get_object()
+        if not user.is_active:
+            return Response(
+                {"detail": "Tài khoản đang tạm khóa. Hãy mở khóa trước khi gửi liên kết đặt lại mật khẩu."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            _send_reset_email(user)
+        except ResendError as exc:
+            return Response({"detail": f"Không gửi được email: {exc}"}, status=status.HTTP_502_BAD_GATEWAY)
+        audit(request, "staff_user.password_reset_sent", user, email=user.email)
+        return Response({"detail": f"Đã gửi liên kết đặt lại mật khẩu tới {user.email} (hiệu lực 1 giờ)."})
 
     def _audit(self, action, user, data):
         from apps.core.models import audit
@@ -228,5 +249,14 @@ class StaffUserViewSet(viewsets.ModelViewSet):
         if data.get("role") == Role.SUPER_ADMIN and actor.role != Role.SUPER_ADMIN and not actor.is_superuser:
             raise PermissionDenied("Chỉ Super Admin mới gán được vai trò Super Admin.")
         instance = serializer.instance
+        # Setting a super admin's password would hand over that account: only a super admin may.
+        if (
+            "password" in data
+            and instance is not None
+            and (instance.role == Role.SUPER_ADMIN or instance.is_superuser)
+            and actor.role != Role.SUPER_ADMIN
+            and not actor.is_superuser
+        ):
+            raise PermissionDenied("Chỉ Super Admin mới đặt được mật khẩu cho tài khoản Super Admin.")
         if instance is not None and instance.pk == actor.pk and data.get("is_active_label") == "suspended":
             raise PermissionDenied("Không thể tự khóa tài khoản của chính mình.")
