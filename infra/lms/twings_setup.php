@@ -56,8 +56,251 @@ if (!in_array('webservice', $auths, true)) {
 // Configures theme_boost with TWings design language:
 // Brand blue #0073C1, modern typography (Plus Jakarta Sans), clean card UI for learner dashboard (/my).
 set_config('brandcolor', '#0073C1', 'theme_boost');
+
+$twings_head_css = <<<'HTML'
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style id="twings-lms-custom-theme">
+/* === TWINGS ACADEMY MODERN LMS OVERHAUL === */
+:root {
+  --twings-font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  --twings-blue: #0073C1 !important;
+  --twings-blue-dark: #0056D2 !important;
+  --twings-navy: #00388A !important;
+  --twings-bg: #F8FAFC !important;
+  --twings-card-border: #E2E8F0 !important;
+}
+
+body, html, #page, #page-wrapper, .navbar, .btn, .card {
+  font-family: var(--twings-font) !important;
+}
+
+body {
+  background-color: var(--twings-bg) !important;
+  color: #0F172A !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 1. Header / Navbar */
+.navbar.fixed-top {
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--twings-card-border) !important;
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.04) !important;
+  height: 64px !important;
+  padding: 0 1.5rem !important;
+}
+
+.navbar-brand {
+  font-weight: 800 !important;
+  font-size: 1.15rem !important;
+  color: var(--twings-navy) !important;
+  text-transform: uppercase !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.6rem !important;
+}
+
+.navbar-brand::before {
+  content: "TW" !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 10px !important;
+  background: linear-gradient(135deg, #00388A 0%, #0056D2 50%, #0073C1 100%) !important;
+  color: #ffffff !important;
+  font-size: 0.85rem !important;
+  font-weight: 900 !important;
+  box-shadow: 0 2px 6px rgba(0, 115, 193, 0.3) !important;
+}
+
+/* 2. Page Header / Greetings Banner */
+.pagelayout-mydashboard #page-header {
+  background: transparent !important;
+  padding: 1.5rem 0 0.5rem !important;
+  border: none !important;
+}
+
+.pagelayout-mydashboard #page-header h1 {
+  font-weight: 800 !important;
+  font-size: 2rem !important;
+  letter-spacing: -0.03em !important;
+  color: #0F172A !important;
+}
+
+/* 3. Main content area wrapper */
+#page.drawers .main-inner {
+  max-width: 1280px !important;
+  margin: 0 auto !important;
+  background: transparent !important;
+}
+
+#region-main {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* 4. Blocks General Styling */
+.block {
+  background: #ffffff !important;
+  border: 1px solid var(--twings-card-border) !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
+  padding: 1.25rem !important;
+  margin-bottom: 1.75rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.block .card-title {
+  font-weight: 800 !important;
+  font-size: 1.15rem !important;
+  color: #0F172A !important;
+  letter-spacing: -0.02em !important;
+  margin-bottom: 1rem !important;
+}
+
+/* 5. Course Overview (My Courses) Card Deck */
+.block_myoverview {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.block_myoverview [data-region="filter"] {
+  background: #ffffff !important;
+  border: 1px solid var(--twings-card-border) !important;
+  border-radius: 1rem !important;
+  padding: 0.75rem 1rem !important;
+  margin-bottom: 1.5rem !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+}
+
+.block_myoverview [data-region="filter"] .btn,
+.block_myoverview [data-region="filter"] .form-control,
+.block_myoverview [data-region="filter"] .custom-select {
+  border-radius: 0.75rem !important;
+  border: 1px solid #CBD5E1 !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+}
+
+/* Individual Course Cards */
+.block_myoverview .course-card {
+  background: #ffffff !important;
+  border: 1px solid var(--twings-card-border) !important;
+  border-radius: 1.25rem !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03) !important;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
+}
+
+.block_myoverview .course-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 12px 24px -6px rgba(0, 115, 193, 0.12), 0 4px 8px -2px rgba(0, 115, 193, 0.06) !important;
+  border-color: #93C5FD !important;
+}
+
+.block_myoverview .course-card .card-img-top {
+  height: 9.5rem !important;
+  background-size: cover !important;
+  background-position: center !important;
+  position: relative !important;
+}
+
+.block_myoverview .course-card .card-img-top::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.45) 100%) !important;
+}
+
+.block_myoverview .course-card .card-body {
+  padding: 1.25rem !important;
+}
+
+.block_myoverview .course-card .coursename {
+  font-weight: 800 !important;
+  font-size: 1.05rem !important;
+  line-height: 1.45 !important;
+  color: #0F172A !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease !important;
+}
+
+.block_myoverview .course-card .coursename:hover {
+  color: var(--twings-blue-dark) !important;
+}
+
+.block_myoverview .course-card .categoryname {
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  color: var(--twings-blue) !important;
+  background: #EFF6FF !important;
+  padding: 0.25rem 0.65rem !important;
+  border-radius: 9999px !important;
+  display: inline-block !important;
+  margin-bottom: 0.5rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* Progress bar inside course card */
+.block_myoverview .course-card .progress {
+  height: 6px !important;
+  border-radius: 9999px !important;
+  background-color: #F1F5F9 !important;
+  overflow: hidden !important;
+  margin-top: 0.5rem !important;
+}
+
+.block_myoverview .course-card .progress-bar {
+  background: linear-gradient(90deg, #0073C1 0%, #0056D2 100%) !important;
+  border-radius: 9999px !important;
+}
+
+/* 6. Timeline Block & Calendar Block */
+.block_timeline, .block_calendar_month {
+  border-radius: 1.25rem !important;
+  border: 1px solid var(--twings-card-border) !important;
+}
+
+.block_calendar_month .calendartable th,
+.block_calendar_month .calendartable td {
+  border-radius: 0.5rem !important;
+}
+
+.block_calendar_month .today {
+  background-color: #EFF6FF !important;
+  color: var(--twings-blue) !important;
+  font-weight: 800 !important;
+  border-radius: 9999px !important;
+}
+
+/* 7. Action buttons */
+.btn-primary {
+  background: linear-gradient(135deg, #0056D2 0%, #0073C1 100%) !important;
+  border: none !important;
+  border-radius: 0.85rem !important;
+  font-weight: 700 !important;
+  padding: 0.55rem 1.25rem !important;
+  box-shadow: 0 2px 4px rgba(0, 115, 193, 0.25) !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 115, 193, 0.35) !important;
+}
+</style>
+HTML;
+
+set_config('additionalhtmlhead', $twings_head_css);
+
 $twings_scss = <<<'SCSS'
-// Import Plus Jakarta Sans for modern typography
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap');
 
 :root {
