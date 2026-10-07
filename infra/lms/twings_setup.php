@@ -52,6 +52,276 @@ if (!in_array('webservice', $auths, true)) {
     set_config('auth', implode(',', $auths));
 }
 
+// ---------------------------------------------------------------- TWings Theme & Brand Styling
+// Configures theme_boost with TWings design language:
+// Brand blue #0073C1, modern typography (Plus Jakarta Sans), clean card UI for learner dashboard (/my).
+set_config('brandcolor', '#0073C1', 'theme_boost');
+$twings_scss = <<<'SCSS'
+// Import Plus Jakarta Sans for modern typography
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap');
+
+:root {
+  --font-family-base: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --twings-primary: #0073C1;
+  --twings-primary-dark: #0056D2;
+  --twings-primary-navy: #00388A;
+  --twings-surface: #F8FAFC;
+  --twings-border: #E2E8F0;
+  --twings-text-main: #0F172A;
+  --twings-text-muted: #64748B;
+}
+
+body, html {
+  font-family: var(--font-family-base) !important;
+  background-color: var(--twings-surface) !important;
+  color: var(--twings-text-main) !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+// Top Navbar Modernization
+.navbar.fixed-top {
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--twings-border) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04) !important;
+  height: 64px;
+  padding: 0 1.5rem;
+
+  .navbar-brand {
+    font-weight: 800;
+    font-size: 1.15rem;
+    letter-spacing: -0.025em;
+    color: var(--twings-primary-navy) !important;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    &::before {
+      content: "TW";
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #00388A 0%, #0056D2 50%, #0073C1 100%);
+      color: #ffffff;
+      font-size: 0.85rem;
+      font-weight: 900;
+      letter-spacing: 0;
+      box-shadow: 0 2px 4px rgba(0, 115, 193, 0.25);
+    }
+  }
+
+  .primary-navigation .navigation .nav-link {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #475569;
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.875rem;
+    transition: all 0.15s ease-in-out;
+
+    &:hover {
+      color: var(--twings-primary-dark);
+      background-color: #F1F5F9;
+    }
+
+    &.active {
+      color: var(--twings-primary-dark);
+      background-color: #EFF6FF;
+    }
+  }
+}
+
+// Modern Dashboard Header & Welcome Banner
+.pagelayout-mydashboard {
+  #page-header {
+    background: transparent;
+    padding: 1.75rem 0 1rem;
+    border-bottom: none;
+
+    .page-context-header {
+      .page-header-headings {
+        h1 {
+          font-weight: 800;
+          font-size: 1.85rem;
+          color: var(--twings-text-main);
+          letter-spacing: -0.025em;
+        }
+      }
+    }
+  }
+}
+
+// Course Cards Modernization (Coursera/Modern LMS Aesthetics)
+.block_myoverview {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+
+  .card-grid {
+    gap: 1.5rem 0;
+  }
+
+  .course-card {
+    border: 1px solid var(--twings-border) !important;
+    border-radius: 1rem !important;
+    overflow: hidden;
+    background: #ffffff !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px -5px rgba(0, 115, 193, 0.1), 0 8px 10px -6px rgba(0, 115, 193, 0.06) !important;
+      border-color: #BFDBFE !important;
+    }
+
+    .card-img-top {
+      height: 9rem !important;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+
+      &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.4) 100%);
+      }
+    }
+
+    .card-body {
+      padding: 1.25rem 1.25rem 0.75rem !important;
+      flex: 1 1 auto;
+
+      .coursename {
+        font-weight: 700;
+        font-size: 1.05rem;
+        line-height: 1.4;
+        color: var(--twings-text-main) !important;
+        text-decoration: none !important;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+
+        &:hover {
+          color: var(--twings-primary-dark) !important;
+        }
+      }
+
+      .categoryname {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--twings-primary-dark);
+        background: #EFF6FF;
+        padding: 0.2rem 0.6rem;
+        border-radius: 9999px;
+        display: inline-block;
+        margin-bottom: 0.5rem;
+      }
+    }
+
+    .card-footer {
+      background: #ffffff !important;
+      border-top: 1px solid #F1F5F9 !important;
+      padding: 0.85rem 1.25rem !important;
+
+      .progress-text {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--twings-text-muted);
+        margin-bottom: 0.35rem;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .progress {
+        height: 6px !important;
+        border-radius: 9999px !important;
+        background-color: #F1F5F9 !important;
+        overflow: hidden;
+
+        .progress-bar {
+          background: linear-gradient(90deg, #0073C1 0%, #0056D2 100%) !important;
+          border-radius: 9999px;
+        }
+      }
+    }
+  }
+
+  // Filter toolbar styling
+  [data-region="filter"] {
+    background: #ffffff;
+    border: 1px solid var(--twings-border);
+    border-radius: 0.875rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+
+    .btn, .form-control, .custom-select {
+      border-radius: 0.625rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-color: var(--twings-border);
+    }
+  }
+}
+
+// Side Drawers & Blocks styling
+.drawer {
+  border-left: 1px solid var(--twings-border);
+  box-shadow: -4px 0 15px rgba(0, 0, 0, 0.03);
+}
+
+.block {
+  border: 1px solid var(--twings-border) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+  background: #ffffff !important;
+  margin-bottom: 1.5rem;
+
+  .card-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--twings-text-main);
+    letter-spacing: -0.01em;
+  }
+}
+
+// Modern buttons
+.btn-primary {
+  background-color: var(--twings-primary) !important;
+  border-color: var(--twings-primary) !important;
+  border-radius: 0.75rem !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 1.15rem !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 115, 193, 0.2) !important;
+  transition: all 0.15s ease-in-out !important;
+
+  &:hover, &:focus {
+    background-color: var(--twings-primary-dark) !important;
+    border-color: var(--twings-primary-dark) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 115, 193, 0.3) !important;
+  }
+}
+
+.btn-secondary {
+  border-radius: 0.75rem !important;
+  font-weight: 600 !important;
+}
+SCSS;
+set_config('scss', $twings_scss, 'theme_boost');
+
+
 // ---------------------------------------------------------------- Vietnamese language pack
 if (!get_string_manager()->translation_exists('vi', false)) {
     try {

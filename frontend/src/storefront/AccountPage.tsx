@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Award, BookOpen, Briefcase, CheckCircle2, Copy, Loader2, LogOut, Mail, RotateCcw } from 'lucide-react';
+import { ArrowRight, Award, BookOpen, Briefcase, CheckCircle2, Copy, Loader2, LogOut, Mail, RotateCcw } from 'lucide-react';
 import { ApiError, isBackendEnabled, resetCsrfToken } from '../lib/api';
 import { Account, AccountCourse, AccountOrder, commerceApi, Dossier, formatDate, formatVND } from '../lib/commerce';
 
@@ -362,34 +362,55 @@ const InvoiceBox: React.FC<{ order: AccountOrder; email: string; onChange: (o: A
 };
 
 const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: string; learnerEmail: string; onChange: (o: AccountOrder) => void }> = ({ order, learnUrl, learnerName, learnerEmail, onChange }) => (
-  <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-    <div className="flex flex-wrap items-start justify-between gap-3">
+  <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-5 shadow-xs hover:shadow-md transition-shadow">
+    <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-slate-100">
       <div>
-        <div className="text-[11px] font-bold text-[#0056D2] uppercase">
-          {order.kind === 'program' ? 'Chương trình' : 'Khóa học'} · Mã đơn {order.orderCode}
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[#0056D2] uppercase tracking-wider mb-1.5">
+          {order.kind === 'program' ? 'Chương trình trọn gói' : 'Khóa học thực chiến'} · Đơn #{order.orderCode}
         </div>
-        <h2 className="font-bold text-slate-900 text-lg">{order.title}</h2>
-        <div className="text-xs text-slate-500">Đăng ký ngày {formatDate(order.createdAt)}</div>
+        <h2 className="font-extrabold text-slate-900 text-lg sm:text-xl tracking-tight">{order.title}</h2>
+        <div className="text-xs text-slate-500 mt-0.5">Ngày đăng ký: {formatDate(order.createdAt)}</div>
       </div>
-      <span className={`text-xs font-bold border rounded-full px-2.5 py-1 ${STATUS_STYLE[order.status] || ''}`}>
+      <span className={`text-xs font-bold border rounded-full px-3 py-1 shadow-2xs ${STATUS_STYLE[order.status] || ''}`}>
         {order.status === 'pending' && order.learningAccess ? 'Đang trả góp' : order.statusLabel}
       </span>
     </div>
 
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-      <div><div className="text-slate-500">Học phí</div><div className="font-bold">{formatVND(order.amount)}</div></div>
-      <div><div className="text-slate-500">Đã đóng</div><div className="font-bold text-emerald-700">{formatVND(order.totalPaid)}</div></div>
-      {order.refunded > 0 && <div><div className="text-slate-500">Đã hoàn</div><div className="font-bold">{formatVND(order.refunded)}</div></div>}
-      {order.status === 'pending' && <div><div className="text-slate-500">Còn lại</div><div className="font-bold text-amber-700">{formatVND(Math.max(order.amount - order.totalPaid, 0))}</div></div>}
+    {/* Financial & Installment Summary */}
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100 text-xs">
+      <div>
+        <div className="text-slate-500 text-[11px]">Học phí trọn gói</div>
+        <div className="font-extrabold text-slate-900 text-sm mt-0.5">{formatVND(order.amount)}</div>
+      </div>
+      <div>
+        <div className="text-slate-500 text-[11px]">Đã thanh toán</div>
+        <div className="font-extrabold text-emerald-700 text-sm mt-0.5">{formatVND(order.totalPaid)}</div>
+      </div>
+      {order.refunded > 0 && (
+        <div>
+          <div className="text-slate-500 text-[11px]">Đã hoàn</div>
+          <div className="font-extrabold text-slate-600 text-sm mt-0.5">{formatVND(order.refunded)}</div>
+        </div>
+      )}
+      {order.status === 'pending' && (
+        <div>
+          <div className="text-slate-500 text-[11px]">Còn lại cần đóng</div>
+          <div className="font-extrabold text-amber-700 text-sm mt-0.5">{formatVND(Math.max(order.amount - order.totalPaid, 0))}</div>
+        </div>
+      )}
     </div>
 
     {order.installments.length > 1 && (
-      <div className="text-xs border border-slate-200 rounded-xl divide-y divide-slate-100">
+      <div className="text-xs border border-slate-200/70 rounded-xl overflow-hidden divide-y divide-slate-100">
+        <div className="bg-slate-50 px-3.5 py-2 font-bold text-slate-700 flex justify-between text-[11px] uppercase tracking-wider">
+          <span>Tiến độ trả góp</span>
+          <span>{order.installments.filter(i => i.paidAt).length}/{order.installments.length} kỳ hoàn thành</span>
+        </div>
         {order.installments.map((i) => (
-          <div key={i.sequence} className="flex items-center justify-between px-3 py-2">
-            <span>Kỳ {i.sequence} · hạn {formatDate(i.dueDate)}</span>
-            <span className="font-mono font-bold">{formatVND(i.amount)}</span>
-            <span className={i.paidAt ? 'text-emerald-700 font-bold' : i.overdue ? 'text-red-600 font-bold' : 'text-slate-500'}>
+          <div key={i.sequence} className="flex items-center justify-between px-3.5 py-2.5">
+            <span className="font-medium text-slate-700">Kỳ {i.sequence} · hạn {formatDate(i.dueDate)}</span>
+            <span className="font-mono font-bold text-slate-800">{formatVND(i.amount)}</span>
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${i.paidAt ? 'bg-emerald-50 text-emerald-700' : i.overdue ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-600'}`}>
               {i.paidAt ? 'Đã đóng' : i.overdue ? 'Quá hạn' : 'Chưa đến hạn'}
             </span>
           </div>
@@ -399,75 +420,130 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: 
 
     <PaymentBox order={order} />
 
-    <div className="space-y-2">
-      {order.courses.map((c, idx) => (
-        <div key={`${c.title}-${idx}`} className="border border-slate-200 rounded-xl p-3 space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="font-bold text-sm text-slate-900 flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-[#0056D2]" />{c.title}</div>
-              <div className="text-[11px] text-slate-500">
-                {[c.cohortName && `Lớp ${c.cohortName}`, c.startDate && `khai giảng ${formatDate(c.startDate)}`, c.lmsStatusLabel].filter(Boolean).join(' · ')}
+    {/* Course List inside Order */}
+    <div className="space-y-3 pt-2">
+      <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+        <BookOpen className="w-3.5 h-3.5 text-[#0056D2]" /> Các khóa học trong đơn
+      </div>
+      <div className="grid grid-cols-1 gap-3">
+        {order.courses.map((c, idx) => (
+          <div key={`${c.title}-${idx}`} className="border border-slate-200 rounded-xl p-4 space-y-3 bg-white hover:border-blue-200 transition-colors">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                  <span>{c.title}</span>
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-2">
+                  {c.cohortName && <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-700 font-medium">Lớp: {c.cohortName}</span>}
+                  {c.startDate && <span>Khai giảng: {formatDate(c.startDate)}</span>}
+                  <span className={`font-semibold ${c.lmsStatus === 'done' ? 'text-emerald-700' : 'text-slate-500'}`}>
+                    · {c.lmsStatusLabel}
+                  </span>
+                </div>
               </div>
+              {c.lmsStatus === 'done' && (
+                <a
+                  href={learnUrl}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0056D2] to-[#0073C1] hover:from-[#00419E] hover:to-[#0056D2] text-white text-xs font-bold shadow-xs hover:shadow-sm inline-flex items-center gap-1.5 transition-all"
+                >
+                  Vào học LMS <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+              )}
             </div>
-            {c.lmsStatus === 'done' && (
-              <a href={learnUrl} className="px-3 py-1.5 rounded-xl bg-[#0056D2] text-white text-xs font-bold hover:bg-[#00419E]">Vào học</a>
+
+            {c.progress !== null && c.lmsStatus === 'done' && (
+              <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-600 font-medium text-[11px]">Tiến độ học tập</span>
+                  <span className="font-mono font-bold text-[#0056D2]">{c.progress}%</span>
+                </div>
+                <div className="h-2 bg-slate-200/80 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-500 ${c.completedAt ? 'bg-emerald-500' : 'bg-gradient-to-r from-[#0073C1] to-[#0056D2]'}`}
+                    style={{ width: `${c.progress}%` }}
+                  />
+                </div>
+              </div>
             )}
-          </div>
-          {c.progress !== null && c.lmsStatus === 'done' && (
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className={`h-full ${c.completedAt ? 'bg-emerald-500' : 'bg-[#0056D2]'}`} style={{ width: `${c.progress}%` }} />
+
+            {c.completedAt && (
+              <div className="text-xs text-emerald-800 bg-emerald-50/80 border border-emerald-100 rounded-lg p-2.5 font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Chúc mừng! Bạn đã hoàn thành khóa học vào {formatDate(c.completedAt)}.</span>
               </div>
-              <span className="text-[11px] font-mono font-bold w-10 text-right">{c.progress}%</span>
-            </div>
-          )}
-          {c.completedAt && (
-            <div className="text-xs text-emerald-700 font-bold flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4" /> Hoàn thành ngày {formatDate(c.completedAt)}
-            </div>
-          )}
-          {c.certificate && (
-            <a href={c.certificate.url} target="_blank" rel="noopener" className="text-xs text-[#0056D2] font-bold flex items-center gap-1.5 hover:underline">
-              <Award className="w-4 h-4" /> Chứng chỉ {c.certificate.code}
-            </a>
-          )}
-          {c.certificate && (
-            <a href={`${c.certificate.url}in/`} target="_blank" rel="noopener" className="text-xs text-slate-600 hover:underline">
-              In / lưu PDF chứng chỉ
-            </a>
-          )}
-          <ReviewBox course={c} learnerName={learnerName} />
-        </div>
-      ))}
+            )}
+
+            {c.certificate && (
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <a
+                  href={c.certificate.url}
+                  target="_blank"
+                  rel="noopener"
+                  className="text-xs text-[#0056D2] font-bold inline-flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <Award className="w-4 h-4" /> Xem chứng chỉ {c.certificate.code}
+                </a>
+                <a
+                  href={`${c.certificate.url}in/`}
+                  target="_blank"
+                  rel="noopener"
+                  className="text-xs text-slate-600 hover:text-slate-900 underline"
+                >
+                  Tải bản in / PDF
+                </a>
+              </div>
+            )}
+
+            <ReviewBox course={c} learnerName={learnerName} />
+          </div>
+        ))}
+      </div>
     </div>
 
     {order.jobs && order.jobs.length > 0 && (
-      <div className="text-xs border border-emerald-200 bg-emerald-50/50 rounded-xl p-3 space-y-1.5">
-        <div className="font-bold text-slate-900 flex items-center gap-1.5"><Briefcase className="w-4 h-4 text-emerald-700" /> Giới thiệu việc làm</div>
+      <div className="text-xs border border-emerald-200 bg-emerald-50/60 rounded-xl p-4 space-y-2">
+        <div className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+          <Briefcase className="w-4 h-4 text-emerald-700" /> Kết nối cơ hội việc làm
+        </div>
         {order.jobs.map((j, i) => (
-          <div key={i}>
-            <strong>{j.employer}</strong>{j.role ? ` – ${j.role}` : ''}: <span className="font-bold text-emerald-800">{j.stageLabel}</span>
-            {j.interviewAt && ` · phỏng vấn ${new Date(j.interviewAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}${j.interviewLocation ? ` tại ${j.interviewLocation}` : ''}`}
-            {j.startDate && ` · bắt đầu làm việc ${formatDate(j.startDate)}`}
+          <div key={i} className="bg-white/80 p-2.5 rounded-lg border border-emerald-100 space-y-1">
+            <div className="flex justify-between items-center">
+              <strong className="text-slate-900">{j.employer}</strong>
+              <span className="font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded text-[11px]">{j.stageLabel}</span>
+            </div>
+            {j.role && <div className="text-slate-600">Vị trí: {j.role}</div>}
+            {j.interviewAt && (
+              <div className="text-slate-600">
+                Phỏng vấn: {new Date(j.interviewAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                {j.interviewLocation ? ` tại ${j.interviewLocation}` : ''}
+              </div>
+            )}
+            {j.startDate && <div className="text-emerald-700 font-medium">Bắt đầu công việc: {formatDate(j.startDate)}</div>}
           </div>
         ))}
       </div>
     )}
+
     {order.learningAccess && <DossierBox order={order} />}
-    <InvoiceBox order={order} email={learnerEmail} onChange={onChange} />
-    <RefundRequest order={order} onSent={onChange} />
+    
+    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+      <InvoiceBox order={order} email={learnerEmail} onChange={onChange} />
+      <RefundRequest order={order} onSent={onChange} />
+    </div>
   </div>
 );
 
 export const AccountPage: React.FC = () => {
   const [account, setAccount] = useState<Account | null>(null);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'my_learning' | 'all_orders'>('my_learning');
 
   const load = useCallback(() => {
     commerceApi.account().then(setAccount).catch((e: Error) => setError(e.message));
   }, []);
+
   useEffect(() => {
-    document.title = 'Tài khoản học viên | TWings Academy';
+    document.title = 'Bảng điều khiển học viên | TWings Academy';
     if (isBackendEnabled()) load();
   }, [load]);
 
@@ -484,24 +560,202 @@ export const AccountPage: React.FC = () => {
   const replace = (next: AccountOrder) =>
     setAccount({ ...account, orders: account.orders.map((o) => (o.orderCode === next.orderCode ? next : o)) });
 
+  // Calculate learning metrics across all orders
+  const allEnrolledCourses = account.orders.flatMap(o => o.courses);
+  const activeCourses = allEnrolledCourses.filter(c => c.lmsStatus === 'done' && !c.completedAt);
+  const completedCourses = allEnrolledCourses.filter(c => !!c.completedAt);
+  const certificatesCount = allEnrolledCourses.filter(c => !!c.certificate).length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900">Xin chào{account.name ? `, ${account.name}` : ''}</h1>
-          <p className="text-xs text-slate-500">{account.email}</p>
+    <div className="space-y-8 max-w-5xl mx-auto">
+      {/* Learner Hero Banner with Coursera/LMS Style */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#00388A] via-[#0050D8] to-[#0073C1] text-white p-6 sm:p-8 shadow-md">
+        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-semibold tracking-wide text-blue-100">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Không gian học tập cá nhân
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Chào mừng trở lại{account.name ? `, ${account.name}` : ''}!
+            </h1>
+            <p className="text-blue-100 text-xs sm:text-sm max-w-xl">
+              Tài khoản: <strong className="font-mono text-white">{account.email}</strong>. Truy cập hệ thống TWings LMS để tiếp tục bài học, làm bài tập và nhận chứng chỉ.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <a
+              href={account.learnUrl}
+              className="px-5 py-3 rounded-xl bg-white text-[#00388A] hover:bg-blue-50 text-sm font-extrabold shadow-sm hover:shadow transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <BookOpen className="w-4 h-4 text-[#0056D2]" /> Vào học ngay trên LMS <ArrowRight className="w-4 h-4" />
+            </a>
+            <button
+              type="button"
+              onClick={logout}
+              className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-sm font-medium transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <LogOut className="w-4 h-4" /> Đăng xuất
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <a href={account.learnUrl} className="px-4 py-2 rounded-xl bg-[#0056D2] text-white text-sm font-bold hover:bg-[#00419E]">Vào TWings LMS</a>
-          <button type="button" onClick={logout} className="px-3 py-2 rounded-xl border border-slate-300 text-slate-600 text-sm hover:bg-slate-50 cursor-pointer flex items-center gap-1.5">
-            <LogOut className="w-4 h-4" /> Đăng xuất
-          </button>
+
+        {/* Quick Stats Grid */}
+        <div className="mt-6 pt-6 border-t border-white/15 grid grid-cols-2 sm:grid-cols-4 gap-4 text-white">
+          <div className="bg-white/10 rounded-2xl p-3.5 backdrop-blur-xs border border-white/10">
+            <div className="text-[11px] text-blue-200 font-medium">Khóa đang học</div>
+            <div className="text-2xl font-black mt-0.5">{activeCourses.length}</div>
+          </div>
+          <div className="bg-white/10 rounded-2xl p-3.5 backdrop-blur-xs border border-white/10">
+            <div className="text-[11px] text-blue-200 font-medium">Đã hoàn thành</div>
+            <div className="text-2xl font-black mt-0.5 text-emerald-300">{completedCourses.length}</div>
+          </div>
+          <div className="bg-white/10 rounded-2xl p-3.5 backdrop-blur-xs border border-white/10">
+            <div className="text-[11px] text-blue-200 font-medium">Chứng chỉ nhận được</div>
+            <div className="text-2xl font-black mt-0.5 text-amber-300">{certificatesCount}</div>
+          </div>
+          <div className="bg-white/10 rounded-2xl p-3.5 backdrop-blur-xs border border-white/10">
+            <div className="text-[11px] text-blue-200 font-medium">Tổng số đơn hàng</div>
+            <div className="text-2xl font-black mt-0.5">{account.orders.length}</div>
+          </div>
         </div>
       </div>
-      {account.orders.length === 0 && <p className="text-sm text-slate-600">Chưa có đơn đăng ký nào với email này.</p>}
-      {account.orders.map((o) => (
-        <OrderCard key={o.orderCode} order={o} learnUrl={account.learnUrl} learnerName={account.name} learnerEmail={account.email} onChange={replace} />
-      ))}
+
+      {/* Tabs navigation */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('my_learning')}
+          className={`px-4 py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center gap-2 ${
+            activeTab === 'my_learning'
+              ? 'bg-[#0056D2] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" /> Khóa học & Lớp học ({allEnrolledCourses.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('all_orders')}
+          className={`px-4 py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center gap-2 ${
+            activeTab === 'all_orders'
+              ? 'bg-[#0056D2] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          Học phí & Đơn đăng ký ({account.orders.length})
+        </button>
+      </div>
+
+      {/* Tab 1: My Learning Quick Deck */}
+      {activeTab === 'my_learning' && (
+        <div className="space-y-6">
+          {allEnrolledCourses.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-3">
+              <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+              <h3 className="font-bold text-slate-800 text-lg">Bạn chưa có khóa học nào</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Khám phá ngay các khóa học nghiệp vụ Ngân hàng thực chiến tại TWings Academy để bắt đầu lộ trình học tập.
+              </p>
+              <a
+                href="/khoa-hoc"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0056D2] text-white text-xs font-bold hover:bg-[#00419E]"
+              >
+                Xem danh sách khóa học
+              </a>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {allEnrolledCourses.map((course, idx) => (
+                <div
+                  key={`${course.title}-${idx}`}
+                  className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-[#0056D2] bg-blue-50 px-2.5 py-0.5 rounded-full uppercase">
+                        Khóa học
+                      </span>
+                      {course.completedAt ? (
+                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Đã xong
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-slate-500">
+                          {course.lmsStatusLabel}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-extrabold text-slate-900 text-base leading-snug line-clamp-2">
+                      {course.title}
+                    </h3>
+                    <div className="text-xs text-slate-500">
+                      {[course.cohortName && `Lớp ${course.cohortName}`, course.startDate && `Khai giảng ${formatDate(course.startDate)}`].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-3 border-t border-slate-100">
+                    {course.progress !== null && course.lmsStatus === 'done' && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-500 text-[11px]">Tiến độ học</span>
+                          <span className="font-mono font-bold text-[#0056D2]">{course.progress}%</span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${course.completedAt ? 'bg-emerald-500' : 'bg-gradient-to-r from-[#0073C1] to-[#0056D2]'}`}
+                            style={{ width: `${course.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      {course.certificate ? (
+                        <a
+                          href={course.certificate.url}
+                          target="_blank"
+                          rel="noopener"
+                          className="text-xs text-[#0056D2] font-bold inline-flex items-center gap-1 hover:underline"
+                        >
+                          <Award className="w-3.5 h-3.5" /> Chứng chỉ
+                        </a>
+                      ) : (
+                        <span className="text-[11px] text-slate-400">Chưa có chứng chỉ</span>
+                      )}
+                      {course.lmsStatus === 'done' ? (
+                        <a
+                          href={account.learnUrl}
+                          className="px-3.5 py-1.5 rounded-xl bg-[#0056D2] hover:bg-[#00419E] text-white text-xs font-bold inline-flex items-center gap-1 transition-colors"
+                        >
+                          Vào lớp <ArrowRight className="w-3.5 h-3.5" />
+                        </a>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Đang chuẩn bị</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 2: Orders & Invoices List */}
+      {activeTab === 'all_orders' && (
+        <div className="space-y-5">
+          {account.orders.length === 0 && (
+            <p className="text-sm text-slate-600 bg-white p-6 rounded-2xl border border-slate-200 text-center">
+              Chưa có đơn đăng ký nào với email này.
+            </p>
+          )}
+          {account.orders.map((o) => (
+            <OrderCard key={o.orderCode} order={o} learnUrl={account.learnUrl} learnerName={account.name} learnerEmail={account.email} onChange={replace} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
+
