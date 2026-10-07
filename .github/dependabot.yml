@@ -5,14 +5,24 @@ updates:
     schedule: { interval: weekly }
     groups:
       actions: { patterns: ["*"] }
+  # Security and bug-fix releases come automatically; major upgrades (and Django feature releases, e.g.
+  # 6.1 -> 6.2 LTS) are planned changes made on purpose, not merged from a bot PR.
   - package-ecosystem: npm
     directory: /frontend
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
     directory: /backend
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "django"
+        update-types: ["version-update:semver-minor"]
   - package-ecosystem: docker
     directory: /backend
     schedule: { interval: weekly }

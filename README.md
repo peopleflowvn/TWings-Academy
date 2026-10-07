@@ -7,7 +7,7 @@ Nền tảng đào tạo và tuyển sinh nhân sự ngân hàng: website bán k
 | Phần | Công nghệ | Thư mục |
 |---|---|---|
 | Frontend | React 19 · TypeScript · Vite 8 · Tailwind CSS 4 | [`frontend/`](frontend/) |
-| Backend API | Django 5.2 LTS · Django REST Framework · PostgreSQL 18 | [`backend/`](backend/) |
+| Backend API | Django 6.1 · Django REST Framework · PostgreSQL 18 | [`backend/`](backend/) |
 | LMS | Moodle 5.2 (PHP 8.3), mã nguồn trong repo + plugin `local_twings` | [`lms/`](lms/) |
 | Hạ tầng | Docker Compose · Caddy · Cloudflare R2 / Pages · Oracle Cloud VPS | [`infra/`](infra/) |
 | CI/CD | GitHub Actions · GHCR | [`.github/workflows/`](.github/workflows/) |
