@@ -6,7 +6,8 @@ import {
   BookOpen,
   Newspaper,
   PhoneCall,
-  Sparkles
+  Sparkles,
+  UserRound
 } from 'lucide-react';
 import { useSiteLogo } from '../lib/siteSeo';
 import { routePath } from '../lib/routes';
@@ -134,7 +135,15 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             <span>Tin tức & Cẩm nang</span>
           </a>
 
-          {/* Learners: the Moodle LMS (full page, served at /learn on the same domain) */}
+          {/* Learners: Account Hub & LMS */}
+          <a
+            href="/tai-khoan"
+            className="flex items-center gap-1.5 hover:text-[#0073C1] transition-colors"
+          >
+            <UserRound className="w-3.5 h-3.5 text-[#0073C1]" />
+            <span>Tài khoản</span>
+          </a>
+
           <a
             href="/learn/"
             className="flex items-center gap-1.5 hover:text-[#0073C1] transition-colors"
@@ -234,6 +243,9 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           >
             Đăng Ký Tư Vấn Khóa Học
           </button>
+          <a href="/tai-khoan" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-slate-800 font-bold">
+            Tài Khoản Học Viên
+          </a>
           <a href="/learn/" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-slate-800 font-bold">
             Vào Học (TWings LMS)
           </a>
