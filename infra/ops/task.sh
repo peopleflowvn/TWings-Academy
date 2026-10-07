@@ -233,6 +233,18 @@ for p in Program.objects.all():
 '"
     ;;
 
+  smoke-host)
+    # Like smoke, but the domains are forced to this VPS's IP: checks a new / moved machine before DNS points to it.
+    ip=$(ssh -G vps | awk '/^hostname /{print $2}')
+    for h in api-tuyensinh.twings.edu.vn tuyensinh.twings.edu.vn twings.tunghr.io.vn; do
+      for path in /api/v1/health/ / /khoa-hoc /learn/login/index.php; do
+        curl -s -o /dev/null -m 30 --resolve "$h:443:$ip" -w "%{http_code} https://$h$path
+" "https://$h$path" || echo "FAIL $h$path"
+      done
+    done
+    curl -s -m 30 --resolve "twings.tunghr.io.vn:443:$ip" https://twings.tunghr.io.vn/api/v1/public/courses/ | head -c 160; echo
+    ;;
+
   hostkey)
     # Public host key of the machine, to pin in VPS_KNOWN_HOSTS (public data).
     remote 'cat /etc/ssh/ssh_host_ed25519_key.pub; hostname'
