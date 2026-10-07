@@ -310,6 +310,13 @@ def revoke_access(order_id: str) -> None:
             content=f"Lý do: đơn {reason.lower()}.",
             actor="Hệ thống LMS",
         )
+    # No other order left that lets this person study: suspend the Moodle account (no sign-in at all).
+    from .overview import sync_account
+
+    try:
+        sync_account(order.customer_email)
+    except moodle.MoodleError as exc:
+        logger.warning("LMS account sync after revoking order %s failed: %s", order.order_code, exc)
 
 
 def provision_cohort(cohort) -> dict:

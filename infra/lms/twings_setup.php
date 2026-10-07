@@ -159,6 +159,8 @@ $functions = [
     'core_enrol_get_users_courses', 'core_enrol_get_enrolled_users',
     'core_completion_get_course_completion_status', 'gradereport_overview_get_course_grades',
     'enrol_manual_unenrol_users', 'core_user_update_users', 'core_role_assign_roles',
+    // Staff who leave or change role lose Moodle's manager role
+    'core_role_unassign_roles',
     // Intakes: copy the template course, set its dates
     'core_course_duplicate_course', 'core_course_update_courses',
     // Public syllabus on the website: section and activity names of the template course

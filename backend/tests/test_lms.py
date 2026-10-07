@@ -15,6 +15,7 @@ class FakeMoodle:
     def __init__(self):
         self.users, self.courses, self.categories, self.enrolments = [], [], [], []
         self.down = False
+        self.suspended, self.role_assignments, self.role_unassignments = {}, [], []
 
     def __call__(self, function, **params):
         if self.down:
@@ -64,6 +65,19 @@ class FakeMoodle:
     def core_course_update_courses(self, courses):
         for update in courses:
             next(c for c in self.courses if c["id"] == update["id"]).update(update)
+
+    def core_user_update_users(self, users):
+        for u in users:
+            if "suspended" in u:
+                self.suspended[u["id"]] = u["suspended"]
+            if "auth" in u:
+                next(x for x in self.users if x["id"] == u["id"])["auth"] = u["auth"]
+
+    def core_role_assign_roles(self, assignments):
+        self.role_assignments.extend(assignments)
+
+    def core_role_unassign_roles(self, unassignments):
+        self.role_unassignments.extend(unassignments)
 
 
 @pytest.fixture
@@ -189,7 +203,7 @@ class FakeMoodleAdmin(FakeMoodle):
 
     def __init__(self):
         super().__init__()
-        self.suspended, self.unenrolled, self.role_assignments = {}, [], []
+        self.unenrolled = []
         self.progress = {}  # (userid, courseid) -> (progress, completed)
         self.lastaccess = {}
 
@@ -242,13 +256,6 @@ class FakeMoodleAdmin(FakeMoodle):
 
     def enrol_manual_unenrol_users(self, enrolments):
         self.unenrolled += [(e["userid"], e["courseid"]) for e in enrolments]
-
-    def core_user_update_users(self, users):
-        for u in users:
-            self.suspended[u["id"]] = u["suspended"]
-
-    def core_role_assign_roles(self, assignments):
-        self.role_assignments.extend(assignments)
 
 
 @pytest.fixture
@@ -495,3 +502,61 @@ def test_catalog_lists_intakes_and_provision_endpoint(fake_admin_moodle, course,
         .status_code
         == 403
     )
+
+
+def test_deactivated_or_reroled_staff_lose_moodle_access(
+    fake_admin_moodle, staff_client, settings, django_capture_on_commit_callbacks
+):
+    from apps.accounts.models import User
+    from apps.accounts.rbac import Role
+
+    settings.SSO_CLIENT_SECRET = "s" * 32
+    client = staff_client(Role.ACADEMIC_MANAGEMENT)
+    client.post("/api/v1/staff/lms/open/", {}, format="json")
+    mu = fake_admin_moodle.users[0]
+    assert mu["auth"] == "oauth2"  # SSO only: no Moodle password to reset around a deactivation
+    staff = User.objects.get(email=mu["email"])
+
+    with django_capture_on_commit_callbacks(execute=True):
+        staff.is_active = False
+        staff.save()
+    assert fake_admin_moodle.suspended[mu["id"]] == 1
+    assert fake_admin_moodle.role_unassignments[-1]["userid"] == mu["id"]
+
+    with django_capture_on_commit_callbacks(execute=True):
+        staff.is_active = True
+        staff.save()
+    assert fake_admin_moodle.suspended[mu["id"]] == 0 and len(fake_admin_moodle.role_assignments) == 2
+
+    with django_capture_on_commit_callbacks(execute=True):
+        staff.role = Role.SALES_CRM
+        staff.save()
+    assert len(fake_admin_moodle.role_assignments) == 2 and fake_admin_moodle.role_unassignments
+
+    calls = len(fake_admin_moodle.role_unassignments)
+    with django_capture_on_commit_callbacks(execute=True):
+        staff.name = "Đổi tên"  # unrelated edits do not touch Moodle
+        staff.save()
+    assert len(fake_admin_moodle.role_unassignments) == calls
+
+
+def test_refunded_learner_is_suspended_unless_another_order_still_gives_access(
+    fake_admin_moodle, course, django_capture_on_commit_callbacks
+):
+    with django_capture_on_commit_callbacks(execute=True):
+        first = _paid_order(course)
+    mu_id = fake_admin_moodle.users[0]["id"]
+
+    with django_capture_on_commit_callbacks(execute=True):
+        second = _paid_order(course, customer_phone="0900000000")
+
+    def refund(order):
+        order = Order.objects.get(pk=order.pk)  # as the refund view does (fresh enrolment relation)
+        with django_capture_on_commit_callbacks(execute=True):
+            order.status = "refunded"
+            order.save()
+
+    refund(first)
+    assert fake_admin_moodle.suspended.get(mu_id, 0) == 0  # still studying through the second order
+    refund(second)
+    assert fake_admin_moodle.suspended[mu_id] == 1

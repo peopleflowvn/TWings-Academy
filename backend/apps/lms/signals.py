@@ -1,9 +1,10 @@
 import logging
 
 from django.db import transaction
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
+from apps.accounts.models import User
 from apps.catalog.models import Cohort
 from apps.crm.models import Order
 
@@ -59,3 +60,37 @@ def _safe(func, pk) -> None:
         func(pk)
     except Exception:  # noqa: BLE001 - CMS/payment flows must never fail because of the LMS
         logger.exception("LMS task failed for %s", pk)
+
+
+# ---------------------------------------------------------------- staff accounts on Moodle
+@receiver(pre_save, sender=User, dispatch_uid="lms_staff_before")
+def remember_staff_access(sender, instance: User, **kwargs):
+    old = sender.objects.filter(pk=instance.pk).values("is_active", "role").first() if instance.pk else None
+    instance._lms_access_before = old
+
+
+@receiver(post_save, sender=User, dispatch_uid="lms_staff_after")
+def sync_staff_when_changed(sender, instance: User, created, **kwargs):
+    """Deactivated or re-roled staff: Moodle follows (suspended / manager role taken or given)."""
+    old = getattr(instance, "_lms_access_before", None)
+    if created or old is None or not moodle.is_configured():
+        return
+    if old != {"is_active": instance.is_active, "role": instance.role}:
+        email = instance.email
+        transaction.on_commit(lambda: _safe_sync(email))
+
+
+@receiver(post_delete, sender=User, dispatch_uid="lms_staff_deleted")
+def sync_deleted_staff(sender, instance: User, **kwargs):
+    if moodle.is_configured():
+        email = instance.email
+        transaction.on_commit(lambda: _safe_sync(email))
+
+
+def _safe_sync(email: str) -> None:
+    from .overview import sync_account
+
+    try:
+        logger.info("LMS account %s: %s", email.split("@")[0][:3] + "***", sync_account(email))
+    except Exception:  # noqa: BLE001 - staff administration must never fail because of the LMS
+        logger.exception("LMS account sync failed")

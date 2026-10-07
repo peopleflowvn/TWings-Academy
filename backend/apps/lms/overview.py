@@ -230,7 +230,7 @@ def ensure_staff_access(user) -> dict:
             users=[
                 {
                     "username": email,
-                    "auth": "manual",
+                    "auth": _staff_auth(),
                     # Never used or sent: sign-in goes through SSO.
                     "password": secrets.token_urlsafe(24) + "aZ7!",
                     "firstname": firstname[:100],
@@ -241,17 +241,59 @@ def ensure_staff_access(user) -> dict:
                 }
             ],
         )[0]
-    manager = user.role in STAFF_MANAGER_ROLES
-    if manager:
-        moodle.call(
-            "core_role_assign_roles",
-            assignments=[
-                {
-                    "roleid": settings.MOODLE_MANAGER_ROLE_ID,
-                    "userid": mu["id"],
-                    "contextlevel": "system",
-                    "instanceid": 0,
-                }
-            ],
-        )
+    manager = _apply_staff(mu, user)
     return {"moodleUserId": mu["id"], "manager": manager, "links": links()}
+
+
+def _apply_staff(mu: dict, user) -> bool:
+    """Active CMS user: SSO-only sign-in, not suspended, manager role exactly for training staff."""
+    if mu.get("auth", _staff_auth()) != _staff_auth() or mu.get("suspended"):
+        moodle.call("core_user_update_users", users=[{"id": mu["id"], "auth": _staff_auth(), "suspended": 0}])
+    manager = user.role in STAFF_MANAGER_ROLES
+    _set_manager(mu["id"], manager)
+    return manager
+
+
+def _staff_auth() -> str:
+    """Staff sign in to Moodle only through TWings SSO when it is set up: no Moodle password to reset."""
+    return "oauth2" if settings.SSO_CLIENT_SECRET else "manual"
+
+
+def _set_manager(moodle_user_id: int, manager: bool) -> None:
+    """Moodle's site "manager" role, given or taken (unassigning a role the user lacks is a no-op)."""
+    assignment = {
+        "roleid": settings.MOODLE_MANAGER_ROLE_ID,
+        "userid": moodle_user_id,
+        "contextlevel": "system",
+        "instanceid": 0,
+    }
+    if manager:
+        moodle.call("core_role_assign_roles", assignments=[assignment])
+    else:
+        moodle.call("core_role_unassign_roles", unassignments=[assignment])
+
+
+def sync_account(email: str) -> str:
+    """
+    Align a Moodle account with what TWings allows (the same rule as SSO sign-in): someone with no
+    right left (deactivated staff, refunded learner...) is suspended and loses the manager role;
+    active staff get manager only for training roles, SSO-only sign-in, and are unsuspended. Learners
+    are never unsuspended here: a suspension made by staff in /app stays.
+    """
+    from apps.sso.services import identity_for_email  # sso imports lms: avoid the import cycle
+
+    mu = find_user(email)
+    if mu is None:
+        return "no-account"
+    identity = identity_for_email(email)
+    if identity is None:
+        _set_manager(mu["id"], False)
+        if not mu.get("suspended"):
+            set_suspended(mu["id"], True)
+        return "suspended"
+    if identity["sub"].startswith("staff:"):
+        from apps.accounts.models import User
+
+        _apply_staff(mu, User.objects.get(pk=identity["sub"].split(":", 1)[1]))
+        return "staff"
+    return "allowed"
