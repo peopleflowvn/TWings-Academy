@@ -200,3 +200,11 @@ def test_demo_banners_hidden_again_and_coursera_wording_removed():
     )
     _migration("core", "0005_drop_coursera_keyword").drop_keyword(django_apps, None)
     assert SiteConfig.objects.get(key=SiteConfig.KEY_SITE_SEO).data["defaultKeywords"] == ["Twings Academy"]
+
+    # As stored by the CMS (the camelCase parser turns API keys into snake_case).
+    SiteConfig.objects.filter(key=SiteConfig.KEY_SITE_SEO).update(
+        data={"default_keywords": ["Twings Academy", "chứng chỉ Coursera"], "site_name": "TWings"}
+    )
+    _migration("core", "0006_drop_coursera_keyword_stored_key").drop_keyword(django_apps, None)
+    stored = SiteConfig.objects.get(key=SiteConfig.KEY_SITE_SEO).data
+    assert stored == {"default_keywords": ["Twings Academy"], "site_name": "TWings"}
