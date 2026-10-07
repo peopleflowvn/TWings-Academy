@@ -8,12 +8,14 @@ Nền tảng đào tạo và tuyển sinh nhân sự ngân hàng: website bán k
 |---|---|---|
 | Frontend | React 19 · TypeScript · Vite 8 · Tailwind CSS 4 | [`frontend/`](frontend/) |
 | Backend API | Django 5.2 LTS · Django REST Framework · PostgreSQL 18 | [`backend/`](backend/) |
+| LMS | Moodle 5.2 (PHP 8.3), mã nguồn trong repo + plugin `local_twings` | [`lms/`](lms/) |
 | Hạ tầng | Docker Compose · Caddy · Cloudflare R2 / Pages · Oracle Cloud VPS | [`infra/`](infra/) |
 | CI/CD | GitHub Actions · GHCR | [`.github/workflows/`](.github/workflows/) |
 
 Tài liệu:
 - [Kiến trúc hệ thống](docs/ARCHITECTURE.md): sơ đồ, API, luồng thanh toán, phân quyền, dữ liệu cá nhân.
 - [Hướng dẫn triển khai](docs/DEPLOYMENT.md): Cloudflare, VPS, GitHub secrets, vận hành.
+- [LMS (Moodle) trong repo](docs/LMS.md): tùy biến, sửa lõi, cập nhật bản vá bảo mật.
 - [Chính sách bảo mật](SECURITY.md): báo cáo lỗ hổng, quy tắc khi đóng góp.
 
 ## Chạy trên máy cá nhân

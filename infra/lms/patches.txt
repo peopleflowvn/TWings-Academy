@@ -1,0 +1,5 @@
+# Files of the vendored upstream code in lms/ (Moodle core and third-party plugins) that TWings changed,
+# added or deleted. One line per file:   <path>   <why>
+# `python infra/lms/vendor.py check` (CI) fails when this list and the real changes differ, so every
+# divergence from upstream is deliberate, reviewed and easy to carry over when Moodle is updated.
+# TWings' own plugins (lms/public/local/twings, lms/public/theme/twings) are not patches: no entry needed.

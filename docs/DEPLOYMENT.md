@@ -223,8 +223,9 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   khóa mẫu (tự học). Giảng viên đăng nhập Moodle bằng mã gửi qua email (SSO).
 - **Hoàn thành & chứng chỉ:** cron 30 phút đồng bộ % tiến độ; khi Moodle ghi nhận hoàn thành, TWings cấp chứng chỉ
   `TWC-XXXXXXXXXX` có trang xác minh công khai `/xac-minh/<mã>/`, cập nhật CRM và gửi email chúc mừng.
-- **Plugin đóng sẵn trong image** (ghim theo commit): Custom certificate (chứng chỉ PDF), Attendance (điểm danh),
-  Completion Progress (thanh tiến độ), Ad-hoc database queries (báo cáo SQL cho cán bộ quản lý).
+- **Mã nguồn trong repo** (`lms/`, xem [LMS.md](LMS.md)): lõi Moodle 5.2.4 và các plugin Custom certificate
+  (chứng chỉ PDF), Attendance (điểm danh), Completion Progress (thanh tiến độ), Ad-hoc database queries (báo cáo
+  SQL cho cán bộ quản lý), cùng plugin riêng `local_twings`.
 - **Soạn nội dung:** đăng nhập `/learn` bằng `admin` (mật khẩu `PROD_LMS__MOODLE_ADMIN_PASSWORD` trong `.env`). Dùng
   các tính năng sẵn có của Moodle: bài giảng, video YouTube, quiz, bài tập, hoàn thành khóa học, huy hiệu.
 - **Bảo mật:** `/learn/webservice/*` bị chặn từ Internet, chỉ backend gọi được qua mạng nội bộ. Token có giới hạn IP
@@ -233,8 +234,9 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   plugin qua web được.
 - **Email:** cần SMTP (ví dụ Resend: `smtp.resend.com:587`, user `resend`, password = API key) trong
   `PROD_LMS__MOODLE_SMTP_*`. Thiếu SMTP thì học viên không nhận được email mật khẩu.
-- **Nâng cấp Moodle:** đổi `MOODLE_COMMIT` trong `infra/lms/Dockerfile` sang commit của tag mới. Giống migration, bước
-  nâng cấp DB của Moodle không đảo ngược được khi rollback.
+- **Nâng cấp Moodle / vá bảo mật:** `python infra/lms/vendor.py update core <commit> --ref <tag>` (merge 3 chiều,
+  giữ chỉnh sửa của TWings; xem [LMS.md](LMS.md)). Giống migration, bước nâng cấp DB của Moodle không đảo ngược
+  được khi rollback.
 - **Backup:** `backup.sh` sao lưu DB `twings`, DB `moodle` và `moodledata` (bỏ cache), mã hóa `age`, đẩy lên R2.
 
 ## Bán hàng: chương trình, trả góp, hoàn tiền, tài khoản học viên

@@ -1,0 +1,44 @@
+{
+  "_comment": "Upstream code vendored in lms/ (git subtree, squashed). Edit only through `python infra/lms/vendor.py`; see docs/LMS.md.",
+  "components": [
+    {
+      "name": "core",
+      "path": "lms",
+      "repo": "https://github.com/moodle/moodle.git",
+      "ref": "v5.2.4",
+      "commit": "2df605b1e093248e8f8d1e2fc081fb3b1f65665f"
+    },
+    {
+      "name": "mod_customcert",
+      "path": "lms/public/mod/customcert",
+      "repo": "https://github.com/mdjnelson/moodle-mod_customcert.git",
+      "ref": "5.2.9",
+      "commit": "73ec9301a9281f4fea4eef9091bb0720e042b07c"
+    },
+    {
+      "name": "mod_attendance",
+      "path": "lms/public/mod/attendance",
+      "repo": "https://github.com/danmarsden/moodle-mod_attendance.git",
+      "ref": "2026042102",
+      "commit": "6d159c2c1051d509123e581e18a92d1ea4894f0c"
+    },
+    {
+      "name": "block_completion_progress",
+      "path": "lms/public/blocks/completion_progress",
+      "repo": "https://github.com/jonof/moodle-block_completion_progress.git",
+      "ref": "for Moodle 4.5+",
+      "commit": "76cd2058b68865811976df20fa1b22cddf1b6fe8"
+    },
+    {
+      "name": "report_customsql",
+      "path": "lms/public/report/customsql",
+      "repo": "https://github.com/moodleou/moodle-report_customsql.git",
+      "ref": "4.4",
+      "commit": "54e5b6b547265bfd4903252e465c451287e22111"
+    }
+  ],
+  "owned": [
+    "lms/public/local/twings",
+    "lms/public/theme/twings"
+  ]
+}

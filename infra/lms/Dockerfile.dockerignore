@@ -1,0 +1,11 @@
+# Build context filter for infra/lms/Dockerfile only (BuildKit uses it instead of the root .dockerignore,
+# so the web image never ships Moodle and this one never ships the frontend).
+*
+!lms/
+!infra/lms/
+# Moodle's developer tooling: not needed at runtime.
+lms/.github
+lms/.grunt
+lms/.upgradenotes
+lms/**/node_modules
+lms/config.php

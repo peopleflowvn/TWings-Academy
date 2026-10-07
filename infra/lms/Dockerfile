@@ -1,52 +1,31 @@
 # syntax=docker/dockerfile:1.7
 # TWings LMS: Moodle on the official Moodle HQ PHP/Apache image. Build context = repository root.
 #   docker build -f infra/lms/Dockerfile .
-# Contains no secrets (config.php reads everything from the environment).
+# The code is lms/ in this repository: Moodle 5.2 core + third-party plugins vendored with git subtree
+# (versions in infra/lms/vendor.json, TWings changes in infra/lms/patches.txt; see docs/LMS.md) and
+# TWings' own plugins. Context filter: infra/lms/Dockerfile.dockerignore. Contains no secrets
+# (config.php reads everything from the environment).
 
 ARG PHP_IMAGE=moodlehq/moodle-php-apache:8.3@sha256:501f19fa75ad3cdc8962f2a742f39d179b8aa8ffdc2ff233d8d27a32f14e0e05
 
-# ---------------------------------------------------------------- Moodle source, pinned by commit
-FROM --platform=$BUILDPLATFORM ${PHP_IMAGE} AS source
-# Moodle 5.2.4 (tag v5.2.4). Fetching an exact commit makes a tampered tag or mirror detectable.
-ARG MOODLE_COMMIT=2df605b1e093248e8f8d1e2fc081fb3b1f65665f
-RUN command -v git >/dev/null || (apt-get update -q && apt-get install -yq --no-install-recommends git ca-certificates)
-RUN git init -q /moodle \
- && git -C /moodle fetch -q --depth 1 https://github.com/moodle/moodle.git "$MOODLE_COMMIT" \
- && git -C /moodle checkout -q FETCH_HEAD \
- && test "$(git -C /moodle rev-parse HEAD)" = "$MOODLE_COMMIT" \
- && rm -rf /moodle/.git
-
-# Third-party plugins, each pinned to a reviewed commit (Moodle 5.x: plugins live under public/).
-#   mod_customcert           certificates (PDF) issued on completion            5.2.9
-#   mod_attendance           attendance for in-person / hybrid sessions          5.1/5.2
-#   block_completion_progress  visual progress bar for learners and teachers     4.5–5.2
-#   report_customsql         ad-hoc SQL reports for training managers           4.5+/5.x
-RUN set -e; fetch() { \
-      git init -q "$2" && git -C "$2" fetch -q --depth 1 "https://github.com/$1.git" "$3" \
-      && git -C "$2" checkout -q FETCH_HEAD && test "$(git -C "$2" rev-parse HEAD)" = "$3" && rm -rf "$2/.git"; }; \
-    fetch mdjnelson/moodle-mod_customcert         /moodle/public/mod/customcert            73ec9301a9281f4fea4eef9091bb0720e042b07c; \
-    fetch danmarsden/moodle-mod_attendance        /moodle/public/mod/attendance            6d159c2c1051d509123e581e18a92d1ea4894f0c; \
-    fetch jonof/moodle-block_completion_progress  /moodle/public/blocks/completion_progress 76cd2058b68865811976df20fa1b22cddf1b6fe8; \
-    fetch moodleou/moodle-report_customsql        /moodle/public/report/customsql          54e5b6b547265bfd4903252e465c451287e22111
-
-# ---------------------------------------------------------------- runtime
 FROM ${PHP_IMAGE}
 LABEL org.opencontainers.image.source="https://github.com/peopleflowvn/TWings-Academy" \
       org.opencontainers.image.description="TWings Academy LMS (Moodle 5.2)"
 
-COPY --from=source /moodle /var/www/moodle
-COPY infra/lms/config.php infra/lms/twings_setup.php /var/www/moodle/
+# Apache: unprivileged on :8080, only the TWings site. Done before copying the code so this layer stays
+# cached when lms/ changes.
 COPY infra/lms/php.ini /usr/local/etc/php/conf.d/zz-twings.ini
 COPY infra/lms/apache.conf /etc/apache2/sites-available/twings.conf
-
-# Unprivileged Apache on :8080; code owned by root and read-only for www-data; data in a volume.
 RUN : > /etc/apache2/ports.conf \
  && a2dissite -q 000-default \
  && a2ensite -q twings \
  && install -d /var/www/empty \
- && install -d -o www-data -g www-data -m 2770 /var/moodledata \
- && chown -R root:root /var/www/moodle \
- && chmod -R a+rX,go-w /var/www/moodle
+ && install -d -o www-data -g www-data -m 2770 /var/moodledata
+
+# Code owned by root and read-only for www-data (COPY gives root:root with git's 644/755 modes, so no
+# chown/chmod layer that would duplicate ~400 MB); data lives in the moodledata volume.
+COPY --link lms/ /var/www/moodle/
+COPY --link infra/lms/config.php infra/lms/twings_setup.php /var/www/moodle/
 
 USER www-data
 # The upstream entrypoint writes PHP ini files from env vars as root; our ini is baked in above, so use

@@ -1,9 +1,8 @@
-# Build context (repository root) for infra/caddy/Dockerfile and infra/lms/Dockerfile:
-# only the frontend, the Caddyfile and the Moodle config files.
+# Build context (repository root) for infra/caddy/Dockerfile: only the frontend and the Caddyfile.
+# infra/lms/Dockerfile has its own filter (infra/lms/Dockerfile.dockerignore).
 *
 !frontend/
 !infra/caddy/
-!infra/lms/
 frontend/node_modules
 frontend/dist
 frontend/.env*

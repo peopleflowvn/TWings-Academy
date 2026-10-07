@@ -66,7 +66,7 @@ moodle_installed() {
 }
 
 # Fresh install on the first deploy, otherwise upgrade (a no-op unless the Moodle version changed).
-# Like Django migrations, a Moodle upgrade is never reversed by a rollback: bump MOODLE_COMMIT deliberately.
+# Like Django migrations, a Moodle upgrade is never reversed by a rollback: update lms/ deliberately (docs/LMS.md).
 moodle_install_or_upgrade() {
   echo "==== $(date -Is) deploy ${TAG}" >>"$LMS_LOG"
   if moodle_installed; then
