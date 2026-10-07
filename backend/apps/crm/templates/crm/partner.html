@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{ share.title }} – TWings Academy</title>
+<style>
+:root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--brand:#0073C1}
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:#f1f5f9;margin:0;padding:16px}
+.wrap{max-width:980px;margin:0 auto}
+header{margin:8px 0 16px}h1{font-size:20px;margin:0 0 4px}.muted{color:var(--muted);font-size:13px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:flex-start}
+.name{font-weight:700;font-size:16px}.chip{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:2px 10px;background:#f8fafc}
+.facts{font-size:13px;color:#334155;margin-top:6px;line-height:1.6}
+a{color:var(--brand)}
+details{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+summary{cursor:pointer;font-weight:600;font-size:13px;color:var(--brand)}
+form{display:grid;gap:8px;margin-top:8px;font-size:13px}
+label{display:grid;gap:4px;color:#334155}
+input,textarea{font:inherit;padding:8px;border:1px solid #cbd5e1;border-radius:8px;width:100%}
+button{font:inherit;font-weight:700;background:var(--brand);color:#fff;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;justify-self:start}
+button.danger{background:#b91c1c}
+.ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;padding:10px 14px;border-radius:10px;margin-bottom:12px}
+.err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:10px 14px;border-radius:10px;margin-bottom:12px}
+footer{font-size:12px;color:var(--muted);margin:20px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="muted">TWings Academy · Giới thiệu ứng viên cho {{ share.employer }}</div>
+  <h1>{{ share.title }}</h1>
+  <div class="muted">{{ rows|length }} ứng viên · Link có hiệu lực đến {{ share.expires_at|date:"d/m/Y" }}. Vui lòng không chuyển tiếp link này.</div>
+</header>
+{% if message %}<div class="ok">{{ message }}</div>{% endif %}
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+{% for r in rows %}
+<div class="card" id="p-{{ r.id }}">
+  <div class="row">
+    <div>
+      <div class="name">{{ r.name }}</div>
+      <div class="facts">
+        Khóa: {{ r.course }}{% if r.job_title %} · Vị trí đề cử: {{ r.job_title }}{% endif %}{% if r.unit %} · {{ r.unit }}{% endif %}<br>
+        {% if r.grade_percent is not None %}Điểm tổng: {{ r.grade_percent }}% · {% endif %}{% if r.attendance_rate is not None %}Chuyên cần: {{ r.attendance_rate }}% · {% endif %}
+        {% if r.certificate_url %}<a href="{{ r.certificate_url }}" target="_blank" rel="noopener">Chứng chỉ {{ r.certificate_code }} (xác minh)</a>{% endif %}
+        {% if share.allow_cv and r.has_cv %} · <a href="cv/{{ r.id }}/">Tải CV</a>{% endif %}
+        {% if r.interview_text %}<br>Phỏng vấn: {{ r.interview_text }}{% if r.interview_location %} – {{ r.interview_location }}{% endif %}{% endif %}
+        {% if r.start_text %}<br>Ngày bắt đầu làm việc: {{ r.start_text }}{% endif %}
+        {% if r.rejection_reason %}<br>Lý do: {{ r.rejection_reason }}{% endif %}
+      </div>
+    </div>
+    <span class="chip">{{ r.stage_label }}</span>
+  </div>
+  {% if "interview" in r.actions %}
+  <details><summary>{% if r.stage == "interview" %}Hẹn vòng phỏng vấn tiếp theo{% else %}Hẹn phỏng vấn{% endif %}</summary>
+    <form method="post"><input type="hidden" name="placement" value="{{ r.id }}"><input type="hidden" name="action" value="interview">
+      <label>Thời gian<input type="datetime-local" name="interview_at" required></label>
+      <label>Địa điểm hoặc link họp<input name="interview_location" maxlength="300"></label>
+      <label>Ghi chú<textarea name="note" rows="2" maxlength="2000"></textarea></label>
+      <button>Lưu lịch phỏng vấn</button>
+    </form>
+  </details>
+  {% endif %}
+  {% if "offer" in r.actions %}
+  <details><summary>Đạt phỏng vấn – gửi offer</summary>
+    <form method="post"><input type="hidden" name="placement" value="{{ r.id }}"><input type="hidden" name="action" value="offer">
+      <label>Mức lương / chế độ (không bắt buộc)<input name="offer_salary" maxlength="100"></label>
+      <label>Nhận xét<textarea name="note" rows="2" maxlength="2000"></textarea></label>
+      <button>Xác nhận đạt</button>
+    </form>
+  </details>
+  {% endif %}
+  {% if "hired" in r.actions %}
+  <details><summary>Ứng viên nhận việc</summary>
+    <form method="post"><input type="hidden" name="placement" value="{{ r.id }}"><input type="hidden" name="action" value="hired">
+      <label>Ngày bắt đầu làm việc<input type="date" name="start_date" required></label>
+      <label>Ghi chú<textarea name="note" rows="2" maxlength="2000"></textarea></label>
+      <button>Xác nhận nhận việc</button>
+    </form>
+  </details>
+  {% endif %}
+  {% if "rejected" in r.actions %}
+  <details><summary>Không phù hợp</summary>
+    <form method="post"><input type="hidden" name="placement" value="{{ r.id }}"><input type="hidden" name="action" value="rejected">
+      <label>Lý do (TWings dùng để hỗ trợ ứng viên)<input name="reason" maxlength="300" required></label>
+      <label>Nhận xét thêm<textarea name="note" rows="2" maxlength="2000"></textarea></label>
+      <button class="danger">Xác nhận không đạt</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+{% empty %}
+<div class="card">Chưa có ứng viên trong danh sách này.</div>
+{% endfor %}
+<footer>Thông tin ứng viên được chia sẻ cho mục đích tuyển dụng theo chính sách bảo mật của TWings Academy. Mọi thao tác trên trang được ghi nhận.</footer>
+</div>
+</body>
+</html>

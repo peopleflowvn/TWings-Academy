@@ -52,8 +52,8 @@ Disallow: /
 			}
 		}
 
-		# Public certificate verification and payment receipt pages (rendered by Django).
-		@django path /xac-minh/* /bien-nhan/*
+		# Public certificate verification, payment receipt and partner HR pages (rendered by Django).
+		@django path /xac-minh/* /bien-nhan/* /doi-tac/*
 		handle @django {
 			reverse_proxy backend:8000 {
 				header_up X-Real-IP {client_ip}
@@ -86,7 +86,7 @@ Disallow: /
 		# get the SPA, which loads the same metadata from /api/v1/public/seo/.
 		@bots {
 			header_regexp User-Agent (?i)(facebookexternalhit|facebot|meta-externalagent|zalo|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|whatsapp|skypeuripreview|pinterest|redditbot|embedly|viber|googlebot|google-inspectiontool|bingbot|coccocbot|applebot|duckduckbot|yandex)
-			not path /assets/* /api/* /app /app/* /learn* /xac-minh/* /favicon.ico
+			not path /assets/* /api/* /app /app/* /learn* /xac-minh/* /bien-nhan/* /doi-tac/* /favicon.ico
 		}
 		handle @bots {
 			header Vary User-Agent

@@ -94,6 +94,8 @@ export interface AccountOrder extends OrderBilling {
   createdAt: string;
   courses: AccountCourse[];
   refundRequested: boolean;
+  /** Journey step 9: job referrals visible to the learner (interview time, start date). */
+  jobs?: { employer: string; role: string; stage: string; stageLabel: string; interviewAt: string | null; interviewLocation: string; startDate: string | null }[];
   invoice: { status: 'requested' | 'issued' | 'cancelled'; number: string; companyName: string } | null;
   /** Required enrolment-file fields still missing (birth_date, citizen_id, permanent_address, education_level). */
   dossierMissing: string[];

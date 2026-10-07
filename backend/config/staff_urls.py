@@ -20,6 +20,15 @@ from apps.core.dashboard import DashboardView, SystemHealthView
 from apps.core.reports import ReportsView
 from apps.core.uploads import ImageUploadView
 from apps.core.views import AuditLogViewSet
+from apps.crm.placement_views import (
+    CandidatesView,
+    OutcomesView,
+    PlacementListView,
+    PlacementMoveView,
+    PlacementOutcomeView,
+    ShareListView,
+    ShareRevokeView,
+)
 from apps.crm.views import (
     AdmissionCampaignViewSet,
     AppointmentViewSet,
@@ -75,6 +84,15 @@ urlpatterns = [
     path("consultants/", ConsultantsView.as_view(), name="staff-consultants"),
     path("cohorts/<str:pk>/rollover/", CohortRolloverView.as_view(), name="staff-cohort-rollover"),
     path("lms/", include("apps.lms.urls")),
+    path("placements/", PlacementListView.as_view(), name="staff-placements"),
+    path("placements/candidates/", CandidatesView.as_view(), name="staff-placement-candidates"),
+    path("placements/outcomes/", OutcomesView.as_view(), name="staff-placement-outcomes"),
+    path("placements/shares/", ShareListView.as_view(), name="staff-placement-shares"),
+    path(
+        "placements/shares/<str:pk>/revoke/", ShareRevokeView.as_view(), name="staff-placement-share-revoke"
+    ),
+    path("placements/<str:pk>/move/", PlacementMoveView.as_view(), name="staff-placement-move"),
+    path("placements/<str:pk>/outcome/", PlacementOutcomeView.as_view(), name="staff-placement-outcome"),
     path("dashboard/", DashboardView.as_view(), name="staff-dashboard"),
     path("reports/", ReportsView.as_view(), name="staff-reports"),
     path("journeys/", JourneysView.as_view(), name="staff-journeys"),

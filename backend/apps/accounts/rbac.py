@@ -36,6 +36,8 @@ PERMISSIONS: dict[str, str] = {
     "system.sections_toggle": "Bật/tắt section trang chủ",
     "lms.view": "Xem tiến độ học tập (LMS)",
     "lms.manage": "Quản lý học viên trên LMS (ghi danh, khóa, gửi email vào học)",
+    "placement.view": "Xem giới thiệu việc làm & kết quả việc làm",
+    "placement.manage": "Giới thiệu việc làm: đề cử, gửi đối tác, cập nhật phỏng vấn / nhận việc / thử việc",
 }
 
 
@@ -71,6 +73,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             "rbac.view_users",
             "lms.view",
             "lms.manage",
+            "placement.view",
+            "placement.manage",
         }
     ),
     Role.SALES_CRM: frozenset(
@@ -81,6 +85,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             "crm.export_excel",
             "courses.view",
             "lms.view",
+            "placement.view",
         }
     ),
     Role.CONTENT_SEO: frozenset(

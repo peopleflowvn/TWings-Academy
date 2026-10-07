@@ -417,3 +417,69 @@ class InvoiceRequest(BaseModel):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class Placement(BaseModel):
+    """
+    Journey steps 9-10: a graduate referred to a job at a partner bank (MSB by default), from
+    shortlist to interview, offer and start, then probation and the job-guarantee period.
+    """
+
+    STAGE_CHOICES = [
+        ("shortlisted", "Đề cử"),
+        ("submitted", "Đã gửi hồ sơ"),
+        ("interview", "Phỏng vấn"),
+        ("offer", "Nhận offer"),
+        ("hired", "Đã nhận việc"),
+        ("rejected", "Không đạt"),
+        ("withdrawn", "Ứng viên rút"),
+    ]
+    PROBATION_CHOICES = [("", "Chưa đánh giá"), ("passed", "Qua thử việc"), ("failed", "Không qua thử việc")]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="placements")
+    position = models.ForeignKey(
+        CampaignPosition, null=True, blank=True, on_delete=models.SET_NULL, related_name="placements"
+    )
+    employer = models.CharField(max_length=200, default="MSB")
+    unit = models.CharField(max_length=200, blank=True)  # branch / division
+    job_title = models.CharField(max_length=200, blank=True)
+    stage = models.CharField(max_length=20, choices=STAGE_CHOICES, default="shortlisted", db_index=True)
+    interview_at = models.DateTimeField(null=True, blank=True)
+    interview_location = models.CharField(max_length=300, blank=True)
+    feedback = models.TextField(blank=True)
+    offer_salary = models.CharField(max_length=100, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    probation_end = models.DateField(null=True, blank=True)
+    probation_result = models.CharField(max_length=10, choices=PROBATION_CHOICES, blank=True)
+    guarantee_until = models.DateField(null=True, blank=True)
+    left_at = models.DateField(null=True, blank=True)
+    left_reason = models.CharField(max_length=300, blank=True)
+    rejection_reason = models.CharField(max_length=300, blank=True)
+    staff = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class PartnerShare(BaseModel):
+    """A time-limited link for the partner's HR: see the referred candidates and record results."""
+
+    token_hash = models.CharField(max_length=64, unique=True)
+    employer = models.CharField(max_length=200, default="MSB")
+    title = models.CharField(max_length=200)
+    placements = models.ManyToManyField(Placement, related_name="shares")
+    allow_cv = models.BooleanField(default=True)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    last_viewed_at = models.DateTimeField(null=True, blank=True)
+    view_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def active(self) -> bool:
+        return self.revoked_at is None and self.expires_at > timezone.now()

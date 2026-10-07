@@ -55,6 +55,7 @@ import { SendResendEmailModal } from './SendResendEmailModal';
 import { LmsLearningPanel } from './LmsLearningPanel';
 import { OrderBillingPanel } from './OrderBillingPanel';
 import { LeadContactPanel } from './LeadContactPanel';
+import { PlacementPanel } from '../../admin/pages/PlacementPages';
 
 interface CompAILeadDetailModalProps {
   order: Order;
@@ -1580,10 +1581,10 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                 <div className="border-b border-slate-100 pb-2.5">
                   <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                     <GraduationCap className="w-4 h-4 text-[#0073C1]" />
-                    <span>Quản Lý Đào Tạo & Giới Thiệu Việc Làm Tại MSB</span>
+                    <span>Đào Tạo & Giới Thiệu Việc Làm</span>
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Theo dõi tiến độ học tập trên Coursera và lộ trình tiếp nhận vào ngân hàng đối tác MSB.
+                    Trạng thái đào tạo và các lần giới thiệu việc làm sang ngân hàng đối tác (phỏng vấn, nhận việc, thử việc).
                   </p>
                 </div>
 
@@ -1591,47 +1592,26 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Trạng thái chương trình học</label>
                     <select
-                      value={order.trainingStatus || 'Đang học'}
+                      value={order.trainingStatus || ''}
                       onChange={(e) => handleFieldChange('trainingStatus', e.target.value as any)}
                       className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 font-semibold"
                     >
-                      <option value="Đang học">Đang học (Lớp K9)</option>
+                      <option value="">Chưa cập nhật</option>
+                      <option value="Đang học">Đang học</option>
+                      <option value="Chờ xét tốt nghiệp">Chờ xét tốt nghiệp</option>
                       <option value="Đã tốt nghiệp">Đã tốt nghiệp (Cấp chứng chỉ)</option>
                       <option value="Bảo lưu">Bảo lưu</option>
                       <option value="Thôi học">Thôi học</option>
                     </select>
                   </div>
-
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Đơn vị tiếp nhận làm việc tại MSB</label>
-                    <input
-                      type="text"
-                      value={order.placementCompany || 'Khối KH Doanh nghiệp - MSB Sở Giao Dịch'}
-                      onChange={(e) => handleFieldChange('placementCompany', e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 rounded-xl"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Mã số chứng nhận tốt nghiệp</label>
-                    <input
-                      type="text"
-                      value={order.certificateNumber || 'TW-2026-K9-088'}
-                      onChange={(e) => handleFieldChange('certificateNumber', e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 rounded-xl font-mono font-bold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Ngày bắt đầu làm việc chính thức</label>
-                    <input
-                      type="text"
-                      value={order.workStartDate || '01/11/2026'}
-                      onChange={(e) => handleFieldChange('workStartDate', e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 rounded-xl font-mono"
-                    />
-                  </div>
+                  {order.certificateNumber && (
+                    <div>
+                      <span className="font-bold text-slate-700 block mb-1">Chứng chỉ</span>
+                      <span className="font-mono font-bold">{order.certificateNumber}</span>
+                    </div>
+                  )}
                 </div>
+                <PlacementPanel orderId={order.id} name={order.customerName} />
               </div>
             )}
           </div>

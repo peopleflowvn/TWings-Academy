@@ -21,6 +21,7 @@ import {
   Menu,
   Award,
   BarChart3,
+  Briefcase,
   CalendarDays,
   Headset,
   FileSpreadsheet,
@@ -65,6 +66,7 @@ import { IntakesPage } from './pages/IntakesPage';
 import { CampaignLinksPage, ReviewsPage } from './pages/MarketingPages';
 import { ConsultingPage, InvoicesPage } from './pages/JourneyPages';
 import { LearningSupportPage } from './pages/LearningPages';
+import { JobOutcomesPage, JobsPage } from './pages/PlacementPages';
 
 interface NavItem {
   path: string;
@@ -105,6 +107,13 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { path: '/learning/progress', label: 'Học viên & tiến độ', icon: GraduationCap, perms: ['lms.view'] },
       { path: '/learning/support', label: 'Học viên cần hỗ trợ', icon: LifeBuoy, perms: ['lms.view'] },
       { path: '/learning/moodle', label: 'Ngân hàng đề, khóa & báo cáo', icon: Wrench, perms: ['lms.view'] }
+    ]
+  },
+  {
+    title: 'Việc làm',
+    items: [
+      { path: '/jobs/referrals', label: 'Giới thiệu việc làm', icon: Briefcase, perms: ['placement.view', 'placement.manage'] },
+      { path: '/jobs/outcomes', label: 'Kết quả việc làm', icon: BarChart3, perms: ['placement.view', 'placement.manage'] }
     ]
   },
   {
@@ -218,6 +227,10 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <CMSLmsTab />;
       case '/learning/support':
         return <LearningSupportPage />;
+      case '/jobs/referrals':
+        return <JobsPage />;
+      case '/jobs/outcomes':
+        return <JobOutcomesPage />;
       case '/learning/moodle':
         return <MoodleHubPage />;
       case '/finance/transactions':

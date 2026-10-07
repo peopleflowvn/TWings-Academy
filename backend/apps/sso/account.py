@@ -84,6 +84,8 @@ def _course_item(order: Order) -> dict:
 
 
 def _order_item(order: Order) -> dict:
+    from apps.crm.placement import learner_items
+
     billing = order_billing(order)
     courses = (
         [_course_item(c) for c in order.components.all()] if order.is_program_order else [_course_item(order)]
@@ -101,6 +103,7 @@ def _order_item(order: Order) -> dict:
         "kind": "program" if order.is_program_order else "course",
         "created_at": order.created_at.isoformat(),
         "courses": courses,
+        "jobs": learner_items([order, *order.components.all()]),
         "refund_requested": order.followup_tasks.filter(
             title__startswith=REFUND_TASK_PREFIX, is_completed=False
         ).exists(),

@@ -320,6 +320,14 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 - Tốt nghiệp: khóa học có ngưỡng “chuyên cần tối thiểu” (mặc định 80%, 0 = không yêu cầu). Học viên đã hoàn thành nhưng thiếu chuyên cần sẽ bị giữ chứng chỉ; chứng chỉ tự cấp khi điểm danh được bổ sung. Có thể cấp ngoại lệ (bắt buộc ghi lý do, lưu vào lịch sử).
 - Chứng chỉ có bản in A4 tại `/xac-minh/<mã>/in/`, dùng để in hoặc lưu PDF.
 
+## Giới thiệu việc làm & sau tuyển dụng (hành trình khâu 9–10)
+
+- /app → Việc làm → Giới thiệu việc làm. Tab "Chờ giới thiệu" liệt kê học viên có chứng chỉ hợp lệ nhưng chưa có hồ sơ giới thiệu đang mở. Các bước: Đề cử → Đã gửi hồ sơ → Phỏng vấn → Nhận offer → Đã nhận việc (hoặc Không đạt / Ứng viên rút). Học viên nhận email khi có lịch phỏng vấn, khi nhận offer và khi nhận việc.
+- **Gửi hồ sơ cho đối tác:** chọn ứng viên rồi tạo link `/doi-tac/<token>/` (hết hạn sau 1–90 ngày, có thể thu hồi, tùy chọn cho tải CV). HR ngân hàng không cần tài khoản: mở link để xem khóa học, điểm, chuyên cần, chứng chỉ đã xác minh, rồi tự ghi lịch phỏng vấn, đạt/không đạt, ngày nhận việc. Link chỉ hiển thị một lần vì hệ thống chỉ lưu bản băm. Mọi thao tác trên link được ghi vào audit log.
+- **Khi nhận việc:** hệ thống tự tính thử việc 60 ngày và cam kết việc làm 12 tháng, đồng thời tạo việc cần làm ở các mốc: tuần đầu, 30 ngày, hết thử việc, 6 tháng, hết cam kết. Nếu học viên không qua thử việc hoặc nghỉ việc trong thời gian cam kết, họ được đưa lại vào danh sách chờ giới thiệu.
+- **Kết quả việc làm:** tỷ lệ có việc theo khóa, số ngày trung bình từ tốt nghiệp đến khi đi làm, tiến độ so với chỉ tiêu tuyển dụng theo vị trí, danh sách đến hạn đánh giá thử việc.
+- **Quyền:** `placement.view` (Tư vấn, Đào tạo), `placement.manage` (Đào tạo, Super Admin).
+
 ## Quản trị VPS qua GitHub Actions (khi mạng không cho SSH)
 
 Workflow **Ops** (`.github/workflows/ops.yml`) chạy trên máy của GitHub, SSH vào VPS bằng khóa quản trị

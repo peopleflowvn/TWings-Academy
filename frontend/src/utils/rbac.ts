@@ -160,6 +160,24 @@ export const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
     categoryLabel: '2. Khóa Học & Nhúng YouTube',
     riskLevel: 'medium'
   },
+  {
+    id: 'perm-placement-1',
+    code: 'placement.view',
+    name: 'Xem giới thiệu việc làm',
+    description: 'Xem ứng viên chờ giới thiệu, hồ sơ gửi ngân hàng đối tác và báo cáo kết quả việc làm',
+    category: 'courses',
+    categoryLabel: '2. Khóa Học & Nhúng YouTube',
+    riskLevel: 'low'
+  },
+  {
+    id: 'perm-placement-2',
+    code: 'placement.manage',
+    name: 'Quản lý giới thiệu việc làm',
+    description: 'Đề cử học viên, tạo link gửi HR đối tác, cập nhật phỏng vấn, nhận việc, thử việc',
+    category: 'courses',
+    categoryLabel: '2. Khóa Học & Nhúng YouTube',
+    riskLevel: 'medium'
+  },
 
   // Category 3: Banner & Trang chủ
   {
@@ -339,7 +357,9 @@ export const DEFAULT_ROLE_CONFIGS: Record<UserRole, RolePermissionConfig> = {
       'crm.edit_status',
       'rbac.view_users',
       'lms.view',
-      'lms.manage'
+      'lms.manage',
+      'placement.view',
+      'placement.manage'
     ]
   },
   sales_crm: {
@@ -355,7 +375,8 @@ export const DEFAULT_ROLE_CONFIGS: Record<UserRole, RolePermissionConfig> = {
       'crm.assign_pic',
       'crm.export_excel',
       'courses.view',
-      'lms.view'
+      'lms.view',
+      'placement.view'
     ]
   },
   content_seo: {

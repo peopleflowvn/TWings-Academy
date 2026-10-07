@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Award, BookOpen, CheckCircle2, Copy, Loader2, LogOut, Mail, RotateCcw } from 'lucide-react';
+import { Award, BookOpen, Briefcase, CheckCircle2, Copy, Loader2, LogOut, Mail, RotateCcw } from 'lucide-react';
 import { ApiError, isBackendEnabled, resetCsrfToken } from '../lib/api';
 import { Account, AccountCourse, AccountOrder, commerceApi, Dossier, formatDate, formatVND } from '../lib/commerce';
 
@@ -441,6 +441,18 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: 
       ))}
     </div>
 
+    {order.jobs && order.jobs.length > 0 && (
+      <div className="text-xs border border-emerald-200 bg-emerald-50/50 rounded-xl p-3 space-y-1.5">
+        <div className="font-bold text-slate-900 flex items-center gap-1.5"><Briefcase className="w-4 h-4 text-emerald-700" /> Giới thiệu việc làm</div>
+        {order.jobs.map((j, i) => (
+          <div key={i}>
+            <strong>{j.employer}</strong>{j.role ? ` – ${j.role}` : ''}: <span className="font-bold text-emerald-800">{j.stageLabel}</span>
+            {j.interviewAt && ` · phỏng vấn ${new Date(j.interviewAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}${j.interviewLocation ? ` tại ${j.interviewLocation}` : ''}`}
+            {j.startDate && ` · bắt đầu làm việc ${formatDate(j.startDate)}`}
+          </div>
+        ))}
+      </div>
+    )}
     {order.learningAccess && <DossierBox order={order} />}
     <InvoiceBox order={order} email={learnerEmail} onChange={onChange} />
     <RefundRequest order={order} onSent={onChange} />
