@@ -41,7 +41,17 @@ export function resetCsrfToken(): void {
   csrfToken = null;
 }
 
-const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+/** DRF validation errors come as {field: [messages]}; surface the first one instead of a bare status. */
+function fieldErrorMessage(body: unknown): string {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return '';
+  for (const [field, value] of Object.entries(body as Record<string, unknown>)) {
+    const msg = Array.isArray(value) ? value[0] : value;
+    if (typeof msg === 'string' && msg) return field === 'nonFieldErrors' ? msg : `${field}: ${msg}`;
+  }
+  return '';
+}
+
+const UNSAFE_METHODS =new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!isBackendEnabled()) {
@@ -66,6 +76,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     if (res.status === 403) resetCsrfToken();
     const detail =
       (isJson && body && typeof body === 'object' && 'detail' in body && String((body as { detail: unknown }).detail)) ||
+      (isJson && fieldErrorMessage(body)) ||
       `Lỗi máy chủ (${res.status})`;
     throw new ApiError(res.status, detail, body);
   }

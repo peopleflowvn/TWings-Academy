@@ -1,3 +1,5 @@
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import User
@@ -69,6 +71,31 @@ class StaffUserSerializer(serializers.ModelSerializer):
             clean[bucket] = sorted(set(codes))
         return clean
 
+    def validate_email(self, value):
+        email = value.strip().lower()
+        taken = User.objects.filter(email__iexact=email)
+        if self.instance is not None:
+            taken = taken.exclude(pk=self.instance.pk)
+        if taken.exists():
+            raise serializers.ValidationError("Email này đã có tài khoản.")
+        return email
+
+    def validate(self, attrs):
+        password = attrs.get("password")
+        if self.instance is None and not password:
+            raise serializers.ValidationError({"password": "Bắt buộc khi tạo tài khoản."})
+        if password:
+            # Similarity check needs the final email/name, so judge against an unsaved copy.
+            probe = User(
+                email=attrs.get("email", getattr(self.instance, "email", "")),
+                name=attrs.get("name", getattr(self.instance, "name", "")),
+            )
+            try:
+                validate_password(password, probe)
+            except DjangoValidationError as e:
+                raise serializers.ValidationError({"password": list(e.messages)})
+        return attrs
+
     def _apply(self, instance, validated):
         status = validated.pop("is_active_label", None)
         password = validated.pop("password", None)
@@ -77,18 +104,16 @@ class StaffUserSerializer(serializers.ModelSerializer):
         if status is not None:
             instance.is_active = status == "active"
         if password:
-            from django.contrib.auth.password_validation import validate_password
-
-            validate_password(password, instance)
             instance.set_password(password)
         instance.is_staff = True
-        instance.full_clean(exclude=["password"])
+        try:
+            instance.full_clean(exclude=["password"])
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
         instance.save()
         return instance
 
     def create(self, validated_data):
-        if not validated_data.get("password"):
-            raise serializers.ValidationError({"password": "Bắt buộc khi tạo tài khoản."})
         return self._apply(User(), validated_data)
 
     def update(self, instance, validated_data):

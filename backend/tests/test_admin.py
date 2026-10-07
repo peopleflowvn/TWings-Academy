@@ -165,3 +165,23 @@ def test_system_health_is_admin_only_and_never_leaks_secrets(staff_client, setti
     assert {"database", "moodle", "email", "bank", "storage", "sso"} <= keys
     assert "re_secret_value" not in res.content.decode()
     assert staff_client(Role.SALES_CRM).get("/api/v1/staff/system/health/").status_code == 403
+
+
+@pytest.mark.parametrize("password", ["123456789012", "password1234", "nv@twings.test1"])
+def test_weak_staff_password_is_a_400_not_a_500(staff_client, password):
+    res = staff_client(Role.SUPER_ADMIN).post(
+        "/api/v1/staff/users/",
+        {"name": "Nhân Viên", "email": "nv@twings.test", "role": Role.SALES_CRM, "password": password},
+        format="json",
+    )
+    assert res.status_code == 400 and "password" in res.json()
+    assert not User.objects.filter(email="nv@twings.test").exists()
+
+
+def test_staff_email_is_case_insensitively_unique(staff_client):
+    admin = staff_client(Role.SUPER_ADMIN)
+    payload = {"name": "A", "email": "Dup@TWings.test", "role": Role.SALES_CRM, "password": "Very-Strong-Passw0rd!"}
+    assert admin.post("/api/v1/staff/users/", payload, format="json").status_code == 201
+    assert User.objects.filter(email="dup@twings.test").exists()
+    res = admin.post("/api/v1/staff/users/", {**payload, "email": "dup@twings.test"}, format="json")
+    assert res.status_code == 400 and "email" in res.json()
