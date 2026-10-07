@@ -180,7 +180,12 @@ def test_weak_staff_password_is_a_400_not_a_500(staff_client, password):
 
 def test_staff_email_is_case_insensitively_unique(staff_client):
     admin = staff_client(Role.SUPER_ADMIN)
-    payload = {"name": "A", "email": "Dup@TWings.test", "role": Role.SALES_CRM, "password": "Very-Strong-Passw0rd!"}
+    payload = {
+        "name": "A",
+        "email": "Dup@TWings.test",
+        "role": Role.SALES_CRM,
+        "password": "Very-Strong-Passw0rd!",
+    }
     assert admin.post("/api/v1/staff/users/", payload, format="json").status_code == 201
     assert User.objects.filter(email="dup@twings.test").exists()
     res = admin.post("/api/v1/staff/users/", {**payload, "email": "dup@twings.test"}, format="json")

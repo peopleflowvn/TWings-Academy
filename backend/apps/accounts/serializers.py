@@ -93,7 +93,7 @@ class StaffUserSerializer(serializers.ModelSerializer):
             try:
                 validate_password(password, probe)
             except DjangoValidationError as e:
-                raise serializers.ValidationError({"password": list(e.messages)})
+                raise serializers.ValidationError({"password": list(e.messages)}) from e
         return attrs
 
     def _apply(self, instance, validated):
@@ -109,7 +109,7 @@ class StaffUserSerializer(serializers.ModelSerializer):
         try:
             instance.full_clean(exclude=["password"])
         except DjangoValidationError as e:
-            raise serializers.ValidationError(e.message_dict)
+            raise serializers.ValidationError(e.message_dict) from e
         instance.save()
         return instance
 
