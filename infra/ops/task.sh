@@ -254,6 +254,12 @@ for p in Program.objects.all():
     timeout 10 bash -c "</dev/tcp/$ip/80" && echo "tcp 80 open" || echo "tcp 80 closed/filtered"
     ;;
 
+  gateway-logs)
+    # Read-only: certificate / routing lines of the shared gateway for TWings hostnames.
+    remote "cd $APP && gw=\$(sudo sed -n 's/^GATEWAY_CONTAINER=//p' env/gateway.env 2>/dev/null); gw=\${gw:-caddy-gateway};
+      sudo docker logs --since 12h \$gw 2>&1 | grep -iE 'twings|tunghr|acme|certificate|obtain|challenge|error' | tail -60"
+    ;;
+
   hostkey)
     # Public host key of the machine, to pin in VPS_KNOWN_HOSTS (public data).
     remote 'cat /etc/ssh/ssh_host_ed25519_key.pub; hostname'
