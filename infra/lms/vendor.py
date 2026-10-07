@@ -12,6 +12,7 @@ merge) what upstream changed.
                                                  3-way merge a new upstream version (security fixes...)
   python infra/lms/vendor.py add <name> <path> <repo> <commit> [--ref TAG]
                                                  vendor a new third-party plugin
+  python infra/lms/vendor.py remove <name>       drop a third-party plugin (uninstall it in Moodle too)
 
 Needs the full git history (CI: fetch-depth 0). Standard library only.
 """
@@ -264,6 +265,25 @@ def cmd_add(args) -> int:
     return 0
 
 
+def cmd_remove(args) -> int:
+    """Delete a vendored plugin from lms/ and vendor.json; its snapshot stays in history (and gitleaks)."""
+    lock = load()
+    component = next((c for c in lock["components"] if c["name"] == args.name), None)
+    if component is None or component["name"] == "core":
+        sys.exit(f"{args.name}: not a removable component")
+    _require_clean()
+    git("rm", "-r", "-q", component["path"])
+    lock["components"].remove(component)
+    save(lock)
+    git("add", str(LOCK))
+    git("commit", "-q", "-m", f"chore(lms): remove {args.name} from {component['path']}")
+    print(
+        f"removed {component['path']}. Moodle keeps it as 'missing from disk' until uninstalled "
+        "(admin/cli/uninstall_plugins.php --purge-missing --run), e.g. from twings_setup.php."
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -289,6 +309,9 @@ def main() -> int:
         add.add_argument(name)
     add.add_argument("--ref", default="")
     add.set_defaults(func=cmd_add)
+    remove = sub.add_parser("remove")
+    remove.add_argument("name")
+    remove.set_defaults(func=cmd_remove)
     args = parser.parse_args()
     return args.func(args)
 
