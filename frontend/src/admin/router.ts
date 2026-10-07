@@ -14,11 +14,31 @@ export function currentAppPath(): string {
 }
 
 export function navigate(to: string, { replace = false } = {}): void {
-  const target = `${APP_BASE}${to === '/' ? '' : to}`;
-  if (target === window.location.pathname) return;
+  const normalized = to.startsWith('/') ? to : `/${to}`;
+  const target = `${APP_BASE}${normalized === '/' ? '' : normalized}`;
+  const current = window.location.pathname + window.location.search;
+  if (target === current) return;
   window.history[replace ? 'replaceState' : 'pushState'](null, '', target);
   window.dispatchEvent(new Event(EVENT));
   window.scrollTo({ top: 0 });
+}
+
+export function currentAppSearch(): URLSearchParams {
+  return new URLSearchParams(window.location.search);
+}
+
+export function useAppSearch(): URLSearchParams {
+  const [search, setSearch] = useState(currentAppSearch);
+  useEffect(() => {
+    const sync = () => setSearch(currentAppSearch());
+    window.addEventListener('popstate', sync);
+    window.addEventListener(EVENT, sync);
+    return () => {
+      window.removeEventListener('popstate', sync);
+      window.removeEventListener(EVENT, sync);
+    };
+  }, []);
+  return search;
 }
 
 export function useAppPath(): string {
@@ -37,8 +57,9 @@ export function useAppPath(): string {
 
 /** Anchor that navigates inside the app (keeps ctrl/cmd-click = new tab). */
 export function linkProps(to: string) {
+  const normalized = to.startsWith('/') ? to : `/${to}`;
   return {
-    href: `${APP_BASE}${to === '/' ? '' : to}`,
+    href: `${APP_BASE}${normalized === '/' ? '' : normalized}`,
     onClick: (e: { preventDefault: () => void; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; button: number }) => {
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
       e.preventDefault();
