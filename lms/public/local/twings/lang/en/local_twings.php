@@ -12,5 +12,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+// The site is in Vietnamese only: strings shown to learners are written in Vietnamese here.
+$string['account'] = 'Học phí & hồ sơ';
 $string['pluginname'] = 'TWings Academy';
 $string['privacy:metadata'] = 'The TWings Academy plugin does not store any personal data.';

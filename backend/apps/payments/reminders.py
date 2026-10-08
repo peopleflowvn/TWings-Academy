@@ -24,7 +24,7 @@ def _vnd(value: int) -> str:
 
 
 def send_installment_email(installment: Installment) -> None:
-    from apps.lms.emails import site_url
+    from apps.lms.emails import account_url
 
     order = installment.order
     qr = vietqr_payload(order)
@@ -41,7 +41,7 @@ Số tài khoản: <strong>{escape(qr["account_number"])}</strong> – {escape(q
 Nội dung chuyển khoản: <strong>{escape(qr["transfer_content"])}</strong></p>
 <p><img src="{qr["qr_image_url"]}" alt="VietQR" width="220"></p>
 <p>Hệ thống tự xác nhận sau khi nhận tiền. Xem lịch trả góp tại
-<a href="{site_url()}/tai-khoan">{site_url()}/tai-khoan</a>.</p>
+<a href="{account_url()}">{account_url()}</a>.</p>
 <p>TWings Academy</p>
 """
     send_logged(

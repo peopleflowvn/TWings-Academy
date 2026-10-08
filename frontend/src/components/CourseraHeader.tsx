@@ -7,7 +7,6 @@ import {
   Newspaper,
   PhoneCall,
   Sparkles,
-  UserRound
 } from 'lucide-react';
 import { useSiteLogo } from '../lib/siteSeo';
 import { routePath } from '../lib/routes';
@@ -135,15 +134,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             <span>Tin tức & Cẩm nang</span>
           </a>
 
-          {/* Learners: Account Hub & LMS */}
-          <a
-            href="/tai-khoan"
-            className="flex items-center gap-1.5 hover:text-[#0073C1] transition-colors"
-          >
-            <UserRound className="w-3.5 h-3.5 text-[#0073C1]" />
-            <span>Tài khoản</span>
-          </a>
-
+          {/* Learners: one portal (Moodle courses + fees & documents at /learn/tai-khoan) */}
           <a
             href="/learn/"
             className="flex items-center gap-1.5 hover:text-[#0073C1] transition-colors"
@@ -245,9 +236,6 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           </button>
           <a href="/learn/" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-blue-700 font-bold">
             Cổng Học Viên (LMS)
-          </a>
-          <a href="/tai-khoan" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-slate-700 font-bold">
-            Tài Khoản & Học Phí
           </a>
         </div>
       )}

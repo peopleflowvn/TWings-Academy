@@ -278,10 +278,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         </a>
         <span className="text-slate-600 hidden sm:inline">•</span>
         <a
-          href="/tai-khoan"
+          href="/learn/tai-khoan"
           className="text-slate-400 hover:text-white transition-colors"
         >
-          Tài khoản & Đơn hàng
+          Học phí & hồ sơ
         </a>
       </div>
     </div>

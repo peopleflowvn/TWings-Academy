@@ -93,6 +93,8 @@ def test_seo_api_for_the_spa(client, course):
     assert body["canonical"] == f"{BASE}/khoa-hoc/{course.slug}" and body["title"].startswith(course.title)
     assert client.get("/api/v1/public/seo/", {"path": "/khoa-hoc/nope"}).status_code == 404
     assert client.get("/api/v1/public/seo/", {"path": "/tai-khoan"}).json()["noindex"] is True
+    portal = client.get("/api/v1/public/seo/", {"path": "/learn/tai-khoan"}).json()
+    assert portal["noindex"] is True and portal["canonical"].endswith("/learn/tai-khoan")
 
 
 def test_sitemap_lists_published_pages(client, course, article):

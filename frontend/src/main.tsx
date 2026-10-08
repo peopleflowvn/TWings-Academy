@@ -17,7 +17,12 @@ if (path === '/login' || path === '/login/') {
 }
 
 const isAdmin = /^\/app(\/|$)/.test(path);
-const isStorefront = /^\/(chuong-trinh|tai-khoan|chinh-sach-bao-mat|dieu-khoan)(\/|$)/.test(path);
+// The old learner account path is part of the learner portal now (the server redirects it too).
+if (/^\/tai-khoan(\/|$)/.test(path)) {
+  window.location.replace('/learn' + path + window.location.search + window.location.hash);
+}
+
+const isStorefront = /^\/(chuong-trinh|tai-khoan|learn\/tai-khoan|chinh-sach-bao-mat|dieu-khoan)(\/|$)/.test(path);
 
 // Favicon, logo, default title/description from /app → Cài đặt SEO (not for the staff app).
 if (!isAdmin) {

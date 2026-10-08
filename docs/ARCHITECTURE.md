@@ -77,7 +77,7 @@ cookie luôn là first-party):
 
 | Đường dẫn | Đích |
 |---|---|
-| `/`, `/khoa-hoc/…`, `/tin-tuc/…`, `/tai-khoan`, `/app/…` | SPA React. Bot xem trước link và bot tìm kiếm nhận HTML do Django render (`/_seo/…`) |
+| `/`, `/khoa-hoc/…`, `/tin-tuc/…`, `/learn/tai-khoan`, `/app/…` | SPA React. Bot xem trước link và bot tìm kiếm nhận HTML do Django render (`/_seo/…`) |
 | `/api/v1/…` | Django API |
 | `/xac-minh/…`, `/bien-nhan/…`, `/doi-tac/…`, `/sitemap.xml`, `/robots.txt` | Trang Django (chứng chỉ, biên nhận, trang cho HR đối tác) |
 | `/learn/…` | Moodle. `/learn/webservice/*` trả 404 từ Internet |
@@ -280,7 +280,7 @@ flowchart LR
 ### 10.5 Trải nghiệm và chất lượng (ưu tiên 2)
 
 - **`theme_twings`** (kế thừa Boost): dùng chung màu, font (Plus Jakarta Sans) và logo với website. Nên gom màu thương
-  hiệu thành biến CSS dùng chung cho cả `frontend/` và theme. Header có liên kết về `/tai-khoan`. Quyết định có hỗ trợ ứng dụng Moodle Mobile hay
+  hiệu thành biến CSS dùng chung cho cả `frontend/` và theme. Menu chính của Moodle có mục "Học phí & hồ sơ" (`/learn/tai-khoan`, hook `primary_extend` của `local_twings`), đã làm 08/10/2026. Quyết định có hỗ trợ ứng dụng Moodle Mobile hay
   không (nếu có thì mở `webservice/pluginfile.php` và `login/token.php` ở Caddy).
 - **Một hệ chứng chỉ**: chứng chỉ do TWings cấp (`TWC-…`, có trang xác minh) là bản chính thức. `mod_customcert`
   đã được gỡ (07/10/2026, xem 10.7).
@@ -312,7 +312,7 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 | Chứng chỉ `TWC-…` và `mod_customcert` | Giữ `TWC-…` (gắn quy tắc chuyên cần, thu hồi khi hoàn tiền, trang xác minh, hồ sơ gửi HR). **Đã làm:** `customcert` xóa khỏi `lms/` (`vendor.py remove`), `twings_setup.php` gỡ nó khỏi Moodle khi không có hoạt động nào (production: 0) |
 | Sổ điểm, điểm danh, tiến độ chi tiết trong /app | /app hiện %, chuyên cần, mức rủi ro và nút mở Moodle. Không dựng lại sổ điểm. **Đã làm:** modal Học tập của đợt đọc số liệu đã đồng bộ (không gọi Moodle trực tiếp), có nút Sổ điểm, Tiến độ, Khóa học, từng học viên |
 | Email thông báo cho cả lớp | Diễn đàn **Thông báo** của khóa Moodle. TWings chỉ gửi email hành chính. **Đã làm:** nút mở trang đăng bài trong diễn đàn Thông báo, bỏ chức năng gửi email lớp của TWings |
-| Tiến độ trong `/tai-khoan` | Tóm tắt và nút "Vào học" |
+| `/tai-khoan` riêng, lặp lại "khóa học của tôi" | **Đã làm:** một cổng học viên `/learn`. Khóa học, tiến độ ở dashboard Moodle; học phí, hồ sơ, hóa đơn, chứng chỉ ở `/learn/tai-khoan` (cùng menu với Moodle). `/tai-khoan` chuyển hướng 301 |
 | Cảnh báo rủi ro | Giữ ở TWings (kết hợp học phí, tư vấn viên). Bật thêm Analytics của Moodle cho giảng viên |
 | Chế độ demo của frontend | Bỏ khỏi bản production: mỗi màn hình chỉ một nguồn dữ liệu (API) |
 
@@ -321,7 +321,7 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 | Giai đoạn | Việc | Trạng thái | Kết quả đo được |
 |---|---|---|---|
 | **0. Ổn định** (1 tuần) | Gỡ nội dung mẫu (lời chứng thực thật từ `/public/reviews/`, bỏ đối tác dự phòng, website không bao giờ hiện dữ liệu demo khi có backend, FAQ sửa được trong /app, migration dọn banner, email, SEO). 10.3 phần nhân sự và đơn hoàn. 10.4 Apache 4 worker | **Xong 07/10/2026**. Chờ quyết định nội dung: điểm sao nhập tay, ảnh stock. Tắt squash/rebase merge trên GitHub. Chốt Django 6.1 hay 5.2 LTS | Không còn nội dung sai sự thật. Không còn đường vào LMS cho người đã nghỉ |
-| **1. Loại trùng** (1–2 tuần) | 10.7 | **Đang làm**: xong chứng chỉ, sổ điểm, thông báo lớp. Còn: `/tai-khoan` (đang được làm lại song song), Analytics của Moodle, bỏ chế độ demo | Mỗi thông tin một nơi đúng. Bớt code học tập phải bảo trì |
+| **1. Loại trùng** (1–2 tuần) | 10.7 | **Gần xong** (08/10/2026): chứng chỉ, sổ điểm, thông báo lớp, cổng học viên một nơi. Để sau: Analytics của Moodle (cần dữ liệu vài đợt học), bỏ chế độ demo của frontend | Mỗi thông tin một nơi đúng. Bớt code học tập phải bảo trì |
 | **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | Chưa bắt đầu | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
 | **3. Trải nghiệm thống nhất** (2–3 tuần) | Theme Moodle theo TWings, email Moodle tiếng Việt cùng giọng, quyết định Moodle Mobile (10.5) | Đang có người làm phần theme trong `twings_setup.php` | Học viên đi từ website → tài khoản → lớp học như một sản phẩm |
 | **4. Vận hành và tuân thủ** (song song) | Quan sát, 2FA (10.5). Diễn tập khôi phục backup. Rà soát Nghị định 13/2023 (thời hạn lưu, quy trình xóa dữ liệu chạy cả TWings và Moodle) | Chưa bắt đầu | Có cảnh báo. Khôi phục được backup trong thời gian đã định |

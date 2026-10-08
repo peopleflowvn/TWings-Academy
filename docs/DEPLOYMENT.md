@@ -249,8 +249,10 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 - **Hoàn tiền** (quyền `finance.refund`, tab "Học phí & hoàn tiền" của đơn): ghi nhận sau khi đã chuyển trả.
   Hoàn toàn bộ (hoặc chọn kết thúc ghi danh) → đơn "Đã hoàn tiền", hủy ghi danh LMS, thu hồi chứng chỉ,
   áp dụng cho mọi khóa của chương trình. Chuyển khoản tới đơn đã hoàn không được ghi nhận tự động.
-- **Tài khoản học viên** `/tai-khoan`: đăng nhập bằng mã email (cùng phiên với SSO, nên "Vào học" không hỏi
-  lại mã), xem đơn, lịch trả góp + QR, tiến độ, chứng chỉ, gửi yêu cầu hoàn tiền (tạo việc ưu tiên cao).
+- **Cổng học viên** `/learn` (một cổng duy nhất): Moodle cho khóa học, bài học, điểm, lịch; trang
+  **Học phí & hồ sơ** `/learn/tai-khoan` (do website phục vụ, có trong menu chính của Moodle nhờ `local_twings`)
+  cho đơn, lịch trả góp + QR, hóa đơn VAT, hồ sơ nhập học, chứng chỉ, đánh giá, yêu cầu hoàn tiền (tạo việc ưu tiên
+  cao). Đăng nhập bằng mã email, cùng phiên với SSO. Đường dẫn cũ `/tai-khoan` chuyển hướng 301 sang `/learn/tai-khoan`.
 
 ## Email tự động & báo cáo
 

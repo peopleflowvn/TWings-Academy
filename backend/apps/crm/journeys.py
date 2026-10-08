@@ -76,6 +76,12 @@ def _not_sent(orders, key: str):
     return orders.exclude(pk__in=sent.values("order_id"))
 
 
+def _account():
+    from apps.lms.emails import account_url
+
+    return account_url()
+
+
 def _site():
     from apps.lms.emails import site_url
 
@@ -169,7 +175,7 @@ def _not_started(order: Order) -> tuple[str, str]:
 <p>Khóa <strong>{escape(order.course_title)}</strong> đã mở cho bạn được một tuần
 nhưng bạn chưa bắt đầu bài học nào. Chỉ 20 phút mỗi ngày là đủ để theo kịp lộ trình.</p>
 <p><a href="{_site()}/learn/">Vào học ngay trên TWings LMS</a> · Xem tiến độ tại
-<a href="{_site()}/tai-khoan">Tài khoản của tôi</a></p>
+<a href="{_account()}">Học phí & hồ sơ</a></p>
 <p>Gặp khó khăn khi đăng nhập hay sắp xếp thời gian? Trả lời email này để được hỗ trợ.</p>
 <p>TWings Academy</p>
 """
@@ -213,7 +219,7 @@ def _completed_next(order: Order) -> tuple[str, str]:
 <p>Chúc mừng bạn đã hoàn thành <strong>{escape(order.course_title)}</strong>!</p>
 {cert}
 <p>Cảm nhận của bạn giúp TWings dạy tốt hơn và giúp người đến sau chọn đúng khóa học:
-<a href="{_site()}/tai-khoan">viết đánh giá trong Tài khoản học viên</a>
+<a href="{_account()}">viết đánh giá trong cổng học viên (Học phí & hồ sơ)</a>
 (vài phút, chỉ đăng lên website khi bạn đồng ý).</p>
 {next_steps}
 <p>TWings Academy</p>

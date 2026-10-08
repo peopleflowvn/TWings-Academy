@@ -41,6 +41,10 @@ Disallow: /
 " 200
 		}
 
+		# One learner portal at /learn: the account page moved from /tai-khoan to /learn/tai-khoan.
+		@oldAccount path /tai-khoan /tai-khoan/*
+		redir @oldAccount /learn{uri} 301
+
 		# The SPA calls the API on its own origin (VITE_API_BASE_URL=same-origin): no CORS, and the
 		# session cookie stays first-party on every domain the site is served from.
 		handle /api/* {
@@ -62,7 +66,13 @@ Disallow: /
 
 		# Moodle LMS. Its web service API is for the TWings backend only (internal network): never
 		# reachable from the internet, so a leaked token is useless from outside.
-		handle /learn* {
+		# /learn/tai-khoan (fees, invoices, documents, certificates) is the TWings part of the learner
+		# portal: served by the SPA below, linked from Moodle's navigation (local_twings).
+		@moodle {
+			path /learn*
+			not path /learn/tai-khoan /learn/tai-khoan/*
+		}
+		handle @moodle {
 			@moodleWs path /learn/webservice/*
 			respond @moodleWs 404
 			header X-Robots-Tag "noindex, nofollow"

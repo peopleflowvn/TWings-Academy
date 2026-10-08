@@ -299,7 +299,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       {(checkout?.installments?.length ?? 0) > 1 && (
                         <>
                           {' '}Lịch đóng các kỳ tiếp theo và mã QR luôn có trong{' '}
-                          <a href="/tai-khoan" className="text-[#0056D2] font-bold hover:underline">Tài khoản của tôi</a>.
+                          <a href="/learn/tai-khoan" className="text-[#0056D2] font-bold hover:underline">Học phí & hồ sơ</a>.
                         </>
                       )}
                     </>
@@ -325,10 +325,10 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       <ArrowRight className="w-4 h-4" />
                     </a>
                     <a
-                      href="/tai-khoan"
+                      href="/learn/tai-khoan"
                       className="w-full sm:w-auto px-6 py-3 border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2"
                     >
-                      Tài khoản của tôi
+                      Học phí & hồ sơ
                     </a>
                   </>
                 ) : (

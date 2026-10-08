@@ -1,7 +1,7 @@
 """
-Learner account on the TWings site (/tai-khoan): sign in with a one-time code sent to the e-mail of an
-order, then see orders, installments (with the VietQR for the next one), courses, progress and
-certificates, and ask for a refund.
+Learner portal page /learn/tai-khoan (the TWings part of the portal, next to Moodle at /learn): sign in
+with a one-time code sent to the e-mail of an order, then see orders, installments (with the VietQR for
+the next one), enrolment documents, invoices, certificates, and ask for a refund.
 
 The session is the same one the SSO provider uses, so "Vào học" opens Moodle without a second code.
 CSRF is enforced on every POST (the endpoints are anonymous, so DRF would not do it by itself).

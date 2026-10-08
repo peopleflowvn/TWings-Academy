@@ -14,6 +14,15 @@ def learn_url() -> str:
     return f"{site_url()}/learn/"
 
 
+# The learner portal is /learn: Moodle (courses, grades) plus this TWings page (fees, installments,
+# invoices, enrolment documents, certificates), linked from Moodle's navigation.
+ACCOUNT_PATH = "/learn/tai-khoan"
+
+
+def account_url() -> str:
+    return f"{site_url()}{ACCOUNT_PATH}"
+
+
 def _intake_block(order) -> str:
     """Start date, schedule and first sessions of the learner's intake (empty for self-paced courses)."""
     from django.utils import timezone
@@ -52,7 +61,7 @@ def send_access_email(order, *, sent_by=None):
 <p>Bạn cũng có thể đăng nhập bằng mật khẩu trong email “Tài khoản thành viên mới” của hệ thống học.</p>
 {_intake_block(order)}
 <p><strong>Hoàn thiện hồ sơ nhập học</strong> (CCCD, học vấn, CV) và xem lịch học phí tại
-<a href="{site_url()}/tai-khoan">Tài khoản học viên</a>.</p>
+<a href="{account_url()}">Học phí & hồ sơ</a> trong cổng học viên.</p>
 <p>Mã đơn hàng: {escape(order.order_code)}. Cần hỗ trợ, vui lòng trả lời email này.</p>
 <p>TWings Academy</p>
 """

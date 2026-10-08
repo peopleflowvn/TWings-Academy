@@ -2,7 +2,8 @@
  * Public pages outside the homepage app (separate bundle, loaded only on these paths):
  *   /chuong-trinh            programs (bundles of courses)
  *   /chuong-trinh/<slug>     one program + checkout (pay in full or in installments)
- *   /tai-khoan               learner account: orders, installments, courses, certificates
+ *   /learn/tai-khoan         learner portal page (fees, installments, invoices, documents, certificates);
+ *                            the rest of the portal is Moodle at /learn (old /tai-khoan redirects here)
  */
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, BookOpen, Layers, Loader2, UserRound } from 'lucide-react';
@@ -49,7 +50,46 @@ const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNod
           <span className="flex gap-4">
             <a href="/khoa-hoc" className="hover:text-slate-800">Khóa học & chương trình</a>
             <a href="/learn/" className="hover:text-slate-800 font-medium text-[#0056D2]">Cổng học viên (LMS)</a>
-            <a href="/tai-khoan" className="hover:text-slate-800">Tài khoản & học phí</a>
+            <a href="/learn/tai-khoan" className="hover:text-slate-800">Học phí & hồ sơ</a>
+            <a href="/dieu-khoan" className="hover:text-slate-800">Điều khoản</a>
+            <a href="/chinh-sach-bao-mat" className="hover:text-slate-800">Chính sách bảo mật</a>
+          </span>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+/** The learner portal's frame, matching Moodle's navigation (local_twings adds the same entry there). */
+const PortalShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const tab = (href: string, label: string, on: boolean) => (
+    <a href={href} className={`px-3 py-2 rounded-xl text-sm font-bold whitespace-nowrap ${on ? 'text-[#0056D2] bg-blue-50' : 'text-slate-600 hover:text-slate-900'}`}>
+      {label}
+    </a>
+  );
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
+      <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
+          <a href="/learn/my/" className="flex items-center gap-2.5" title="Cổng học viên TWings">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00388A] via-[#0050D8] to-[#0073C1] flex items-center justify-center text-white font-black text-sm">
+              TW
+            </div>
+            <span className="hidden sm:inline text-base font-black tracking-tight text-[#00388A]">Cổng học viên</span>
+          </a>
+          <nav className="flex items-center gap-1 overflow-x-auto">
+            {tab('/learn/my/', 'Khóa học của tôi', false)}
+            {tab('/learn/calendar/view.php?view=upcoming', 'Lịch học', false)}
+            {tab('/learn/tai-khoan', 'Học phí & hồ sơ', true)}
+          </nav>
+        </div>
+      </header>
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-8">{children}</main>
+      <FloatingContact />
+      <footer className="border-t border-slate-200 bg-white text-xs text-slate-500">
+        <div className="max-w-6xl mx-auto px-4 py-5 flex flex-wrap gap-4 justify-between">
+          <a href="/" className="hover:text-slate-800">← Trang chủ TWings Academy</a>
+          <span className="flex gap-4">
             <a href="/dieu-khoan" className="hover:text-slate-800">Điều khoản</a>
             <a href="/chinh-sach-bao-mat" className="hover:text-slate-800">Chính sách bảo mật</a>
           </span>
@@ -199,8 +239,8 @@ export default function StorefrontApp() {
     trackView(path || '/');
   }, [path]);
   const programMatch = path.match(/^\/chuong-trinh\/([a-z0-9-]+)$/i);
-  if (path === '/tai-khoan') {
-    return <Shell active="account"><AccountPage /></Shell>;
+  if (path === '/learn/tai-khoan' || path === '/tai-khoan') {
+    return <PortalShell><AccountPage /></PortalShell>;
   }
   if (path === '/chinh-sach-bao-mat' || path === '/dieu-khoan') {
     return <Shell active="account"><LegalPage kind={path === '/dieu-khoan' ? 'terms' : 'privacy'} /></Shell>;

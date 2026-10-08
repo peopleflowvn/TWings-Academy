@@ -9,7 +9,7 @@ same metadata when the route changes. Also serves /sitemap.xml and /robots.txt.
 
 Routes (keep in step with frontend/src/lib/routes.ts):
   /  /khoa-hoc  /khoa-hoc/<slug>  /chuong-trinh  /chuong-trinh/<slug>  /ve-chung-toi  /tin-tuc
-  /tin-tuc/<slug>  /chinh-sach-bao-mat  /dieu-khoan  (+ /tai-khoan, never indexed)
+  /tin-tuc/<slug>  /chinh-sach-bao-mat  /dieu-khoan  (+ /learn/tai-khoan, never indexed)
 """
 
 import json
@@ -385,8 +385,8 @@ def resolve(path: str) -> Page:
             return _legal("privacy", "/chinh-sach-bao-mat")
         case ["dieu-khoan"]:
             return _legal("terms", "/dieu-khoan")
-        case ["tai-khoan"]:
-            return Page(path="/tai-khoan", title=f"Tài khoản học viên | {SITE_NAME}", noindex=True)
+        case ["learn", "tai-khoan"] | ["tai-khoan"]:  # learner portal page (old path redirects)
+            return Page(path="/learn/tai-khoan", title=f"Học phí & hồ sơ | {SITE_NAME}", noindex=True)
     raise Http404
 
 
