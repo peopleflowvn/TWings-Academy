@@ -203,6 +203,7 @@ jobs:
               php /var/www/moodle/twings_setup.php
               php $cli/upgrade.php --non-interactive >/dev/null
               php $cli/build_theme_css.php --themes=twings >/dev/null   # SCSS of theme_twings compiles
+              [ "$(php $cli/cfg.php --name=theme)" = "twings" ] || { echo "::error::site theme is not twings"; exit 1; }
               for c in mod_attendance block_completion_progress report_customsql local_twings theme_twings; do
                 v=$(php $cli/cfg.php --component=$c --name=version) || { echo "::error::$c not installed"; exit 1; }
                 echo "$c $v"
