@@ -291,7 +291,14 @@ flowchart LR
 
 ### 10.5 Trải nghiệm và chất lượng (ưu tiên 2)
 
-- **`theme_twings`** (kế thừa Boost): dùng chung màu, font (Plus Jakarta Sans) và logo với website. Nên gom màu thương
+- **`theme_twings`** (kế thừa Boost, **đã làm 08/10/2026**, `lms/public/theme/twings`): biến Bootstrap (màu, font Plus
+  Jakarta Sans, nền) + quy tắc dashboard, thẻ khóa học, khối, nút; font nạp qua hook `before_standard_head_html_generation`;
+  CI biên dịch SCSS. Thay cho CSS chèn hai lần trong `twings_setup.php` trước đó. Menu chính Moodle: Trang chủ TWings,
+  Khóa học của tôi, Học phí & hồ sơ. Email: một khung TWings chung cho email của backend (`notifications/layout.py`)
+  và của Moodle (template `core/email_html` của theme); email tạo tài khoản và đặt lại mật khẩu của Moodle viết lại
+  bằng tiếng Việt theo giọng TWings (`infra/lms/lang/vi_local`, cơ chế language customisation). **Moodle Mobile: chưa
+  bật** (cần mở `/learn/webservice/` ra Internet và đăng nhập mật khẩu; cổng web đã dùng tốt trên điện thoại). Xem lại
+  khi học viên thật sự cần học offline. Trước đó: Nên gom màu thương
   hiệu thành biến CSS dùng chung cho cả `frontend/` và theme. Menu chính của Moodle có mục "Học phí & hồ sơ" (`/learn/tai-khoan`, hook `primary_extend` của `local_twings`), đã làm 08/10/2026. Quyết định có hỗ trợ ứng dụng Moodle Mobile hay
   không (nếu có thì mở `webservice/pluginfile.php` và `login/token.php` ở Caddy).
 - **Một hệ chứng chỉ**: chứng chỉ do TWings cấp (`TWC-…`, có trang xác minh) là bản chính thức. `mod_customcert`
@@ -336,7 +343,7 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 | **0. Ổn định** (1 tuần) | Gỡ nội dung mẫu (lời chứng thực thật từ `/public/reviews/`, bỏ đối tác dự phòng, website không bao giờ hiện dữ liệu demo khi có backend, FAQ sửa được trong /app, migration dọn banner, email, SEO). 10.3 phần nhân sự và đơn hoàn. 10.4 Apache 4 worker | **Xong 07/10/2026**. Chờ quyết định nội dung: điểm sao nhập tay, ảnh stock. Tắt squash/rebase merge trên GitHub. Chốt Django 6.1 hay 5.2 LTS | Không còn nội dung sai sự thật. Không còn đường vào LMS cho người đã nghỉ |
 | **1. Loại trùng** (1–2 tuần) | 10.7 | **Gần xong** (08/10/2026): chứng chỉ, sổ điểm, thông báo lớp, cổng học viên một nơi. Để sau: Analytics của Moodle (cần dữ liệu vài đợt học), bỏ chế độ demo của frontend | Mỗi thông tin một nơi đúng. Bớt code học tập phải bảo trì |
 | **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | **Xong** (08/10/2026): 10.1 (worker chạy trên production, 7 việc định kỳ, bỏ cron host), 10.2, test hợp đồng (10.5). SSO gọi nội bộ: không làm (xem 10.3). Tác vụ lỗi hiện trên /app | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
-| **3. Trải nghiệm thống nhất** (2–3 tuần) | Theme Moodle theo TWings, email Moodle tiếng Việt cùng giọng, quyết định Moodle Mobile (10.5) | Đang có người làm phần theme trong `twings_setup.php` | Học viên đi từ website → tài khoản → lớp học như một sản phẩm |
+| **3. Trải nghiệm thống nhất** (2–3 tuần) | Theme Moodle theo TWings, email Moodle tiếng Việt cùng giọng, quyết định Moodle Mobile (10.5) | **Xong** (08/10/2026): `theme_twings`, khung email chung, email Moodle tiếng Việt, Mobile chưa bật | Học viên đi từ website → tài khoản → lớp học như một sản phẩm |
 | **4. Vận hành và tuân thủ** (song song) | Quan sát, 2FA (10.5). Diễn tập khôi phục backup. Rà soát Nghị định 13/2023 (thời hạn lưu, quy trình xóa dữ liệu chạy cả TWings và Moodle) | Chưa bắt đầu | Có cảnh báo. Khôi phục được backup trong thời gian đã định |
 | **Khi chạm ngưỡng** | 10.6 | – | Theo bảng ngưỡng |
 

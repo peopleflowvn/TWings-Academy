@@ -26,6 +26,8 @@ RUN : > /etc/apache2/ports.conf \
 # chown/chmod layer that would duplicate ~400 MB); data lives in the moodledata volume.
 COPY --link lms/ /var/www/moodle/
 COPY --link infra/lms/config.php infra/lms/twings_setup.php /var/www/moodle/
+# TWings wording of Moodle's e-mails, copied to dataroot/lang/*_local by twings_setup.php (outside public/).
+COPY --link infra/lms/lang/ /var/www/moodle/twings_lang/
 
 USER www-data
 # The upstream entrypoint writes PHP ini files from env vars as root; our ini is baked in above, so use

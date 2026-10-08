@@ -226,6 +226,9 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 - **Mã nguồn trong repo** (`lms/`, xem [LMS.md](LMS.md)): lõi Moodle 5.2.4 và các plugin Attendance
   (điểm danh), Completion Progress (thanh tiến độ), Ad-hoc database queries (báo cáo SQL cho cán bộ quản lý), cùng
   plugin riêng `local_twings`. Chứng chỉ chính thức là `TWC-…` của TWings (không dùng plugin chứng chỉ của Moodle).
+- **Giao diện và email:** theme `theme_twings` (`lms/public/theme/twings`), menu Trang chủ TWings / Học phí & hồ sơ
+  (`local_twings`). Email của Moodle và của backend dùng chung khung TWings. Nội dung email tạo tài khoản / đặt lại mật
+  khẩu của Moodle: `infra/lms/lang/vi_local/moodle.php` (sửa ở đây, không sửa trong trang quản trị Moodle).
 - **Soạn nội dung:** đăng nhập `/learn` bằng `admin` (mật khẩu `PROD_LMS__MOODLE_ADMIN_PASSWORD` trong `.env`). Dùng
   các tính năng sẵn có của Moodle: bài giảng, video YouTube, quiz, bài tập, hoàn thành khóa học, huy hiệu.
 - **Bảo mật:** `/learn/webservice/*` bị chặn từ Internet, chỉ backend gọi được qua mạng nội bộ. Token có giới hạn IP

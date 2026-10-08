@@ -13,7 +13,7 @@ lms/                                 Moodle 5.2.4 (PHP 8.3); web root là lms/pu
   public/
     mod/attendance/  blocks/completion_progress/  report/customsql/   plugin bên thứ ba
     local/twings/                    plugin riêng của TWings  ← code tùy biến đặt ở đây
-    theme/twings/                    (khi cần) giao diện TWings
+    theme/twings/                    giao diện TWings (kế thừa Boost)
 infra/lms/
   Dockerfile  Dockerfile.dockerignore  config.php  twings_setup.php  apache.conf  php.ini
   vendor.json                        phiên bản gốc của từng thành phần

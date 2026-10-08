@@ -19,3 +19,4 @@ $string['notifyfailed'] = 'Could not notify TWings (HTTP {$a}); the task will be
 $string['privacy:metadata:twings'] = 'TWings Academy backend: notified when the progress of a learner changes, to issue certificates and follow up learners.';
 $string['privacy:metadata:twings:courseid'] = 'The course in which the progress changed.';
 $string['privacy:metadata:twings:userid'] = 'The learner (or the teacher who took attendance).';
+$string['website'] = 'Trang chủ TWings';

@@ -1,0 +1,29 @@
+{{!
+    This file is part of TWings Academy's Moodle (lms/), GNU GPL v3 or later like Moodle itself.
+}}
+{{!
+    @template theme_twings/core/email_html
+
+    Every HTML e-mail Moodle sends, in the TWings frame (brand bar, body, footer links). The backend
+    uses the same frame (backend/apps/notifications/layout.py): keep both in step.
+
+    Context variables: see core/email_html (body, sitewwwroot...).
+
+    Example context (json):
+    {
+        "body": "<p>Chào An,</p>",
+        "sitewwwroot": "https://tuyensinh.twings.edu.vn/learn"
+    }
+}}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;padding:24px 12px">
+<tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #E2E8F0;border-radius:16px;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0F172A;font-size:14px;line-height:1.6">
+<tr><td style="background-color:#0056D2;border-radius:16px 16px 0 0;padding:16px 24px;color:#ffffff;font-weight:800;font-size:16px">TWings Academy</td></tr>
+<tr><td style="padding:24px">{{{body}}}</td></tr>
+<tr><td style="padding:16px 24px;border-top:1px solid #E2E8F0;color:#64748B;font-size:12px">
+<a href="{{{sitewwwroot}}}/" style="color:#0056D2">Cổng học viên</a> ·
+<a href="{{{sitewwwroot}}}/tai-khoan" style="color:#0056D2">Học phí &amp; hồ sơ</a> · hello@twings.edu.vn
+</td></tr>
+</table>
+</td></tr>
+</table>

@@ -9,6 +9,8 @@ import time
 import requests
 from django.conf import settings
 
+from .layout import wrap
+
 logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
@@ -30,7 +32,7 @@ def send_email(*, to: str, subject: str, html: str, idempotency_key: str) -> str
     try:
         response = requests.post(
             RESEND_API_URL,
-            json={"from": settings.RESEND_FROM_EMAIL, "to": [to], "subject": subject, "html": html},
+            json={"from": settings.RESEND_FROM_EMAIL, "to": [to], "subject": subject, "html": wrap(html)},
             headers={"Authorization": f"Bearer {api_key}", "Idempotency-Key": idempotency_key},
             timeout=10,
         )
