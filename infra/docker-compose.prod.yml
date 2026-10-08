@@ -129,7 +129,7 @@ services:
     command: ["sh", "-c", "while :; do php /var/www/moodle/admin/cli/cron.php --keep-alive=300; sleep 10; done"]
     healthcheck: { disable: true }
     depends_on: [lms]
-    networks: [data, egress]
+    networks: [app, data, egress]   # app: learning events to http://backend:8000 (local_twings)
     read_only: true
     tmpfs: ["/tmp"]
     volumes:

@@ -12,7 +12,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_twings';
-$plugin->version   = 2026100800;  // YYYYMMDDXX: bump on every change that needs a Moodle upgrade.
+$plugin->version   = 2026100801;  // YYYYMMDDXX: bump on every change that needs a Moodle upgrade.
 $plugin->requires  = 2026042000;  // Moodle 5.2.
 $plugin->maturity  = MATURITY_STABLE;
 $plugin->release   = '1.0';

@@ -249,13 +249,16 @@ flowchart LR
 
 ### 10.2 Moodle báo sự kiện cho TWings (ưu tiên 1)
 
-- Plugin `local_twings` đăng ký observer cho `\core\event\course_completed`, `\core\event\user_graded`, sự kiện điểm
-  danh của `mod_attendance` và thay đổi ghi danh. Observer chỉ ghi một **adhoc task** của Moodle (không chặn request
-  của giáo viên). Task này `POST` tới `http://backend:8000/api/v1/webhooks/lms/` trên mạng nội bộ, ký HMAC, có
-  thử lại.
-- TWings xử lý ngay (chứng chỉ, rủi ro, email chúc mừng). **Đọc định kỳ giữ lại thành đối soát hằng đêm**, đề
-  phòng sự kiện bị mất.
-- Kết quả: chứng chỉ gần như tức thì, số lượt gọi Moodle giảm từ mỗi học viên mỗi 30 phút xuống theo sự kiện thực tế.
+**Đã làm (08/10/2026):**
+- `local_twings` lắng nghe `\core\event\course_completed`, `\core\event\user_graded`,
+  `\mod_attendance\event\attendance_taken(_by_student)`. Observer chỉ xếp một **adhoc task** của Moodle (giáo viên
+  không phải chờ; thông báo trùng được gộp). Task `notify_twings` (chạy trong `lms-cron`) `POST` `{courseid, userid, ts}`
+  tới `http://backend:8000/api/v1/webhooks/lms/` trên mạng nội bộ, ký HMAC-SHA256. Khóa dẫn xuất từ token Web Service
+  hai bên đã có, nên không thêm secret. Lỗi thì Moodle tự thử lại.
+- Backend kiểm tra chữ ký và thời điểm (chống gửi lại sau 10 phút), rồi xếp `moodle_event` (gộp nếu đã có việc giống hệt
+  đang chờ). Worker cập nhật chuyên cần, điểm, rủi ro của cả khóa và hoàn thành của học viên đó, cấp chứng chỉ ngay.
+  Đồng bộ 30 phút giữ lại để **đối soát**.
+- Privacy API: `local_twings` khai báo dữ liệu gửi ra ngoài (userid, courseid tới TWings).
 
 ### 10.3 TWings là nhà cung cấp danh tính duy nhất (ưu tiên 1)
 
@@ -330,7 +333,7 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 |---|---|---|---|
 | **0. Ổn định** (1 tuần) | Gỡ nội dung mẫu (lời chứng thực thật từ `/public/reviews/`, bỏ đối tác dự phòng, website không bao giờ hiện dữ liệu demo khi có backend, FAQ sửa được trong /app, migration dọn banner, email, SEO). 10.3 phần nhân sự và đơn hoàn. 10.4 Apache 4 worker | **Xong 07/10/2026**. Chờ quyết định nội dung: điểm sao nhập tay, ảnh stock. Tắt squash/rebase merge trên GitHub. Chốt Django 6.1 hay 5.2 LTS | Không còn nội dung sai sự thật. Không còn đường vào LMS cho người đã nghỉ |
 | **1. Loại trùng** (1–2 tuần) | 10.7 | **Gần xong** (08/10/2026): chứng chỉ, sổ điểm, thông báo lớp, cổng học viên một nơi. Để sau: Analytics của Moodle (cần dữ liệu vài đợt học), bỏ chế độ demo của frontend | Mỗi thông tin một nơi đúng. Bớt code học tập phải bảo trì |
-| **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | **Đang làm** (08/10/2026): 10.1 xong. Tiếp: 10.2. SSO gọi nội bộ: không làm (xem 10.3) | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
+| **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | **Đang làm** (08/10/2026): 10.1, 10.2 xong. Tiếp: test hợp đồng với Moodle thật (10.5), hiện task lỗi trên /app. SSO gọi nội bộ: không làm (xem 10.3) | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
 | **3. Trải nghiệm thống nhất** (2–3 tuần) | Theme Moodle theo TWings, email Moodle tiếng Việt cùng giọng, quyết định Moodle Mobile (10.5) | Đang có người làm phần theme trong `twings_setup.php` | Học viên đi từ website → tài khoản → lớp học như một sản phẩm |
 | **4. Vận hành và tuân thủ** (song song) | Quan sát, 2FA (10.5). Diễn tập khôi phục backup. Rà soát Nghị định 13/2023 (thời hạn lưu, quy trình xóa dữ liệu chạy cả TWings và Moodle) | Chưa bắt đầu | Có cảnh báo. Khôi phục được backup trong thời gian đã định |
 | **Khi chạm ngưỡng** | 10.6 | – | Theo bảng ngưỡng |

@@ -35,3 +35,31 @@ def sync_account(email: str) -> str:
     from .overview import sync_account as sync
 
     return sync(email)
+
+
+@task
+def moodle_event(moodle_course_id: int, moodle_user_id: int) -> dict:
+    """
+    Moodle reported a change (completion, grade, attendance) for this course and user: refresh the
+    course's learning signals and the user's completion now (certificates without waiting for the
+    30-minute sync, which stays as the reconciliation).
+    """
+    from . import moodle
+    from .completion import release_holds, sync_enrollment
+    from .learning import refresh_course
+    from .models import LmsEnrollment
+
+    enrollments = list(
+        LmsEnrollment.objects.filter(status="done", moodle_course_id=moodle_course_id)
+        .exclude(moodle_user_id__isnull=True)
+        .select_related("order", "order__course", "cohort")
+    )
+    if not enrollments:
+        return {"learners": 0}
+    refreshed = refresh_course(moodle_course_id, enrollments)
+    completed = 0
+    mine = [e for e in enrollments if e.moodle_user_id == moodle_user_id and not e.completed_at]
+    if mine:
+        courses = moodle.call("core_enrol_get_users_courses", userid=moodle_user_id, returnusercount=0)
+        completed = sum(int(sync_enrollment(e, courses)) for e in mine)
+    return {"learners": refreshed, "completed": completed, "released": release_holds()}

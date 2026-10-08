@@ -5,7 +5,8 @@ from .base import env
 
 DEBUG = False
 # The container healthcheck calls the API on 127.0.0.1.
-ALLOWED_HOSTS = [*ALLOWED_HOSTS, "127.0.0.1"]  # noqa: F405
+# "backend": Moodle (local_twings) posts learning events to http://backend:8000 on the internal network.
+ALLOWED_HOSTS = [*ALLOWED_HOSTS, "127.0.0.1", "backend"]  # noqa: F405
 
 if ADMIN_URL == "admin/":  # noqa: F405
     raise RuntimeError("Set DJANGO_ADMIN_URL to a random, non-guessable path in production.")

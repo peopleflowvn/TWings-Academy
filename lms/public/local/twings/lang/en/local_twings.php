@@ -15,4 +15,7 @@ defined('MOODLE_INTERNAL') || die();
 // The site is in Vietnamese only: strings shown to learners are written in Vietnamese here.
 $string['account'] = 'Học phí & hồ sơ';
 $string['pluginname'] = 'TWings Academy';
-$string['privacy:metadata'] = 'The TWings Academy plugin does not store any personal data.';
+$string['notifyfailed'] = 'Could not notify TWings (HTTP {$a}); the task will be retried.';
+$string['privacy:metadata:twings'] = 'TWings Academy backend: notified when the progress of a learner changes, to issue certificates and follow up learners.';
+$string['privacy:metadata:twings:courseid'] = 'The course in which the progress changed.';
+$string['privacy:metadata:twings:userid'] = 'The learner (or the teacher who took attendance).';

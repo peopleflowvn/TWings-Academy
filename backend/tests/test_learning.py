@@ -240,3 +240,41 @@ def test_at_risk_lists_risk_before_watch(klass):
     from apps.lms.learning import at_risk_rows
 
     assert [r["risk_level"] for r in at_risk_rows()] == ["risk", "watch"]
+
+
+def test_moodle_learning_events_sync_the_learner_at_once(klass, api, monkeypatch):
+    import json
+    import time
+
+    from apps.lms.webhooks import signature
+
+    cohort, fake, (good, drifting) = klass
+    original = fake.__call__
+
+    def moodle_call(function, **params):
+        if function == "core_enrol_get_users_courses":  # Moodle just marked the course complete
+            return [{"id": 77, "progress": 100, "completed": True}]
+        return original(function, **params)
+
+    monkeypatch.setattr(moodle, "call", moodle_call)
+
+    def post(payload, sig=None):
+        body = json.dumps(payload).encode()
+        return api.post(
+            "/api/v1/webhooks/lms/",
+            body,
+            content_type="application/json",
+            HTTP_X_TWINGS_SIGNATURE=sig if sig is not None else signature(body),
+        )
+
+    event = {"event": r"\core\event\course_completed", "courseid": 77, "userid": 501, "ts": int(time.time())}
+    assert post(event, sig="0" * 64).status_code == 403
+    assert post({**event, "ts": int(time.time()) - 3600}).status_code == 403  # replay of an old event
+    assert post({"courseid": "x"}).status_code == 400
+
+    assert post(event).status_code == 202
+    good.refresh_from_db()
+    drifting.refresh_from_db()
+    # The whole course's signals were refreshed, and An completed with the certificate issued now.
+    assert drifting.grade_percent == 30 and drifting.risk_level == "risk"
+    assert good.completed_at is not None and Certificate.objects.filter(enrollment=good).exists()
