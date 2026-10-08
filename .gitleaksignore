@@ -1,0 +1,6 @@
+# Findings gitleaks may skip, by exact fingerprint (commit:file:rule:line). Only for values that are
+# already public in this repository's history AND have been rotated: never for a live secret.
+#
+# 2026-10-08: commit 25091427b put a default admin password in ensure_admin.py (removed in 103163b).
+# It is public on GitHub: that password must never be used anywhere (change it if it was).
+25091427b417c187b090b2de5b44c20e95f6725e:backend/apps/accounts/management/commands/ensure_admin.py:generic-api-key:18
