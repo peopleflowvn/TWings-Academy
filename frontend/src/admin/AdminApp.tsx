@@ -32,10 +32,8 @@ import {
   Send,
   ShieldCheck,
   Tag,
-  Users,
   Wrench,
   X,
-  PlusCircle
 } from 'lucide-react';
 import { isBackendEnabled } from '../lib/api';
 import { openInMoodle, StaffUserContext } from '../lib/lms';
@@ -53,7 +51,7 @@ import { CMSArticlesSEOTab } from '../components/cms/CMSArticlesSEOTab';
 import { CMSSiteSEOSettingsTab } from '../components/cms/CMSSiteSEOSettingsTab';
 import { CMSEmailTemplatesTab } from '../components/cms/CMSEmailTemplatesTab';
 import { CMSUsersTab } from '../components/cms/CMSUsersTab';
-import { useAppPath, linkProps } from './router';
+import { useAppPath, linkProps, navigate } from './router';
 import { useCourses, useHomepageSections, useOrders } from './data';
 import { OverviewReportsPage } from './pages/OverviewReportsPage';
 import { CouponsPage, TransactionsPage } from './pages/FinancePages';
@@ -94,26 +92,15 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: 'Tuyển sinh & Bán hàng',
     items: [
       {
+        // Campaigns, the lead pipeline (kanban / detailed table, all leads or one campaign) and new campaigns.
         path: '/sales/crm',
-        label: 'Đợt tuyển sinh (Chiến dịch)',
+        label: 'Chiến dịch tuyển sinh & pipeline',
         icon: Briefcase,
-        aliasPaths: ['/sales/requisitions'],
-        perms: ['crm.view_leads']
-      },
-      {
-        path: '/sales/requisitions/new',
-        label: 'Tạo đợt tuyển sinh mới',
-        icon: PlusCircle,
-        perms: ['crm.view_leads']
-      },
-      {
-        path: '/sales/pipeline',
-        label: 'Pipeline xét tuyển (Kanban)',
-        icon: Users,
+        aliasPaths: ['/sales/requisitions', '/sales/requisitions/new'],
         perms: ['crm.view_leads']
       },
       { path: '/sales/consulting', label: 'Tư vấn & lịch hẹn', icon: Headset, perms: ['crm.view_leads'] },
-      { path: '/sales/intakes', label: 'Đợt khai giảng & chỉ tiêu', icon: CalendarDays, perms: ['courses.view', 'crm.view_leads'] },
+      { path: '/sales/intakes', label: 'Lớp & đợt khai giảng', icon: CalendarDays, perms: ['courses.view', 'crm.view_leads'] },
       { path: '/sales/coupons', label: 'Mã giảm giá & học bổng', icon: Tag, perms: ['finance.transactions', 'crm.view_leads'] }
     ]
   },
@@ -189,6 +176,10 @@ const BannersRoute: React.FC = () => {
 
 const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, logout }) => {
   const path = useAppPath();
+  // The former all-leads pipeline page is the pipeline of /sales/crm with every lead (old links keep working).
+  useEffect(() => {
+    if (path === '/sales/pipeline') navigate('/sales/crm?view=kanban&campaignId=all', { replace: true });
+  }, [path]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const can = useMemo(() => makeCan(user), [user]);
@@ -245,7 +236,6 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <JourneysPage canEdit={can('crm.edit_status')} />;
       case '/sales/crm':
       case '/sales/requisitions/new':
-      case '/sales/pipeline':
         return (
           <CMSCRMOrdersTab
             orders={orders.orders}

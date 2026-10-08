@@ -215,6 +215,7 @@ health check và rollback. Mọi đồng bộ đều idempotent.
 | 8 | Giao diện Moodle (Boost mặc định) khác website | Trải nghiệm học viên không liền mạch **Đã xử lý 08/10/2026** (`theme_twings`, khung email chung). |
 | 9 | **Trùng chức năng với Moodle** ở mảng học tập: hai hệ chứng chỉ (`TWC-…` và `mod_customcert`), /app dựng lại sổ điểm, điểm danh, tiến độ chi tiết, email thông báo cho lớp | Hai nơi cùng một thông tin, dễ lệch, nhiều code phải bảo trì. Xem 10.7. **Đã xử lý chứng chỉ, sổ điểm, thông báo lớp (07/10/2026)** |
 | 10 | **Nội dung mẫu của template** còn trên website: lời chứng thực bịa, danh sách đối tác dự phòng (Google, IBM, Stanford…), banner "Learn AI… Google, OpenAI, Anthropic", mẫu email nhắc "Coursera LMS", từ khóa SEO "chứng chỉ Coursera" | Rủi ro pháp lý (quảng cáo sai sự thật) và uy tín. **Đã gỡ khỏi code và DB (07/10/2026)**. Còn chờ quyết định: điểm sao nhập tay khi chưa có đánh giá, ảnh stock của giảng viên và thư viện ảnh |
+| 11 | **"Comp AI" trong chi tiết lead tạo dữ kiện giả**: `runCompAIEvidenceEnrichment` hiển thị "dữ kiện đã xác thực" với độ tin cậy 98–100% và nguồn "Căn cước công dân", tự điền trường học khi trống; hạng "Tier A/B" và "Readiness" là con số cố định | Nhân viên có thể tin vào thông tin không có thật. **Chưa xử lý**: thay bằng thông tin thật của hồ sơ, bỏ nhãn "AI" |
 
 ## 10. Kiến trúc đề xuất
 
@@ -338,6 +339,7 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 | `/tai-khoan` riêng, lặp lại "khóa học của tôi" | **Đã làm:** một cổng học viên `/learn`. Khóa học, tiến độ ở dashboard Moodle; học phí, hồ sơ, hóa đơn, chứng chỉ ở `/learn/tai-khoan` (cùng menu với Moodle). `/tai-khoan` chuyển hướng 301 |
 | Cảnh báo rủi ro | Giữ ở TWings (kết hợp học phí, tư vấn viên). Bật thêm Analytics của Moodle cho giảng viên |
 | Chế độ demo của frontend | Bỏ khỏi bản production: mỗi màn hình chỉ một nguồn dữ liệu (API) |
+| `/sales/pipeline` (màn hình "cũ" xem tất cả lead) trùng với pipeline theo chiến dịch; quản lý đợt khai giảng thứ hai trong CRM | **Đã làm (09/10/2026):** một pipeline (`LeadPipelineView`: tất cả lead / chưa gắn chiến dịch / từng chiến dịch; kanban + bảng chi tiết, lọc khóa, lớp, giai đoạn, học phí, mức quan tâm, PIC, vị trí; xuất CSV). Lead thuộc chiến dịch theo liên kết thật (`Order.campaign` hoặc mã chiến dịch), không đoán theo chuỗi. `/sales/pipeline` chuyển hướng. Gỡ trình quản lý đợt khai giảng trong CRM (ghi đè / xóa cùng dữ liệu với `/sales/intakes`), trình **giả lập webhook VietQR** (ghi nhận thanh toán thật khi không có tiền), hàng đợi "AI Agent" giả. Kéo thẻ không còn đặt "Đã đóng phí". `CMSCRMOrdersTab` 2.198 → khoảng 240 dòng |
 
 ## 11. Lộ trình
 

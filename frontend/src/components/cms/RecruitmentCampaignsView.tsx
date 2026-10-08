@@ -29,6 +29,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { AdmissionCampaign, Order, Course } from '../../types';
+import { inCampaign } from './LeadPipelineView';
 
 interface RecruitmentCampaignsViewProps {
   campaigns: AdmissionCampaign[];
@@ -71,17 +72,7 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
 
   // Helper to calculate stage breakdown for each campaign
   const getCampaignFunnelData = (camp: AdmissionCampaign) => {
-    const campOrders = orders.filter((o) => {
-      if (camp.id === 'camp-2026-q4-hn') {
-        return (o.batchCohort || '').includes('Hà Nội') || (o.studyArea || '').includes('Hà Nội') || !o.batchCohort;
-      }
-      if (camp.id === 'camp-2026-oct-hcm') {
-        return (o.batchCohort || '').includes('HCM') || (o.studyArea || '').includes('HCM');
-      }
-      if (camp.courseId && o.courseId === camp.courseId) return true;
-      if (camp.intakeCohort && (o.batchCohort || '').includes(camp.intakeCohort)) return true;
-      return o.campaignCode === camp.code;
-    });
+    const campOrders = orders.filter((o) => inCampaign(o, camp));
 
     const s1_new = campOrders.filter((o) => !o.crmStatus || o.crmStatus === '1. Mới').length;
     const s2_consulting = campOrders.filter(

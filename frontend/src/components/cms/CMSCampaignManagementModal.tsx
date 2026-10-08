@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AdmissionCampaign, CampaignPositionTrack, Order } from '../../types';
+import { inCampaign } from './LeadPipelineView';
 import { saveCampaigns } from '../../utils/talentCampaigns';
 
 interface CMSCampaignManagementModalProps {
@@ -196,15 +197,7 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
   };
 
   // Count leads in active campaign
-  const campaignOrders = orders.filter((o) => {
-    if (activeCampaign.id === 'camp-2026-q4-hn') {
-      return (o.batchCohort || '').includes('Hà Nội') || (o.studyArea || '').includes('Hà Nội') || !o.batchCohort;
-    }
-    if (activeCampaign.id === 'camp-2026-oct-hcm') {
-      return (o.batchCohort || '').includes('HCM') || (o.studyArea || '').includes('HCM');
-    }
-    return true;
-  });
+  const campaignOrders = orders.filter((o) => inCampaign(o, activeCampaign));
 
   const enrolledCount = campaignOrders.filter((o) => o.status === 'paid' || o.crmStatus === '5. Đã đóng phí').length;
   const targetHeadcount = activeCampaign.targetHeadcount || 100;

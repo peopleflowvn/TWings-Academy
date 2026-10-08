@@ -5,6 +5,7 @@ import { useStaffCan } from '../../lib/lms';
 import { formatDate, formatVND } from '../../lib/commerce';
 import { RosterModal } from './JourneyPages';
 import { GradebookModal } from './LearningPages';
+import { linkProps } from '../router';
 
 interface IntakeRow {
   id: string;
@@ -405,7 +406,10 @@ export const IntakesPage: React.FC<{ courses: { id: string; title: string }[] }>
 
       {data.campaigns.length > 0 && (
         <section className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
-          <div className="font-bold text-slate-900 flex items-center gap-2"><Target className="w-4 h-4 text-[#0073C1]" /> Chỉ tiêu chiến dịch tuyển sinh</div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-bold text-slate-900 flex items-center gap-2"><Target className="w-4 h-4 text-[#0073C1]" /> Chỉ tiêu chiến dịch tuyển sinh (số liệu đầy đủ từ máy chủ)</div>
+            <a {...linkProps('/sales/crm?view=campaigns')} className="text-xs font-bold text-[#0073C1] hover:underline">Quản lý chiến dịch & pipeline →</a>
+          </div>
           {data.campaigns.map((c) => (
             <div key={c.code} className="text-xs space-y-1.5">
               <div className="font-bold">{c.name} <span className="font-normal text-slate-500">({c.code}{c.deadline ? ` · hạn ${formatDate(c.deadline)}` : ''}) – {c.enrolled}/{c.target || '?'} học viên</span></div>
