@@ -295,9 +295,10 @@ flowchart LR
   không (nếu có thì mở `webservice/pluginfile.php` và `login/token.php` ở Caddy).
 - **Một hệ chứng chỉ**: chứng chỉ do TWings cấp (`TWC-…`, có trang xác minh) là bản chính thức. `mod_customcert`
   đã được gỡ (07/10/2026, xem 10.7).
-- **Test hợp đồng với Moodle thật**: bước CI đang cài Moodle từ đầu sẽ chạy thêm bộ test `apps.lms` của backend
-  nhắm vào container đó. Mọi hàm Web Service mà backend dùng được kiểm tra trên đúng phiên bản Moodle trong `lms/`.
-  Sửa lõi hoặc cập nhật Moodle mà làm hỏng tích hợp thì CI báo lỗi ngay.
+- **Test hợp đồng với Moodle thật** (**đã làm 08/10/2026**): test đơn vị so mọi `moodle.call(...)` của backend với danh
+  sách hàm bật trong `twings_setup.php`; CI cài Moodle từ đầu rồi chạy `manage.py lms_contract_check` từ image backend
+  (hàm có sẵn cho token, thanh toán → tài khoản + ghi danh, khóa của đợt sao chép từ khóa mẫu + lịch + điểm danh, diễn
+  đàn Thông báo, tổng quan học viên, hoàn tiền → hủy ghi danh + khóa tài khoản).
 - **Quan sát**: GlitchTip hoặc Sentry (bản SaaS, không tự host trên VPS) cho Django và frontend. Kiểm tra uptime cho
   `/`, `/api/v1/health/`, `/learn/`. Cảnh báo khi task worker hoặc task Moodle thất bại liên tục.
 - **2FA (TOTP)** cho nhân sự, bắt buộc với Quản trị tối cao và Kế toán.
@@ -333,7 +334,7 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 |---|---|---|---|
 | **0. Ổn định** (1 tuần) | Gỡ nội dung mẫu (lời chứng thực thật từ `/public/reviews/`, bỏ đối tác dự phòng, website không bao giờ hiện dữ liệu demo khi có backend, FAQ sửa được trong /app, migration dọn banner, email, SEO). 10.3 phần nhân sự và đơn hoàn. 10.4 Apache 4 worker | **Xong 07/10/2026**. Chờ quyết định nội dung: điểm sao nhập tay, ảnh stock. Tắt squash/rebase merge trên GitHub. Chốt Django 6.1 hay 5.2 LTS | Không còn nội dung sai sự thật. Không còn đường vào LMS cho người đã nghỉ |
 | **1. Loại trùng** (1–2 tuần) | 10.7 | **Gần xong** (08/10/2026): chứng chỉ, sổ điểm, thông báo lớp, cổng học viên một nơi. Để sau: Analytics của Moodle (cần dữ liệu vài đợt học), bỏ chế độ demo của frontend | Mỗi thông tin một nơi đúng. Bớt code học tập phải bảo trì |
-| **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | **Đang làm** (08/10/2026): 10.1, 10.2 xong. Tiếp: test hợp đồng với Moodle thật (10.5), hiện task lỗi trên /app. SSO gọi nội bộ: không làm (xem 10.3) | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
+| **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | **Xong** (08/10/2026): 10.1 (worker chạy trên production, 7 việc định kỳ, bỏ cron host), 10.2, test hợp đồng (10.5). SSO gọi nội bộ: không làm (xem 10.3). Còn nhỏ: hiện task lỗi trên /app | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
 | **3. Trải nghiệm thống nhất** (2–3 tuần) | Theme Moodle theo TWings, email Moodle tiếng Việt cùng giọng, quyết định Moodle Mobile (10.5) | Đang có người làm phần theme trong `twings_setup.php` | Học viên đi từ website → tài khoản → lớp học như một sản phẩm |
 | **4. Vận hành và tuân thủ** (song song) | Quan sát, 2FA (10.5). Diễn tập khôi phục backup. Rà soát Nghị định 13/2023 (thời hạn lưu, quy trình xóa dữ liệu chạy cả TWings và Moodle) | Chưa bắt đầu | Có cảnh báo. Khôi phục được backup trong thời gian đã định |
 | **Khi chạm ngưỡng** | 10.6 | – | Theo bảng ngưỡng |
