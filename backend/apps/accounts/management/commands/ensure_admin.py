@@ -1,6 +1,8 @@
 import os
+
 from django.core.management.base import BaseCommand
 from django.db import transaction
+
 from apps.accounts.models import User
 
 
@@ -68,5 +70,7 @@ class Command(BaseCommand):
 
         action = "Created" if created else ("Updated password for" if reset_pwd else "Verified/Updated")
         self.stdout.write(
-            self.style.SUCCESS(f"{action} admin account '{email}' (role={user.role}, is_staff={user.is_staff}).")
+            self.style.SUCCESS(
+                f"{action} admin account '{email}' (role={user.role}, is_staff={user.is_staff})."
+            )
         )
