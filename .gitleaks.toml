@@ -21,6 +21,9 @@ commits = [
   'f50c1aa8c951ba5c50304b4a527188e76495d601',
   '78866f7292aad05359f7217fd719b71983423841',
   'fc2636da35068b278d3660304c77b0f65b1be244',
+  '25091427b417c187b090b2de5b44c20e95f6725e',
+  '5e5daffae460f588a44b8ee7c1be2f31eb4ca39b',
+  'be1736bc001cf4b64e580e07172778a8775f0a1c',
   # vendor-snapshots:end
 ]
 regexes = [
@@ -28,4 +31,5 @@ regexes = [
   '''whsec_9a8b7c6d5e4f3a2b1c0d_msb''',
   '''AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=''',
   '''ci-only-password''',
+  '''bQy2TD6XJZJ1XmcWvzAXtucD''',
 ]

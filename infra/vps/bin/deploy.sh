@@ -94,6 +94,7 @@ moodle_install_or_upgrade
 # rollback below only swaps the image; it never reverses migrations.
 docker compose run --rm --no-deps backend python manage.py migrate --noinput
 docker compose run --rm --no-deps backend python manage.py createcachetable
+docker compose run --rm --no-deps backend python manage.py ensure_admin
 docker compose up -d --remove-orphans
 trap - ERR
 

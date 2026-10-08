@@ -17,7 +17,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--password",
-            default=os.getenv("CMS_ADMIN_INITIAL_PASSWORD", "bQy2TD6XJZJ1XmcWvzAXtucD"),
+            default=os.getenv("CMS_ADMIN_INITIAL_PASSWORD", ""),
             help="Initial password if user is created or reset requested.",
         )
         parser.add_argument(
@@ -61,7 +61,7 @@ class Command(BaseCommand):
                 user.name = name
                 needs_save = True
 
-        if created or reset_pwd:
+        if (created or reset_pwd) and password:
             user.set_password(password)
             needs_save = True
 
