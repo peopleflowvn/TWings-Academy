@@ -76,6 +76,14 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [copiedLeadLink, setCopiedLeadLink] = useState(false);
+
+  const handleCopyLeadLink = () => {
+    const url = `${window.location.origin}/app/sales/crm?orderId=${encodeURIComponent(order.id)}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLeadLink(true);
+    setTimeout(() => setCopiedLeadLink(false), 2000);
+  };
 
   // Quick activity filter in Timeline tab
   const [activityFilter, setActivityFilter] = useState<'all' | 'call' | 'zalo' | 'meeting' | 'note' | 'agent'>('all');
@@ -483,6 +491,16 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
               >
                 <Save className="w-4 h-4" />
                 <span>{isDirty ? 'Lưu Thay Đổi *' : 'Đã Lưu'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCopyLeadLink}
+                className="px-2.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-900 font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Sao chép liên kết hồ sơ (để gửi đồng nghiệp xem trực tiếp)"
+              >
+                {copiedLeadLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-500" />}
+                <span className="hidden xl:inline">{copiedLeadLink ? 'Đã chép link' : 'Chép link'}</span>
               </button>
 
               <button

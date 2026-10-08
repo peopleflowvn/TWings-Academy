@@ -192,6 +192,50 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
   // Active Lead Detail Modal (Comp AI 2-Column Split Workspace)
   const [selectedLead, setSelectedLead] = useState<Order | null>(null);
 
+  // Deep-link: Automatically open lead modal if ?orderId= is present in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const orderIdParam = params.get('orderId');
+    if (orderIdParam && !selectedLead && orders.length > 0) {
+      const match = orders.find((o) => o.id === orderIdParam || o.orderCode === orderIdParam);
+      if (match) {
+        setSelectedLead(getEnrichedLead(match));
+      }
+    }
+  }, [orders]);
+
+  // Keep URL updated when selectedLead opens or closes
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (selectedLead) {
+      if (params.get('orderId') !== selectedLead.id) {
+        params.set('orderId', selectedLead.id);
+        window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+      }
+    } else {
+      if (params.has('orderId')) {
+        params.delete('orderId');
+        window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+      }
+    }
+  }, [selectedLead]);
+
+  // Support browser Back/Forward navigation for lead modal
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const oid = params.get('orderId');
+      if (oid) {
+        const match = orders.find((o) => o.id === oid || o.orderCode === oid);
+        if (match) setSelectedLead(getEnrichedLead(match));
+      } else {
+        setSelectedLead(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [orders]);
+
   // Quick Resend Email Modal
   const [selectedEmailOrder, setSelectedEmailOrder] = useState<Order | null>(null);
 

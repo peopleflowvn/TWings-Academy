@@ -536,7 +536,30 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: 
 export const AccountPage: React.FC = () => {
   const [account, setAccount] = useState<Account | null>(null);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'my_learning' | 'all_orders'>('my_learning');
+  const [activeTab, setActiveTab] = useState<'my_learning' | 'all_orders'>(() => {
+    const tabParam = new URLSearchParams(window.location.search).get('tab');
+    return tabParam === 'all_orders' ? 'all_orders' : 'my_learning';
+  });
+
+  const handleTabChange = (tab: 'my_learning' | 'all_orders') => {
+    setActiveTab(tab);
+    const search = new URLSearchParams(window.location.search);
+    if (search.get('tab') !== tab) {
+      search.set('tab', tab);
+      window.history.replaceState(null, '', `${window.location.pathname}?${search.toString()}`);
+    }
+  };
+
+  useEffect(() => {
+    const onPop = () => {
+      const tabParam = new URLSearchParams(window.location.search).get('tab');
+      if (tabParam === 'all_orders' || tabParam === 'my_learning') {
+        setActiveTab(tabParam);
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   const load = useCallback(() => {
     commerceApi.account().then(setAccount).catch((e: Error) => setError(e.message));
@@ -625,7 +648,7 @@ export const AccountPage: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
         <button
           type="button"
-          onClick={() => setActiveTab('my_learning')}
+          onClick={() => handleTabChange('my_learning')}
           className={`px-4 py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center gap-2 ${
             activeTab === 'my_learning'
               ? 'bg-[#0056D2] text-white shadow-xs'
@@ -636,7 +659,7 @@ export const AccountPage: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('all_orders')}
+          onClick={() => handleTabChange('all_orders')}
           className={`px-4 py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center gap-2 ${
             activeTab === 'all_orders'
               ? 'bg-[#0056D2] text-white shadow-xs'

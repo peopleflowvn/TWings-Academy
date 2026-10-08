@@ -347,15 +347,33 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
               <a href="/" target="_blank" rel="noopener" className="hidden sm:inline px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-slate-600">
                 Xem website
               </a>
-              <span className="hidden md:inline font-bold text-slate-800">{user.name}</span>
-              <button type="button" onClick={() => setChangingPassword(true)} title="Đổi mật khẩu" aria-label="Đổi mật khẩu"
-                className="px-2.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer">
-                <KeyRound className="w-4 h-4" />
-              </button>
-              <button type="button" onClick={logout} title="Đăng xuất" aria-label="Đăng xuất"
-                className="px-2.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer">
-                <LogOut className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+                {user.avatar && (
+                  <img src={user.avatar} alt={user.name} className="w-7 h-7 rounded-lg border border-slate-200 object-cover" />
+                )}
+                <div className="hidden md:block text-left">
+                  <div className="font-bold text-slate-800 leading-tight">{user.name}</div>
+                  <div className="text-[10px] text-slate-500 truncate max-w-[120px]">{user.email}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setChangingPassword(true)}
+                  title="Đổi mật khẩu"
+                  aria-label="Đổi mật khẩu"
+                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-blue-50 hover:text-[#0073C1] text-slate-600 cursor-pointer transition-colors"
+                >
+                  <KeyRound className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={logout}
+                  title="Đăng xuất"
+                  aria-label="Đăng xuất"
+                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-600 cursor-pointer transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </header>
           <main className="p-4 lg:p-6 max-w-[1600px]">{page}</main>

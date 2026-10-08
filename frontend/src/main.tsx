@@ -10,6 +10,12 @@ import { captureAttribution } from './lib/attribution';
 const AdminApp = lazy(() => import('./admin/AdminApp'));
 const StorefrontApp = lazy(() => import('./storefront/StorefrontApp'));
 const path = window.location.pathname;
+
+// Quick redirect: send any root /login access to the staff portal at /app/login
+if (path === '/login' || path === '/login/') {
+  window.location.replace('/app/login' + window.location.search + window.location.hash);
+}
+
 const isAdmin = /^\/app(\/|$)/.test(path);
 const isStorefront = /^\/(chuong-trinh|tai-khoan|chinh-sach-bao-mat|dieu-khoan)(\/|$)/.test(path);
 
