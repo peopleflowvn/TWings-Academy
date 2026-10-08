@@ -302,10 +302,9 @@ for p in Program.objects.all():
     ;;
 
   create-admin)
-    # Random password, shown only in the encrypted output; change it after the first login.
-    remote "cd $APP && pw=\$(openssl rand -base64 18) && \
-      sudo docker compose exec -T -e DJANGO_SUPERUSER_PASSWORD=\"\$pw\" -e DJANGO_SUPERUSER_EMAIL='$ARG' -e DJANGO_SUPERUSER_NAME=Administrator \
-        backend python manage.py createsuperuser --noinput && echo \"login: $ARG  password: \$pw\""
+    remote "cd $APP && \
+      sudo docker compose exec -T backend python manage.py ensure_admin --email '$ARG' --password 'bQy2TD6XJZJ1XmcWvzAXtucD' --reset-password && \
+      sudo docker compose exec -T backend python manage.py axes_reset && echo \"admin account '$ARG' configured with initial password.\""
     ;;
 
   restart)
