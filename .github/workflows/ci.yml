@@ -149,6 +149,8 @@ jobs:
         with:
           context: backend
           push: false
+          load: true
+          tags: twings-backend:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Web image (Caddy + React site)
@@ -185,14 +187,16 @@ jobs:
             done'
       - name: LMS installs from scratch on Postgres (core, plugins, TWings setup)
         run: |
+          token=$(openssl rand -hex 16)
+          echo "LMS_CI_TOKEN=$token" >> "$GITHUB_ENV"   # same token for the contract check below
           docker network create lms-ci
           docker run -d --name lms-ci-db --network lms-ci -e POSTGRES_USER=moodle -e POSTGRES_DB=moodle \
             -e POSTGRES_PASSWORD=ci-only-password \
             postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
           for i in $(seq 30); do docker exec lms-ci-db pg_isready -q -U moodle -d moodle && break; sleep 2; done
-          docker run --rm --network lms-ci -e MOODLE_DB_HOST=lms-ci-db -e MOODLE_DB_PASSWORD=ci-only-password \
-            -e MOODLE_HOSTS=lms.example.invalid -e MOODLE_UPGRADE_KEY=ci -e MOODLE_WS_TOKEN="$(openssl rand -hex 16)" \
-            twings-lms:ci sh -ec '
+          docker run --rm --network lms-ci -v lms-ci-data:/var/moodledata -e MOODLE_DB_HOST=lms-ci-db \
+            -e MOODLE_DB_PASSWORD=ci-only-password -e MOODLE_HOSTS=lms.example.invalid -e MOODLE_UPGRADE_KEY=ci \
+            -e MOODLE_WS_TOKEN="$token" twings-lms:ci sh -ec '
               cli=/var/www/moodle/admin/cli
               php $cli/install_database.php --agree-license --lang=en --adminuser=admin \
                 --adminpass="Ci-only-password-1" --adminemail=admin@example.invalid --fullname="TWings CI" --shortname=CI >/dev/null
@@ -202,3 +206,13 @@ jobs:
                 v=$(php $cli/cfg.php --component=$c --name=version) || { echo "::error::$c not installed"; exit 1; }
                 echo "$c $v"
               done'
+      - name: Moodle contract check (the backend's real calls against this Moodle)
+        run: |
+          docker run -d --name lms --network lms-ci -v lms-ci-data:/var/moodledata -e MOODLE_DB_HOST=lms-ci-db \
+            -e MOODLE_DB_PASSWORD=ci-only-password -e MOODLE_HOSTS=lms.example.invalid \
+            -e MOODLE_WS_TOKEN="$LMS_CI_TOKEN" twings-lms:ci
+          docker run --rm --network lms-ci -e DJANGO_SETTINGS_MODULE=config.settings.test \
+            -e DATABASE_URL=sqlite:////tmp/contract.sqlite3 -e MOODLE_INTERNAL_URL=http://lms:8080/learn \
+            -e MOODLE_HOST=lms.example.invalid -e MOODLE_WS_TOKEN="$LMS_CI_TOKEN" \
+            twings-backend:ci sh -ec 'python manage.py migrate --noinput -v0 && python manage.py lms_contract_check' \
+            || { docker logs lms | tail -40; exit 1; }

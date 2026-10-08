@@ -56,3 +56,13 @@ def call(function: str, **params):
         # errorcode/message never contain the token.
         raise MoodleError(f"{function}: {body.get('errorcode')}: {body.get('message')}")
     return body
+
+
+def functions_used() -> set[str]:
+    """Every web service function the backend calls (moodle.call("...") in apps/), for the contract checks."""
+    import re
+    from pathlib import Path
+
+    pattern = re.compile(r'moodle\.call\(\s*"([a-z0-9_]+)"')
+    apps = Path(__file__).resolve().parents[1]
+    return {name for path in apps.rglob("*.py") for name in pattern.findall(path.read_text(encoding="utf-8"))}
