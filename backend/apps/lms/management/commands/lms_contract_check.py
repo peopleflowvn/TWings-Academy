@@ -24,7 +24,7 @@ from apps.lms.services import enroll_paid_order, ensure_cohort_course, revoke_ac
 class Command(BaseCommand):
     help = "Exercise the TWings <-> Moodle integration against a real Moodle (CI only: creates data)."
 
-    def check(self, label: str, ok: bool, detail="") -> None:
+    def expect(self, label: str, ok: bool, detail="") -> None:
         if not ok:
             raise CommandError(f"FAIL {label} {detail}")
         self.stdout.write(f"ok   {label} {detail}".rstrip())
@@ -39,10 +39,10 @@ class Command(BaseCommand):
                 break
             except moodle.MoodleError:
                 time.sleep(2)
-        self.check("web service reachable", info is not None)
+        self.expect("web service reachable", info is not None)
         available = {f["name"] for f in info["functions"]}
         missing = sorted(moodle.functions_used() - available)
-        self.check("every function the backend calls is available to the token", not missing, missing or "")
+        self.expect("every function the backend calls is available to the token", not missing, missing or "")
 
         course = Course.objects.create(
             slug=f"contract-{int(time.time())}", title="Kiểm thử hợp đồng LMS", price=1, status="published"
@@ -57,7 +57,7 @@ class Command(BaseCommand):
         order.save()
         enroll_paid_order(order.pk)
         enrollment = LmsEnrollment.objects.get(order=order)
-        self.check(
+        self.expect(
             "paid order -> Moodle account + enrolment", enrollment.status == "done", enrollment.last_error
         )
 
@@ -68,7 +68,7 @@ class Command(BaseCommand):
             start_date=timezone.localdate() + timedelta(days=7),
         )
         cohort_course = ensure_cohort_course(cohort)
-        self.check("intake course copied from the template", cohort_course != enrollment.moodle_course_id)
+        self.expect("intake course copied from the template", cohort_course != enrollment.moodle_course_id)
         start = timezone.now() + timedelta(days=7)
         CohortSession.objects.create(
             cohort=cohort, title="Buổi 1", starts_at=start, ends_at=start + timedelta(hours=2)
@@ -78,7 +78,7 @@ class Command(BaseCommand):
         sync_sessions(cohort)
         cohort.refresh_from_db()
         session = cohort.sessions.get()
-        self.check(
+        self.expect(
             "class sessions -> calendar event + attendance session",
             bool(
                 session.moodle_event_id
@@ -88,9 +88,9 @@ class Command(BaseCommand):
         )
 
         link = announcements_link(cohort_course)
-        self.check("announcements forum link", "/learn/" in link, link)
+        self.expect("announcements forum link", "/learn/" in link, link)
         learner = overview.learner_overview(order.customer_email)
-        self.check(
+        self.expect(
             "learner overview", any(c.get("id") == enrollment.moodle_course_id for c in learner["courses"])
         )
 
@@ -99,7 +99,7 @@ class Command(BaseCommand):
         revoke_access(order.pk)
         enrollment.refresh_from_db()
         user = overview.find_user(order.customer_email)
-        self.check(
+        self.expect(
             "refund -> unenrolled and account suspended", enrollment.status == "removed" and user["suspended"]
         )
         self.stdout.write(self.style.SUCCESS("Moodle contract check passed"))
