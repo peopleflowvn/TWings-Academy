@@ -69,6 +69,7 @@ import { SendResendEmailModal } from './SendResendEmailModal';
 import { CMSCampaignManagementModal } from './CMSCampaignManagementModal';
 import { RecruitmentCampaignsView } from './RecruitmentCampaignsView';
 import { AdmissionRequisitionPage } from './AdmissionRequisitionPage';
+import { CampaignCBVPipelineView } from './CampaignCBVPipelineView';
 import { useServerCollection } from '../../lib/serverCollection';
 import { CAMPAIGNS, COHORTS } from '../../lib/cmsCollections';
 import { INITIAL_COHORTS, COHORT_STATUS_CONFIG } from '../../utils/cohortRouting';
@@ -684,6 +685,74 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
             setShowCampaignModal(true);
           }}
         />
+
+        {/* VietQR Realtime Webhook Simulator Modal */}
+        {showWebhookModal && (
+          <CMSVietQRWebhookModal
+            orders={orders}
+            onClose={() => setShowWebhookModal(false)}
+            onConfirmPayment={(updatedOrder) => {
+              if (onUpdateOrderCRM) onUpdateOrderCRM(updatedOrder);
+              onUpdateOrderStatus(updatedOrder.id, 'paid');
+            }}
+          />
+        )}
+
+        {/* Campaign Management Modal */}
+        <CMSCampaignManagementModal
+          isOpen={showCampaignModal}
+          onClose={() => setShowCampaignModal(false)}
+          campaigns={campaigns}
+          onUpdateCampaigns={(updated) => {
+            setCampaigns(updated);
+            saveCampaigns(updated);
+          }}
+          orders={orders}
+          onSelectCampaign={(cId) => {
+            setSelectedCampaignId(cId);
+            setViewMode('kanban');
+            setShowCampaignModal(false);
+          }}
+        />
+      </div>
+    );
+  }
+
+  // 3. TALENTFLOW DEDICATED CBV-PIPELINE VIEW (app/recruitment/cbv-pipeline/:id)
+  if (selectedCampaignId && selectedCampaignId !== 'all' && activeCampaign) {
+    return (
+      <div className="space-y-6 animate-fadeIn pb-12">
+        <CampaignCBVPipelineView
+          campaign={activeCampaign}
+          orders={orders}
+          courses={courses}
+          onBack={() => {
+            setSelectedCampaignId('all');
+            setViewMode('campaigns');
+          }}
+          onUpdateOrderCRM={onUpdateOrderCRM}
+          onUpdateOrderStatus={onUpdateOrderStatus}
+          onOpenLeadDetail={(lead) => handleOpenLeadDetail(lead)}
+          onOpenEditCampaign={() => setShowCampaignModal(true)}
+          onOpenCreateRequisition={() => {
+            setTemplateCourseIdForNew(activeCampaign.courseId || '');
+            setIsCreatingRequisition(true);
+          }}
+          onOpenWebhookModal={() => setShowWebhookModal(true)}
+        />
+
+        {/* Lead Detail Modal (Comp AI 2-Column Split Workspace) */}
+        {selectedLead && (
+          <CompAILeadDetailModal
+            order={selectedLead}
+            onClose={() => setSelectedLead(null)}
+            onSave={(updatedLead) => {
+              if (onUpdateOrderCRM) onUpdateOrderCRM(updatedLead);
+              setSelectedLead(null);
+            }}
+            onUpdateStatus={onUpdateOrderStatus}
+          />
+        )}
 
         {/* VietQR Realtime Webhook Simulator Modal */}
         {showWebhookModal && (
