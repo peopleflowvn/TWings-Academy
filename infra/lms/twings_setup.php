@@ -37,13 +37,24 @@ $settings = [
     'alternativefullnameformat' => 'lastname firstname',
     // Mail comes from no-reply@<domain> as "TWings Academy", without a "(via ...)" suffix.
     'emailfromvia' => 0,
+    // Allow users and admins to log in using email address
+    'auth_allowemail' => 1,
 ];
 foreach ($settings as $name => $value) {
     set_config($name, $value);
 }
-// The site administrator is the sender shown on system e-mails.
+// The site administrator is the sender shown on system e-mails and administrative account.
+$admin_email = getenv('MOODLE_ADMIN_EMAIL') ?: 'tuyendung@tntalent.vn';
+$admin_updates = ['id' => $admin->id];
 if ($admin->firstname !== 'TWings' || $admin->lastname !== 'Academy') {
-    user_update_user((object) ['id' => $admin->id, 'firstname' => 'TWings', 'lastname' => 'Academy'], false, false);
+    $admin_updates['firstname'] = 'TWings';
+    $admin_updates['lastname'] = 'Academy';
+}
+if ($admin->email !== $admin_email) {
+    $admin_updates['email'] = $admin_email;
+}
+if (count($admin_updates) > 1) {
+    user_update_user((object) $admin_updates, false, false);
 }
 
 $auths = array_filter(explode(',', get_config('core', 'auth') ?: ''));

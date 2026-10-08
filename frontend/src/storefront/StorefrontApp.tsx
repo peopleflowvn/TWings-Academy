@@ -48,7 +48,8 @@ const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNod
           <span>© TWings Academy</span>
           <span className="flex gap-4">
             <a href="/khoa-hoc" className="hover:text-slate-800">Khóa học & chương trình</a>
-            <a href="/tai-khoan" className="hover:text-slate-800">Tài khoản học viên</a>
+            <a href="/learn/" className="hover:text-slate-800 font-medium text-[#0056D2]">Cổng học viên (LMS)</a>
+            <a href="/tai-khoan" className="hover:text-slate-800">Tài khoản & học phí</a>
             <a href="/dieu-khoan" className="hover:text-slate-800">Điều khoản</a>
             <a href="/chinh-sach-bao-mat" className="hover:text-slate-800">Chính sách bảo mật</a>
           </span>

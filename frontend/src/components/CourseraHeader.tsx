@@ -149,7 +149,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             className="flex items-center gap-1.5 hover:text-[#0073C1] transition-colors"
           >
             <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-            <span>Vào học</span>
+            <span>Cổng học viên</span>
           </a>
 
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
@@ -243,11 +243,11 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           >
             Đăng Ký Tư Vấn Khóa Học
           </button>
-          <a href="/tai-khoan" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-slate-800 font-bold">
-            Tài Khoản Học Viên
+          <a href="/learn/" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-blue-700 font-bold">
+            Cổng Học Viên (LMS)
           </a>
-          <a href="/learn/" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-slate-800 font-bold">
-            Vào Học (TWings LMS)
+          <a href="/tai-khoan" className="block w-full text-left py-2 px-3 rounded-lg hover:bg-slate-50 text-slate-700 font-bold">
+            Tài Khoản & Học Phí
           </a>
         </div>
       )}

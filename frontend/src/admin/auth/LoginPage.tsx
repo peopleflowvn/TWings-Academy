@@ -165,10 +165,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Email */}
+        {/* Email / Username */}
         <div className="space-y-1.5">
           <label htmlFor="staff-email-input" className="block text-xs font-bold text-slate-300">
-            Email công việc
+            Email hoặc tài khoản
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -176,12 +176,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </div>
             <input
               id="staff-email-input"
-              type="email"
+              type="text"
               autoComplete="username"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="ten@twings.edu.vn"
+              placeholder="tuyendung@tntalent.vn hoặc admin"
               className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700/80 rounded-2xl text-sm text-white placeholder-slate-400 focus:outline-none focus:border-[#0073C1] focus:ring-2 focus:ring-[#0073C1]/20 transition-all"
             />
           </div>
@@ -267,15 +267,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         </span>
       </div>
 
-      {/* Learner Link */}
-      <div className="pt-2 border-t border-slate-800 text-center">
+      {/* Learner Portal Links */}
+      <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-slate-400">
         <a
-          href="/tai-khoan"
-          className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+          href="/learn/"
+          className="inline-flex items-center gap-1.5 text-[#38BDF8] font-bold hover:underline transition-colors"
         >
           <GraduationCap className="w-3.5 h-3.5 text-[#38BDF8]" />
-          <span>Bạn là học viên tìm khóa học?</span>
-          <span className="text-[#38BDF8] font-bold underline">Vào cổng Học viên</span>
+          <span>Vào cổng Học viên (LMS)</span>
+        </a>
+        <span className="text-slate-600 hidden sm:inline">•</span>
+        <a
+          href="/tai-khoan"
+          className="text-slate-400 hover:text-white transition-colors"
+        >
+          Tài khoản & Đơn hàng
         </a>
       </div>
     </div>

@@ -22,8 +22,14 @@ class MeSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    email = serializers.CharField(max_length=254)
     password = serializers.CharField(trim_whitespace=False, max_length=256)
+
+    def validate_email(self, value: str) -> str:
+        clean = value.strip()
+        if clean.lower() in ("admin", "admin@tntalent.vn", "admin@localhost"):
+            return "tuyendung@tntalent.vn"
+        return clean
 
 
 def _check_new_password(password, user):
