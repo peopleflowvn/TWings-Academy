@@ -27,7 +27,8 @@ import {
   RefreshCw,
   Eye,
   Sliders,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Briefcase
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Course, Module, Lesson, Instructor, CourseReview } from '../../types';
@@ -35,6 +36,7 @@ import { api, isBackendEnabled, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { CoursePublishingPanel } from './CoursePublishingPanel';
 import { ImageUploadField } from './ImageUploadField';
+import { navigate } from '../../admin/router';
 
 interface CMSCoursesTabProps {
   courses: Course[];
@@ -314,6 +316,16 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                 <span>Xem Trang Khách Xem</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => navigate(`/sales/crm?action=new_requisition&templateCourseId=${currentCourse?.id || ''}`)}
+              className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-emerald-300 shadow-2xs"
+              title="Dùng khóa học này làm Master Template để mở đợt tuyển sinh / chiến dịch mới (giống TalentFlow Requisition Page)"
+            >
+              <Briefcase className="w-4 h-4 text-emerald-600" />
+              <span>🚀 Mở Đợt Tuyển Sinh Từ Khóa Này</span>
+            </button>
 
             <button
               type="button"

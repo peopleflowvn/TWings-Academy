@@ -334,14 +334,24 @@ export interface AdmissionCampaign {
   timeRange: string;            // e.g. "Tháng 09/2026 - 12/2026"
   startDate: string;
   deadline: string;
+  openingDate?: string;         // e.g. "20/10/2026" (Ngày khai giảng dự kiến)
   status: 'active' | 'planning' | 'closed';
-  targetHeadcount: number;      // e.g. 100
+  targetHeadcount: number;      // e.g. 100 (Chỉ tiêu tuyển sinh)
   totalEnrolled: number;        // e.g. 78
   positions: CampaignPositionTrack[];
   leadRecruiter: string;        // e.g. "ThS. Lê Hoàng Tùng & Ban Nhân sự MSB"
   scholarshipBudget: number;    // e.g. 250000000 (250tr)
   location: string;             // e.g. "Hà Nội & Miền Bắc"
   description: string;
+  // Extended fields for TalentFlow ATS Course Requisition model
+  courseId?: string;            // Template Course ID from catalog
+  courseTitle?: string;         // Template Course Title
+  intakeCohort?: string;        // e.g. "K10-HN"
+  isHot?: boolean;              // Highlight badge
+  isPublished?: boolean;        // Visible on public career/landing site
+  tuitionFee?: number;          // Standard tuition fee for this batch
+  earlyBirdFee?: number;        // Early bird discounted fee
+  format?: 'offline' | 'hybrid' | 'online_external_lms';
 }
 
 // -------------------------------------------------------------

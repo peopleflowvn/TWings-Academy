@@ -52,10 +52,11 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
-  Settings
+  Settings,
+  ArrowLeft
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Order, CRMStatus, PaymentStatus, CourseCohort, AdmissionCampaign, CampaignPositionTrack } from '../../types';
+import { Order, CRMStatus, PaymentStatus, CourseCohort, AdmissionCampaign, CampaignPositionTrack, Course } from '../../types';
 import { 
   COMP_AI_PIPELINE_STAGES, 
   runCompAIEvidenceEnrichment, 
@@ -66,6 +67,8 @@ import { CMSCohortLifecycleModal } from './CMSCohortLifecycleModal';
 import { CMSVietQRWebhookModal } from './CMSVietQRWebhookModal';
 import { SendResendEmailModal } from './SendResendEmailModal';
 import { CMSCampaignManagementModal } from './CMSCampaignManagementModal';
+import { RecruitmentCampaignsView } from './RecruitmentCampaignsView';
+import { AdmissionRequisitionPage } from './AdmissionRequisitionPage';
 import { useServerCollection } from '../../lib/serverCollection';
 import { CAMPAIGNS, COHORTS } from '../../lib/cmsCollections';
 import { INITIAL_COHORTS, COHORT_STATUS_CONFIG } from '../../utils/cohortRouting';
@@ -79,6 +82,7 @@ import {
 
 interface CMSCRMOrdersTabProps {
   orders: Order[];
+  courses?: Course[];
   onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
   onUpdateOrderCRM?: (updatedOrder: Order) => void;
 }
@@ -134,33 +138,122 @@ export const CRM_COURSE_CATEGORIES = [
 
 export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
   orders,
+  courses = [],
   onUpdateOrderStatus,
   onUpdateOrderCRM,
 }) => {
-  // View mode switcher: kanban, table, analytics, agent_queue
-  const [viewMode, setViewMode] = useState<'kanban' | 'table' | 'analytics' | 'agent_queue'>(() => {
-    const v = new URLSearchParams(window.location.search).get('view') as any;
-    return v && ['kanban', 'table', 'analytics', 'agent_queue'].includes(v) ? v : 'kanban';
+  // TalentFlow Recruitment Campaign Hub state (ATS Architecture)
+  const { items: campaigns, update: setCampaigns } = useServerCollection<AdmissionCampaign>(CAMPAIGNS, getSavedCampaigns());
+
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('campaignId') || 'all';
   });
 
-  // Keep viewMode synchronized with URL
-  useEffect(() => {
+  const [isCreatingRequisition, setIsCreatingRequisition] = useState<boolean>(() => {
     const params = new URLSearchParams(window.location.search);
+    return params.get('action') === 'new_requisition' || window.location.pathname.includes('/requisitions/new');
+  });
+
+  const [templateCourseIdForNew, setTemplateCourseIdForNew] = useState<string>(() => {
+    return new URLSearchParams(window.location.search).get('templateCourseId') || '';
+  });
+
+  // View mode switcher: campaigns (TalentFlow recruitment-view), kanban (cbv-pipeline), table, analytics, agent_queue
+  const [viewMode, setViewMode] = useState<'campaigns' | 'kanban' | 'table' | 'analytics' | 'agent_queue'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const v = params.get('view') as any;
+    const campId = params.get('campaignId');
+    if (params.get('action') === 'new_requisition' || window.location.pathname.includes('/requisitions/new')) {
+      return 'campaigns';
+    }
+    if (window.location.pathname.includes('/sales/pipeline')) {
+      return 'kanban';
+    }
+    if (campId && campId !== 'all') {
+      return 'kanban';
+    }
+    if (v && ['campaigns', 'kanban', 'table', 'analytics', 'agent_queue'].includes(v)) {
+      return v;
+    }
+    return 'campaigns'; // Default to TalentFlow Recruitment-View
+  });
+
+  // Keep viewMode, campaignId and action synchronized with URL
+  useEffect(() => {
+    // Only update search params if we are staying on the same base pathname
+    const isSpecialPath = window.location.pathname.includes('/requisitions/new') || window.location.pathname.includes('/sales/pipeline');
+    if (isSpecialPath) return;
+
+    const params = new URLSearchParams(window.location.search);
+    let changed = false;
+
     if (params.get('view') !== viewMode) {
       params.set('view', viewMode);
+      changed = true;
+    }
+
+    if (selectedCampaignId && selectedCampaignId !== 'all') {
+      if (params.get('campaignId') !== selectedCampaignId) {
+        params.set('campaignId', selectedCampaignId);
+        changed = true;
+      }
+    } else {
+      if (params.has('campaignId')) {
+        params.delete('campaignId');
+        changed = true;
+      }
+    }
+
+    if (isCreatingRequisition) {
+      if (params.get('action') !== 'new_requisition') {
+        params.set('action', 'new_requisition');
+        changed = true;
+      }
+    } else {
+      if (params.get('action') === 'new_requisition') {
+        params.delete('action');
+        params.delete('templateCourseId');
+        changed = true;
+      }
+    }
+
+    if (changed) {
       window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
     }
-  }, [viewMode]);
+  }, [viewMode, selectedCampaignId, isCreatingRequisition]);
 
   useEffect(() => {
     const sync = () => {
-      const v = new URLSearchParams(window.location.search).get('view') as any;
-      if (v && ['kanban', 'table', 'analytics', 'agent_queue'].includes(v)) {
+      const params = new URLSearchParams(window.location.search);
+      const v = params.get('view') as any;
+      const c = params.get('campaignId');
+      const action = params.get('action');
+      const isReqRoute = action === 'new_requisition' || window.location.pathname.includes('/requisitions/new');
+      const isPipelineRoute = window.location.pathname.includes('/sales/pipeline');
+
+      setIsCreatingRequisition(isReqRoute);
+      if (params.get('templateCourseId')) setTemplateCourseIdForNew(params.get('templateCourseId') || '');
+
+      if (c) setSelectedCampaignId(c);
+      else if (!isPipelineRoute) setSelectedCampaignId('all');
+
+      if (isPipelineRoute) {
+        setViewMode('kanban');
+      } else if (v && ['campaigns', 'kanban', 'table', 'analytics', 'agent_queue'].includes(v)) {
         setViewMode(v);
+      } else if (c && c !== 'all') {
+        setViewMode('kanban');
+      } else {
+        setViewMode('campaigns');
       }
     };
     window.addEventListener('popstate', sync);
-    return () => window.removeEventListener('popstate', sync);
+    window.addEventListener('twings:navigate', sync);
+    return () => {
+      window.removeEventListener('popstate', sync);
+      window.removeEventListener('twings:navigate', sync);
+    };
   }, []);
 
   // Search & Filters
@@ -170,11 +263,6 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
   const [selectedCRMStatus, setSelectedCRMStatus] = useState<string>('Tất cả');
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<string>('Tất cả');
   const [selectedTierFilter, setSelectedTierFilter] = useState<string>('all');
-
-  // TalentFlow Recruitment Campaign Hub state (ATS Architecture)
-  // Persisted through the API in live mode (demo: browser storage as before).
-  const { items: campaigns, update: setCampaigns } = useServerCollection<AdmissionCampaign>(CAMPAIGNS, getSavedCampaigns());
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('camp-2026-q4-hn');
   const [selectedPositionId, setSelectedPositionId] = useState<string>('all');
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [showCampaignHub, setShowCampaignHub] = useState(true);
@@ -549,8 +637,142 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
     document.body.removeChild(link);
   };
 
+  // 1. REQUISITION CREATION / EDIT VIEW (TalentFlow requisition-page)
+  if (isCreatingRequisition) {
+    return (
+      <AdmissionRequisitionPage
+        courses={courses}
+        initialTemplateCourseId={templateCourseIdForNew}
+        onSaveCampaign={(newCamp) => {
+          const updated = [newCamp, ...campaigns.filter((c) => c.id !== newCamp.id)];
+          setCampaigns(updated);
+          saveCampaigns(updated);
+          setIsCreatingRequisition(false);
+          setSelectedCampaignId(newCamp.id);
+          setViewMode('kanban');
+        }}
+        onCancel={() => {
+          setIsCreatingRequisition(false);
+          if (selectedCampaignId && selectedCampaignId !== 'all') {
+            setViewMode('kanban');
+          } else {
+            setViewMode('campaigns');
+          }
+        }}
+      />
+    );
+  }
+
+  // 2. RECRUITMENT CAMPAIGNS HUB VIEW (TalentFlow recruitment-view)
+  if (viewMode === 'campaigns') {
+    return (
+      <div className="space-y-6 animate-fadeIn pb-12">
+        <RecruitmentCampaignsView
+          campaigns={campaigns}
+          orders={orders}
+          courses={courses}
+          onSelectCampaign={(campId) => {
+            setSelectedCampaignId(campId);
+            setSelectedPositionId('all');
+            setViewMode('kanban');
+          }}
+          onOpenCreateRequisition={() => {
+            setTemplateCourseIdForNew('');
+            setIsCreatingRequisition(true);
+          }}
+          onEditCampaign={() => {
+            setShowCampaignModal(true);
+          }}
+        />
+
+        {/* VietQR Realtime Webhook Simulator Modal */}
+        {showWebhookModal && (
+          <CMSVietQRWebhookModal
+            orders={orders}
+            onClose={() => setShowWebhookModal(false)}
+            onConfirmPayment={(updatedOrder) => {
+              if (onUpdateOrderCRM) onUpdateOrderCRM(updatedOrder);
+              onUpdateOrderStatus(updatedOrder.id, 'paid');
+            }}
+          />
+        )}
+
+        {/* Campaign Management Modal */}
+        <CMSCampaignManagementModal
+          isOpen={showCampaignModal}
+          onClose={() => setShowCampaignModal(false)}
+          campaigns={campaigns}
+          onUpdateCampaigns={(updated) => {
+            setCampaigns(updated);
+            saveCampaigns(updated);
+          }}
+          orders={orders}
+          onSelectCampaign={(cId) => {
+            setSelectedCampaignId(cId);
+            setViewMode('kanban');
+            setShowCampaignModal(false);
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadeIn">
+      {/* =============================================================== */}
+      {/* 0. TOP REQUISITION HEADER (TALENTFLOW ATS CBV-PIPELINE HEADER) */}
+      {/* =============================================================== */}
+      {activeCampaign && (
+        <div className="sticky top-16 z-20 bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-indigo-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCampaignId('all');
+                setViewMode('campaigns');
+              }}
+              className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-indigo-200 shrink-0"
+              title="Quay lại danh sách đợt tuyển sinh (Recruitment View)"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Danh Sách Đợt Tuyển Sinh</span>
+            </button>
+
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono text-[11px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-lg border border-indigo-200">
+                  {activeCampaign.code}
+                </span>
+                <h3 className="font-bold text-slate-900 text-sm">{activeCampaign.name}</h3>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  activeCampaign.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {activeCampaign.status === 'active' ? 'Đang Mở Tuyển' : 'Chuẩn Bị'}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                <span>Khóa mẫu: <strong>{activeCampaign.courseTitle || activeCampaign.positions?.[0]?.positionTitle || 'Khóa Ngân Hàng'}</strong></span>
+                <span>&bull;</span>
+                <span>Chỉ tiêu: <strong>{activeCampaign.totalEnrolled}/{activeCampaign.targetHeadcount} học viên</strong> ({Math.min(100, Math.round((activeCampaign.totalEnrolled / (activeCampaign.targetHeadcount || 100)) * 100))}%)</span>
+                <span>&bull;</span>
+                <span>Cơ sở: <strong>{activeCampaign.location}</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsCreatingRequisition(true)}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Mở Đợt Mới</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* =============================================================== */}
       {/* 1. COMP AI COMMAND BAR & AGENT ENGINE BANNER */}
       {/* =============================================================== */}
@@ -1101,6 +1323,18 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1">
             <button
+              onClick={() => {
+                setSelectedCampaignId('all');
+                setViewMode('campaigns');
+              }}
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200"
+              title="Quay lại danh sách các đợt tuyển sinh (Recruitment View)"
+            >
+              <Briefcase className="w-4 h-4 text-indigo-600" />
+              <span>0. Đợt Tuyển Sinh ({campaigns.length})</span>
+            </button>
+
+            <button
               onClick={() => setViewMode('kanban')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                 viewMode === 'kanban'
@@ -1109,7 +1343,7 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
               }`}
             >
               <Layers className="w-4 h-4" />
-              <span>1. Pipeline Kanban (7 Giai Đoạn)</span>
+              <span>1. Pipeline Kanban (Chiến Dịch)</span>
             </button>
 
             <button

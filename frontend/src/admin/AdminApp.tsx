@@ -34,7 +34,8 @@ import {
   Tag,
   Users,
   Wrench,
-  X
+  X,
+  PlusCircle
 } from 'lucide-react';
 import { isBackendEnabled } from '../lib/api';
 import { openInMoodle, StaffUserContext } from '../lib/lms';
@@ -92,7 +93,25 @@ const NAV: { title: string; items: NavItem[] }[] = [
   {
     title: 'Tuyển sinh & Bán hàng',
     items: [
-      { path: '/sales/crm', label: 'CRM & đơn hàng', icon: Users, perms: ['crm.view_leads'] },
+      {
+        path: '/sales/crm',
+        label: 'Đợt tuyển sinh (Chiến dịch)',
+        icon: Briefcase,
+        aliasPaths: ['/sales/requisitions'],
+        perms: ['crm.view_leads']
+      },
+      {
+        path: '/sales/requisitions/new',
+        label: 'Tạo đợt tuyển sinh mới',
+        icon: PlusCircle,
+        perms: ['crm.view_leads']
+      },
+      {
+        path: '/sales/pipeline',
+        label: 'Pipeline xét tuyển (Kanban)',
+        icon: Users,
+        perms: ['crm.view_leads']
+      },
       { path: '/sales/consulting', label: 'Tư vấn & lịch hẹn', icon: Headset, perms: ['crm.view_leads'] },
       { path: '/sales/intakes', label: 'Đợt khai giảng & chỉ tiêu', icon: CalendarDays, perms: ['courses.view', 'crm.view_leads'] },
       { path: '/sales/coupons', label: 'Mã giảm giá & học bổng', icon: Tag, perms: ['finance.transactions', 'crm.view_leads'] }
@@ -225,7 +244,16 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
       case '/content/journeys':
         return <JourneysPage canEdit={can('crm.edit_status')} />;
       case '/sales/crm':
-        return <CMSCRMOrdersTab orders={orders.orders} onUpdateOrderStatus={orders.updateStatus} onUpdateOrderCRM={orders.updateCRM} />;
+      case '/sales/requisitions/new':
+      case '/sales/pipeline':
+        return (
+          <CMSCRMOrdersTab
+            orders={orders.orders}
+            courses={courses.courses}
+            onUpdateOrderStatus={orders.updateStatus}
+            onUpdateOrderCRM={orders.updateCRM}
+          />
+        );
       case '/sales/consulting':
         return <ConsultingPage />;
       case '/finance/invoices':
