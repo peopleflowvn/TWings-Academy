@@ -26,6 +26,19 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 # Random, non-guessable path for the Django admin in production (e.g. "ops-7f3k9q/").
 ADMIN_URL = env("DJANGO_ADMIN_URL", default="admin/")
 
+# Background work (django.tasks): Moodle calls and the periodic jobs (apps/core/schedule.py).
+# TASKS_QUEUE=database (set by docker-compose for backend + worker): queued in Postgres, run by the worker
+# container (python manage.py db_worker), no broker. Otherwise tasks run inline after commit, as before.
+TASKS_QUEUE = env("TASKS_QUEUE", default="immediate")
+TASKS = {
+    "default": {
+        "BACKEND": "django_tasks_db.DatabaseBackend"
+        if TASKS_QUEUE == "database"
+        else "django.tasks.backends.immediate.ImmediateBackend",
+        "QUEUES": ["default"],
+    }
+}
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -39,6 +52,7 @@ INSTALLED_APPS = [
     "django_filters",
     "axes",
     "storages",
+    "django_tasks_db",
     # Local
     "apps.core",
     "apps.accounts",

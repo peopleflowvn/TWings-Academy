@@ -239,6 +239,17 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   được khi rollback.
 - **Backup:** `backup.sh` sao lưu DB `twings`, DB `moodle` và `moodledata` (bỏ cache), mã hóa `age`, đẩy lên R2.
 
+## Tác vụ nền (worker)
+
+- Container `worker` (cùng image backend) chạy `python manage.py db_worker`: hàng đợi `django.tasks` lưu trong Postgres
+  (`django-tasks-db`). Ghi danh / hủy ghi danh Moodle, tạo khóa cho đợt, đồng bộ tài khoản Moodle được xếp hàng sau
+  commit; các việc định kỳ (đồng bộ LMS, nhắc trả góp, email hành trình, trạng thái đợt…) theo lịch trong
+  `backend/apps/core/schedule.py` (giờ Việt Nam). Chỉ `backup.sh` còn là cron của host.
+- Chế độ hàng đợi do `TASKS_QUEUE=database` trong `docker-compose.prod.yml` bật cho backend và worker. File compose và
+  việc gỡ cron cũ (`/etc/cron.d/twings-lms`, `twings-billing`) đến VPS qua ops **`setup-shared`**: sau khi deploy
+  image có worker, chạy `setup-shared` rồi chạy lại **Deploy** để tạo container `worker`.
+- Xem việc đang chờ / lỗi: bảng `django_tasks_db_dbtaskresult` (Django admin), log của container `worker`.
+
 ## Bán hàng: chương trình, trả góp, hoàn tiền, tài khoản học viên
 
 - **Chương trình** (`/app` → Chương trình): nhiều khóa bán một giá. Khi học viên được học, mỗi khóa tự có một

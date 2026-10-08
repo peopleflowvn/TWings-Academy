@@ -6,9 +6,10 @@
 # The host also runs other products, so this stack publishes NO host port, touches no Docker/SSH
 # settings, and is capped in memory/CPU priority. Network isolation:
 #   gateway  (external)  web only     – what the shared gateway can reach
-#   app      (internal)  web, backend – no internet
-#   data     (internal)  backend, db  – no internet; web and other products cannot reach the DB
-#   egress               backend, lms – Resend, R2, Moodle language packs and mail
+#   app      (internal)  web, backend, worker, lms – no internet
+#   data     (internal)  backend, worker, lms, db – no internet; web and other products cannot reach the DB
+#   egress               backend, worker, lms – Resend, R2, Moodle language packs and mail
+#   worker: same image as backend, runs queued tasks and the periodic jobs (no host cron)
 #   lms: Moodle at <site>/learn, reached through web (app network); its DB lives in the same Postgres
 # Secrets live in /opt/twings/env/*.env (root-owned, chmod 600), never in this file or the images.
 # IMAGE_TAG is written to /opt/twings/.env by bin/deploy.sh.
@@ -53,6 +54,7 @@ services:
     environment:
       GUNICORN_WORKERS: "2"
       GUNICORN_THREADS: "4"
+      TASKS_QUEUE: database   # Moodle calls etc. are queued for the worker
     depends_on:
       db: { condition: service_healthy }
     networks: [app, data, egress]
@@ -63,6 +65,27 @@ services:
     cap_drop: [ALL]
     mem_limit: 448m
     pids_limit: 128
+
+  # Background work queued in Postgres (django.tasks): Moodle enrolment / intake provisioning / account
+  # sync after commit, and the periodic jobs (apps/core/schedule.py) that used to be host cron entries.
+  worker:
+    <<: *hardening
+    image: ghcr.io/peopleflowvn/twings-academy-backend:${IMAGE_TAG:?IMAGE_TAG is not set}
+    env_file: [./env/backend.env]
+    environment:
+      TASKS_QUEUE: database
+    command: ["sh", "-c", "python manage.py ensure_schedule && exec python manage.py db_worker --interval 2 --no-startup-delay"]
+    healthcheck: { disable: true }
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [app, data, egress]   # app: Moodle web services; egress: Resend, R2
+    read_only: true
+    tmpfs: ["/tmp"]
+    volumes:
+      - appdata:/data
+    cap_drop: [ALL]
+    mem_limit: 256m
+    pids_limit: 64
 
   # Caddy + built React site + Caddyfile (infra/caddy/Dockerfile), same tag as the backend.
   web:

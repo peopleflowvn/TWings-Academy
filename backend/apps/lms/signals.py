@@ -8,8 +8,7 @@ from apps.accounts.models import User
 from apps.catalog.models import Cohort
 from apps.crm.models import Order
 
-from . import moodle
-from .services import enroll_paid_order, provision_cohort, revoke_access
+from . import moodle, tasks
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ def enroll_when_paid(sender, instance: Order, **kwargs):
             and enrollment is not None
             and enrollment.status != "removed"
         ):
-            transaction.on_commit(lambda: _safe(revoke_access, instance.pk))
+            _later(tasks.revoke_order, instance.pk)
         return
     if enrollment is not None:
         # Removed by staff: later edits of the order must not re-enrol.
@@ -38,9 +37,9 @@ def enroll_when_paid(sender, instance: Order, **kwargs):
             return
         if enrollment.status == "done" and enrollment.cohort_id == instance.cohort_id:
             return
-    # After commit: never hold the payment transaction open on a network call, and a Moodle outage
-    # must not roll back the payment (the retry command picks failures up).
-    transaction.on_commit(lambda: _safe(enroll_paid_order, instance.pk))
+    # Queued after commit: the payment never waits for Moodle nor rolls back because of it (the worker
+    # enrols; failures stay in LmsEnrollment and are retried).
+    _later(tasks.enroll_order, instance.pk)
 
 
 @receiver(post_save, sender=Cohort, dispatch_uid="lms_provision_cohort")
@@ -48,18 +47,12 @@ def provision_when_saved(sender, instance: Cohort, **kwargs):
     """A new or edited intake gets (or keeps in sync) its own Moodle course and teachers."""
     if not moodle.is_configured() or instance.status == "completed":
         return
-    transaction.on_commit(lambda: _safe(_provision, instance.pk))
+    _later(tasks.provision_cohort, instance.pk)
 
 
-def _provision(cohort_id: str) -> None:
-    provision_cohort(Cohort.objects.select_related("course", "lead_instructor").get(pk=cohort_id))
-
-
-def _safe(func, pk) -> None:
-    try:
-        func(pk)
-    except Exception:  # noqa: BLE001 - CMS/payment flows must never fail because of the LMS
-        logger.exception("LMS task failed for %s", pk)
+def _later(task, *args) -> None:
+    """Queue Moodle work for the worker once the transaction commits; never fails the caller."""
+    transaction.on_commit(lambda: task.enqueue(*args), robust=True)
 
 
 # ---------------------------------------------------------------- staff accounts on Moodle
@@ -76,21 +69,10 @@ def sync_staff_when_changed(sender, instance: User, created, **kwargs):
     if created or old is None or not moodle.is_configured():
         return
     if old != {"is_active": instance.is_active, "role": instance.role}:
-        email = instance.email
-        transaction.on_commit(lambda: _safe_sync(email))
+        _later(tasks.sync_account, instance.email)
 
 
 @receiver(post_delete, sender=User, dispatch_uid="lms_staff_deleted")
 def sync_deleted_staff(sender, instance: User, **kwargs):
     if moodle.is_configured():
-        email = instance.email
-        transaction.on_commit(lambda: _safe_sync(email))
-
-
-def _safe_sync(email: str) -> None:
-    from .overview import sync_account
-
-    try:
-        logger.info("LMS account %s: %s", email.split("@")[0][:3] + "***", sync_account(email))
-    except Exception:  # noqa: BLE001 - staff administration must never fail because of the LMS
-        logger.exception("LMS account sync failed")
+        _later(tasks.sync_account, instance.email)

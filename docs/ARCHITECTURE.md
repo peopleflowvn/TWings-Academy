@@ -162,9 +162,10 @@ Trình duyệt không bao giờ gửi số tiền. Mọi giá trị tiền đề
 | 7–8 Học tập, tốt nghiệp | `lms` (điểm danh mod_attendance, sổ điểm, rủi ro, quy tắc chuyên cần, chứng chỉ `TWC-…`) |
 | 9–10 Việc làm | `crm.Placement`, link `/doi-tac/<token>` cho HR, mốc thử việc và cam kết |
 
-**Tác vụ định kỳ** (cron của host, `docker compose exec backend …`): `sync_lms_enrollments` (10 phút),
-`sync_lms_completion` (30 phút), `refresh_intakes` (00:15), `remind_installments` (09:00), `run_journeys` (09:30),
-`remind_appointments` (mỗi giờ 7–21h), `backup.sh` (02:30). Moodle có cron riêng trong `lms-cron`.
+**Tác vụ định kỳ** (container `worker`, lịch trong `backend/apps/core/schedule.py`, giờ Việt Nam):
+`sync_lms_enrollments` (10 phút), `sync_lms_completion` (30 phút), `refresh_intakes` (00:15), `remind_installments`
+(09:00), `run_journeys` (09:30), `remind_appointments` (mỗi giờ 7–21h), `prune_db_task_results` (03:30). Chỉ còn
+`backup.sh` (02:30) là cron của host (cần Docker). Moodle có cron riêng trong `lms-cron`.
 
 ## 7. Phân quyền
 
@@ -233,14 +234,18 @@ flowchart LR
 
 ### 10.1 Hàng đợi tác vụ trên Postgres và container `worker` (ưu tiên 1)
 
-- Dùng **Django Tasks** (`django.tasks`, có từ Django 6.0) với backend lưu trong CSDL (gói `django-tasks`,
-  `DatabaseBackend`). **Không cần Redis hay broker**: hàng đợi là một bảng trong DB `twings`, có transaction cùng
-  dữ liệu nghiệp vụ, và được backup cùng DB.
-- Chuyển vào task: ghi danh hoặc hủy ghi danh Moodle, tạo khóa cho đợt, đẩy lịch học và điểm danh, gửi email,
-  đồng bộ học tập. View chỉ `enqueue` sau commit và trả lời ngay.
-- Container `worker` (cùng image backend, khoảng 192 MB) chạy `db_worker` và **lịch định kỳ** thay cho cron của host.
-  Mọi lịch nằm trong code và Compose. `setup-shared` không còn phải ghi `/etc/cron.d`. Lỗi được ghi vào bảng task
-  và hiện trên /app.
+**Đã làm (08/10/2026):**
+- **Django Tasks** (`django.tasks` của Django 6) với `django-tasks-db` (`DatabaseBackend`): hàng đợi là một bảng
+  trong DB `twings`, không Redis, không broker, backup cùng DB.
+- Ghi danh, hủy ghi danh, tạo khóa cho đợt, đồng bộ tài khoản Moodle (`apps/lms/tasks.py`) được **xếp hàng sau commit**
+  (`transaction.on_commit(..., robust=True)`): thanh toán và thao tác trong /app trả lời ngay, không chờ Moodle.
+- Container `worker` (cùng image backend, 256 MB) chạy `db_worker`. **Lịch định kỳ tự nối tiếp**: mỗi lần chạy
+  (`run_periodic`) xếp lần kế tiếp *trước* khi làm việc, nên lệnh lỗi không làm đứt chuỗi; `ensure_schedule` (khi
+  worker khởi động) bổ sung lần chạy còn thiếu, tối đa một lần chờ cho mỗi việc. Không cần tiến trình lập lịch riêng.
+- Bật an toàn: `TASKS_QUEUE=database` chỉ có trong `docker-compose.prod.yml` (backend + worker); thiếu biến này thì
+  task chạy ngay sau commit như trước. Cron của host (`twings-lms`, `twings-billing`) được `setup-shared` gỡ cùng lúc.
+  CI khởi động thử worker trên Postgres.
+- Còn lại: hiện các task thất bại trên /app.
 
 ### 10.2 Moodle báo sự kiện cho TWings (ưu tiên 1)
 
@@ -261,8 +266,11 @@ flowchart LR
   của nhân sự đổi, và sau khi thu hồi một đơn. Học viên bị nhân viên khóa tay trong /app không bao giờ tự mở lại.
 - Còn lại: học viên và giảng viên vẫn có mật khẩu Moodle làm phương án dự phòng khi SSO gặp sự cố. Chuyển họ sang
   `auth=oauth2` khi SSO đã ổn định. Giữ một tài khoản `admin` khẩn cấp với mật khẩu.
-- `token_endpoint` và `userinfo_endpoint` trỏ vào `http://backend:8000` (thêm `backend` vào `ALLOWED_HOSTS`). Chỉ
-  `authorization_endpoint` cần tên miền công khai vì trình duyệt mở nó.
+- ~~`token_endpoint` và `userinfo_endpoint` trỏ vào `http://backend:8000`~~ **Quyết định không làm (08/10/2026):**
+  client OAuth2 của lõi Moodle đi qua lớp chống SSRF (`curlsecurityblockedhosts`, cổng cho phép 80/443), lớp này chặn
+  IP Docker nội bộ và cổng 8000. Muốn gọi nội bộ phải nới lớp chặn cho *mọi* request đi ra của Moodle (URL do giảng
+  viên nhập, RSS…), đổi lấy lợi ích nhỏ (lời gọi vòng qua gateway đang chạy ổn, có `lms-check` theo dõi). Code của
+  TWings trong `local_twings` thì gọi `http://backend:8000` được với `ignoresecurity` chỉ cho request của chính nó (10.2).
 - Về sau: nâng SSO thành OpenID Connect đầy đủ (id_token, PKCE) để dùng lại cho ứng dụng khác của TWings.
 
 ### 10.4 Ngân sách tài nguyên trên VPS dùng chung (ưu tiên 1)
@@ -322,7 +330,7 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 |---|---|---|---|
 | **0. Ổn định** (1 tuần) | Gỡ nội dung mẫu (lời chứng thực thật từ `/public/reviews/`, bỏ đối tác dự phòng, website không bao giờ hiện dữ liệu demo khi có backend, FAQ sửa được trong /app, migration dọn banner, email, SEO). 10.3 phần nhân sự và đơn hoàn. 10.4 Apache 4 worker | **Xong 07/10/2026**. Chờ quyết định nội dung: điểm sao nhập tay, ảnh stock. Tắt squash/rebase merge trên GitHub. Chốt Django 6.1 hay 5.2 LTS | Không còn nội dung sai sự thật. Không còn đường vào LMS cho người đã nghỉ |
 | **1. Loại trùng** (1–2 tuần) | 10.7 | **Gần xong** (08/10/2026): chứng chỉ, sổ điểm, thông báo lớp, cổng học viên một nơi. Để sau: Analytics của Moodle (cần dữ liệu vài đợt học), bỏ chế độ demo của frontend | Mỗi thông tin một nơi đúng. Bớt code học tập phải bảo trì |
-| **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | Chưa bắt đầu | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
+| **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | **Đang làm** (08/10/2026): 10.1 xong. Tiếp: 10.2. SSO gọi nội bộ: không làm (xem 10.3) | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
 | **3. Trải nghiệm thống nhất** (2–3 tuần) | Theme Moodle theo TWings, email Moodle tiếng Việt cùng giọng, quyết định Moodle Mobile (10.5) | Đang có người làm phần theme trong `twings_setup.php` | Học viên đi từ website → tài khoản → lớp học như một sản phẩm |
 | **4. Vận hành và tuân thủ** (song song) | Quan sát, 2FA (10.5). Diễn tập khôi phục backup. Rà soát Nghị định 13/2023 (thời hạn lưu, quy trình xóa dữ liệu chạy cả TWings và Moodle) | Chưa bắt đầu | Có cảnh báo. Khôi phục được backup trong thời gian đã định |
 | **Khi chạm ngưỡng** | 10.6 | – | Theo bảng ngưỡng |

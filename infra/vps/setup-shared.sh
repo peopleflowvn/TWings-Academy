@@ -66,22 +66,8 @@ CRON_TZ=Asia/Ho_Chi_Minh
 EOF
 chmod 644 /etc/cron.d/twings-backup
 
-echo "==> LMS enrollment retries every 10 minutes (paid orders whose Moodle enrolment failed)"
-cat > /etc/cron.d/twings-lms <<EOF
-*/10 * * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py sync_lms_enrollments >/dev/null 2>&1
-# Progress/completion from Moodle; certificates for newly completed learners.
-*/30 * * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py sync_lms_completion >/dev/null 2>&1
-EOF
-chmod 644 /etc/cron.d/twings-lms
-
-echo "==> intake statuses (00:15), installment reminders (09:00), journey e-mails (09:30), Asia/Ho_Chi_Minh"
-cat > /etc/cron.d/twings-billing <<EOF
-CRON_TZ=Asia/Ho_Chi_Minh
-0 9 * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py remind_installments >/dev/null 2>&1
-15 0 * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py refresh_intakes >/dev/null 2>&1
-5 7-21 * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py remind_appointments >/dev/null 2>&1
-30 9 * * * root cd ${APP} && [ -f .env ] && docker compose exec -T backend python manage.py run_journeys >/dev/null 2>&1
-EOF
-chmod 644 /etc/cron.d/twings-billing
+echo "==> periodic jobs run in the worker container (apps/core/schedule.py): no TWings cron besides backup"
+# The worker (docker-compose.yml) queues and runs them; host entries would run every job twice.
+rm -f /etc/cron.d/twings-lms /etc/cron.d/twings-billing
 
 echo "Done. Next: Ops 'sync-env', then run the Deploy workflow."

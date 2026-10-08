@@ -560,3 +560,19 @@ def test_refunded_learner_is_suspended_unless_another_order_still_gives_access(
     assert fake_admin_moodle.suspended.get(mu_id, 0) == 0  # still studying through the second order
     refund(second)
     assert fake_admin_moodle.suspended[mu_id] == 1
+
+
+def test_with_the_task_queue_payments_never_wait_for_moodle(
+    fake_moodle, course, settings, django_capture_on_commit_callbacks
+):
+    from django.core.management import call_command
+
+    settings.TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend", "QUEUES": ["default"]}}
+    with django_capture_on_commit_callbacks(execute=True):
+        order = _paid_order(course)
+    # The payment committed and answered: Moodle was not called, the enrolment waits in the queue.
+    assert fake_moodle.users == [] and not LmsEnrollment.objects.filter(order=order).exists()
+
+    call_command("db_worker", batch=True, startup_delay=False)  # what the worker container does
+    enrollment = LmsEnrollment.objects.get(order=order)
+    assert enrollment.status == "done" and fake_moodle.enrolments

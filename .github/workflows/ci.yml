@@ -101,6 +101,14 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: config.settings.test
       - run: pytest
+      - name: Worker starts on Postgres (task queue tables, periodic schedule, one batch)
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          TASKS_QUEUE: database
+        run: |
+          python manage.py migrate --noinput
+          python manage.py ensure_schedule
+          python manage.py db_worker --batch --no-startup-delay
       - name: Django deployment checklist (prod settings, dummy values)
         run: python manage.py check --deploy --fail-level WARNING
         env:
