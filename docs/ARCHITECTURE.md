@@ -45,7 +45,9 @@ flowchart LR
         CRON[lms-cron · Moodle tasks] --> DB
         API -->|Web Service REST<br/>mạng nội bộ| LMS
         LMS -.->|OAuth2 SSO<br/>token / userinfo| API
-        HOSTCRON[cron của host<br/>docker compose exec] -.-> API
+        CRON -->|sự kiện học tập<br/>HMAC, mạng nội bộ| API
+        WK[worker · django.tasks<br/>việc định kỳ] --> DB
+        WK -->|Web Service REST| LMS
     end
     API -->|S3 API| R2[(Cloudflare R2<br/>media · tài liệu riêng tư)]
     API -->|REST| RS
@@ -57,7 +59,8 @@ flowchart LR
 |---|---|---|---|
 | Website + CMS/CRM `/app` | React 19, TypeScript, Vite 8, Tailwind 4 | `frontend/` | Container `web` (Caddy). Bản sao tùy chọn trên Cloudflare Pages |
 | API, trang Django, SSO | Django 6.1, DRF, gunicorn (2 worker × 4 thread) | `backend/` | Container `backend` (non-root, FS chỉ đọc) |
-| LMS | Moodle 5.2.4, PHP 8.3, Apache (tối đa 4 worker) + 3 plugin + `local_twings` | `lms/` | Container `lms`, `lms-cron` |
+| Tác vụ nền | django.tasks + `django-tasks-db` (hàng đợi trong Postgres), lịch `apps/core/schedule.py` | `backend/` | Container `worker` (cùng image backend) |
+| LMS | Moodle 5.2.4, PHP 8.3, Apache (tối đa 4 worker) + 3 plugin + `local_twings` + `theme_twings` | `lms/` | Container `lms`, `lms-cron` |
 | CSDL | PostgreSQL 18 (DB `twings` và `moodle`, role riêng) | – | Container `db`, volume `pgdata` |
 | File | R2 (2 bucket) hoặc volume `appdata`. File Moodle trong volume `moodledata` | – | – |
 | Email | Resend (API từ Django, SMTP từ Moodle) | – | – |
@@ -128,7 +131,7 @@ tần suất và honeypot), `staff/` (cookie phiên + CSRF + mã quyền RBAC), 
 
 Kênh tích hợp: (1) **Web Service REST**: backend gọi `http://lms:8080/learn` trên mạng nội bộ, token chỉ dùng được
 từ IP nội bộ, vai trò quyền tối thiểu (`twings_setup.php`). (2) **OAuth2**: Moodle đổi mã lấy token qua tên miền công
-khai. (3) **Đọc định kỳ** từ cron của host.
+khai. (3) **Sự kiện** Moodle → TWings (`local_twings`, mục 10.2) và **đối soát định kỳ** trong `worker`.
 
 ## 6. Luồng chính
 
@@ -202,14 +205,14 @@ health check và rollback. Mọi đồng bộ đều idempotent.
 
 | # | Vấn đề | Hệ quả |
 |---|---|---|
-| 1 | Gọi Moodle **ngay trong tiến trình web** (`transaction.on_commit` sau thanh toán, khi lưu đợt khai giảng). Một lần sao chép khóa có thể mất hàng chục giây | Chiếm worker gunicorn (chỉ có 8 luồng), nhân viên chờ lâu. Moodle chậm thì website chậm theo |
-| 2 | Moodle → TWings **chỉ đọc định kỳ** (30 phút) và gọi API **theo từng học viên** | Chứng chỉ và cảnh báo rủi ro trễ tới 30 phút. Số lượt gọi tăng tuyến tính theo số học viên |
-| 3 | Tác vụ định kỳ nằm trong **cron của host** (`/etc/cron.d/twings-*`), lỗi bị nuốt (`>/dev/null`) | Cấu hình nằm ngoài Compose, khó quan sát, phải chạy lại `setup-shared` khi thêm lịch |
+| 1 | Gọi Moodle **ngay trong tiến trình web** (`transaction.on_commit` sau thanh toán, khi lưu đợt khai giảng). Một lần sao chép khóa có thể mất hàng chục giây | Chiếm worker gunicorn (chỉ có 8 luồng), nhân viên chờ lâu. Moodle chậm thì website chậm theo **Đã xử lý 08/10/2026** (10.1: hàng đợi + worker). |
+| 2 | Moodle → TWings **chỉ đọc định kỳ** (30 phút) và gọi API **theo từng học viên** | Chứng chỉ và cảnh báo rủi ro trễ tới 30 phút. Số lượt gọi tăng tuyến tính theo số học viên **Đã xử lý 08/10/2026** (10.2: sự kiện; đọc định kỳ còn để đối soát). |
+| 3 | Tác vụ định kỳ nằm trong **cron của host** (`/etc/cron.d/twings-*`), lỗi bị nuốt (`>/dev/null`) | Cấu hình nằm ngoài Compose, khó quan sát, phải chạy lại `setup-shared` khi thêm lịch **Đã xử lý 08/10/2026** (lịch trong `worker`, còn mỗi cron backup). |
 | 4 | **Vòng đời danh tính chưa khép kín**: quyền *manager* trên Moodle không bị thu hồi. Tài khoản Moodle `auth=manual` vẫn đặt lại được mật khẩu ngoài SSO | Nhân sự nghỉ việc có thể vẫn vào được LMS. **Đã xử lý cho nhân sự và đơn hoàn/hủy (07/10/2026)**, xem 10.3 |
-| 5 | SSO: Moodle gọi `token`/`userinfo` qua **tên miền công khai** (đi vòng ra gateway) | Phụ thuộc DNS và gateway cho một lời gọi nội bộ |
+| 5 | SSO: Moodle gọi `token`/`userinfo` qua **tên miền công khai** (đi vòng ra gateway) | Phụ thuộc DNS và gateway cho một lời gọi nội bộ **Giữ nguyên có chủ đích** (xem 10.3: lớp chống SSRF của Moodle). |
 | 6 | **Ngân sách RAM** chưa khớp: Apache 10 worker × `memory_limit` 256 MB trong container 512 MB. Postgres dùng chung 320 MB và 50 kết nối | Có thể bị kill khi nhiều thao tác nặng chạy cùng lúc. **Apache đã giảm còn 4 worker (07/10/2026)** |
-| 7 | **Quan sát** chỉ có log của container | Không có cảnh báo lỗi, không đo được độ trễ hay tác vụ thất bại |
-| 8 | Giao diện Moodle (Boost mặc định) khác website | Trải nghiệm học viên không liền mạch |
+| 7 | **Quan sát** chỉ có log của container | Không có cảnh báo lỗi, không đo được độ trễ hay tác vụ thất bại Một phần: /app → Tình trạng tích hợp (tác vụ nền, tích hợp). Còn cảnh báo chủ động (Giai đoạn 4). |
+| 8 | Giao diện Moodle (Boost mặc định) khác website | Trải nghiệm học viên không liền mạch **Đã xử lý 08/10/2026** (`theme_twings`, khung email chung). |
 | 9 | **Trùng chức năng với Moodle** ở mảng học tập: hai hệ chứng chỉ (`TWC-…` và `mod_customcert`), /app dựng lại sổ điểm, điểm danh, tiến độ chi tiết, email thông báo cho lớp | Hai nơi cùng một thông tin, dễ lệch, nhiều code phải bảo trì. Xem 10.7. **Đã xử lý chứng chỉ, sổ điểm, thông báo lớp (07/10/2026)** |
 | 10 | **Nội dung mẫu của template** còn trên website: lời chứng thực bịa, danh sách đối tác dự phòng (Google, IBM, Stanford…), banner "Learn AI… Google, OpenAI, Anthropic", mẫu email nhắc "Coursera LMS", từ khóa SEO "chứng chỉ Coursera" | Rủi ro pháp lý (quảng cáo sai sự thật) và uy tín. **Đã gỡ khỏi code và DB (07/10/2026)**. Còn chờ quyết định: điểm sao nhập tay khi chưa có đánh giá, ảnh stock của giảng viên và thư viện ảnh |
 
@@ -340,7 +343,7 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 
 | Giai đoạn | Việc | Trạng thái | Kết quả đo được |
 |---|---|---|---|
-| **0. Ổn định** (1 tuần) | Gỡ nội dung mẫu (lời chứng thực thật từ `/public/reviews/`, bỏ đối tác dự phòng, website không bao giờ hiện dữ liệu demo khi có backend, FAQ sửa được trong /app, migration dọn banner, email, SEO). 10.3 phần nhân sự và đơn hoàn. 10.4 Apache 4 worker | **Xong 07/10/2026**. Chờ quyết định nội dung: điểm sao nhập tay, ảnh stock. Tắt squash/rebase merge trên GitHub. Chốt Django 6.1 hay 5.2 LTS | Không còn nội dung sai sự thật. Không còn đường vào LMS cho người đã nghỉ |
+| **0. Ổn định** (1 tuần) | Gỡ nội dung mẫu (lời chứng thực thật từ `/public/reviews/`, bỏ đối tác dự phòng, website không bao giờ hiện dữ liệu demo khi có backend, FAQ sửa được trong /app, migration dọn banner, email, SEO). 10.3 phần nhân sự và đơn hoàn. 10.4 Apache 4 worker | **Xong 07/10/2026**. Điểm sao, cảm nhận, ảnh giảng viên do admin quản lý trong /app (có upload). Giữ Django 6.1 → 6.2 LTS. Còn: tắt squash/rebase merge trên GitHub | Không còn nội dung sai sự thật. Không còn đường vào LMS cho người đã nghỉ |
 | **1. Loại trùng** (1–2 tuần) | 10.7 | **Gần xong** (08/10/2026): chứng chỉ, sổ điểm, thông báo lớp, cổng học viên một nơi. Để sau: Analytics của Moodle (cần dữ liệu vài đợt học), bỏ chế độ demo của frontend | Mỗi thông tin một nơi đúng. Bớt code học tập phải bảo trì |
 | **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | **Xong** (08/10/2026): 10.1 (worker chạy trên production, 7 việc định kỳ, bỏ cron host), 10.2, test hợp đồng (10.5). SSO gọi nội bộ: không làm (xem 10.3). Tác vụ lỗi hiện trên /app | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
 | **3. Trải nghiệm thống nhất** (2–3 tuần) | Theme Moodle theo TWings, email Moodle tiếng Việt cùng giọng, quyết định Moodle Mobile (10.5) | **Xong** (08/10/2026): `theme_twings`, khung email chung, email Moodle tiếng Việt, Mobile chưa bật | Học viên đi từ website → tài khoản → lớp học như một sản phẩm |
@@ -350,13 +353,6 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 **Thế nào là hoàn chỉnh:** một bộ test end-to-end cho cả hành trình 10 khâu chạy trong CI với Moodle thật (lead → tư
 vấn → thanh toán → xếp lớp → học → điểm danh → tốt nghiệp → chứng chỉ → giới thiệu việc làm). Khi bộ test này xanh
 thì hệ thống liền mạch, và mọi thay đổi sau đó đều được kiểm chứng trên toàn bộ luồng.
-
-| Giai đoạn | Việc | Kết quả đo được |
-|---|---|---|
-| **Ngay** (1–2 tuần) | 10.3 (thu hồi quyền, `auth=oauth2`, SSO nội bộ). 10.4 (worker Apache, RAM) | Không còn đường vào LMS ngoài SSO. Không OOM |
-| **Tháng 1** | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings) | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành |
-| **Tháng 2** | 10.5 (theme, test hợp đồng, quan sát, 2FA) | Giao diện thống nhất. Lỗi tích hợp bị bắt ở CI. Có cảnh báo |
-| **Khi chạm ngưỡng** | 10.6 | Theo bảng ngưỡng |
 
 ## 12. Các quyết định kiến trúc
 

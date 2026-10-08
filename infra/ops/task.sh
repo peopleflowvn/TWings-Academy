@@ -156,6 +156,11 @@ print(\"functions:\", sorted(f[\"name\"] for f in info[\"functions\"]))
 ' && sudo docker compose exec -T lms php -r '
 \$r = @file_get_contents(\"https://tuyensinh.twings.edu.vn/api/v1/health/\", false, stream_context_create([\"http\" => [\"timeout\" => 10]]));
 echo \"lms -> public site (hairpin): \", \$r === false ? \"FAILED\" : \$r, PHP_EOL;
+' && sudo docker compose exec -T lms-cron php -r '
+\$ctx = stream_context_create([\"http\" => [\"method\" => \"POST\", \"header\" => \"Content-Type: application/json\", \"content\" => \"{}\", \"timeout\" => 10, \"ignore_errors\" => true]]);
+@file_get_contents(\"http://backend:8000/api/v1/webhooks/lms/\", false, \$ctx);
+\$status = isset(\$http_response_header[0]) ? \$http_response_header[0] : \"no answer\";
+echo \"lms-cron -> backend learning events (unsigned, 403 expected): \", \$status, PHP_EOL;
 '"
     ;;
 

@@ -203,7 +203,7 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 - **Luồng học viên:** đơn chuyển sang "đã thanh toán" (webhook ngân hàng, kế toán xác nhận, hoặc CMS) → backend gọi
   Web Service của Moodle: tìm/tạo khóa (theo `idnumber` = id khóa TWings, hoặc `shortname` = slug khóa, nên có thể
   soạn sẵn khóa trên Moodle), tìm/tạo tài khoản theo email (Moodle tự gửi email mật khẩu), rồi ghi danh vai trò
-  *student*. Lỗi được ghi ở `LmsEnrollment` và cron thử lại mỗi 10 phút (`sync_lms_enrollments`).
+  *student*. Lỗi được ghi ở `LmsEnrollment` và worker thử lại mỗi 10 phút (`sync_lms_enrollments`).
 - **SSO "Đăng nhập bằng TWings":** dùng tính năng OAuth 2 có sẵn của Moodle, TWings đóng vai nhà cung cấp danh tính
   (`/api/v1/sso/`). Học viên nhập email, nhận mã 6 số qua Resend; chỉ email có đơn đã thanh toán mới nhận được mã.
   Nhân sự đang đăng nhập CMS thì vào thẳng. Moodle tự liên kết theo email (`requireconfirmation` tắt), nên tài khoản
@@ -221,7 +221,7 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   thanh toán được ghi danh vào khóa của đợt; khóa có chia đợt mà đơn chưa xếp đợt thì ở trạng thái **Chờ xếp lớp**
   và được ghi danh ngay khi được xếp. Chuyển đợt thì ghi danh được chuyển theo. Khóa không chia đợt học thẳng trong
   khóa mẫu (tự học). Giảng viên đăng nhập Moodle bằng mã gửi qua email (SSO).
-- **Hoàn thành & chứng chỉ:** cron 30 phút đồng bộ % tiến độ; khi Moodle ghi nhận hoàn thành, TWings cấp chứng chỉ
+- **Hoàn thành & chứng chỉ:** Moodle báo ngay khi hoàn thành (sự kiện, `local_twings`), worker đối soát 30 phút/lần; khi Moodle ghi nhận hoàn thành, TWings cấp chứng chỉ
   `TWC-XXXXXXXXXX` có trang xác minh công khai `/xac-minh/<mã>/`, cập nhật CRM và gửi email chúc mừng.
 - **Mã nguồn trong repo** (`lms/`, xem [LMS.md](LMS.md)): lõi Moodle 5.2.4 và các plugin Attendance
   (điểm danh), Completion Progress (thanh tiến độ), Ad-hoc database queries (báo cáo SQL cho cán bộ quản lý), cùng
@@ -260,7 +260,7 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
   *đơn thành phần* (số tiền 0, gắn đơn gốc) để xếp lớp và ghi danh Moodle như mua lẻ. Trang bán: `/chuong-trinh`.
 - **Trả góp**: bật ở khóa học/chương trình (số kỳ, khoảng cách ngày). VietQR luôn hiển thị số tiền *đến hạn*
   (kỳ kế tiếp). Đóng kỳ 1 là mở khóa học (`learning_access`); đóng đủ thì đơn chuyển "Đã thanh toán".
-  Cron `remind_installments` (09:00 hằng ngày) gửi email nhắc trước hạn 3 ngày và tạo việc cần làm khi quá hạn.
+  Việc định kỳ `remind_installments` (09:00 hằng ngày, worker) gửi email nhắc trước hạn 3 ngày và tạo việc cần làm khi quá hạn.
 - **Hoàn tiền** (quyền `finance.refund`, tab "Học phí & hoàn tiền" của đơn): ghi nhận sau khi đã chuyển trả.
   Hoàn toàn bộ (hoặc chọn kết thúc ghi danh) → đơn "Đã hoàn tiền", hủy ghi danh LMS, thu hồi chứng chỉ,
   áp dụng cho mọi khóa của chương trình. Chuyển khoản tới đơn đã hoàn không được ghi nhận tự động.
@@ -271,7 +271,7 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 
 ## Email tự động & báo cáo
 
-- **Email theo hành trình** (`/app` → Email tự động theo hành trình), cron `run_journeys` 09:30 hằng ngày:
+- **Email theo hành trình** (`/app` → Email tự động theo hành trình), việc định kỳ `run_journeys` 09:30 hằng ngày (worker):
   nhắc hoàn tất thanh toán (đơn VietQR chưa chuyển sau 1–7 ngày), sắp khai giảng (3 ngày trước), nhắc bắt đầu
   học (7 ngày, tiến độ 0%), chúc mừng hoàn thành + gợi ý học tiếp. Mỗi đơn nhận mỗi email tối đa một lần
   (EmailLog `journey_<key>` là dấu đã gửi); bật/tắt từng hành trình, có nút gửi ngay.
@@ -334,7 +334,7 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 ## Học tập & tốt nghiệp (hành trình khâu 7–8)
 
 - Lưu lịch học cho đợt sẽ tạo hoạt động **“Điểm danh”** (mod_attendance) trong khóa Moodle, mỗi buổi học thành một phiên điểm danh. Giảng viên điểm danh ngay trên Moodle.
-- Cron `sync_lms_completion` (30 phút/lần) đọc từ Moodle: chuyên cần, điểm tổng (gradereport_user), lần vào khóa gần nhất. Hệ thống gắn mức **cần theo dõi** hoặc **có nguy cơ** khi có các dấu hiệu: không vào học ≥ 7 ngày, chuyên cần dưới mức, tiến độ chậm, điểm dưới 50%.
+- Việc định kỳ `sync_lms_completion` (30 phút/lần, worker; ngoài ra cập nhật ngay khi Moodle báo sự kiện) đọc từ Moodle: chuyên cần, điểm tổng (gradereport_user), lần vào khóa gần nhất. Hệ thống gắn mức **cần theo dõi** hoặc **có nguy cơ** khi có các dấu hiệu: không vào học ≥ 7 ngày, chuyên cần dưới mức, tiến độ chậm, điểm dưới 50%.
 - /app → Học viên cần hỗ trợ: danh sách kèm nút gọi/Zalo, xuất CSV. Đợt khai giảng → “Học tập”: xem sổ điểm và gửi email thông báo cho cả lớp.
 - Tốt nghiệp: khóa học có ngưỡng “chuyên cần tối thiểu” (mặc định 80%, 0 = không yêu cầu). Học viên đã hoàn thành nhưng thiếu chuyên cần sẽ bị giữ chứng chỉ; chứng chỉ tự cấp khi điểm danh được bổ sung. Có thể cấp ngoại lệ (bắt buộc ghi lý do, lưu vào lịch sử).
 - Chứng chỉ có bản in A4 tại `/xac-minh/<mã>/in/`, dùng để in hoặc lưu PDF.
