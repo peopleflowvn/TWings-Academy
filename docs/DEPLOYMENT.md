@@ -248,7 +248,8 @@ dùng chung Postgres với TWings (database `moodle` riêng); file của Moodle 
 - Chế độ hàng đợi do `TASKS_QUEUE=database` trong `docker-compose.prod.yml` bật cho backend và worker. File compose và
   việc gỡ cron cũ (`/etc/cron.d/twings-lms`, `twings-billing`) đến VPS qua ops **`setup-shared`**: sau khi deploy
   image có worker, chạy `setup-shared` rồi chạy lại **Deploy** để tạo container `worker`.
-- Xem việc đang chờ / lỗi: bảng `django_tasks_db_dbtaskresult` (Django admin), log của container `worker`.
+- Theo dõi: /app → Hệ thống → **Tình trạng tích hợp** (mục Tác vụ nền: việc quá hạn nghĩa là worker đã dừng; tác vụ lỗi
+  7 ngày có nút Chạy lại; lịch các việc định kỳ). Chi tiết thêm: Django admin, log của container `worker`.
 
 ## Bán hàng: chương trình, trả góp, hoàn tiền, tài khoản học viên
 

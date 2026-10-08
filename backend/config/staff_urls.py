@@ -16,7 +16,7 @@ from apps.catalog.views import (
     ProgramViewSet,
 )
 from apps.cms.views import ArticleViewSet, HeroBannerViewSet, SiteConfigViewSet
-from apps.core.dashboard import DashboardView, SystemHealthView
+from apps.core.dashboard import BackgroundTasksView, DashboardView, RetryBackgroundTaskView, SystemHealthView
 from apps.core.reports import ReportsView
 from apps.core.uploads import ImageUploadView
 from apps.core.views import AuditLogViewSet
@@ -97,5 +97,11 @@ urlpatterns = [
     path("reports/", ReportsView.as_view(), name="staff-reports"),
     path("journeys/", JourneysView.as_view(), name="staff-journeys"),
     path("system/health/", SystemHealthView.as_view(), name="staff-system-health"),
+    path("system/tasks/", BackgroundTasksView.as_view(), name="staff-system-tasks"),
+    path(
+        "system/tasks/<uuid:task_id>/retry/",
+        RetryBackgroundTaskView.as_view(),
+        name="staff-system-task-retry",
+    ),
     *router.urls,
 ]

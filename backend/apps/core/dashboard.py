@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import require_perms
 from apps.accounts.rbac import has_perm_code
+from apps.core.models import audit
 
 
 class DashboardView(APIView):
@@ -145,6 +146,22 @@ class SystemHealthView(APIView):
                 "Chưa cấu hình MOODLE_INTERNAL_URL / MOODLE_WS_TOKEN",
                 "warning",
             )
+        from .background import summary
+
+        tasks = summary()
+        if not tasks["enabled"]:
+            add("worker", "Tác vụ nền", False, "Chạy ngay trong web (chưa có worker)", "warning")
+        else:
+            add(
+                "worker",
+                "Tác vụ nền",
+                tasks["overdue"] == 0 and tasks["failed_24h"] == 0,
+                f"{tasks['overdue']} việc quá hạn chưa chạy (worker có thể đã dừng) · "
+                f"{tasks['failed_24h']} việc lỗi trong 24 giờ"
+                if tasks["overdue"] or tasks["failed_24h"]
+                else "Worker đang chạy, không có việc lỗi trong 24 giờ",
+                "error" if tasks["overdue"] else "warning",
+            )
         failed = LmsEnrollment.objects.filter(status="failed").count()
         add(
             "lms_enrollments",
@@ -235,3 +252,30 @@ def _lead_service(user, now) -> dict:
             status="planned", starts_at__gte=now - timezone.timedelta(hours=1), starts_at__lte=end_of_day
         ).count(),
     }
+
+
+class BackgroundTasksView(APIView):
+    """Failed background tasks of the last 7 days and the periodic jobs' next / last runs."""
+
+    permission_classes = [require_perms("system.architecture", "rbac.manage_roles")]
+
+    def get(self, request):
+        from .background import details
+
+        return Response(details())
+
+
+class RetryBackgroundTaskView(APIView):
+    permission_classes = [require_perms("system.architecture", "rbac.manage_roles")]
+
+    def post(self, request, task_id):
+        from django_tasks_db.models import DBTaskResult
+
+        from .background import retry
+
+        try:
+            result = retry(str(task_id))
+        except (DBTaskResult.DoesNotExist, ValueError):
+            return Response({"detail": "Không tìm thấy tác vụ lỗi này."}, status=404)
+        audit(request, "system.task_retry", None, task=str(task_id))
+        return Response({"queued": str(result.id)})

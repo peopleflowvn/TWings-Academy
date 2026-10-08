@@ -16,7 +16,7 @@ import {
   Users,
   XCircle
 } from 'lucide-react';
-import { api } from '../../lib/api';
+import { api, ApiError } from '../../lib/api';
 import { openInMoodle } from '../../lib/lms';
 
 // ---------------------------------------------------------------- Moodle hub
@@ -152,6 +152,115 @@ export const HealthPage: React.FC = () => {
           </div>
         ))}
         {!checks && !error && <p className="p-4 text-xs text-slate-500">Đang kiểm tra…</p>}
+      </div>
+      <BackgroundTasks onChange={load} />
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------- background tasks (worker)
+interface FailedTask {
+  id: string;
+  label: string;
+  args: (string | number)[];
+  error: string;
+  finishedAt: string | null;
+}
+interface PeriodicJob {
+  job: string;
+  label: string;
+  nextRun: string | null;
+  lastRun: string | null;
+  lastStatus: string | null;
+}
+interface TasksData {
+  enabled: boolean;
+  overdue?: number;
+  running?: number;
+  failed: FailedTask[];
+  schedule: PeriodicJob[];
+}
+
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '–');
+const LAST_STATUS: Record<string, string> = { SUCCESSFUL: 'Thành công', FAILED: 'Lỗi', RUNNING: 'Đang chạy' };
+
+/** Failed tasks of the last 7 days (retry), queue backlog and the periodic jobs' next / last runs. */
+const BackgroundTasks: React.FC<{ onChange: () => void }> = ({ onChange }) => {
+  const [data, setData] = useState<TasksData | null>(null);
+  const [msg, setMsg] = useState('');
+  const load = () => api.get<TasksData>('/staff/system/tasks/').then(setData).catch((e: Error) => setMsg(e.message));
+  useEffect(() => {
+    load();
+  }, []);
+  const retry = async (task: FailedTask) => {
+    setMsg('');
+    try {
+      await api.post(`/staff/system/tasks/${task.id}/retry/`, {});
+      setMsg(`Đã xếp chạy lại: ${task.label}.`);
+      await load();
+      onChange();
+    } catch (e) {
+      setMsg(e instanceof ApiError ? e.message : 'Không chạy lại được');
+    }
+  };
+  if (!data) return msg ? <p className="text-xs text-red-600">{msg}</p> : null;
+  if (!data.enabled) {
+    return <p className="text-xs text-slate-500">Tác vụ nền đang chạy ngay trong web (máy chủ chưa có container worker).</p>;
+  }
+  return (
+    <div className="space-y-3">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h2 className="text-base font-black text-slate-900">Tác vụ nền</h2>
+          <p className="text-xs text-slate-500">
+            Worker chạy việc gọi Moodle và các việc định kỳ · {data.running ?? 0} đang chạy · {data.overdue ?? 0} quá hạn chưa chạy.
+          </p>
+        </div>
+      </div>
+      {msg && <p className="text-xs text-slate-700">{msg}</p>}
+      <div className="bg-white rounded-2xl border border-slate-200">
+        <div className="px-4 py-3 border-b border-slate-100 text-sm font-bold text-slate-900">
+          Lỗi trong 7 ngày, chưa xử lý ({data.failed.length})
+        </div>
+        {data.failed.length === 0 && <p className="p-4 text-xs text-emerald-700 font-bold">Không có tác vụ lỗi.</p>}
+        <div className="divide-y divide-slate-100">
+          {data.failed.map((t) => (
+            <div key={t.id} className="p-4 flex flex-wrap items-start justify-between gap-3 text-xs">
+              <div className="min-w-0">
+                <div className="font-bold text-slate-900 flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-red-600" /> {t.label}
+                  {t.args.length > 0 && <span className="font-mono font-normal text-slate-500">{t.args.join(', ')}</span>}
+                </div>
+                <div className="text-red-700 mt-1 break-all">{t.error}</div>
+                <div className="text-slate-400 mt-0.5">{when(t.finishedAt)}</div>
+              </div>
+              <button type="button" onClick={() => retry(t)} className="px-3 py-1.5 rounded-xl border border-slate-200 font-bold hover:bg-slate-50 flex items-center gap-1 cursor-pointer">
+                <RefreshCw className="w-3.5 h-3.5" /> Chạy lại
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="text-left text-slate-500">
+            <tr className="border-b border-slate-100">
+              <th className="px-4 py-2">Việc định kỳ (giờ Việt Nam)</th><th className="px-2">Lần tới</th><th className="px-2">Lần gần nhất</th><th className="px-2">Kết quả</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.schedule.map((j) => (
+              <tr key={j.job} className="border-t border-slate-100">
+                <td className="px-4 py-2 font-bold text-slate-800">{j.label}</td>
+                <td className="px-2">{when(j.nextRun)}</td>
+                <td className="px-2">{when(j.lastRun)}</td>
+                <td className={`px-2 ${j.lastStatus === 'FAILED' ? 'text-red-600 font-bold' : 'text-slate-600'}`}>
+                  {j.lastStatus ? LAST_STATUS[j.lastStatus] || j.lastStatus : '–'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

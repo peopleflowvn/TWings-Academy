@@ -245,7 +245,8 @@ flowchart LR
 - Bật an toàn: `TASKS_QUEUE=database` chỉ có trong `docker-compose.prod.yml` (backend + worker); thiếu biến này thì
   task chạy ngay sau commit như trước. Cron của host (`twings-lms`, `twings-billing`) được `setup-shared` gỡ cùng lúc.
   CI khởi động thử worker trên Postgres.
-- Còn lại: hiện các task thất bại trên /app.
+- /app → Tình trạng tích hợp: mục **Tác vụ nền** (quá hạn = worker dừng → lỗi; lỗi trong 24 giờ → cảnh báo), danh sách
+  tác vụ lỗi 7 ngày chưa xử lý với nút **Chạy lại**, lịch các việc định kỳ (lần tới, lần gần nhất, kết quả).
 
 ### 10.2 Moodle báo sự kiện cho TWings (ưu tiên 1)
 
@@ -334,7 +335,7 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 |---|---|---|---|
 | **0. Ổn định** (1 tuần) | Gỡ nội dung mẫu (lời chứng thực thật từ `/public/reviews/`, bỏ đối tác dự phòng, website không bao giờ hiện dữ liệu demo khi có backend, FAQ sửa được trong /app, migration dọn banner, email, SEO). 10.3 phần nhân sự và đơn hoàn. 10.4 Apache 4 worker | **Xong 07/10/2026**. Chờ quyết định nội dung: điểm sao nhập tay, ảnh stock. Tắt squash/rebase merge trên GitHub. Chốt Django 6.1 hay 5.2 LTS | Không còn nội dung sai sự thật. Không còn đường vào LMS cho người đã nghỉ |
 | **1. Loại trùng** (1–2 tuần) | 10.7 | **Gần xong** (08/10/2026): chứng chỉ, sổ điểm, thông báo lớp, cổng học viên một nơi. Để sau: Analytics của Moodle (cần dữ liệu vài đợt học), bỏ chế độ demo của frontend | Mỗi thông tin một nơi đúng. Bớt code học tập phải bảo trì |
-| **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | **Xong** (08/10/2026): 10.1 (worker chạy trên production, 7 việc định kỳ, bỏ cron host), 10.2, test hợp đồng (10.5). SSO gọi nội bộ: không làm (xem 10.3). Còn nhỏ: hiện task lỗi trên /app | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
+| **2. Nền tảng tích hợp** (2–4 tuần) | 10.1 (Django Tasks + worker, bỏ cron host). 10.2 (sự kiện Moodle → TWings). SSO gọi nội bộ (10.3). Test hợp đồng (10.5) | **Xong** (08/10/2026): 10.1 (worker chạy trên production, 7 việc định kỳ, bỏ cron host), 10.2, test hợp đồng (10.5). SSO gọi nội bộ: không làm (xem 10.3). Tác vụ lỗi hiện trên /app | Request web không gọi Moodle. Chứng chỉ < 1 phút sau khi hoàn thành. Lỗi tích hợp bị bắt ở CI |
 | **3. Trải nghiệm thống nhất** (2–3 tuần) | Theme Moodle theo TWings, email Moodle tiếng Việt cùng giọng, quyết định Moodle Mobile (10.5) | Đang có người làm phần theme trong `twings_setup.php` | Học viên đi từ website → tài khoản → lớp học như một sản phẩm |
 | **4. Vận hành và tuân thủ** (song song) | Quan sát, 2FA (10.5). Diễn tập khôi phục backup. Rà soát Nghị định 13/2023 (thời hạn lưu, quy trình xóa dữ liệu chạy cả TWings và Moodle) | Chưa bắt đầu | Có cảnh báo. Khôi phục được backup trong thời gian đã định |
 | **Khi chạm ngưỡng** | 10.6 | – | Theo bảng ngưỡng |
