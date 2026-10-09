@@ -447,9 +447,9 @@ django-tasks-db==0.13.0 \
     --hash=sha256:09630d417cf722b07e1439b837403e18e86455908ba532fa6795b0d23dc3ff23 \
     --hash=sha256:a3a47250b09d40e9b289851d2a550d840d29e59ee3e7115129831e291bb35576
     # via -r requirements.in
-djangorestframework==3.18.1 \
-    --hash=sha256:605d79fa2ec2f02905492e5ea13d903c2d842d0b4c915a57f7bf02ab9f3c91dd \
-    --hash=sha256:f1409d698967aaf82d5d98d76b549c8fba8bd92ebd0d83d24454508f72168dc2
+djangorestframework==3.18.3 \
+    --hash=sha256:446a9b352e7eff630421ab3f2328bd2401b109a9470afa4a31189994911ed030 \
+    --hash=sha256:8544bb674846731b1e3c9b309236ee1dc412905a0aa725be2ec193ca950a7d12
     # via -r requirements.in
 djangorestframework-camel-case==1.4.2 \
     --hash=sha256:cdae75846648abb6585c7470639a1d2fb064dc45f8e8b62aaa50be7f1a7a61f4
