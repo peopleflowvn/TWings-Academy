@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { isBackendEnabled } from '../../lib/api';
 import {
   X,
   Webhook,
@@ -47,6 +48,8 @@ export const CMSResendWebhookModal: React.FC<CMSResendWebhookModalProps> = ({
 
   // Simulation controls
   const [activeTab, setActiveTab] = useState<'config' | 'simulator' | 'events'>('config');
+  // Live: delivery events come from Resend to the server only; a simulated event would be invented data.
+  const live = isBackendEnabled();
   const [selectedEmailId, setSelectedEmailId] = useState<string>('');
   const [simulatedEventType, setSimulatedEventType] = useState<'email.delivered' | 'email.opened' | 'email.clicked' | 'email.bounced'>('email.opened');
 
@@ -155,6 +158,7 @@ export const CMSResendWebhookModal: React.FC<CMSResendWebhookModalProps> = ({
             <span>1. Điểm Cuối Webhook (Endpoint)</span>
           </button>
 
+          {!live && (
           <button
             type="button"
             onClick={() => setActiveTab('simulator')}
@@ -165,8 +169,9 @@ export const CMSResendWebhookModal: React.FC<CMSResendWebhookModalProps> = ({
             }`}
           >
             <Zap className="w-4 h-4 text-amber-500" />
-            <span>2. Mô Phỏng Sự Kiện (Live Simulator)</span>
+            <span>2. Mô phỏng sự kiện (chỉ chế độ demo)</span>
           </button>
+          )}
 
           <button
             type="button"
@@ -288,7 +293,7 @@ export const CMSResendWebhookModal: React.FC<CMSResendWebhookModalProps> = ({
           )}
 
           {/* TAB 2: LIVE SIMULATOR */}
-          {activeTab === 'simulator' && (
+          {!live && activeTab === 'simulator' && (
             <div className="space-y-5">
               <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-xs text-amber-900 space-y-1">
                 <div className="font-bold flex items-center gap-1.5 text-amber-800">

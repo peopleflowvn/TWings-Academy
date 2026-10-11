@@ -25,6 +25,7 @@ import {
   Briefcase,
   CalendarDays,
   Headset,
+  UserRound,
   FileSpreadsheet,
   Link2,
   MessageSquareQuote,
@@ -61,6 +62,7 @@ import { LayoutPage } from './pages/LayoutPage';
 import { ProgramsPage } from './pages/ProgramsPage';
 import { JourneysPage } from './pages/JourneysPage';
 import { IntakesPage } from './pages/IntakesPage';
+import { LearnersPage } from './pages/LearnersPage';
 import { CampaignLinksPage, ReviewsPage } from './pages/MarketingPages';
 import { ConsultingPage, InvoicesPage } from './pages/JourneyPages';
 import { LearningSupportPage } from './pages/LearningPages';
@@ -99,6 +101,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
         aliasPaths: ['/sales/requisitions', '/sales/requisitions/new'],
         perms: ['crm.view_leads']
       },
+      { path: '/sales/learners', label: 'Học viên', icon: UserRound, perms: ['crm.view_leads'] },
       { path: '/sales/consulting', label: 'Tư vấn & lịch hẹn', icon: Headset, perms: ['crm.view_leads'] },
       { path: '/sales/intakes', label: 'Lớp & đợt khai giảng', icon: CalendarDays, perms: ['courses.view', 'crm.view_leads'] },
       { path: '/sales/coupons', label: 'Mã giảm giá & học bổng', icon: Tag, perms: ['finance.transactions', 'crm.view_leads'] }
@@ -242,6 +245,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
             courses={courses.courses}
           />
         );
+      case '/sales/learners':
+        return <LearnersPage courses={courses.courses} />;
       case '/sales/consulting':
         return <ConsultingPage />;
       case '/finance/invoices':

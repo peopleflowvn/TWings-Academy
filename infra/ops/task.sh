@@ -294,6 +294,12 @@ for p in Program.objects.all():
     remote "cd $APP && sudo docker compose exec -T backend python manage.py journey_audit"
     ;;
 
+  crm-data-check)
+    # Read-only: CRM data left by older screens (paid stage without payment, fake PIC / campaign
+    # defaults, text-only classes, legacy payment columns, learners). Changes nothing.
+    remote "cd $APP && sudo docker compose exec -T backend python manage.py crm_data_check --json"
+    ;;
+
   seed-sales)
     remote "cd $APP && sudo docker compose exec -T backend python manage.py seed_sales_setup"
     ;;

@@ -15,6 +15,15 @@ interface Consultant {
 }
 
 /** Step 4: who receives new leads, workload, overdue first responses, upcoming consultations. */
+const dayKey = (iso: string) => new Date(iso).toDateString();
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const diff = Math.round((new Date(d.toDateString()).getTime() - new Date(today.toDateString()).getTime()) / 86400000);
+  const date = d.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' });
+  return diff === 0 ? `Hôm nay · ${date}` : diff === 1 ? `Ngày mai · ${date}` : diff === -1 ? `Hôm qua · ${date}` : date;
+}
+
 export const ConsultingPage: React.FC = () => {
   const canAssign = useStaffCan('crm.assign_pic');
   const canEdit = useStaffCan('crm.edit_status');
@@ -84,11 +93,16 @@ export const ConsultingPage: React.FC = () => {
           <h2 className="font-bold text-slate-900">Lịch hẹn tư vấn sắp tới</h2>
           <label className="text-xs flex items-center gap-1.5"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> Chỉ lịch của tôi</label>
         </div>
+        <p className="text-xs text-slate-500">"Đã tư vấn" thêm việc "Chốt đăng ký" cho ngày hôm sau; "Không đến" thêm việc "Liên hệ lại" trong ngày.</p>
         {!appts ? <p className="text-sm text-slate-500">Đang tải…</p> : appts.length === 0 && <p className="text-sm text-slate-500">Không có lịch hẹn.</p>}
-        {appts?.map((a) => (
-          <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-sm">
+        {appts?.map((a, i) => (
+          <React.Fragment key={a.id}>
+          {(i === 0 || dayKey(appts[i - 1].startsAt) !== dayKey(a.startsAt)) && (
+            <h3 className="pt-3 text-xs font-black uppercase tracking-wider text-slate-500">{dayLabel(a.startsAt)}</h3>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-sm">
             <div>
-              <strong>{new Date(a.startsAt).toLocaleString('vi-VN')}</strong> ·{' '}
+              <strong>{new Date(a.startsAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</strong> ·{' '}
               <a href={`/app/sales/crm?view=kanban&campaignId=all&orderId=${encodeURIComponent(a.orderId)}`} className="text-[#0073C1] font-semibold hover:underline" title="Mở hồ sơ lead">
                 {a.customerName}
               </a>{' '}
@@ -105,6 +119,7 @@ export const ConsultingPage: React.FC = () => {
               )}
             </div>
           </div>
+          </React.Fragment>
         ))}
       </section>
     </div>

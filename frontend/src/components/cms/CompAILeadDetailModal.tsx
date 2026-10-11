@@ -39,6 +39,7 @@ import { LeadContactPanel } from './LeadContactPanel';
 import { PlacementPanel } from '../../admin/pages/PlacementPages';
 import { api, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
+import { navigate } from '../../admin/router';
 
 const CRM_STAGES: { id: CRMStatus; label: string }[] = [
   { id: '1. Mới', label: 'Mới' },
@@ -101,6 +102,13 @@ const isoDate = (value?: string | null) => {
   if (!value) return '';
   const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
   return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : value.slice(0, 10);
+};
+
+/** Server timestamps (ISO) as dd/mm/yyyy hh:mm; anything else as given. */
+const when = (value?: string) => {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
 const SOURCES = ['Website', 'Hotline', 'Facebook', 'Zalo', 'TikTok', 'Giới thiệu', 'Hội thảo trường ĐH', 'Sự kiện'];
@@ -626,7 +634,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
         {isPrintPreview && (
           <div className="bg-slate-100 p-4 border-b border-slate-200 shrink-0 flex items-center justify-between">
             <div className="text-xs text-slate-700">
-              <strong>Chế độ in hồ sơ:</strong> Xem trước thông tin ứng viên chuẩn biểu mẫu TWings Academy & MSB.
+              <strong>Chế độ in hồ sơ:</strong> Xem trước hồ sơ đăng ký để in hoặc lưu PDF.
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -692,189 +700,52 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
             </div>
 
             {/* ============================================================= */}
-            {/* TAB 1: EDITABLE CANDIDATE & ORDER PROFILE */}
+            {/* TAB 1: THE REGISTRATION (course, class, fees, source) AND A SUMMARY OF THE LEARNER */}
             {/* ============================================================= */}
             {activeTab === 'profile' && (
               <div className="space-y-5 animate-fadeIn">
-                {/* 1.1 Thông tin cá nhân & liên hệ */}
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                {/* The person: details live on the learner's page and apply to every registration */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 gap-2">
                     <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                       <User className="w-4 h-4 text-[#0073C1]" />
-                      <span>1. Thông Tin Cá Nhân & Liên Hệ Ứng Viên</span>
+                      <span>Học viên {order.learnerCode ? <span className="font-mono text-slate-400 text-xs">{order.learnerCode}</span> : null}</span>
                     </h3>
-                    <span className="text-[11px] text-slate-400">Có thể chỉnh sửa trực tiếp</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 text-xs">
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Họ và tên *</label>
-                      <input
-                        type="text"
-                        value={order.customerName}
-                        onChange={(e) => handleFieldChange('customerName', e.target.value)}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-semibold text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Số điện thoại *</label>
-                      <input
-                        type="text"
-                        value={order.customerPhone || ''}
-                        onChange={(e) => handleFieldChange('customerPhone', e.target.value)}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-mono text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Email *</label>
-                      <input
-                        type="email"
-                        value={order.customerEmail || ''}
-                        onChange={(e) => handleFieldChange('customerEmail', e.target.value)}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Số CCCD / CMND *</label>
-                      <input
-                        type="text"
-                        value={order.citizenId || ''}
-                        onChange={(e) => handleFieldChange('citizenId', e.target.value)}
-                        placeholder="12 số"
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-mono text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Ngày sinh</label>
-                      <input
-                        type="date"
-                        value={isoDate(order.birthDate)}
-                        onChange={(e) => handleFieldChange('birthDate', e.target.value || null)}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Giới tính</label>
-                      <select
-                        value={order.gender || ''}
-                        onChange={(e) => handleFieldChange('gender', e.target.value as any)}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
+                    {order.learnerId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isDirty && !window.confirm('Hồ sơ đăng ký có thay đổi chưa lưu. Mở hồ sơ học viên và bỏ các thay đổi này?')) return;
+                          onClose();
+                          navigate(`/sales/learners?id=${encodeURIComponent(order.learnerId || '')}`);
+                        }}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
                       >
-                        <option value="">Chưa rõ</option>
-                        <option value="Nữ">Nữ</option>
-                        <option value="Nam">Nam</option>
-                        <option value="Khác">Khác</option>
-                      </select>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="font-bold text-slate-700 block mb-1">Nơi ở hiện tại / Khu vực *</label>
-                      <input
-                        type="text"
-                        value={order.currentResidence || order.area || ''}
-                        onChange={(e) => handleFieldChange('currentResidence', e.target.value)}
-                        placeholder="Số nhà, đường, phường/xã, tỉnh/thành"
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Hộ khẩu thường trú</label>
-                      <input
-                        type="text"
-                        value={order.permanentAddress || ''}
-                        onChange={(e) => handleFieldChange('permanentAddress', e.target.value)}
-                        placeholder="Tỉnh / thành phố"
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
-                      />
-                    </div>
+                        Mở hồ sơ học viên <ExternalLink className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
-                </div>
-
-                {/* 1.2 Học vấn & Nguyện vọng nghề nghiệp */}
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                      <GraduationCap className="w-4 h-4 text-[#0073C1]" />
-                      <span>2. Học Vấn & Năng Lực Ứng Tuyển</span>
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 text-xs">
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Trường Đại học / Cao đẳng</label>
-                      <input
-                        type="text"
-                        value={order.university || ''}
-                        onChange={(e) => handleFieldChange('university', e.target.value)}
-                        placeholder="Tên trường"
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-semibold text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Chuyên ngành đào tạo</label>
-                      <input
-                        type="text"
-                        value={order.major || ''}
-                        onChange={(e) => handleFieldChange('major', e.target.value)}
-                        placeholder="Ngành học"
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Năm tốt nghiệp</label>
-                      <input
-                        type="text"
-                        value={order.graduationYear || '2026'}
-                        onChange={(e) => handleFieldChange('graduationYear', e.target.value)}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Trình độ học vấn</label>
-                      <select
-                        value={order.educationLevel || 'Đại học'}
-                        onChange={(e) => handleFieldChange('educationLevel', e.target.value)}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
-                      >
-                        <option value="Sinh viên năm cuối">Sinh viên năm cuối</option>
-                        <option value="Đại học">Đại học (Đã tốt nghiệp)</option>
-                        <option value="Cao đẳng">Cao đẳng</option>
-                        <option value="Đã đi làm ngành khác">Đã đi làm ngành khác (Chuyển ngành)</option>
-                      </select>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="font-bold text-slate-700 block mb-1">Link Hồ Sơ / CV đính kèm</label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={order.cvLink || 'https://drive.google.com/cv-banker-sample.pdf'}
-                          onChange={(e) => handleFieldChange('cvLink', e.target.value)}
-                          className="flex-1 p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-mono text-slate-600"
-                        />
-                        {order.cvLink && (
-                          <a
-                            href={order.cvLink}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="p-2.5 bg-blue-50 text-[#0073C1] hover:bg-blue-100 rounded-xl font-bold flex items-center justify-center shrink-0"
-                            title="Mở link CV trong tab mới"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        )}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-2 text-xs">
+                    {[
+                      ['Họ và tên', order.customerName],
+                      ['Số điện thoại', order.customerPhone],
+                      ['Email', order.customerEmail],
+                      ['Ngày sinh', order.birthDate ? isoDate(order.birthDate).split('-').reverse().join('/') : ''],
+                      ['Giới tính', order.gender],
+                      ['CCCD', order.citizenId ? `•••••••••${order.citizenId.slice(-3)}` : ''],
+                      ['Trường', order.university],
+                      ['Ngành', order.major],
+                      ['Nơi ở hiện tại', order.currentResidence || order.area]
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <span className="text-slate-400 block">{label}</span>
+                        <span className="font-semibold text-slate-800">{value || '–'}</span>
                       </div>
-                    </div>
+                    ))}
                   </div>
+                  <p className="text-[11px] text-slate-500">
+                    Thông tin cá nhân, học vấn, người liên hệ và CV được sửa ở hồ sơ học viên và áp dụng cho mọi khóa người này đăng ký.
+                  </p>
                 </div>
 
                 {/* 1.3 Khóa học & ưu đãi học phí */}
@@ -882,7 +753,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                     <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-[#0073C1]" />
-                      <span>3. Khóa Học & Chính Sách Học Phí</span>
+                      <span>Khóa học & học phí</span>
                     </h3>
                   </div>
 
@@ -983,7 +854,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                     <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                       <Share2 className="w-4 h-4 text-[#0073C1]" />
-                      <span>4. Nguồn Tuyển Sinh & Người Giới Thiệu (NGT)</span>
+                      <span>Nguồn & người giới thiệu</span>
                     </h3>
                   </div>
 
@@ -1163,7 +1034,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                           <div className="space-y-1 flex-1">
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-xs text-slate-900">{act.title}</span>
-                              <span className="text-[11px] text-slate-400 font-mono">{act.timestamp}</span>
+                              <span className="text-[11px] text-slate-400 font-mono">{when(act.timestamp)}</span>
                             </div>
                             <p className="text-xs text-slate-700 leading-relaxed font-medium">{act.content}</p>
                             <div className="text-[11px] text-slate-400">
@@ -1260,7 +1131,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                               {task.title}
                             </span>
                             <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                              Hạn chót: {task.dueDate} · Người phụ trách: {task.assignedTo}
+                              Hạn chót: {task.dueDate ? isoDate(task.dueDate).split('-').reverse().join('/') : 'không đặt'} · Người phụ trách: {task.assignedTo || 'chưa giao'}
                             </div>
                           </div>
                         </div>
@@ -1483,7 +1354,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                 rows={3}
                 value={order.consultDetail || ''}
                 onChange={(e) => handleFieldChange('consultDetail', e.target.value)}
-                placeholder="Lưu ý quan trọng cần nhớ về ứng viên này..."
+                placeholder="Lưu ý về lần đăng ký này…"
                 className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white text-xs leading-relaxed"
               />
             </div>

@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BookOpen, Bot, Building2, CreditCard, User } from 'lucide-react';
 import { AdmissionCampaign, Course, Order } from '../../types';
 import { CompAILeadDetailModal } from './CompAILeadDetailModal';
 import { CMSCampaignManagementModal } from './CMSCampaignManagementModal';
@@ -23,55 +22,6 @@ import { confirmOrderPayment, loadOrder, saveOrderChanges } from '../../admin/da
 interface CMSCRMOrdersTabProps {
   courses?: Course[];
 }
-
-// Course categories definition with distinctive color coding and icons
-export const CRM_COURSE_CATEGORIES = [
-  {
-    id: 'all',
-    title: 'Tất Cả Khóa Học',
-    shortName: 'Tất cả',
-    icon: BookOpen,
-    badgeBg: 'bg-slate-100 text-slate-800 border-slate-200',
-    accentColor: 'text-[#0073C1]',
-    description: 'Toàn bộ chương trình đào tạo của TWings Academy & MSB'
-  },
-  {
-    id: 'twings-qhkh-doanh-nghiep',
-    title: 'Khóa Quan hệ Khách hàng doanh nghiệp',
-    shortName: 'RM Doanh Nghiệp (CIB)',
-    icon: Building2,
-    badgeBg: 'bg-blue-50 text-blue-700 border-blue-200',
-    accentColor: 'text-blue-600',
-    description: 'Đào tạo kỹ năng thẩm định tài chính, bán hàng B2B và quản trị danh mục SME/CIB'
-  },
-  {
-    id: 'twings-qhkh-ca-nhan',
-    title: 'Quan hệ Khách hàng cá nhân',
-    shortName: 'RM Cá Nhân (RB)',
-    icon: User,
-    badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    accentColor: 'text-indigo-600',
-    description: 'Tư vấn tín dụng tiêu dùng, thẻ tín dụng, huy động vốn & bảo hiểm bancassurance'
-  },
-  {
-    id: 'gdv-ngan-hang',
-    title: 'Giao dịch viên & Vận hành Dịch vụ Khách hàng',
-    shortName: 'Giao Dịch Viên (GDV)',
-    icon: CreditCard,
-    badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    accentColor: 'text-emerald-600',
-    description: 'Nghiệp vụ quầy, kiểm soát thanh toán quốc tế và dịch vụ khách hàng xuất sắc'
-  },
-  {
-    id: 'deeplearning-ai-agents',
-    title: 'Xây dựng các Đại lý AI & Quy trình Làm việc Tự động',
-    shortName: 'AI Agents & Automation',
-    icon: Bot,
-    badgeBg: 'bg-purple-50 text-purple-700 border-purple-200',
-    accentColor: 'text-purple-600',
-    description: 'Ứng dụng AI tạo sinh, tự động hóa quy trình nghiệp vụ và chấm điểm tín dụng'
-  }
-];
 
 type View = 'campaigns' | 'kanban';
 

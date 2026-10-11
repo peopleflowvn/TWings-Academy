@@ -95,6 +95,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   const [consultants, setConsultants] = useState<Consultant[]>([]);
   const [cohorts, setCohorts] = useState<CohortOption[]>([]);
   const [creating, setCreating] = useState(false);
+  const [dragOver, setDragOver] = useState<CRMStatus | null>(null);
   const request = useRef(0); // only the latest request may update the screen
 
   useEffect(() => {
@@ -352,7 +353,22 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
               const deals = rows.filter((o) => stageOf(o) === s.id);
               const total = stageCount(s.id);
               return (
-                <div key={s.id} className="w-[200px] shrink-0 bg-slate-100/80 rounded-2xl p-2.5 border border-slate-200 space-y-2 max-h-[78vh] flex flex-col">
+                <div
+                  key={s.id}
+                  onDragOver={(e) => {
+                    if (!canEdit) return;
+                    e.preventDefault();
+                    setDragOver(s.id);
+                  }}
+                  onDragLeave={() => setDragOver((cur) => (cur === s.id ? null : cur))}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(null);
+                    const lead = rows.find((r) => r.id === e.dataTransfer.getData('text/plain'));
+                    if (lead) moveStage(lead, s.id);
+                  }}
+                  className={`w-[200px] shrink-0 rounded-2xl p-2.5 border space-y-2 max-h-[78vh] flex flex-col ${dragOver === s.id ? 'bg-blue-50 border-blue-300' : 'bg-slate-100/80 border-slate-200'}`}
+                >
                   <div className="flex items-center justify-between px-1">
                     <span className="flex items-center gap-1.5 text-xs font-black text-slate-800">
                       <span className={`w-2 h-2 rounded-full ${s.dot}`} /> {s.label}
@@ -368,7 +384,12 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
                   <div className="flex-1 overflow-y-auto space-y-2 pr-0.5">
                     {deals.length === 0 && <div className="p-4 text-center text-[11px] text-slate-400 border border-dashed border-slate-300 rounded-xl">Trống</div>}
                     {deals.map((o) => (
-                      <div key={o.id} onClick={() => onOpenLeadDetail(o)} className={`p-2.5 bg-white rounded-xl border hover:border-blue-400 cursor-pointer space-y-1.5 ${responseState(o) === 'late' ? 'border-red-300' : 'border-slate-200'}`}>
+                      <div
+                        key={o.id}
+                        draggable={canEdit}
+                        onDragStart={(e) => e.dataTransfer.setData('text/plain', o.id)}
+                        onClick={() => onOpenLeadDetail(o)}
+                        className={`p-2.5 bg-white rounded-xl border hover:border-blue-400 cursor-pointer space-y-1.5 ${responseState(o) === 'late' ? 'border-red-300' : 'border-slate-200'}`}>
                         <div className="text-xs font-bold text-slate-900 leading-snug">{o.customerName}</div>
                         <div className="text-[10px] text-slate-500 truncate" title={o.courseTitle}>{o.courseTitle}</div>
                         {o.batchCohort && <div className="text-[10px] text-slate-500 truncate">Lớp: {o.batchCohort}</div>}

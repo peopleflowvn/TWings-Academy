@@ -14,7 +14,7 @@ const reportError = (err: unknown) =>
 const ORDER_READ_ONLY = new Set([
   'id', 'orderCode', 'totalPaidAmount', 'paidAt', 'isDuplicate', 'duplicateCount', 'createdAt', 'updatedAt',
   'privacyConsentAt', 'privacyConsentVersion', 'timelineActivities', 'followupTasks', 'agentResearch',
-  'responseDueAt', 'firstResponseAt'
+  'responseDueAt', 'firstResponseAt', 'learnerId', 'learnerCode', 'relatedOrders'
 ]);
 // Derived by the server from recorded payments (confirm-payment, bank webhook): never sent in a PATCH.
 const PAYMENT_DERIVED = new Set(['status', 'paymentStatusDetail', 'paymentDate', 'learningAccess', 'refundedAmount']);

@@ -257,3 +257,91 @@ def test_backfill_groups_existing_registrations_into_learners(course):
     assert learner.full_name == "New name" and learner.university == "HVNH"
     assert not new.is_duplicate  # another course: a returning learner
     assert again.is_duplicate and old.order_code in again.duplicate_note
+
+
+def test_cancel_stage_cancels_an_unpaid_order_and_reopening_restores_it(staff_client, course):
+    order = Order.objects.create(customer_name="A", course=course, amount=100, total_receivable=100)
+    client = staff_client(Role.SALES_CRM)
+    client.patch(f"/api/v1/staff/orders/{order.pk}/", {"crmStatus": "7. Đã hủy"}, format="json")
+    order.refresh_from_db()
+    assert order.status == "cancelled"
+    client.patch(f"/api/v1/staff/orders/{order.pk}/", {"crmStatus": "6. Chăm sóc lại"}, format="json")
+    order.refresh_from_db()
+    assert order.status == "pending"
+
+    order.total_paid_amount = 50
+    order.save()
+    client.patch(f"/api/v1/staff/orders/{order.pk}/", {"crmStatus": "7. Đã hủy"}, format="json")
+    order.refresh_from_db()
+    assert order.status == "pending"  # money received: a refund cancels it, not a stage
+
+
+def test_appointment_outcome_adds_the_next_step(staff_client, course):
+    from django.utils import timezone
+
+    from apps.crm.models import Appointment
+
+    order = Order.objects.create(customer_name="A", course=course, pic="Tư vấn A")
+    appt = Appointment.objects.create(order=order, starts_at=timezone.now())
+    res = staff_client(Role.SALES_CRM).patch(
+        f"/api/v1/staff/appointments/{appt.pk}/", {"status": "no_show"}, format="json"
+    )
+    assert res.status_code == 200, res.content
+    task = order.followup_tasks.get()
+    assert task.title.startswith("Liên hệ lại") and task.assigned_to == "Tư vấn A"
+
+
+def test_crm_data_check_reports_without_changing_anything(course):
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    Order.objects.create(customer_name="A", course=course, crm_status="5. Đã đóng phí", pic="HuongNT22")
+    Order.objects.create(
+        customer_name="B", course=course, campaign_code="TW3", batch_cohort="Khóa học 9 - Hà Nội"
+    )
+    Order.objects.create(customer_name="C", course=course, paid_amount_l1=500)
+    before = list(Order.objects.values_list("pk", "crm_status", "status", "pic").order_by("pk"))
+
+    out = StringIO()
+    call_command("crm_data_check", "--json", stdout=out)
+    import json
+
+    report = json.loads(out.getvalue())
+    assert report["paid_stage_without_payment"]["count"] == 1
+    assert report["pic"]["old_default_names"] == 1
+    assert report["campaign_codes_without_campaign"]["old_defaults"] == 1
+    assert report["class_without_intake"]["count"] == 1
+    assert report["legacy_payment_columns"]["paid_amount_l1"] == 1
+    assert list(Order.objects.values_list("pk", "crm_status", "status", "pic").order_by("pk")) == before
+
+
+def test_tuition_template_migration_removes_the_sample_account(db):
+    import importlib
+
+    from django.apps import apps as django_apps
+
+    from apps.notifications.models import EmailTemplate
+
+    migration = importlib.import_module("apps.notifications.migrations.0003_tuition_template_real_account")
+    body = (
+        '<img src="https://img.vietqr.io/image/MSB-03001010099999-compact2.png'
+        '?amount=8490000&addInfo=TW3%20{{orderCode}}" />'
+        "<p><strong>Ngân hàng:</strong> Ngân hàng TMCP Hàng Hải Việt Nam (MSB)</p>"
+        "<p><strong>Số tài khoản:</strong> <span>03001010099999</span></p>"
+        "<p><strong>Chủ tài khoản:</strong> CONG TY CP TWINGS ACADEMY</p>"
+        "<p>Nội dung CK: TW3 {{orderCode}} {{customerName}}</p><p>Đoạn nhân viên tự viết</p>"
+    )
+    EmailTemplate.objects.create(code="vietqr_tuition_invoice", name="Học phí", subject="Học phí", body=body)
+    migration.forwards(django_apps, None)
+    fixed = EmailTemplate.objects.get(code="vietqr_tuition_invoice")
+    assert "03001010099999" not in fixed.body and "TW3" not in fixed.body
+    for var in (
+        "{{qrImageUrl}}",
+        "{{bankName}}",
+        "{{accountNumber}}",
+        "{{accountName}}",
+        "{{transferContent}}",
+    ):
+        assert var in fixed.body
+    assert "Đoạn nhân viên tự viết" in fixed.body and "accountNumber" in fixed.variables

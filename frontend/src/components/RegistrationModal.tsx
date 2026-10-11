@@ -139,9 +139,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       enrolledCourseName: targetCourse.title,
       consultDetail: consultNote ? `Ghi chú học viên: ${consultNote}` : 'Đăng ký tư vấn từ form website.',
       tuitionFee: targetCourse.price,
-      totalReceivable: targetCourse.price,
-      paidAmountL1: 0,
-      paymentStatusDetail: 'Chưa thanh toán'
+      totalReceivable: targetCourse.price
     };
 
     onSubmitSuccess(newOrder);

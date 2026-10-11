@@ -406,6 +406,9 @@ export interface Order {
   cohortId?: string | null;
   /** The consultant (staff user id) in charge; pic keeps their name. */
   assignedTo?: string | null;
+  /** The learner (one per person) this registration belongs to. */
+  learnerId?: string | null;
+  learnerCode?: string;
   /** The admission campaign the lead came from (campaignCode keeps its code). */
   campaign?: string | null;
   /** Other leads / orders of the same person (phone, e-mail or CCCD): one lead's detail only. */
@@ -414,7 +417,7 @@ export interface Order {
   originalAmount?: number;
   discountAmount?: number;
   discountCode?: string;
-  status: 'paid' | 'pending' | 'cancelled';
+  status: 'paid' | 'pending' | 'cancelled' | 'refunded';
   paymentMethod: 'vietqr' | 'free' | 'card' | 'transfer' | 'cash';
   createdAt: string;
   paidAt?: string;

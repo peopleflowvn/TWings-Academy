@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Avatar } from '../Avatar';
 import { useServerCollection } from '../../lib/serverCollection';
 import { INSTRUCTORS } from '../../lib/cmsCollections';
@@ -27,7 +27,7 @@ import {
 import confetti from 'canvas-confetti';
 import { Instructor, CourseCohort } from '../../types';
 import { REAL_INSTRUCTORS } from '../../data/coursesData';
-import { CRM_COURSE_CATEGORIES } from './CMSCRMOrdersTab';
+import { api, isBackendEnabled, Paginated } from '../../lib/api';
 import { ImageUploadField } from './ImageUploadField';
 
 export const INITIAL_EXTENDED_INSTRUCTORS: Instructor[] = [
@@ -75,6 +75,19 @@ export const CMSInstructorsTab: React.FC = () => {
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourseFilter, setSelectedCourseFilter] = useState('all');
+  // Courses and who teaches them (Course.instructors on the server).
+  const [courseList, setCourseList] = useState<{ id: string; title: string; instructorIds: string[] }[]>([]);
+  useEffect(() => {
+    if (!isBackendEnabled()) return;
+    api
+      .get<Paginated<{ id: string; title: string; instructorIds?: string[]; instructors?: { id: string }[] }>>('/staff/courses/?pageSize=200')
+      .then((res) =>
+        setCourseList(
+          res.results.map((c) => ({ id: c.id, title: c.title, instructorIds: c.instructorIds || (c.instructors || []).map((i) => i.id) }))
+        )
+      )
+      .catch(() => setCourseList([]));
+  }, []);
   const [editingInstructor, setEditingInstructor] = useState<Instructor | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -153,7 +166,8 @@ export const CMSInstructorsTab: React.FC = () => {
 
     const matchCourse =
       selectedCourseFilter === 'all' ||
-      (inst.expertiseCourses && inst.expertiseCourses.includes(selectedCourseFilter));
+      Boolean(courseList.find((c) => c.id === selectedCourseFilter)?.instructorIds.includes(inst.id)) ||
+      Boolean(inst.expertiseCourses?.includes(selectedCourseFilter));
 
     return matchSearch && matchCourse;
   });
@@ -252,9 +266,9 @@ export const CMSInstructorsTab: React.FC = () => {
             onChange={(e) => setSelectedCourseFilter(e.target.value)}
             className="text-xs p-2 border border-slate-300 rounded-xl bg-slate-50 font-bold"
           >
-            <option value="all">Tất cả chuyên môn</option>
-            {CRM_COURSE_CATEGORIES.filter((c) => c.id !== 'all').map((c) => (
-              <option key={c.id} value={c.id}>{c.shortName}</option>
+            <option value="all">Mọi khóa học</option>
+            {courseList.map((c) => (
+              <option key={c.id} value={c.id}>{c.title}</option>
             ))}
           </select>
         </div>

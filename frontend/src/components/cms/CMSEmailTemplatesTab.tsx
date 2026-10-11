@@ -43,11 +43,12 @@ import {
   renderEmailTemplate, 
   sendEmailWithResend,
   extractOrderEmailVariables,
+  withPlaceholders,
+  EMAIL_VARIABLE_LABELS,
   isLiveEmailEnabled,
   SENDER_DISPLAY,
   getSavedEmailSendLogs,
-  getSavedWebhookConfig,
-  processIncomingWebhookEvent
+  getSavedWebhookConfig
 } from '../../utils/resendEmail';
 import { CMSResendWebhookModal } from './CMSResendWebhookModal';
 import { CMSEmailDetailModal } from './CMSEmailDetailModal';
@@ -87,25 +88,15 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
   const [editName, setEditName] = useState(selectedTemplate.name);
 
   // Preview target lead
-  const [previewOrder, setPreviewOrder] = useState<Order>(orders[0] || {
-    id: 'ord-preview',
-    customerName: 'Nguyễn Thị Khánh Linh',
-    customerEmail: 'ntkhanhlinh.ka@gmail.com',
-    customerPhone: '0912 345 678',
-    courseTitle: 'Khóa Quan hệ Khách hàng doanh nghiệp',
-    batchCohort: 'Khóa học 9 - Hà Nội',
-    orderCode: '0415_MSB_KhanhLinh',
-    tuitionFee: 8490000,
-    amount: 8490000,
-    status: 'paid',
-    pic: 'HuongNT22'
-  });
+  // Preview: a real lead if one is chosen; otherwise every variable shows as [its meaning].
+  const [previewOrder, setPreviewOrder] = useState<Order>(orders[0] || ({ id: 'ord-preview', customerName: '', orderCode: '', amount: 0, status: 'pending' } as unknown as Order));
 
   // Device Preview: desktop or mobile
   const [devicePreview, setDevicePreview] = useState<'desktop' | 'mobile'>('desktop');
 
   // Test Dispatch State
-  const [testEmailTo, setTestEmailTo] = useState(orders[0]?.customerEmail || 'hocvien.msb@gmail.com');
+  // A test goes to a staff mailbox typed here, never to a learner by default.
+  const [testEmailTo, setTestEmailTo] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -123,10 +114,10 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showWebhookModal, setShowWebhookModal] = useState(false);
 
-  // Load persistent logs on mount
+  // Demo mode only: the history kept in this browser (live: the server's e-mail log).
   useEffect(() => {
-    setSendLogs(getSavedEmailSendLogs());
-  }, []);
+    if (!live) setSendLogs(getSavedEmailSendLogs());
+  }, [live]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -207,7 +198,7 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
     }
 
     setIsSending(true);
-    const variables = extractOrderEmailVariables(previewOrder);
+    const variables = withPlaceholders(extractOrderEmailVariables(previewOrder));
     const renderedHtml = renderEmailTemplate(editBody, variables);
     const renderedSubject = renderEmailTemplate(editSubject, variables);
 
@@ -229,10 +220,12 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
       return;
     }
 
-    // Refresh logs
-    setSendLogs(getSavedEmailSendLogs());
-    confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
-    showToast(`Đã gửi email thành công qua Resend API tới ${testEmailTo}! ID: ${result.messageId}`);
+    if (!live) setSendLogs(getSavedEmailSendLogs());
+    showToast(
+      result.status === 'simulated'
+        ? 'Chưa gửi thật: máy chủ chưa cấu hình khóa Resend (RESEND_API_KEY).'
+        : `Đã gửi thư thử tới ${testEmailTo}.`
+    );
   };
 
   // Filtered Templates
@@ -255,7 +248,7 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
     return matchStatus && matchSearch;
   });
 
-  const previewVariables = extractOrderEmailVariables(previewOrder);
+  const previewVariables = withPlaceholders(extractOrderEmailVariables(previewOrder));
   const renderedPreviewBody = renderEmailTemplate(editBody, previewVariables);
   const renderedPreviewSubject = renderEmailTemplate(editSubject, previewVariables);
   const hasLiveApiKey = isLiveEmailEnabled();
@@ -269,7 +262,7 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
     { tag: 'instructorName', desc: 'Giảng viên phụ trách' },
     { tag: 'amount', desc: 'Số tiền học phí' },
     { tag: 'orderCode', desc: 'Mã hồ sơ / đơn hàng' },
-    { tag: 'bankAccount', desc: 'STK ngân hàng MSB' },
+    { tag: 'bankAccount', desc: EMAIL_VARIABLE_LABELS.bankAccount },
     { tag: 'location', desc: 'Địa điểm đào tạo' },
     { tag: 'pic', desc: 'Chuyên viên cố vấn' },
     { tag: 'customerPhone', desc: 'SĐT học viên' }
@@ -781,60 +774,6 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
                 ))}
               </div>
 
-              {/* Quick Simulator Buttons */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-slate-400 font-semibold text-[11px]">Thử Webhook:</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const target = sendLogs[0];
-                    if (!target) return;
-                    processIncomingWebhookEvent({
-                      id: `evt_${Date.now()}`,
-                      type: 'email.opened',
-                      createdAt: new Date().toISOString(),
-                      emailId: target.resendMessageId || 'msg_sim_1',
-                      from: 'TWings x MSB <onboarding@resend.dev>',
-                      to: [target.recipientEmail],
-                      subject: target.subject
-                    });
-                    setSendLogs(getSavedEmailSendLogs());
-                    showToast(`⚡ Webhook [email.opened]: Học viên ${target.recipientName} vừa mở thư!`);
-                    confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 } });
-                  }}
-                  className="px-2.5 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/30 rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
-                  title="Mô phỏng sự kiện học viên mở thư"
-                >
-                  <Eye className="w-3 h-3 text-purple-300" />
-                  <span>Mở Thư (Open)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const target = sendLogs[0];
-                    if (!target) return;
-                    processIncomingWebhookEvent({
-                      id: `evt_${Date.now()}`,
-                      type: 'email.clicked',
-                      createdAt: new Date().toISOString(),
-                      emailId: target.resendMessageId || 'msg_sim_1',
-                      from: 'TWings x MSB <onboarding@resend.dev>',
-                      to: [target.recipientEmail],
-                      subject: target.subject,
-                      payload: { click: { link: 'https://twings.edu.vn/xac-nhan' } }
-                    });
-                    setSendLogs(getSavedEmailSendLogs());
-                    showToast(`⚡ Webhook [email.clicked]: Học viên ${target.recipientName} vừa click link!`);
-                    confetti({ particleCount: 35, spread: 60, origin: { y: 0.6 } });
-                  }}
-                  className="px-2.5 py-1 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-400/30 rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
-                  title="Mô phỏng sự kiện học viên click liên kết"
-                >
-                  <MousePointer className="w-3 h-3 text-emerald-300" />
-                  <span>Click Link</span>
-                </button>
-              </div>
             </div>
           </div>
 

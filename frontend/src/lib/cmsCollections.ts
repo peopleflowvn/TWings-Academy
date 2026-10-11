@@ -43,6 +43,7 @@ export const COHORTS: CollectionOptions<CourseCohort> = {
 
 export const CAMPAIGNS: CollectionOptions<AdmissionCampaign> = {
   endpoint: '/staff/campaigns/',
+  debounceMs: 0,
   fromServer: (d: any) => ({
     id: d.id,
     code: d.code,

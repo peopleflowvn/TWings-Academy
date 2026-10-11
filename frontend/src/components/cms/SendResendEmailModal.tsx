@@ -26,12 +26,16 @@ import { Order, EmailTemplate, EmailSendLog } from '../../types';
 import {
   INITIAL_EMAIL_TEMPLATES,
   extractOrderEmailVariables,
+  missingEmailVariables,
+  EMAIL_VARIABLE_LABELS,
+  EmailContext,
   renderEmailTemplate,
   sendEmailWithResend,
   isLiveEmailEnabled,
   SENDER_DISPLAY
 } from '../../utils/resendEmail';
 import { SandboxedHtmlPreview } from './SandboxedHtmlPreview';
+import { api } from '../../lib/api';
 
 interface SendResendEmailModalProps {
   isOpen: boolean;
@@ -56,7 +60,8 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
 
   // Live: templates edited in the CMS (server); demo: bundled samples.
   const { items: serverTemplates } = useServerCollection<EmailTemplate>(EMAIL_TEMPLATES, INITIAL_EMAIL_TEMPLATES);
-  const templateList = serverTemplates.length ? serverTemplates : INITIAL_EMAIL_TEMPLATES;
+  // Live: only the templates stored on the server (the bundled samples are for the demo mode).
+  const templateList = serverTemplates.length || isLiveEmailEnabled() ? serverTemplates : INITIAL_EMAIL_TEMPLATES;
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(defaultTemplateId);
   const [recipientEmail, setRecipientEmail] = useState<string>(order.customerEmail || '');
   const [subject, setSubject] = useState<string>('');
@@ -70,20 +75,55 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Sync variables and render when template or order changes
+  // Payment instructions and the intake of this registration: the e-mail uses real values only.
+  const [context, setContext] = useState<EmailContext | null>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    let live = true;
+    Promise.all([
+      api.get<EmailContext['billing']>(`/staff/orders/${order.id}/billing/`).catch(() => null),
+      order.cohortId ? api.get<EmailContext['cohort']>(`/staff/cohorts/${order.cohortId}/`).catch(() => null) : Promise.resolve(null)
+    ]).then(([billing, cohort]) => live && setContext({ billing, cohort }));
+    return () => {
+      live = false;
+    };
+  }, [isOpen, order.id, order.cohortId]);
+
+  const [missing, setMissing] = useState<string[]>([]);
+  // Sync variables and render when template, order or context changes
   useEffect(() => {
     const tmpl = templateList.find((t) => t.id === selectedTemplateId) || templateList[0];
-    const variables = extractOrderEmailVariables(order);
+    if (!context || !tmpl) return;
+    const variables = extractOrderEmailVariables(order, context);
+    setMissing(missingEmailVariables([tmpl.subject, tmpl.body], variables));
     setSubject(renderEmailTemplate(tmpl.subject, variables));
     setHtmlBody(renderEmailTemplate(tmpl.body, variables));
     setRecipientEmail(order.customerEmail || '');
     setSendResult(null);
     setErrorMessage(null);
-  }, [selectedTemplateId, order]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTemplateId, order, context, templateList.length]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const currentTemplate = templateList.find((t) => t.id === selectedTemplateId) || templateList[0];
+  if (!currentTemplate) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-950/75 flex items-center justify-center p-4" onClick={onClose}>
+        <div className="bg-white rounded-2xl p-5 max-w-md text-sm space-y-3" onClick={(e) => e.stopPropagation()}>
+          <p>Chưa có mẫu email nào trên máy chủ. Tạo mẫu ở <strong>Mẫu email & lịch sử gửi</strong> rồi gửi lại.</p>
+          <button type="button" onClick={onClose} className="px-3 py-2 rounded-xl border border-slate-200 font-bold cursor-pointer">Đóng</button>
+        </div>
+      </div>
+    );
+  }
   const hasLiveApiKey = isLiveEmailEnabled();
   const senderFrom = SENDER_DISPLAY;
 
@@ -93,6 +133,11 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
       return;
     }
 
+    if (
+      missing.length &&
+      !window.confirm(`Thư còn thiếu: ${missing.map((m) => EMAIL_VARIABLE_LABELS[m] || m).join(', ')}. Vẫn gửi?`)
+    )
+      return;
     setIsSending(true);
     setErrorMessage(null);
 
@@ -136,17 +181,17 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold tracking-tight">Gửi Thư Qua Resend API</h3>
+                <h3 className="text-base font-bold tracking-tight">Gửi email cho học viên</h3>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold border ${
                   hasLiveApiKey 
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30' 
                     : 'bg-blue-500/20 text-blue-300 border-blue-400/30'
                 }`}>
-                  {hasLiveApiKey ? '● Resend Live API' : '● Resend Developer Sandbox'}
+                  {hasLiveApiKey ? 'Gửi qua máy chủ TWings' : 'Chế độ demo (không gửi thật)'}
                 </span>
               </div>
               <p className="text-xs text-slate-300">
-                Gửi trực tiếp thư tuyển sinh, hướng dẫn VietQR hoặc giấy báo nhập học tới <strong>{order.customerName}</strong>
+                Chọn mẫu, kiểm tra nội dung rồi gửi tới <strong>{order.customerName}</strong>
               </p>
             </div>
           </div>
@@ -193,6 +238,16 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
             </div>
           )}
 
+          {missing.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-amber-900 text-xs">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+              <span>
+                <strong>Mẫu thư dùng dữ liệu chưa có cho đăng ký này:</strong>{' '}
+                {missing.map((m) => EMAIL_VARIABLE_LABELS[m] || m).join(', ')}. Các chỗ đó sẽ để trống; bổ sung (xếp lớp, cấu hình tài khoản nhận tiền…) hoặc sửa nội dung trước khi gửi.
+              </span>
+            </div>
+          )}
+
           {/* Error Banner */}
           {errorMessage && (
             <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3 text-red-900 text-xs">
@@ -223,12 +278,12 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
 
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-1 bg-white border border-slate-200 rounded-xl font-bold text-slate-700">
-                {order.batchCohort || 'Khóa học 9 - Hà Nội'}
+                {order.batchCohort || 'Chưa xếp lớp'}
               </span>
               <span className={`px-2.5 py-1 rounded-xl font-bold ${
                 order.status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
               }`}>
-                {order.status === 'paid' ? 'Đã đóng phí' : 'Chờ VietQR'}
+                {order.status === 'paid' ? 'Đã đóng phí' : order.status === 'pending' ? 'Chưa đóng đủ' : order.status === 'refunded' ? 'Đã hoàn tiền' : 'Đã hủy'}
               </span>
             </div>
           </div>
@@ -355,7 +410,7 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-500 flex items-center gap-1.5">
             <Zap className="w-4 h-4 text-amber-500" />
-            <span>Tự động lưu vào lịch sử tương tác của hồ sơ sau khi gửi</span>
+            <span>Thư đã gửi được ghi vào nhật ký của hồ sơ</span>
           </div>
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
@@ -370,11 +425,11 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
             <button
               type="button"
               onClick={handleSend}
-              disabled={isSending}
+              disabled={isSending || !context}
               className="px-5 py-2.5 bg-[#0073C1] hover:bg-[#005fa3] text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 flex-1 sm:flex-none active:scale-95"
             >
               <Send className={`w-4 h-4 ${isSending ? 'animate-spin' : ''}`} />
-              <span>{isSending ? 'Đang Gửi Qua Resend API...' : 'Gửi Email Ngay'}</span>
+              <span>{isSending ? 'Đang gửi…' : 'Gửi email'}</span>
             </button>
           </div>
         </div>

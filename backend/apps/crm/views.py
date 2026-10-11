@@ -53,6 +53,8 @@ class PublicRegistrationView(APIView):
         )
 
 
+CANCELLED_STAGE = "7. Đã hủy"
+
 # CSV export deliberately omits encrypted identity fields (CCCD, addresses, bank accounts).
 EXPORT_FIELDS = [
     "order_code",
@@ -227,6 +229,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         self._guard_fields(serializer)
         was_new = serializer.instance.crm_status == "1. Mới"
+        was_cancelled = serializer.instance.crm_status == CANCELLED_STAGE
         order = serializer.save()
         self._sync_pic(serializer, order)
         from .learners import sync_from_order
@@ -234,8 +237,34 @@ class OrderViewSet(viewsets.ModelViewSet):
         sync_from_order(
             order, serializer.validated_data.keys()
         )  # the person's details, on every registration
+        if "crm_status" in serializer.validated_data:
+            self._follow_cancel_stage(order, was_cancelled)
         if was_new and order.crm_status != "1. Mới":
             mark_first_response(order)
+
+    def _follow_cancel_stage(self, order, was_cancelled):
+        """
+        A lead moved to 'Đã hủy' with nothing paid is a cancelled order (no payment reminders; a later
+        transfer shows as unmatched for finance); moved out again, it waits for payment again. Orders
+        with money received are cancelled by a refund only.
+        """
+        actor = self.request.user.name or self.request.user.email
+        if order.crm_status == CANCELLED_STAGE and order.status == "pending" and not order.total_paid_amount:
+            order.status = "cancelled"
+            order.save(update_fields=["status", "updated_at"])
+            Activity.objects.create(
+                order=order,
+                type="note",
+                title="Hủy đăng ký (chưa thu học phí)",
+                actor=actor,
+                actor_user=self.request.user,
+            )
+        elif was_cancelled and order.crm_status != CANCELLED_STAGE and order.status == "cancelled":
+            order.status = "pending"
+            order.save(update_fields=["status", "updated_at"])
+            Activity.objects.create(
+                order=order, type="note", title="Mở lại đăng ký", actor=actor, actor_user=self.request.user
+            )
 
     @action(detail=False, methods=["get"])
     def pipeline(self, request):
@@ -466,6 +495,9 @@ class AppointmentViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, viewset
         return qs
 
     def perform_update(self, serializer):
+        from .models import FollowupTask
+
+        before = serializer.instance.status
         appt = serializer.save()
         if "starts_at" in serializer.validated_data:
             appt.reminded_at = None
@@ -478,6 +510,20 @@ class AppointmentViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, viewset
             actor=self.request.user.name or self.request.user.email,
             actor_user=self.request.user,
         )
+        # The next step after a consultation, on the consultant's list.
+        next_step = {
+            "done": ("Chốt đăng ký sau buổi tư vấn", 1, "high"),
+            "no_show": ("Liên hệ lại: học viên không đến buổi hẹn", 0, "high"),
+        }.get(appt.status)
+        if next_step and before != appt.status:
+            title, days, priority = next_step
+            FollowupTask.objects.create(
+                order=appt.order,
+                title=title,
+                due_date=timezone.localdate() + timezone.timedelta(days=days),
+                priority=priority,
+                assigned_to=appt.order.pic,
+            )
 
 
 class InvoiceRequestViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):

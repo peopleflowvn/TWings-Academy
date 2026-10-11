@@ -226,7 +226,7 @@ export const INITIAL_EMAIL_TEMPLATES: EmailTemplate[] = [
                     <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto 16px auto;">
                       <tr>
                         <td style="background-color: #ffffff; padding: 12px; border-radius: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.06); border: 1px solid #dcfce7;">
-                          <img src="https://img.vietqr.io/image/MSB-03001010099999-compact2.png?amount=8490000&addInfo=TW3%20{{orderCode}}&accountName=CONG%20TY%20CP%20TWINGS%20ACADEMY" alt="Ma VietQR Napas 247" width="220" style="display: block; border-radius: 8px; margin: 0 auto;" />
+                          <img src="{{qrImageUrl}}" alt="Ma VietQR Napas 247" width="220" style="display: block; border-radius: 8px; margin: 0 auto;" />
                           <p style="margin: 8px 0 0 0; font-size: 11px; color: #15803d; font-weight: 700;">
                             Mở ứng dụng Mobile Banking &bull; Quét mã VietQR
                           </p>
@@ -238,11 +238,11 @@ export const INITIAL_EMAIL_TEMPLATES: EmailTemplate[] = [
                     <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #ffffff; border-radius: 10px; border: 1px solid #dcfce7; text-align: left; max-width: 440px; margin: 0 auto;">
                       <tr>
                         <td style="padding: 12px 16px;">
-                          <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Ngân hàng:</strong> Ngân hàng TMCP Hàng Hải Việt Nam (MSB)</p>
-                          <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Số tài khoản:</strong> <span style="font-family: monospace; font-weight: 800; color: #0f172a; font-size: 14px;">03001010099999</span></p>
-                          <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Chủ tài khoản:</strong> CONG TY CP TWINGS ACADEMY</p>
+                          <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Ngân hàng:</strong> {{bankName}}</p>
+                          <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Số tài khoản:</strong> <span style="font-family: monospace; font-weight: 800; color: #0f172a; font-size: 14px;">{{accountNumber}}</span></p>
+                          <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Chủ tài khoản:</strong> {{accountName}}</p>
                           <p style="margin: 4px 0; font-size: 13px; color: #b45309; background-color: #fef3c7; padding: 6px 8px; border-radius: 6px; font-weight: 700;">
-                            Nội dung CK: <span style="font-family: monospace;">TW3 {{orderCode}} {{customerName}}</span>
+                            Nội dung CK: <span style="font-family: monospace;">{{transferContent}}</span>
                           </p>
                         </td>
                       </tr>
@@ -252,7 +252,7 @@ export const INITIAL_EMAIL_TEMPLATES: EmailTemplate[] = [
               </table>
 
               <p style="margin: 16px 0 0 0; font-size: 13px; color: #64748b; line-height: 1.5;">
-                <em>* Lưu ý: Hệ thống Webhook của ngân hàng MSB sẽ tự động nhận diện cú pháp chuyển khoản và kích hoạt tài khoản LMS ngay trong 60 giây.</em>
+                <em>* Chuyển khoản đúng số tiền và nội dung ở trên để hệ thống tự ghi nhận học phí.</em>
               </p>
             </td>
           </tr>
@@ -804,24 +804,79 @@ function formatVND(num?: number) {
   return new Intl.NumberFormat('vi-VN').format(num) + ' ₫';
 }
 
+/** What a template can use, and what it means (shown to the editor and in "missing data" warnings). */
+export const EMAIL_VARIABLE_LABELS: Record<string, string> = {
+  customerName: 'Họ tên học viên',
+  courseTitle: 'Tên khóa học',
+  batchCohort: 'Lớp / đợt khai giảng',
+  startDate: 'Ngày khai giảng',
+  instructorName: 'Giảng viên phụ trách lớp',
+  amount: 'Số tiền cần đóng',
+  orderCode: 'Mã đăng ký',
+  bankAccount: 'Tài khoản nhận học phí (theo hướng dẫn thanh toán của đơn)',
+  qrImageUrl: 'Ảnh mã VietQR của đơn',
+  bankName: 'Ngân hàng nhận học phí',
+  accountNumber: 'Số tài khoản nhận học phí',
+  accountName: 'Chủ tài khoản nhận học phí',
+  transferContent: 'Nội dung chuyển khoản (mã đơn)',
+  location: 'Địa điểm học',
+  pic: 'Tư vấn viên phụ trách',
+  customerPhone: 'SĐT học viên'
+};
+
+/** Facts about a registration that are not on the order itself (loaded by the screen that sends). */
+export interface EmailContext {
+  /** Payment instructions and amount due (GET /staff/orders/<id>/billing/). */
+  billing?: {
+    amountDueNow: number;
+    payment: { bankName: string; accountNumber: string; accountName: string; transferContent: string; qrImageUrl: string } | null;
+  } | null;
+  /** The intake of the registration (GET /staff/cohorts/<id>/). */
+  cohort?: { startDate?: string | null; location?: string; leadInstructorName?: string } | null;
+}
+
 /**
- * Prepares variables payload from an Order object
+ * Template variables of one registration, from real data only: what is not known is left empty (the
+ * sending screen lists it) rather than filled with an example value.
  */
-export function extractOrderEmailVariables(order: Order): Record<string, string | number> {
+export function extractOrderEmailVariables(order: Order, ctx: EmailContext = {}): Record<string, string | number> {
+  const pay = ctx.billing?.payment;
+  const due = ctx.billing ? ctx.billing.amountDueNow : order.totalReceivable || order.amount;
+  const start = ctx.cohort?.startDate;
   return {
-    customerName: order.customerName || 'Quý học viên',
-    courseTitle: order.courseTitle || 'Khóa đào tạo ngân hàng',
-    batchCohort: order.batchCohort || 'Khóa học 9 - Hà Nội',
-    orderCode: order.orderCode || order.id,
-    amount: formatVND(order.tuitionFee || order.amount),
-    customerPhone: order.customerPhone || 'Chưa có SĐT',
+    customerName: order.customerName || '',
+    courseTitle: order.courseTitle || '',
+    batchCohort: order.batchCohort || '',
+    orderCode: order.orderCode || '',
+    amount: due ? formatVND(due) : '',
+    customerPhone: order.customerPhone || '',
     customerEmail: order.customerEmail || '',
-    pic: order.pic || 'Chuyên viên Tuyển sinh TWings',
-    startDate: '15/10/2026',
-    location: order.studyArea || 'Tòa nhà ROX Tower, 54A Nguyễn Chí Thanh, Hà Nội',
-    bankAccount: '03001010099999 (MSB)',
-    instructorName: 'GV Vũ Thu Phương (Giám đốc Phân khúc KH Doanh nghiệp MSB)'
+    pic: order.pic || '',
+    startDate: start ? start.slice(0, 10).split('-').reverse().join('/') : '',
+    location: ctx.cohort?.location || '',
+    bankAccount: pay ? `${pay.accountNumber} – ${pay.accountName} – ${pay.bankName} (nội dung: ${pay.transferContent})` : '',
+    // The order's own payment instructions (same as the learner's payment page and the bank webhook).
+    qrImageUrl: pay?.qrImageUrl || '',
+    bankName: pay?.bankName || '',
+    accountNumber: pay?.accountNumber || '',
+    accountName: pay?.accountName || '',
+    transferContent: pay?.transferContent || '',
+    instructorName: ctx.cohort?.leadInstructorName || ''
   };
+}
+
+/** Variables the texts use that have no value for this registration. */
+export function missingEmailVariables(texts: string[], variables: Record<string, string | number | undefined>): string[] {
+  const used = new Set<string>();
+  texts.forEach((t) => (t.match(/{{\s*(\w+)\s*}}/g) || []).forEach((m) => used.add(m.replace(/[{}\s]/g, ''))));
+  return [...used].filter((k) => k in variables && (variables[k] === '' || variables[k] === undefined));
+}
+
+/** For previews without a real registration: every empty variable shows as [its meaning]. */
+export function withPlaceholders(variables: Record<string, string | number>): Record<string, string | number> {
+  return Object.fromEntries(
+    Object.entries(variables).map(([k, v]) => [k, v === '' ? `[${EMAIL_VARIABLE_LABELS[k] || k}]` : v])
+  );
 }
 
 /**
