@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BookOpen, Bot, Building2, CreditCard, User } from 'lucide-react';
 import { AdmissionCampaign, Course, Order } from '../../types';
 import { CompAILeadDetailModal } from './CompAILeadDetailModal';
@@ -8,7 +8,7 @@ import { AdmissionRequisitionPage } from './AdmissionRequisitionPage';
 import { LeadPipelineView, PipelineScope } from './LeadPipelineView';
 import { useServerCollection } from '../../lib/serverCollection';
 import { CAMPAIGNS } from '../../lib/cmsCollections';
-import { getSavedCampaigns, saveCampaigns } from '../../utils/talentCampaigns';
+import { getSavedCampaigns } from '../../utils/talentCampaigns';
 
 /**
  * Sales / admissions (/app/sales/crm):
@@ -21,8 +21,11 @@ import { getSavedCampaigns, saveCampaigns } from '../../utils/talentCampaigns';
 interface CMSCRMOrdersTabProps {
   orders: Order[];
   courses?: Course[];
-  onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
   onUpdateOrderCRM?: (updatedOrder: Order) => void;
+  /** The full order (the list leaves out identity documents and bank accounts). */
+  onLoadOrder: (orderId: string) => Promise<Order>;
+  /** Finance: record a received amount; resolves to the order as now stored. */
+  onConfirmPayment: (orderId: string, amount: number) => Promise<Order | null>;
 }
 
 // Course categories definition with distinctive color coding and icons
@@ -87,8 +90,9 @@ function readUrl() {
 export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
   orders,
   courses = [],
-  onUpdateOrderStatus,
-  onUpdateOrderCRM
+  onUpdateOrderCRM,
+  onLoadOrder,
+  onConfirmPayment
 }) => {
   const { items: campaigns, update: setCampaigns } = useServerCollection<AdmissionCampaign>(CAMPAIGNS, getSavedCampaigns());
   const initial = readUrl();
@@ -98,6 +102,13 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
   const [templateCourseId, setTemplateCourseId] = useState(initial.templateCourseId);
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Order | null>(null);
+
+  // A lead opens with its full record from the server (the list holds a summary of each lead).
+  const openLead = (lead: Order) => {
+    onLoadOrder(lead.id)
+      .then(setSelectedLead)
+      .catch((err: Error) => window.alert(`Không mở được hồ sơ: ${err.message}`));
+  };
 
   // Keep the URL in step with the screen (shareable links, browser history).
   useEffect(() => {
@@ -131,12 +142,16 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
     };
   }, []);
 
-  // Deep link ?orderId=: open that lead as stored on the server (nothing is added to it).
+  // Deep link ?orderId=: open that lead once, as stored on the server (nothing is added to it).
+  const deepLinked = useRef(false);
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('orderId');
-    if (id && !selectedLead) {
+    if (id && !selectedLead && !deepLinked.current) {
       const match = orders.find((o) => o.id === id || o.orderCode === id);
-      if (match) setSelectedLead(match);
+      if (match) {
+        deepLinked.current = true;
+        openLead(match);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders]);
@@ -154,7 +169,6 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
   };
   const updateCampaigns = (updated: AdmissionCampaign[]) => {
     setCampaigns(updated);
-    saveCampaigns(updated);
   };
   const activeCampaign = campaigns.find((c) => c.id === scope);
 
@@ -205,7 +219,7 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
           onChangeScope={setScope}
           onBack={() => setView('campaigns')}
           onUpdateOrderCRM={onUpdateOrderCRM}
-          onOpenLeadDetail={setSelectedLead}
+          onOpenLeadDetail={openLead}
           onOpenEditCampaign={() => setShowCampaignModal(true)}
         />
       )}
@@ -218,7 +232,7 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
             if (onUpdateOrderCRM) onUpdateOrderCRM(updated);
             setSelectedLead(null);
           }}
-          onUpdateStatus={onUpdateOrderStatus}
+          onConfirmPayment={(amount) => onConfirmPayment(selectedLead.id, amount)}
         />
       )}
 
@@ -228,6 +242,7 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
         campaigns={activeCampaign ? [activeCampaign, ...campaigns.filter((c) => c.id !== activeCampaign.id)] : campaigns}
         onUpdateCampaigns={updateCampaigns}
         orders={orders}
+        courses={courses}
         onSelectCampaign={(id) => {
           openPipeline(id);
           setShowCampaignModal(false);

@@ -85,7 +85,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     const q = search.trim().toLowerCase();
     return scoped.filter((o) => {
       if (q) {
-        const haystack = [o.customerName, o.customerPhone, o.customerEmail, o.orderCode, o.citizenId, o.university, o.batchCohort]
+        const haystack = [o.customerName, o.customerPhone, o.customerEmail, o.orderCode, o.university, o.batchCohort]
           .map((v) => (v || '').toLowerCase())
           .join(' ');
         if (!haystack.includes(q)) return false;
@@ -224,7 +224,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[220px]">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tên, SĐT, email, mã đơn, CCCD, trường, lớp…" className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-xs" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tên, SĐT, email, mã đơn, trường, lớp…" className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-xs" />
           </div>
           <select value={course} onChange={(e) => setCourse(e.target.value)} className={select}>
             <option value="all">Mọi khóa học</option>

@@ -1,4 +1,4 @@
-import { AdmissionCampaign, CampaignPositionTrack, Order, CRMStatus } from '../types';
+import { AdmissionCampaign, CampaignPositionTrack, Order } from '../types';
 
 /**
  * TALENTFLOW ADMISSION & RECRUITMENT CAMPAIGN ARCHITECTURE
@@ -177,118 +177,7 @@ export function getSavedCampaigns(): AdmissionCampaign[] {
   return INITIAL_CAMPAIGNS;
 }
 
-export function saveCampaigns(campaigns: AdmissionCampaign[]) {
-  try {
-    localStorage.setItem('twings_admission_campaigns', JSON.stringify(campaigns));
-  } catch {
-    // ignore
-  }
-}
-
-/**
- * Matches an order/lead to a campaign position track based on course title or courseId
- */
+/** The campaign position of a lead: the position on the lead's course (none if the course is not in the campaign). */
 export function matchOrderToPosition(order: Order, positions: CampaignPositionTrack[]): CampaignPositionTrack | undefined {
-  if (!positions || positions.length === 0) return undefined;
-  
-  // Try direct courseId match
-  const directMatch = positions.find((p) => p.courseId === order.courseId);
-  if (directMatch) return directMatch;
-
-  // Try title inclusion
-  const title = (order.courseTitle || '').toLowerCase();
-  const matchByTitle = positions.find((p) => {
-    const posTitle = p.positionTitle.toLowerCase();
-    const short = p.shortName.toLowerCase();
-    return title.includes('doanh nghiệp') && (posTitle.includes('doanh nghiệp') || short.includes('cib')) ||
-           title.includes('cá nhân') && (posTitle.includes('cá nhân') || short.includes('rb')) ||
-           title.includes('giao dịch') && (posTitle.includes('giao dịch') || short.includes('teller')) ||
-           (title.includes('ai') || title.includes('agent')) && (posTitle.includes('ai') || short.includes('ai'));
-  });
-
-  return matchByTitle || positions[0];
-}
-
-/**
- * Calculates campaign-level KPIs and metrics
- */
-export function calculateCampaignMetrics(campaign: AdmissionCampaign, orders: Order[]) {
-  const campaignOrders = orders.filter((o) => {
-    if (campaign.id === 'camp-2026-q4-hn') {
-      return (o.batchCohort || '').includes('Hà Nội') || (o.studyArea || '').includes('Hà Nội') || !o.batchCohort;
-    }
-    if (campaign.id === 'camp-2026-oct-hcm') {
-      return (o.batchCohort || '').includes('HCM') || (o.studyArea || '').includes('HCM');
-    }
-    return true;
-  });
-
-  const appliedCount = campaignOrders.length;
-  const enrolledCount = campaignOrders.filter((o) => o.status === 'paid' || o.crmStatus === '5. Đã đóng phí').length;
-  const inScreeningCount = campaignOrders.filter((o) => o.crmStatus === '1. Mới' || o.crmStatus === '2. Đã tiếp cận').length;
-  const inBankTourCount = campaignOrders.filter((o) => o.crmStatus === '3. Đang tư vấn' || o.crmStatus === '4. Hẹn gặp').length;
-  const fillRate = Math.round((enrolledCount / (campaign.targetHeadcount || 100)) * 100);
-
-  return {
-    appliedCount,
-    enrolledCount,
-    inScreeningCount,
-    inBankTourCount,
-    fillRate: Math.min(fillRate, 100),
-    targetHeadcount: campaign.targetHeadcount,
-    campaignOrders
-  };
-}
-
-/**
- * TalentFlow 1.0 ATS Pipeline Conversion Funnel Metrics
- */
-export interface ATSPipelineMetrics {
-  totalSourced: number;      // Ứng tuyển & Sourcing
-  screenedCount: number;     // Sàng lọc CV & Tiêu chuẩn
-  interviewedCount: number;  // Phỏng vấn & Đánh giá nghiệp vụ (Bank Tour)
-  offeredCount: number;      // Thư mời nhập học / Offer Letter
-  enrolledCount: number;     // Đã nộp học phí & Xác nhận
-  onboardedCount: number;    // Khai giảng & Bố trí việc làm
-  talentPoolCount: number;   // Hồ sơ bảo lưu / Dự bị đợt sau
-  conversionRate: number;    // Tỷ lệ chuyển đổi tổng (Enrolled / Total %)
-  screenToInterviewRate: number;
-  interviewToOfferRate: number;
-  offerToEnrollRate: number;
-}
-
-export function calculateATSPipelineMetrics(orders: Order[]): ATSPipelineMetrics {
-  const totalSourced = orders.length;
-  const screenedCount = orders.filter((o) => o.crmStatus !== '1. Mới' && o.crmStatus !== '7. Đã hủy').length;
-  const interviewedCount = orders.filter((o) => 
-    o.crmStatus === '3. Đang tư vấn' || 
-    o.crmStatus === '4. Hẹn gặp' || 
-    o.crmStatus === '5. Đã đóng phí'
-  ).length;
-  const offeredCount = orders.filter((o) => 
-    o.crmStatus === '4. Hẹn gặp' || 
-    o.crmStatus === '5. Đã đóng phí'
-  ).length;
-  const enrolledCount = orders.filter((o) => o.status === 'paid' || o.crmStatus === '5. Đã đóng phí').length;
-  const onboardedCount = orders.filter((o) => o.trainingStatus === 'Đang học' || o.trainingStatus === 'Đã tốt nghiệp').length;
-  const talentPoolCount = orders.filter((o) => o.crmStatus === '6. Chăm sóc lại').length;
-
-  const conversionRate = totalSourced > 0 ? Math.round((enrolledCount / totalSourced) * 100) : 0;
-  const screenToInterviewRate = screenedCount > 0 ? Math.round((interviewedCount / screenedCount) * 100) : 0;
-  const interviewToOfferRate = interviewedCount > 0 ? Math.round((offeredCount / interviewedCount) * 100) : 0;
-  const offerToEnrollRate = offeredCount > 0 ? Math.round((enrolledCount / offeredCount) * 100) : 0;
-
-  return {
-    totalSourced,
-    screenedCount,
-    interviewedCount,
-    offeredCount,
-    enrolledCount,
-    onboardedCount,
-    talentPoolCount,
-    conversionRate,
-    screenToInterviewRate,
-    interviewToOfferRate,
-    offerToEnrollRate
-  };
+  return (positions || []).find((p) => p.courseId === order.courseId);
 }

@@ -37,6 +37,8 @@ import { LmsLearningPanel } from './LmsLearningPanel';
 import { OrderBillingPanel } from './OrderBillingPanel';
 import { LeadContactPanel } from './LeadContactPanel';
 import { PlacementPanel } from '../../admin/pages/PlacementPages';
+import { api, Paginated } from '../../lib/api';
+import { useStaffCan } from '../../lib/lms';
 
 const CRM_STAGES: { id: CRMStatus; label: string }[] = [
   { id: '1. Mới', label: 'Mới' },
@@ -52,14 +54,35 @@ interface CompAILeadDetailModalProps {
   order: Order;
   onClose: () => void;
   onSave: (updatedOrder: Order) => void;
-  onUpdateStatus?: (orderId: string, status: Order['status']) => void;
+  /** Finance: record a received amount; resolves to the order as now stored. */
+  onConfirmPayment: (amount: number) => Promise<Order | null>;
 }
+
+interface Consultant { id: string; name: string }
+interface CohortOption { id: string; name: string; status: string; startDate?: string | null }
+
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  pending: 'Chưa đóng đủ',
+  paid: 'Đã đóng đủ',
+  cancelled: 'Đã hủy',
+  refunded: 'Đã hoàn tiền'
+};
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  vietqr: 'Chuyển khoản VietQR',
+  transfer: 'Chuyển khoản',
+  cash: 'Tiền mặt',
+  card: 'Thẻ',
+  free: 'Miễn phí',
+  bundle: 'Trong gói chương trình'
+};
+
+const SOURCES = ['Website', 'Hotline', 'Facebook', 'Zalo', 'TikTok', 'Giới thiệu', 'Hội thảo trường ĐH', 'Sự kiện'];
 
 export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
   order: initialOrder,
   onClose,
   onSave,
-  onUpdateStatus,
+  onConfirmPayment,
 }) => {
   const [order, setOrder] = useState<Order>(initialOrder);
   const [isDirty, setIsDirty] = useState(false);
@@ -68,6 +91,21 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [copiedLeadLink, setCopiedLeadLink] = useState(false);
+  const canAssign = useStaffCan('crm.assign_pic');
+  const [consultants, setConsultants] = useState<Consultant[]>([]);
+  const [cohorts, setCohorts] = useState<CohortOption[]>([]);
+
+  // Real consultants (staff with the admissions role) and the real intakes of the lead's course.
+  useEffect(() => {
+    api.get<Consultant[]>('/staff/consultants/').then(setConsultants).catch(() => setConsultants([]));
+  }, []);
+  useEffect(() => {
+    if (!initialOrder.courseId) return;
+    api
+      .get<Paginated<CohortOption>>(`/staff/cohorts/?course=${encodeURIComponent(initialOrder.courseId)}&pageSize=100`)
+      .then((res) => setCohorts(res.results))
+      .catch(() => setCohorts([]));
+  }, [initialOrder.courseId]);
 
   const handleCopyLeadLink = () => {
     const url = `${window.location.origin}/app/sales/crm?orderId=${encodeURIComponent(order.id)}`;
@@ -153,19 +191,11 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
     onSave(updated);
   };
 
-  // Mark as paid VietQR
-  const handleMarkAsPaid = () => {
-    // Saving status 'paid' makes the CMS call confirm-payment for the outstanding amount (finance
-    // permission, audited); the payment shows in the timeline from the server.
-    const updated: Order = { ...order, status: 'paid', crmStatus: '5. Đã đóng phí' };
-    setOrder(updated);
-    setIsDirty(false);
-    onSave(updated);
-    if (onUpdateStatus) onUpdateStatus(updated.id, 'paid');
-    setShowSaveToast(true);
+  // Finance confirmed the money (the payments tab asks first); the server records the payment.
+  const handleConfirmReceived = async (amount: number) => {
+    const fresh = await onConfirmPayment(amount);
+    if (fresh) setOrder(fresh);
   };
-
-
 
   // Add Note
   const handleAddNote = (e: React.FormEvent) => {
@@ -174,7 +204,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
     const newAct = {
       id: `act-${Date.now()}`,
       type: noteType,
-      title: noteType === 'call' ? 'Cuộc gọi tư vấn' : noteType === 'zalo' ? 'Tin nhắn Zalo' : noteType === 'meeting' ? 'Gặp trực tiếp HO MSB' : 'Ghi chú nội bộ',
+      title: noteType === 'call' ? 'Cuộc gọi tư vấn' : noteType === 'zalo' ? 'Tin nhắn Zalo' : noteType === 'meeting' ? 'Gặp trực tiếp' : 'Ghi chú nội bộ',
       content: noteContent.trim(),
       actor: order.pic || 'Chuyên viên Tuyển sinh',
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' hôm nay'
@@ -200,7 +230,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
       dueDate: taskDate,
       priority: taskPriority,
       isCompleted: false,
-      assignedTo: order.pic || 'HuongNT22'
+      assignedTo: order.pic || ''
     };
 
     const updated = {
@@ -285,7 +315,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                   {order.isDuplicate && (
                     <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-md text-[11px] font-bold flex items-center gap-1 border border-red-200">
                       <AlertTriangle className="w-3 h-3" />
-                      Trùng lặp ({order.duplicateCount || 2})
+                      Trùng lặp{order.duplicateCount ? ` (${order.duplicateCount} hồ sơ)` : ''}
                     </span>
                   )}
 
@@ -295,7 +325,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                     </span>
                   ) : (
                     <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-xs flex items-center gap-1 border border-amber-200">
-                      <Clock className="w-3.5 h-3.5" /> Chờ VietQR
+                      <Clock className="w-3.5 h-3.5" /> {PAYMENT_STATUS_LABEL[order.status] || 'Chưa đóng đủ'}
                     </span>
                   )}
                 </div>
@@ -329,9 +359,11 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                   <span className="text-slate-300">·</span>
 
                   <div className="flex items-center gap-1.5 text-slate-600 truncate max-w-sm flex-wrap">
-                    <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold border border-indigo-200 text-[11px]">
-                      🎯 {order.campaignCode || 'CAMP-2026-Q4-HN'}
-                    </span>
+                    {order.campaignCode && (
+                      <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold border border-indigo-200 text-[11px]">
+                        🎯 {order.campaignCode}
+                      </span>
+                    )}
                     <span className="truncate font-semibold text-slate-800">{order.courseTitle}</span>
                   </div>
 
@@ -357,16 +389,6 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                 <span className="hidden sm:inline">Gửi Thư (Resend)</span>
               </button>
 
-              {order.status !== 'paid' && (
-                <button
-                  type="button"
-                  onClick={handleMarkAsPaid}
-                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-                >
-                  <Check className="w-4 h-4" />
-                  <span className="hidden sm:inline">Gạch Nợ VietQR</span>
-                </button>
-              )}
 
               <button
                 type="button"
@@ -471,11 +493,11 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
             {/* Metric 1: Amount & Payment */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Học Phí Thu</span>
-                <span className="font-mono font-bold text-slate-900 text-sm">{formatVND(order.amount)}</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Phải thu</span>
+                <span className="font-mono font-bold text-slate-900 text-sm">{formatVND(order.totalReceivable || order.amount)}</span>
               </div>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${order.status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                {order.status === 'paid' ? 'Đã đóng' : 'Chờ nộp'}
+                {PAYMENT_STATUS_LABEL[order.status] || order.status}
               </span>
             </div>
 
@@ -489,15 +511,23 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 flex flex-col justify-center">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Chuyên Viên PIC</span>
               <select
-                value={order.pic || 'HuongNT22'}
-                onChange={(e) => handleFieldChange('pic', e.target.value)}
-                className="bg-transparent font-bold text-slate-800 text-xs focus:outline-none cursor-pointer"
+                value={order.assignedTo || ''}
+                disabled={!canAssign}
+                title={canAssign ? 'Phân công tư vấn viên' : 'Cần quyền phân công PIC'}
+                onChange={(e) => {
+                  const next = consultants.find((c) => c.id === e.target.value);
+                  setOrder((prev) => ({ ...prev, assignedTo: next?.id || null, pic: next?.name || '' }));
+                  setIsDirty(true);
+                }}
+                className="bg-transparent font-bold text-slate-800 text-xs focus:outline-none cursor-pointer disabled:cursor-not-allowed"
               >
-                <option value="HuongNT22">HuongNT22 (Nguyễn Thu Hường)</option>
-                <option value="TuanNM">TuanNM (Nguyễn Minh Tuấn)</option>
-                <option value="PhuongVU">PhuongVU (Vũ Phương)</option>
-                <option value="ChiNK">ChiNK (Kim Chi)</option>
-                <option value="TungLH">TungLH (Lê Hoàng Tùng)</option>
+                <option value="">Chưa phân công</option>
+                {order.assignedTo && !consultants.some((c) => c.id === order.assignedTo) && (
+                  <option value={order.assignedTo}>{order.pic || 'Nhân viên khác'}</option>
+                )}
+                {consultants.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
               </select>
             </div>
 
@@ -505,10 +535,11 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 flex flex-col justify-center">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Độ Quan Tâm</span>
               <select
-                value={order.interestLevel || 'Rất cao'}
+                value={order.interestLevel || ''}
                 onChange={(e) => handleFieldChange('interestLevel', e.target.value as any)}
                 className="bg-transparent font-bold text-slate-800 text-xs focus:outline-none cursor-pointer"
               >
+                <option value="">Chưa đánh giá</option>
                 <option value="Rất cao">🔥 Rất cao (Sẵn sàng nộp)</option>
                 <option value="Cao">⚡ Cao (Đang so sánh)</option>
                 <option value="Trung bình">⏳ Trung bình (Cần hỏi gia đình)</option>
@@ -682,10 +713,11 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">Giới tính</label>
                       <select
-                        value={order.gender || 'Nữ'}
+                        value={order.gender || ''}
                         onChange={(e) => handleFieldChange('gender', e.target.value as any)}
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
                       >
+                        <option value="">Chưa rõ</option>
                         <option value="Nữ">Nữ</option>
                         <option value="Nam">Nam</option>
                         <option value="Khác">Khác</option>
@@ -838,47 +870,51 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">Lớp / Đợt khai giảng *</label>
                       <select
-                        value={order.batchCohort || 'Khóa học 9 - Hà Nội'}
-                        onChange={(e) => handleFieldChange('batchCohort', e.target.value)}
+                        value={order.cohortId || ''}
+                        onChange={(e) => {
+                          const next = cohorts.find((c) => c.id === e.target.value);
+                          setOrder((prev) => ({ ...prev, cohortId: next?.id || null, batchCohort: next?.name || '' }));
+                          setIsDirty(true);
+                        }}
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-semibold text-slate-900 text-xs"
                       >
-                        <option value="Khóa học 9 - Hà Nội">📅 Khóa học 9 - Hà Nội (Khai giảng 15/10/2026)</option>
-                        <option value="Khóa học 9 - TP.HCM">📅 Khóa học 9 - TP.HCM (Khai giảng 20/10/2026)</option>
-                        <option value="Khóa học 8">📅 Khóa học 8 - Hà Nội (Đang đào tạo)</option>
-                        <option value="Khóa học 8 - HCM">📅 Khóa học 8 - TP.HCM (Đang đào tạo)</option>
-                        <option value="Khóa học 10 (Dự bị)">📅 Khóa học 10 (Dự bị tuyển sinh Tháng 11/2026)</option>
-                        <option value="Chưa xếp lớp / Học viên đăng ký sớm">⏳ Chưa xếp lớp / Đăng ký sớm</option>
+                        <option value="">Chưa xếp lớp</option>
+                        {order.cohortId && !cohorts.some((c) => c.id === order.cohortId) && (
+                          <option value={order.cohortId}>{order.batchCohort || 'Lớp hiện tại'}</option>
+                        )}
+                        {cohorts.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                            {c.startDate ? ` · khai giảng ${c.startDate.split('-').reverse().join('/')}` : ''}
+                            {c.status !== 'opening' ? ' (không nhận đăng ký)' : ''}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">Học phí niêm yết (₫)</label>
-                      <input
-                        type="number"
-                        value={order.amount}
-                        onChange={(e) => handleFieldChange('amount', Number(e.target.value))}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-mono font-bold text-slate-900"
-                      />
+                      <span className="font-bold text-slate-700 block mb-1">Học phí niêm yết</span>
+                      <div className="p-2.5 border border-slate-100 rounded-xl bg-slate-50 font-mono font-bold text-slate-900">
+                        {formatVND(order.tuitionFee || order.originalAmount || order.amount)}
+                      </div>
                     </div>
 
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">Chương trình khuyến mãi (CTKM)</label>
                       <input
                         type="text"
-                        value={order.promotionProgram || 'Học bổng MSB Early Bird 20%'}
+                        value={order.promotionProgram || ''}
                         onChange={(e) => handleFieldChange('promotionProgram', e.target.value)}
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
                       />
                     </div>
 
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">Tổng tiền thực thu (₫)</label>
-                      <input
-                        type="number"
-                        value={order.tuitionFee || order.amount}
-                        onChange={(e) => handleFieldChange('tuitionFee', Number(e.target.value))}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-mono font-bold text-emerald-700"
-                      />
+                      <span className="font-bold text-slate-700 block mb-1">Phải thu (sau ưu đãi)</span>
+                      <div className="p-2.5 border border-slate-100 rounded-xl bg-slate-50 font-mono font-bold text-emerald-700">
+                        {formatVND(order.totalReceivable || order.amount)}
+                        {order.discountCode ? <span className="ml-1 text-[10px] font-sans text-slate-500">mã {order.discountCode}</span> : null}
+                      </div>
                     </div>
 
                     <div className="sm:col-span-3">
@@ -907,16 +943,16 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">Kênh tiếp cận *</label>
                       <select
-                        value={order.source || 'Website'}
+                        value={order.source || ''}
                         onChange={(e) => handleFieldChange('source', e.target.value)}
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
                       >
-                        <option value="Website">Website Form</option>
-                        <option value="Bank Tour">Bank Tour Hội Sở MSB</option>
-                        <option value="Facebook">Facebook Ads / Fanpage</option>
-                        <option value="TikTok">TikTok Video</option>
-                        <option value="Giới thiệu">Giới thiệu nội bộ (GTNB)</option>
-                        <option value="Hội thảo trường ĐH">Hội thảo trường ĐH</option>
+                        <option value="">Chưa rõ</option>
+                        {/* The stored source (e.g. "Website · Facebook" from the UTM link) stays selectable as is. */}
+                        {order.source && !SOURCES.includes(order.source) && <option value={order.source}>{order.source}</option>}
+                        {SOURCES.map((src) => (
+                          <option key={src} value={src}>{src}</option>
+                        ))}
                       </select>
                     </div>
 
@@ -924,7 +960,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                       <label className="font-bold text-slate-700 block mb-1">Mã chiến dịch</label>
                       <input
                         type="text"
-                        value={order.campaignCode || 'TW3'}
+                        value={order.campaignCode || ''}
                         onChange={(e) => handleFieldChange('campaignCode', e.target.value)}
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-mono"
                       />
@@ -1218,7 +1254,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 
             {/* TAB 5: VIETQR BILLING & INVOICING */}
             {/* ============================================================= */}
-            {activeTab === 'vietqr' && <LeadPaymentPanel orderId={order.id} onConfirmReceived={handleMarkAsPaid} />}
+            {activeTab === 'vietqr' && <LeadPaymentPanel orderId={order.id} onConfirmReceived={handleConfirmReceived} />}
 
             {activeTab === 'training' && (
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4 animate-fadeIn">
@@ -1320,37 +1356,34 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 
               <div className="space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Học phí khóa học:</span>
-                  <span className="font-mono font-bold text-slate-900">{formatVND(order.amount)}</span>
+                  <span className="text-slate-600">Phải thu:</span>
+                  <span className="font-mono font-bold text-slate-900">{formatVND(order.totalReceivable || order.amount)}</span>
                 </div>
-
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Trạng thái thanh toán:</span>
-                  {order.status === 'paid' ? (
-                    <span className="text-emerald-700 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Đã đóng đủ
-                    </span>
-                  ) : (
-                    <span className="text-amber-700 font-bold flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" /> Chờ chuyển khoản
-                    </span>
-                  )}
+                  <span className="text-slate-600">Đã đóng:</span>
+                  <span className="font-mono font-bold text-emerald-700">{formatVND(order.totalPaidAmount || 0)}</span>
                 </div>
-
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600">Trạng thái:</span>
+                  <span className={`font-bold ${order.status === 'paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    {PAYMENT_STATUS_LABEL[order.status] || order.status}
+                    {order.status === 'pending' && (order.totalPaidAmount || 0) > 0 ? ' (đã đóng một phần)' : ''}
+                  </span>
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600">Phương thức:</span>
-                  <span className="text-slate-800 font-bold">VietQR NAPAS 247</span>
+                  <span className="text-slate-800 font-bold">{PAYMENT_METHOD_LABEL[order.paymentMethod] || order.paymentMethod || '–'}</span>
                 </div>
               </div>
 
-              {order.status !== 'paid' && (
+              {order.status === 'pending' && (
                 <button
                   type="button"
-                  onClick={handleMarkAsPaid}
-                  className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  onClick={() => setActiveTab('vietqr')}
+                  className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Xác nhận thu học phí (Gạch nợ)</span>
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Hướng dẫn thanh toán & xác nhận thu</span>
                 </button>
               )}
             </div>
@@ -1360,10 +1393,10 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
               <div className="bg-red-50 p-4 rounded-2xl border border-red-200 space-y-2 text-xs">
                 <div className="flex items-center gap-2 text-red-800 font-bold">
                   <AlertTriangle className="w-4 h-4 text-red-600" />
-                  <span>Phát hiện trùng lặp lead ({order.duplicateCount || 2} lần)</span>
+                  <span>Trùng SĐT / email / CCCD với hồ sơ khác{order.duplicateCount ? ` (${order.duplicateCount})` : ''}</span>
                 </div>
                 <p className="text-red-700 text-[11px] leading-relaxed">
-                  {order.duplicateNote || 'Ứng viên để lại thông tin 2 lần từ Facebook Ads và Website.'}
+                  {order.duplicateNote}
                 </p>
               </div>
             )}

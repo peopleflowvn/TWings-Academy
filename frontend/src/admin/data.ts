@@ -15,8 +15,8 @@ const ORDER_READ_ONLY = new Set([
   'id', 'orderCode', 'totalPaidAmount', 'paidAt', 'isDuplicate', 'duplicateCount', 'createdAt', 'updatedAt',
   'privacyConsentAt', 'privacyConsentVersion', 'timelineActivities', 'followupTasks', 'agentResearch'
 ]);
-// Set by the UI when it marks an order paid; the server derives them from the recorded payment.
-const PAYMENT_DERIVED = new Set(['status', 'paymentStatusDetail', 'crmStatus', 'paymentDate']);
+// Derived by the server from recorded payments (confirm-payment, bank webhook): never sent in a PATCH.
+const PAYMENT_DERIVED = new Set(['status', 'paymentStatusDetail', 'paymentDate', 'learningAccess', 'refundedAmount']);
 
 export function useOrders(enabled: boolean) {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -41,19 +41,27 @@ export function useOrders(enabled: boolean) {
     }
   };
 
-  const updateStatus = async (id: string, status: Order['status']) => {
+  /** One order in full (the list leaves out identity documents and bank accounts); kept in the list too. */
+  const loadOne = async (id: string): Promise<Order> => {
+    const fresh = await api.get<Order>(`/staff/orders/${id}/`);
+    setOrders((list) => list.map((o) => (o.id === fresh.id ? fresh : o)));
+    return fresh;
+  };
+
+  /** Finance: record money received outside the bank webhook (audited on the server). */
+  const confirmPayment = async (id: string, amount: number): Promise<Order | null> => {
     try {
-      await api.patch(`/staff/orders/${id}/`, { status });
+      await api.post(`/staff/orders/${id}/confirm-payment/`, { amount, note: 'Xác nhận thủ công từ CRM (đã đối soát)' });
     } catch (err) {
       reportError(err);
     }
-    await refreshOne(id);
+    return loadOne(id).catch(() => null);
   };
 
   /**
-   * Persist a CRM edit made anywhere in the CMS: only changed fields are sent, "mark as paid" records
-   * a real payment (audit, totals, LMS enrolment), activities and follow-ups use their endpoints, and
-   * the order is reloaded from the server afterwards.
+   * Persist a CRM edit made anywhere in the CMS: only changed fields are sent (never payment state:
+   * payments go through confirmPayment), activities and follow-ups use their endpoints, and the order
+   * is reloaded from the server afterwards.
    */
   const updateCRM = async (updated: Order) => {
     const previous = ordersRef.current.find((o) => o.id === updated.id);
@@ -63,23 +71,11 @@ export function useOrders(enabled: boolean) {
     const next = updated as unknown as Record<string, unknown>;
     const changed: Record<string, unknown> = {};
     for (const key of Object.keys(next)) {
-      if (!ORDER_READ_ONLY.has(key) && JSON.stringify(next[key]) !== JSON.stringify(prev[key])) changed[key] = next[key];
+      if (!ORDER_READ_ONLY.has(key) && !PAYMENT_DERIVED.has(key) && JSON.stringify(next[key]) !== JSON.stringify(prev[key])) changed[key] = next[key];
     }
     const errors: string[] = [];
     const push = (err: unknown) => errors.push(err instanceof Error ? err.message : String(err));
     try {
-      if (updated.status === 'paid' && previous.status !== 'paid') {
-        PAYMENT_DERIVED.forEach((k) => delete changed[k]);
-        const outstanding = (previous.totalReceivable || previous.amount || 0) - (previous.totalPaidAmount || 0);
-        if (outstanding > 0) {
-          await api.post(`/staff/orders/${updated.id}/confirm-payment/`, {
-            amount: outstanding,
-            note: 'Xác nhận thanh toán từ CMS'
-          });
-        } else {
-          await api.patch(`/staff/orders/${updated.id}/`, { status: 'paid' });
-        }
-      }
       if (Object.keys(changed).length) await api.patch(`/staff/orders/${updated.id}/`, changed);
 
       const knownActivity = new Set((previous.timelineActivities || []).map((a) => a.id));
@@ -122,7 +118,7 @@ export function useOrders(enabled: boolean) {
     if (errors.length) reportError(new Error(`Chưa lưu được một phần thay đổi: ${errors.join('; ')}`));
   };
 
-  return { orders, reload, updateStatus, updateCRM };
+  return { orders, reload, loadOne, confirmPayment, updateCRM };
 }
 
 export function useCourses(enabled: boolean) {

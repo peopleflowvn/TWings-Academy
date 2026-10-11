@@ -403,6 +403,12 @@ export interface Order {
   orderCode: string;
   courseId: string;
   courseTitle: string;
+  /** The intake (class) the learner is placed in; batchCohort keeps its name. */
+  cohortId?: string | null;
+  /** The consultant (staff user id) in charge; pic keeps their name. */
+  assignedTo?: string | null;
+  /** The admission campaign the lead came from (campaignCode keeps its code). */
+  campaign?: string | null;
   amount: number;
   originalAmount?: number;
   discountAmount?: number;

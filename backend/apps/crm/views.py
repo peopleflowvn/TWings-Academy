@@ -1,7 +1,8 @@
 import csv
 
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, OuterRef, Q, Subquery
+from django.db.models.functions import Coalesce
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -22,6 +23,7 @@ from .models import Activity, AdmissionCampaign, Appointment, Order
 from .serializers import (
     ASSIGN_FIELDS,
     FINANCE_FIELDS,
+    PAID_STAGE,
     REFERRAL_FIELDS,
     ActivitySerializer,
     AdmissionCampaignSerializer,
@@ -116,9 +118,14 @@ class OrderViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "amount", "crm_status"]
 
     def get_queryset(self):
-        return Order.objects.select_related("course", "cohort").prefetch_related(
+        qs = Order.objects.select_related("course", "cohort").prefetch_related(
             "timeline_activities", "followup_tasks"
         )
+        # Courses of a program order (amount 0, parent = the program order) are not leads of their own:
+        # the list and the export show the program order only (?components=1 to include them).
+        if self.action in ("list", "export") and not self.request.query_params.get("components"):
+            qs = qs.filter(parent__isnull=True)
+        return qs
 
     def _guard_fields(self, serializer):
         user = self.request.user
@@ -132,6 +139,27 @@ class OrderViewSet(viewsets.ModelViewSet):
         other = changed - FINANCE_FIELDS - REFERRAL_FIELDS - ASSIGN_FIELDS
         if other and not has_perm_code(user, "crm.edit_status"):
             raise PermissionDenied("Cần quyền crm.edit_status.")
+        self._guard_payment_state(serializer)
+
+    @staticmethod
+    def _guard_payment_state(serializer):
+        """'Paid' (status and the 'Đã đóng phí' stage) follows recorded payments, never a field edit."""
+        data, order = serializer.validated_data, serializer.instance
+        status = data.get("status", order.status if order else "pending")
+        if data.get("crm_status") == PAID_STAGE and status != "paid":
+            raise serializers.ValidationError(
+                {"crm_status": "Giai đoạn 'Đã đóng phí' chỉ có sau khi ghi nhận thanh toán."}
+            )
+        if data.get("status") == "paid" and (order is None or order.status != "paid"):
+            receivable = (order.total_receivable or order.amount) if order else data.get("amount", 0)
+            paid = order.total_paid_amount if order else 0
+            if receivable and paid < receivable:
+                raise serializers.ValidationError(
+                    {
+                        "status": "Hãy ghi nhận khoản thu (xác nhận thanh toán) "
+                        "thay vì đặt trạng thái 'Đã thanh toán'."
+                    }
+                )
 
     def perform_create(self, serializer):
         self._guard_fields(serializer)
@@ -252,8 +280,20 @@ class AdmissionCampaignViewSet(viewsets.ModelViewSet):
     }
 
     def get_queryset(self):
+        # A lead belongs to a campaign by its link or by the campaign code (same rule as the CRM screens).
+        enrolled = (
+            Order.objects.filter(
+                Q(campaign=OuterRef("pk")) | Q(campaign_code__iexact=OuterRef("code")),
+                parent__isnull=True,
+                learning_access=True,
+            )
+            .order_by()
+            .values("learning_access")
+            .annotate(n=Count("pk"))
+            .values("n")
+        )
         return AdmissionCampaign.objects.prefetch_related("positions").annotate(
-            total_enrolled=Count("orders", filter=Q(orders__learning_access=True))
+            total_enrolled=Coalesce(Subquery(enrolled), 0)
         )
 
 

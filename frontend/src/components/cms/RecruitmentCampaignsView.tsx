@@ -62,9 +62,13 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
     return new Intl.NumberFormat('vi-VN').format(num) + ' ₫';
   };
 
+  // Registration link of a campaign: the page of its (first) course with utm_campaign = the campaign code,
+  // which the site's attribution turns into Order.campaign (apps.crm.attribution).
   const handleCopyLink = (camp: AdmissionCampaign, e: React.MouseEvent) => {
     e.stopPropagation();
-    const url = `${window.location.origin}/courses/${camp.courseId || 'banking'}?campaign=${camp.code}`;
+    const slug = courses.find((c) => c.id === camp.positions?.[0]?.courseId)?.slug;
+    const params = new URLSearchParams({ utm_source: 'twings', utm_medium: 'campaign', utm_campaign: camp.code });
+    const url = `${window.location.origin}${slug ? `/khoa-hoc/${encodeURIComponent(slug)}` : '/khoa-hoc'}?${params}`;
     navigator.clipboard.writeText(url);
     setCopiedId(camp.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -82,14 +86,13 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
     const s4_pending = campOrders.filter(
       (o) => o.crmStatus === '5. Đã đóng phí' && o.status !== 'paid'
     ).length;
-    const s5_enrolled = campOrders.filter(
-      (o) => o.status === 'paid' || o.crmStatus === '5. Đã đóng phí'
-    ).length;
+    // Learners who may study (paid, or first installment paid), counted by the server over every lead.
+    const s5_enrolled = camp.totalEnrolled || 0;
 
     const totalLeads = campOrders.length;
-    const targetQuota = camp.targetHeadcount || 25;
-    const actualEnrolled = Math.max(camp.totalEnrolled || 0, s5_enrolled);
-    const progressPercent = Math.min(100, Math.round((actualEnrolled / targetQuota) * 100));
+    const targetQuota = camp.targetHeadcount || 0;
+    const actualEnrolled = s5_enrolled;
+    const progressPercent = targetQuota ? Math.min(100, Math.round((actualEnrolled / targetQuota) * 100)) : 0;
 
     return {
       campOrders,
@@ -278,13 +281,11 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
             const funnel = getCampaignFunnelData(camp);
             const isCopied = copiedId === camp.id;
 
-            // Template Course fallback
-            const templateCourse = courses.find((c) => c.id === camp.courseId);
+            // Courses of the campaign (its positions), as named in the catalogue.
             const courseTitleDisplay =
-              camp.courseTitle ||
-              templateCourse?.title ||
-              camp.positions?.[0]?.positionTitle ||
-              'Chương Trình Đào Tạo Thực Chiến MSB';
+              Array.from(
+                new Set((camp.positions || []).map((p) => courses.find((c) => c.id === p.courseId)?.title || p.positionTitle))
+              ).join(', ') || 'Chưa gắn khóa học';
 
             return (
               <div
@@ -314,28 +315,6 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                         {camp.status === 'active' ? 'Đang Tuyển Sinh' : camp.status === 'planning' ? 'Sắp Mở' : 'Đã Đóng Sổ'}
                       </span>
 
-                      {/* Hot Badge */}
-                      {camp.isHot && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
-                          <Flame className="w-3 h-3 text-rose-500 fill-rose-500" />
-                          <span>Hot</span>
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Visibility */}
-                    <div className="shrink-0">
-                      {camp.isPublished !== false ? (
-                        <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-1" title="Đã công khai trên website tuyển sinh">
-                          <Globe className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Web</span>
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1" title="Chưa đăng web / Nội bộ">
-                          <Lock className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Nội bộ</span>
-                        </span>
-                      )}
                     </div>
                   </div>
 
@@ -350,30 +329,25 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                       {/* Linked Template Course */}
                       <div className="mt-2 flex items-center gap-1.5 text-xs text-indigo-700 font-medium bg-indigo-50/60 p-2 rounded-xl border border-indigo-100">
                         <BookOpen className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                        <span className="truncate">Template: <strong>{courseTitleDisplay}</strong></span>
+                        <span className="truncate">Khóa học: <strong>{courseTitleDisplay}</strong></span>
                       </div>
                     </div>
 
                     {/* Meta Rows */}
                     <div className="space-y-1.5 text-xs text-slate-600">
-                      {/* Location */}
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate">{camp.location || 'Hội sở Hà Nội'}</span>
-                      </div>
+                      {camp.location && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{camp.location}</span>
+                        </div>
+                      )}
 
-                      {/* Tuition & Scholarship */}
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>
-                          Học phí: <strong>{formatVND(camp.tuitionFee || 18500000)}</strong>
-                          {camp.scholarshipBudget ? (
-                            <span className="text-purple-700 font-medium ml-1">
-                              (HB: {formatVND(camp.scholarshipBudget)})
-                            </span>
-                          ) : null}
-                        </span>
-                      </div>
+                      {camp.scholarshipBudget ? (
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Ngân sách học bổng: <strong>{formatVND(camp.scholarshipBudget)}</strong></span>
+                        </div>
+                      ) : null}
 
                       {/* Dates */}
                       <div className="flex items-center gap-2">
@@ -394,10 +368,16 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-slate-700">Chỉ tiêu tuyển sinh:</span>
                         <span className="font-mono font-bold text-slate-900">
-                          {funnel.actualEnrolled} / {funnel.targetQuota} học viên{' '}
-                          <span className={`ml-1 ${funnel.progressPercent >= 80 ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                            ({funnel.progressPercent}%)
-                          </span>
+                          {funnel.targetQuota ? (
+                            <>
+                              {funnel.actualEnrolled} / {funnel.targetQuota} học viên{' '}
+                              <span className={`ml-1 ${funnel.progressPercent >= 80 ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                                ({funnel.progressPercent}%)
+                              </span>
+                            </>
+                          ) : (
+                            <>{funnel.actualEnrolled} học viên · chưa đặt chỉ tiêu</>
+                          )}
                         </span>
                       </div>
                       <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
@@ -507,7 +487,7 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                   <th className="p-3.5">Chiến Dịch Tuyển Sinh</th>
                   <th className="p-3.5">Khóa Học Mẫu</th>
                   <th className="p-3.5">Cơ Sở</th>
-                  <th className="p-3.5">Khai Giảng</th>
+                  <th className="p-3.5">Hạn nhận hồ sơ</th>
                   <th className="p-3.5 text-center">Chỉ Tiêu</th>
                   <th className="p-3.5 text-center">Đã Tuyển</th>
                   <th className="p-3.5 text-center">Tiến Độ</th>
@@ -532,21 +512,21 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                         <div className="text-[11px] text-slate-400">{camp.leadRecruiter}</div>
                       </td>
                       <td className="p-3.5 text-slate-600">
-                        {camp.courseTitle || camp.positions?.[0]?.positionTitle || 'Khóa Ngân Hàng'}
+                        {Array.from(new Set((camp.positions || []).map((p) => courses.find((c) => c.id === p.courseId)?.title || p.positionTitle))).join(', ') || '–'}
                       </td>
                       <td className="p-3.5 text-slate-600">{camp.location}</td>
                       <td className="p-3.5 font-mono text-slate-800">
-                        {camp.openingDate || camp.deadline}
+                        {camp.deadline || '–'}
                       </td>
                       <td className="p-3.5 text-center font-mono font-bold text-slate-800">
-                        {funnel.targetQuota}
+                        {funnel.targetQuota || '–'}
                       </td>
                       <td className="p-3.5 text-center font-mono font-bold text-emerald-700">
                         {funnel.actualEnrolled}
                       </td>
                       <td className="p-3.5 text-center">
                         <span className="font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
-                          {funnel.progressPercent}%
+                          {funnel.targetQuota ? `${funnel.progressPercent}%` : '–'}
                         </span>
                       </td>
                       <td className="p-3.5">
@@ -557,7 +537,7 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                               : 'bg-amber-50 text-amber-800 border border-amber-200'
                           }`}
                         >
-                          {camp.status === 'active' ? 'Đang Mở' : 'Chuẩn Bị'}
+                          {camp.status === 'active' ? 'Đang Mở' : camp.status === 'planning' ? 'Chuẩn Bị' : 'Đã Đóng'}
                         </span>
                       </td>
                       <td className="p-3.5 text-right pr-5">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   Target,
@@ -22,9 +22,8 @@ import {
   Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { AdmissionCampaign, CampaignPositionTrack, Order } from '../../types';
+import { AdmissionCampaign, CampaignPositionTrack, Course, Order } from '../../types';
 import { inCampaign } from './LeadPipelineView';
-import { saveCampaigns } from '../../utils/talentCampaigns';
 
 interface CMSCampaignManagementModalProps {
   isOpen: boolean;
@@ -32,6 +31,7 @@ interface CMSCampaignManagementModalProps {
   campaigns: AdmissionCampaign[];
   onUpdateCampaigns: (updated: AdmissionCampaign[]) => void;
   orders: Order[];
+  courses: Course[];
   onSelectCampaign?: (campaignId: string) => void;
 }
 
@@ -41,6 +41,7 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
   campaigns,
   onUpdateCampaigns,
   orders,
+  courses,
   onSelectCampaign
 }) => {
   const [activeCampaign, setActiveCampaign] = useState<AdmissionCampaign>(campaigns[0] || {} as AdmissionCampaign);
@@ -53,8 +54,14 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
   const [newPositionTitle, setNewPositionTitle] = useState('');
   const [newPositionShort, setNewPositionShort] = useState('');
   const [newPositionQuota, setNewPositionQuota] = useState(25);
-  const [newPositionSalary, setNewPositionSalary] = useState('14 - 25 Triệu / tháng');
-  const [newPositionDept, setNewPositionDept] = useState('Khối Ngân Hàng Bán Lẻ MSB');
+  const [newPositionSalary, setNewPositionSalary] = useState('');
+  const [newPositionCourseId, setNewPositionCourseId] = useState('');
+
+  // Campaigns load after the modal mounts, and the screen passes the campaign in view first: show it.
+  useEffect(() => {
+    if (isOpen && !isEditing && !isCreatingNew && campaigns[0]) setActiveCampaign(campaigns[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, campaigns]);
 
   if (!isOpen) return null;
 
@@ -74,43 +81,18 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
     setFormData({
       id: `camp-${Date.now()}`,
       code: `CAMP-${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`,
-      name: 'Chiến Dịch Tuyển Sinh & Tuyển Dụng Banker Mới',
-      status: 'active',
-      timeRange: 'Tháng 11/2026 - 01/2027',
-      startDate: '01/11/2026',
-      deadline: '15/12/2026',
-      targetHeadcount: 80,
+      name: '',
+      status: 'planning',
+      timeRange: '',
+      startDate: '',
+      deadline: '',
+      targetHeadcount: 0,
       totalEnrolled: 0,
-      leadRecruiter: 'Hội đồng Tuyển sinh TWings & Ban Nhân sự MSB',
-      scholarshipBudget: 200000000,
-      location: 'Hà Nội & Miền Bắc',
-      description: 'Chương trình đào tạo thực chiến và tuyển dụng trực tiếp vào mạng lưới chi nhánh MSB.',
-      positions: [
-        {
-          id: `pos-${Date.now()}-1`,
-          courseId: 'twings-qhkh-doanh-nghiep',
-          positionTitle: 'Chuyên viên Quan hệ Khách hàng Doanh nghiệp (RM CIB)',
-          shortName: 'RM Doanh Nghiệp',
-          department: 'Khối Khách Hàng Doanh Nghiệp MSB',
-          targetQuota: 25,
-          enrolledCount: 0,
-          leadInstructorName: 'GV Vũ Thu Phương',
-          salaryRange: '15 - 28 Triệu / tháng',
-          badgeBg: 'bg-blue-50 text-blue-700 border-blue-200'
-        },
-        {
-          id: `pos-${Date.now()}-2`,
-          courseId: 'twings-qhkh-ca-nhan',
-          positionTitle: 'Chuyên viên Quan hệ Khách hàng Cá nhân (Retail Banker)',
-          shortName: 'RM Bán Lẻ (RB)',
-          department: 'Khối Ngân Hàng Bán Lẻ MSB',
-          targetQuota: 30,
-          enrolledCount: 0,
-          leadInstructorName: 'GV Đặng Văn Thành',
-          salaryRange: '12 - 22 Triệu / tháng',
-          badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200'
-        }
-      ]
+      leadRecruiter: '',
+      scholarshipBudget: 0,
+      location: '',
+      description: '',
+      positions: []
     });
   };
 
@@ -142,7 +124,6 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
     }
 
     onUpdateCampaigns(updatedList);
-    saveCampaigns(updatedList);
     setIsEditing(false);
     setIsCreatingNew(false);
   };
@@ -155,24 +136,25 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
     if (window.confirm(`Bạn có chắc muốn xóa chiến dịch "${campName}"?`)) {
       const updated = campaigns.filter((c) => c.id !== campId);
       onUpdateCampaigns(updated);
-      saveCampaigns(updated);
       setActiveCampaign(updated[0]);
       showToast(`Đã xóa chiến dịch "${campName}".`);
     }
   };
 
   const handleAddPositionToForm = () => {
-    if (!newPositionTitle.trim()) {
-      alert('Vui lòng nhập tên vị trí việc làm / khóa học.');
+    if (!newPositionCourseId) {
+      alert('Chọn khóa học của vị trí.');
       return;
     }
+    const course = courses.find((c) => c.id === newPositionCourseId);
+    const title = newPositionTitle.trim() || course?.title || '';
 
     const newPos: CampaignPositionTrack = {
       id: `pos-${Date.now()}`,
-      courseId: 'twings-qhkh-ca-nhan',
-      positionTitle: newPositionTitle.trim(),
-      shortName: newPositionShort.trim() || newPositionTitle.trim().slice(0, 18),
-      department: newPositionDept,
+      courseId: newPositionCourseId,
+      positionTitle: title,
+      shortName: newPositionShort.trim() || title.slice(0, 18),
+      department: '',
       targetQuota: Number(newPositionQuota) || 20,
       enrolledCount: 0,
       salaryRange: newPositionSalary,
@@ -186,6 +168,7 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
 
     setNewPositionTitle('');
     setNewPositionShort('');
+    setNewPositionCourseId('');
     showToast(`Đã thêm vị trí "${newPos.positionTitle}" vào chiến dịch.`);
   };
 
@@ -199,9 +182,9 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
   // Count leads in active campaign
   const campaignOrders = orders.filter((o) => inCampaign(o, activeCampaign));
 
-  const enrolledCount = campaignOrders.filter((o) => o.status === 'paid' || o.crmStatus === '5. Đã đóng phí').length;
-  const targetHeadcount = activeCampaign.targetHeadcount || 100;
-  const progressPercent = Math.min(100, Math.round((enrolledCount / targetHeadcount) * 100));
+  const enrolledCount = activeCampaign.totalEnrolled || 0;
+  const targetHeadcount = activeCampaign.targetHeadcount || 0;
+  const progressPercent = targetHeadcount ? Math.min(100, Math.round((enrolledCount / targetHeadcount) * 100)) : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/80 backdrop-blur-sm animate-fadeIn">
@@ -429,11 +412,21 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
 
                 {/* Add new position inline */}
                 <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-200/60 flex flex-wrap items-center gap-2 text-xs">
+                  <select
+                    value={newPositionCourseId}
+                    onChange={(e) => setNewPositionCourseId(e.target.value)}
+                    className="min-w-[200px] px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 text-xs"
+                  >
+                    <option value="">Chọn khóa học…</option>
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
                   <input
                     type="text"
                     value={newPositionTitle}
                     onChange={(e) => setNewPositionTitle(e.target.value)}
-                    placeholder="Tên vị trí việc làm / Khóa học..."
+                    placeholder="Tên hiển thị (mặc định: tên khóa học)"
                     className="flex-1 min-w-[200px] px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 text-xs"
                   />
                   <input
@@ -496,13 +489,8 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
                 <div className="space-y-2.5">
                   {campaigns.map((camp) => {
                     const isSelected = camp.id === activeCampaign.id;
-                    const campOrders = orders.filter((o) => {
-                      if (camp.id === 'camp-2026-q4-hn') return (o.batchCohort || '').includes('Hà Nội') || (o.studyArea || '').includes('Hà Nội') || !o.batchCohort;
-                      if (camp.id === 'camp-2026-oct-hcm') return (o.batchCohort || '').includes('HCM') || (o.studyArea || '').includes('HCM');
-                      return true;
-                    });
-                    const enrolled = campOrders.filter((o) => o.status === 'paid' || o.crmStatus === '5. Đã đóng phí').length;
-                    const pct = Math.min(100, Math.round((enrolled / (camp.targetHeadcount || 100)) * 100));
+                    const enrolled = camp.totalEnrolled || 0;
+                    const pct = camp.targetHeadcount ? Math.min(100, Math.round((enrolled / camp.targetHeadcount) * 100)) : 0;
 
                     return (
                       <div
@@ -657,22 +645,15 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
                         <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
                         <span>Các Vị Trí Tuyển Dụng / Khóa Học Thuộc Chiến Dịch:</span>
                       </span>
-                      <span className="text-[11px] text-slate-500">{activeCampaign.positions.length} Vị trí chuyên sâu</span>
+                      <span className="text-[11px] text-slate-500">{(activeCampaign.positions || []).length} khóa học / vị trí</span>
                     </div>
 
                     <div className="space-y-2.5">
-                      {activeCampaign.positions.map((pos) => {
-                        // Count leads for this specific position
-                        const posOrders = campaignOrders.filter((o) => {
-                          const t = (o.courseTitle || '').toLowerCase();
-                          if (pos.shortName.includes('CIB') || pos.positionTitle.includes('Doanh nghiệp')) return t.includes('doanh nghiệp');
-                          if (pos.shortName.includes('RB') || pos.positionTitle.includes('Cá nhân')) return t.includes('cá nhân');
-                          if (pos.shortName.includes('Teller') || pos.positionTitle.includes('Giao dịch')) return t.includes('giao dịch');
-                          if (pos.shortName.includes('AI')) return t.includes('ai') || t.includes('agent');
-                          return true;
-                        });
-                        const posEnrolled = posOrders.filter((o) => o.status === 'paid' || o.crmStatus === '5. Đã đóng phí').length;
-                        const posPct = Math.min(100, Math.round((posEnrolled / (pos.targetQuota || 25)) * 100));
+                      {(activeCampaign.positions || []).map((pos) => {
+                        // Leads of the campaign on this position's course (among the leads loaded on screen).
+                        const posOrders = campaignOrders.filter((o) => o.courseId === pos.courseId);
+                        const posEnrolled = posOrders.filter((o) => o.status === 'paid').length;
+                        const posPct = pos.targetQuota ? Math.min(100, Math.round((posEnrolled / pos.targetQuota) * 100)) : 0;
 
                         return (
                           <div key={pos.id} className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-2 shadow-2xs">
@@ -685,7 +666,7 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
                                   <span className="font-bold text-slate-800 text-xs">{pos.positionTitle}</span>
                                 </div>
                                 <p className="text-[11px] text-slate-500 mt-0.5">
-                                  {pos.department} &bull; Giảng viên chủ nhiệm: <strong>{pos.leadInstructorName || 'Ban Đào tạo MSB'}</strong>
+                                  {pos.department} &bull; Giảng viên chủ nhiệm: <strong>{pos.leadInstructorName || '–'}</strong>
                                 </p>
                               </div>
 

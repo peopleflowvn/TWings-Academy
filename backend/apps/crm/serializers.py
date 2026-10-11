@@ -53,8 +53,33 @@ class OrderSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def _is_list(self) -> bool:
+        view = self.context.get("view")
+        return getattr(view, "action", None) == "list"
+
     def get_duplicate_count(self, obj):
-        return getattr(obj, "_duplicate_count", None) if obj.is_duplicate else 0
+        # Counted for one order (detail); the list only flags duplicates (no query per row).
+        if not obj.is_duplicate:
+            return 0
+        return None if self._is_list() else obj.find_duplicates().count()
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if self._is_list():
+            for field in LIST_HIDDEN_FIELDS:
+                data.pop(field, None)
+        return data
+
+
+PAID_STAGE = "5. Đã đóng phí"
+# Identity documents, addresses and bank accounts: only in one order's detail, never in the list.
+LIST_HIDDEN_FIELDS = (
+    "citizen_id",
+    "permanent_address",
+    "current_residence",
+    "bank_account_number",
+    "referral_reward_bank_acc",
+)
 
 
 # Field groups that need a specific permission to change (beyond basic CRM editing).
