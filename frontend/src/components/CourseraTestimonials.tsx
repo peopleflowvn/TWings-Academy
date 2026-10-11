@@ -69,25 +69,26 @@ export const CourseraTestimonials: React.FC<CourseraTestimonialsProps> = ({ conf
   const title = config?.title || 'Cảm nhận của học viên TWings Academy';
 
   return (
-    <section className="bg-slate-50 py-12 sm:py-16 border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+    <section className="bg-slate-50 py-8 sm:py-16 border-b border-slate-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-10">
         <div className="text-center space-y-2 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0056D2] uppercase tracking-wider bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[#0056D2] uppercase tracking-wider bg-blue-50 px-2.5 sm:px-3 py-1 rounded-full border border-blue-100">
             <TrendingUp className="w-3.5 h-3.5" />
             <span>Học viên nói gì</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{title}</h2>
+          <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">{title}</h2>
           {config?.subtitle && <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{config.subtitle}</p>}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Testimonials: Swipeable rail on mobile (< md), grid on tablet/desktop */}
+        <div className="flex overflow-x-auto -mx-4 px-4 gap-3.5 pb-2 no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-4 md:mx-0 md:px-0 md:gap-6">
           {cards.map((c) => (
             <div
               key={c.id}
-              className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow relative"
+              className="w-[80vw] max-w-[300px] shrink-0 snap-start md:w-auto md:shrink bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between hover:shadow-md transition-shadow relative select-none"
             >
-              <div className="space-y-4">
-                <Quote className="w-8 h-8 text-blue-200/80" />
+              <div className="space-y-3 sm:space-y-4">
+                <Quote className="w-7 h-7 sm:w-8 sm:h-8 text-blue-200/80" />
                 {c.rating !== undefined && (
                   <div className="flex gap-0.5" aria-label={`${c.rating}/5 sao`}>
                     {Array.from({ length: 5 }, (_, i) => (
@@ -98,26 +99,26 @@ export const CourseraTestimonials: React.FC<CourseraTestimonialsProps> = ({ conf
                     ))}
                   </div>
                 )}
-                <p className="text-xs text-slate-700 leading-relaxed italic">“{c.quote}”</p>
+                <p className="text-xs text-slate-700 leading-relaxed italic line-clamp-4">“{c.quote}”</p>
               </div>
 
-              <div className="pt-6 border-t border-slate-100 mt-6 space-y-3">
+              <div className="pt-4 sm:pt-6 border-t border-slate-100 mt-4 sm:mt-6 space-y-2.5 sm:space-y-3">
                 {c.outcome && (
                   <a
                     href={c.link}
-                    className={`bg-emerald-50 text-emerald-800 text-[11px] font-semibold p-2.5 rounded-lg border border-emerald-100 flex items-start gap-1.5 ${
+                    className={`bg-emerald-50 text-emerald-800 text-[10px] sm:text-[11px] font-semibold p-2 sm:p-2.5 rounded-lg border border-emerald-100 flex items-start gap-1.5 ${
                       c.link ? 'hover:bg-emerald-100' : 'pointer-events-none'
                     }`}
                   >
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                    <span>{c.outcome}</span>
+                    <span className="line-clamp-1">{c.outcome}</span>
                   </a>
                 )}
-                <div className="flex items-center gap-3">
-                  <Avatar src={c.avatar} name={c.name} className="w-10 h-10 rounded-full border border-slate-200 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">{c.name}</div>
-                    {c.role && <div className="text-[11px] text-slate-500">{c.role}</div>}
+                <div className="flex items-center gap-2.5 sm:gap-3">
+                  <Avatar src={c.avatar} name={c.name} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-slate-200 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-slate-900 truncate">{c.name}</div>
+                    {c.role && <div className="text-[10px] sm:text-[11px] text-slate-500 truncate">{c.role}</div>}
                   </div>
                 </div>
               </div>

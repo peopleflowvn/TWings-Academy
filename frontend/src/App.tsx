@@ -40,6 +40,7 @@ import { CourseraCheckoutModal, CheckoutPrefill } from './components/CourseraChe
 import { RegistrationModal } from './components/RegistrationModal';
 import { YouTubeTrialModal } from './components/YouTubeTrialModal';
 import { FloatingContact } from './components/FloatingContact';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 const LIVE = isBackendEnabled();
 // Sections missing from the server config get their texts from the defaults, but never sample people,
@@ -487,6 +488,11 @@ export default function App() {
       {/* Global Footer */}
       <CourseraFooter onNavigate={handleNavigate} courses={courses} onSelectCourse={handleSelectCourse} />
       <FloatingContact />
+      <MobileBottomNav
+        currentView={currentView}
+        onNavigate={handleNavigate}
+        onOpenConsultation={() => handleOpenRegistration()}
+      />
 
       {/* Comprehensive Personal Info Registration Modal */}
       {showRegistrationModal && (

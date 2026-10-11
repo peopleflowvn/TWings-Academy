@@ -37,33 +37,33 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
   ];
 
   return (
-    <section id="about-twings" className="py-16 bg-slate-50 border-t border-b border-slate-200/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-gradient-to-br from-[#00388A] via-[#0050D8] to-[#0073C1] text-white rounded-3xl p-8 sm:p-12 lg:p-14 shadow-xl relative overflow-hidden">
+    <section id="about-twings" className="py-10 sm:py-16 bg-slate-50 border-t border-b border-slate-200/80">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="bg-gradient-to-br from-[#00388A] via-[#0050D8] to-[#0073C1] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-12 lg:p-14 shadow-xl relative overflow-hidden">
           {/* Subtle background glow */}
-          <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-72 h-72 bg-blue-300/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-64 sm:w-80 h-64 sm:h-80 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-56 sm:w-72 h-56 sm:h-72 bg-blue-300/10 rounded-full blur-2xl pointer-events-none" />
 
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-12 items-center">
             {/* Left Column: Brand Story & Call to Action */}
-            <div className="lg:col-span-7 space-y-6 text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-400/20 border border-blue-300/30 text-amber-300 text-xs font-bold uppercase tracking-widest backdrop-blur-xs">
+            <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-left">
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-blue-400/20 border border-blue-300/30 text-amber-300 text-[11px] sm:text-xs font-bold uppercase tracking-widest backdrop-blur-xs">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 {title}
               </div>
 
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-wide uppercase leading-tight">
+              <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-white tracking-wide uppercase leading-tight">
                 {subtitle}
               </h2>
 
-              <p className="text-blue-100 text-xs sm:text-sm leading-relaxed text-justify line-clamp-4">
+              <p className="text-blue-100 text-xs sm:text-sm leading-relaxed line-clamp-4 sm:line-clamp-none">
                 {lead}
               </p>
 
-              <div className="flex flex-wrap items-center gap-4 pt-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4 pt-1 sm:pt-2">
                 <button
                   onClick={onNavigateToAbout}
-                  className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-blue-950 font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-2 cursor-pointer"
+                  className="px-5 py-3 sm:py-2.5 bg-amber-400 hover:bg-amber-300 text-blue-950 font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
                 >
                   <span>Tìm hiểu về TWings Academy</span>
                   <ArrowRight className="w-4 h-4" />
@@ -71,7 +71,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
 
                 <button
                   onClick={onOpenConsultation}
-                  className="px-5 py-2.5 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer backdrop-blur-xs"
+                  className="px-5 py-3 sm:py-2.5 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer backdrop-blur-xs flex items-center justify-center w-full sm:w-auto"
                 >
                   Đăng ký tư vấn
                 </button>
@@ -79,22 +79,22 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
             </div>
 
             {/* Right Column: 3 Feature Cards */}
-            <div className="lg:col-span-5 space-y-3.5">
+            <div className="lg:col-span-5 space-y-2.5 sm:space-y-3.5 pt-2 sm:pt-0">
               {highlights.map((item, idx) => {
                 const Icon = item.icon;
                 return (
                   <div 
                     key={idx}
-                    className="p-4.5 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-sm flex items-start gap-4 hover:bg-white/15 transition-colors"
+                    className="p-3.5 sm:p-4.5 rounded-xl sm:rounded-2xl bg-white/10 border border-white/15 backdrop-blur-sm flex items-start gap-3 sm:gap-4 hover:bg-white/15 transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-amber-400/20 border border-amber-300/40 text-amber-300 flex items-center justify-center shrink-0">
-                      <Icon className="w-5 h-5" />
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-400/20 border border-amber-300/40 text-amber-300 flex items-center justify-center shrink-0">
+                      <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-white text-sm mb-1">
+                      <h4 className="font-bold text-white text-xs sm:text-sm mb-0.5 sm:mb-1">
                         {item.title}
                       </h4>
-                      <p className="text-xs text-blue-100/90 leading-relaxed">
+                      <p className="text-[11px] sm:text-xs text-blue-100/90 leading-relaxed">
                         {item.desc}
                       </p>
                     </div>

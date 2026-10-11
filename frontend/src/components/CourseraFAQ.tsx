@@ -21,22 +21,22 @@ export const CourseraFAQ: React.FC<CourseraFAQProps> = ({ config }) => {
   };
 
   return (
-    <section className="bg-white py-12 sm:py-16 border-b border-slate-200">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <section className="bg-white py-8 sm:py-16 border-b border-slate-200">
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0056D2] uppercase tracking-wider bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[#0056D2] uppercase tracking-wider bg-blue-50 px-2.5 sm:px-3 py-1 rounded-full border border-blue-100">
             <HelpCircle className="w-3.5 h-3.5" />
             <span>Giải Đáp Thắc Mắc</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
             {title}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500">
+          <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
             {subtitle}
           </p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2.5 sm:space-y-3">
           {displayItems.map((item) => {
             const isOpen = openIds.includes(item.id);
             return (
@@ -46,9 +46,9 @@ export const CourseraFAQ: React.FC<CourseraFAQProps> = ({ config }) => {
               >
                 <button
                   onClick={() => toggle(item.id)}
-                  className="w-full px-5 py-4 text-left flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors cursor-pointer"
+                  className="w-full px-4 py-3.5 sm:px-5 sm:py-4 text-left flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors cursor-pointer"
                 >
-                  <span className="text-sm sm:text-base font-bold text-slate-900">
+                  <span className="text-xs sm:text-base font-bold text-slate-900 leading-snug">
                     {item.question}
                   </span>
                   <ChevronDown
@@ -59,7 +59,7 @@ export const CourseraFAQ: React.FC<CourseraFAQProps> = ({ config }) => {
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100/80 bg-slate-50/50">
+                  <div className="px-4 pb-4 pt-1 sm:px-5 sm:pb-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100/80 bg-slate-50/50">
                     {item.answer}
                   </div>
                 )}
