@@ -13,7 +13,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 // The site is in Vietnamese only: strings shown to learners are written in Vietnamese here.
-$string['account'] = 'Học phí & hồ sơ';
+$string['account'] = 'Hồ sơ & Tài khoản';
 $string['pluginname'] = 'TWings Academy';
 $string['notifyfailed'] = 'Could not notify TWings (HTTP {$a}); the task will be retried.';
 $string['privacy:metadata:twings'] = 'TWings Academy backend: notified when the progress of a learner changes, to issue certificates and follow up learners.';

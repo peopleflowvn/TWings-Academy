@@ -17,9 +17,9 @@ if (path === '/login' || path === '/login/') {
 }
 
 const isAdmin = /^\/app(\/|$)/.test(path);
-// The old learner account path is part of the learner portal now (the server redirects it too).
-if (/^\/tai-khoan(\/|$)/.test(path)) {
-  window.location.replace('/learn' + path + window.location.search + window.location.hash);
+// The learner account & profile is unified at /learn/tai-khoan.
+if (/^\/tai-khoan(\/|$)/.test(path) || /^\/learn\/user\/profile(\.php)?(\/|$)/.test(path) || /^\/user\/profile(\.php)?(\/|$)/.test(path)) {
+  window.location.replace('/learn/tai-khoan' + window.location.search + window.location.hash);
 }
 
 const isStorefront = /^\/(chuong-trinh|tai-khoan|learn\/tai-khoan|chinh-sach-bao-mat|dieu-khoan)(\/|$)/.test(path);

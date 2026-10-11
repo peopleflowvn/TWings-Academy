@@ -16,7 +16,7 @@ Hoặc đăng nhập bằng mật khẩu:
    Mật khẩu: {$a->newpassword}
 (Lần đăng nhập đầu tiên, hệ thống sẽ yêu cầu bạn đổi mật khẩu.)
 
-Học phí, hóa đơn, hồ sơ nhập học và chứng chỉ có ở mục "Học phí & hồ sơ" trong cổng học viên.
+Học phí, hóa đơn, hồ sơ nhập học và chứng chỉ có ở mục "Hồ sơ & Tài khoản" trong cổng học viên.
 
 Cần hỗ trợ, vui lòng liên hệ hello@twings.edu.vn.
 {$a->signoff}';

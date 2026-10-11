@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, Award, BookOpen, Briefcase, CheckCircle2, Copy, Loader2, LogOut, Mail, RotateCcw } from 'lucide-react';
+import { ArrowRight, Award, BookOpen, Briefcase, CheckCircle2, Copy, GraduationCap, KeyRound, Loader2, LogOut, Mail, RotateCcw, Settings, ShieldCheck, User } from 'lucide-react';
 import { ApiError, isBackendEnabled, resetCsrfToken } from '../lib/api';
 import { Account, AccountCourse, AccountOrder, commerceApi, Dossier, formatDate, formatVND } from '../lib/commerce';
 
@@ -534,9 +534,9 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: 
 );
 
 /**
- * The TWings page of the learner portal (/learn/tai-khoan), next to Moodle at /learn: fees and
- * installments, invoices, enrolment documents, certificates, reviews, refunds. Courses and progress
- * are on the Moodle dashboard (/learn/my/), not repeated here.
+ * The unified learner portal page (/learn/tai-khoan), merged with Moodle User Profile (/learn/user/profile.php):
+ * learner profile details, enrolled courses and progress, Moodle quick actions, tuition fees,
+ * installments, invoices, enrolment documents, certificates, reviews, and refunds.
  */
 export const AccountPage: React.FC = () => {
   const [account, setAccount] = useState<Account | null>(null);
@@ -547,7 +547,7 @@ export const AccountPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    document.title = 'Học phí & hồ sơ | Cổng học viên TWings';
+    document.title = 'Hồ sơ & Tài khoản | Cổng học viên TWings';
     if (isBackendEnabled()) load();
   }, [load]);
 
@@ -564,25 +564,97 @@ export const AccountPage: React.FC = () => {
   const replace = (next: AccountOrder) =>
     setAccount({ ...account, orders: account.orders.map((o) => (o.orderCode === next.orderCode ? next : o)) });
 
+  const allCourses = account.orders.flatMap((o) => o.courses);
+  const initials = account.name
+    ? account.name.trim().split(' ').map((p) => p[0]).slice(-2).join('').toUpperCase()
+    : 'TW';
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Học phí & hồ sơ</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {account.name ? `${account.name} · ` : ''}<span className="font-mono">{account.email}</span>. Bài học, điểm và tiến độ ở mục{' '}
-            <a href={account.learnUrl} className="text-[#0056D2] font-bold hover:underline">Khóa học của tôi</a>.
-          </p>
+      {/* Unified Learner Profile Card */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#00388A] via-[#0050D8] to-[#0073C1] flex items-center justify-center text-white font-extrabold text-xl shadow-md shrink-0">
+              {initials}
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">
+                  {account.name || 'Học viên TWings'}
+                </h1>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Học viên chính thức
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                <span className="font-mono flex items-center gap-1 text-slate-600">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" /> {account.email}
+                </span>
+                <span>·</span>
+                <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Tài khoản LMS đã kích hoạt
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={account.learnUrl || '/learn/my/'}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0056D2] to-[#0073C1] hover:from-[#00419E] hover:to-[#0056D2] text-white text-xs font-bold shadow-xs hover:shadow-sm inline-flex items-center gap-1.5 transition-all"
+            >
+              <GraduationCap className="w-4 h-4" /> Vào học LMS
+            </a>
+            <button
+              type="button"
+              onClick={logout}
+              className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5 text-slate-500" /> Đăng xuất
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={logout}
-          className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm text-slate-700 flex items-center gap-1.5 cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" /> Đăng xuất
-        </button>
+
+        {/* Moodle Quick Actions Bar */}
+        <div className="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider mr-1">Tiện ích LMS:</span>
+            <a
+              href="/learn/grade/report/overview/index.php"
+              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-[#0056D2] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
+            >
+              <Award className="w-3.5 h-3.5 text-[#0073C1]" /> Bảng điểm & Kết quả
+            </a>
+            <a
+              href="/learn/calendar/view.php?view=upcoming"
+              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-[#0056D2] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-[#0073C1]" /> Lịch học sắp tới
+            </a>
+            <a
+              href="/learn/login/change_password.php"
+              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-[#0056D2] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-[#0073C1]" /> Đổi mật khẩu LMS
+            </a>
+            <a
+              href="/learn/user/preferences.php"
+              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-[#0056D2] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
+            >
+              <Settings className="w-3.5 h-3.5 text-[#0073C1]" /> Tùy chọn tài khoản
+            </a>
+          </div>
+
+          <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+            <span>Hồ sơ hợp nhất</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span>Đồng bộ Moodle & TWings</span>
+          </div>
+        </div>
       </div>
 
+      {/* Orders, Courses & Billing Details */}
       <div className="space-y-5">
         {account.orders.length === 0 && (
           <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-3">

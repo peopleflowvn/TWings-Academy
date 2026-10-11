@@ -50,7 +50,7 @@ const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNod
           <span className="flex gap-4">
             <a href="/khoa-hoc" className="hover:text-slate-800">Khóa học & chương trình</a>
             <a href="/learn/" className="hover:text-slate-800 font-medium text-[#0056D2]">Cổng học viên (LMS)</a>
-            <a href="/learn/tai-khoan" className="hover:text-slate-800">Học phí & hồ sơ</a>
+            <a href="/learn/tai-khoan" className="hover:text-slate-800">Hồ sơ & Tài khoản</a>
             <a href="/dieu-khoan" className="hover:text-slate-800">Điều khoản</a>
             <a href="/chinh-sach-bao-mat" className="hover:text-slate-800">Chính sách bảo mật</a>
           </span>
@@ -80,7 +80,7 @@ const PortalShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <nav className="flex items-center gap-1 overflow-x-auto">
             {tab('/learn/my/', 'Khóa học của tôi', false)}
             {tab('/learn/calendar/view.php?view=upcoming', 'Lịch học', false)}
-            {tab('/learn/tai-khoan', 'Học phí & hồ sơ', true)}
+            {tab('/learn/tai-khoan', 'Hồ sơ & Tài khoản', true)}
           </nav>
         </div>
       </header>
@@ -239,7 +239,7 @@ export default function StorefrontApp() {
     trackView(path || '/');
   }, [path]);
   const programMatch = path.match(/^\/chuong-trinh\/([a-z0-9-]+)$/i);
-  if (path === '/learn/tai-khoan' || path === '/tai-khoan') {
+  if (path === '/learn/tai-khoan' || path === '/tai-khoan' || path === '/learn/user/profile.php' || path === '/learn/user/profile' || path === '/user/profile.php') {
     return <PortalShell><AccountPage /></PortalShell>;
   }
   if (path === '/chinh-sach-bao-mat' || path === '/dieu-khoan') {

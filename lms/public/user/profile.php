@@ -43,7 +43,15 @@ $edit           = optional_param('edit', null, PARAM_BOOL);    // Turn editing o
 $reset          = optional_param('reset', null, PARAM_BOOL);
 
 // Even if the user didn't supply a userid, we treat page URL as if they did; this is needed so navigation works correctly.
+$moodle = optional_param('moodle', null, PARAM_BOOL);
 $userid = $userid ?: $USER->id;
+
+// TWings unification: Learner profile is merged with /learn/tai-khoan.
+// When accessing own profile (or default /user/profile.php without id), redirect to /learn/tai-khoan.
+if (!$moodle && (!$userid || (isloggedin() && !isguestuser() && $userid == $USER->id))) {
+    redirect(new moodle_url('/tai-khoan'));
+}
+
 $PAGE->set_url('/user/profile.php', ['id' => $userid]);
 
 if (!empty($CFG->forceloginforprofiles)) {
