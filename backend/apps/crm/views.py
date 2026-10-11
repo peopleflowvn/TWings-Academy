@@ -1,8 +1,8 @@
 import csv
 
 from django.db import transaction
-from django.db.models import Count, OuterRef, Q, Subquery
-from django.db.models.functions import Coalesce
+from django.db.models import Count, OuterRef, Q, Subquery, Sum
+from django.db.models.functions import Coalesce, Lower
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -31,7 +31,7 @@ from .serializers import (
     OrderSerializer,
     PublicRegistrationSerializer,
 )
-from .services import CheckoutError, create_public_order, rollover_cohort
+from .services import CheckoutError, create_public_order, create_staff_lead, rollover_cohort
 
 
 class PublicRegistrationView(APIView):
@@ -102,6 +102,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         "followups": ["crm.view_leads"],
         "followup_detail": ["crm.edit_status"],
         "export": ["crm.export_excel"],
+        "pipeline": ["crm.view_leads"],
         "appointments": ["crm.view_leads"],  # booking also checks crm.edit_status
     }
     filterset_fields = [
@@ -111,21 +112,77 @@ class OrderViewSet(viewsets.ModelViewSet):
         "cohort",
         "campaign",
         "pic",
+        "assigned_to",
+        "interest_level",
         "source",
         "is_duplicate",
     ]
-    search_fields = ["order_code", "customer_name", "customer_phone", "customer_email"]
+    search_fields = [
+        "order_code",
+        "customer_name",
+        "customer_phone",
+        "customer_email",
+        "university",
+        "batch_cohort",
+    ]
     ordering_fields = ["created_at", "amount", "crm_status"]
 
     def get_queryset(self):
-        qs = Order.objects.select_related("course", "cohort").prefetch_related(
-            "timeline_activities", "followup_tasks"
-        )
-        # Courses of a program order (amount 0, parent = the program order) are not leads of their own:
-        # the list and the export show the program order only (?components=1 to include them).
-        if self.action in ("list", "export") and not self.request.query_params.get("components"):
-            qs = qs.filter(parent__isnull=True)
+        qs = Order.objects.select_related("course", "cohort")
+        if self.action != "pipeline":
+            qs = qs.prefetch_related("timeline_activities", "followup_tasks")
+        if self.action in ("list", "export", "pipeline"):
+            # Courses of a program order (amount 0, parent = the program order) are not leads of their
+            # own: the pipeline shows the program order only (?components=1 to include them).
+            if not self.request.query_params.get("components"):
+                qs = qs.filter(parent__isnull=True)
+            qs = self._pipeline_filters(qs)
         return qs
+
+    def _pipeline_filters(self, qs):
+        """
+        Lead pipeline filters beyond plain fields: ?scope=<campaign id> (linked, or the campaign code
+        entered) | none (no campaign); ?mine=1, ?unassigned=1, ?overdue=1 (first response late);
+        ?paid=paid|unpaid.
+        """
+        from .assignment import overdue_leads
+
+        params = self.request.query_params
+        scope = params.get("scope", "")
+        if scope == "none":
+            codes = [c.lower() for c in AdmissionCampaign.objects.values_list("code", flat=True)]
+            qs = (
+                qs.filter(campaign__isnull=True)
+                .annotate(_code=Lower("campaign_code"))
+                .exclude(_code__in=codes)
+            )
+        elif scope and scope != "all":
+            campaign = AdmissionCampaign.objects.filter(pk=scope).first()
+            if campaign is None:
+                return qs.none()
+            qs = qs.filter(Q(campaign=campaign) | Q(campaign_code__iexact=campaign.code))
+        if params.get("mine"):
+            qs = qs.filter(assigned_to=self.request.user)
+        if params.get("unassigned"):
+            qs = qs.filter(assigned_to__isnull=True)
+        if params.get("overdue"):
+            qs = qs.filter(pk__in=overdue_leads().values("pk"))
+        if params.get("paid") == "paid":
+            qs = qs.filter(status="paid")
+        elif params.get("paid") == "unpaid":
+            qs = qs.filter(status="pending")
+        return qs
+
+    @staticmethod
+    def _sync_pic(serializer, order):
+        """The consultant's name (pic) follows the assigned consultant."""
+        if "assigned_to" not in serializer.validated_data:
+            return
+        user = order.assigned_to
+        pic = (user.name or user.email)[:100] if user else ""
+        if order.pic != pic:
+            order.pic = pic
+            order.save(update_fields=["pic", "updated_at"])
 
     def _guard_fields(self, serializer):
         user = self.request.user
@@ -163,7 +220,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         self._guard_fields(serializer)
-        serializer.save()
+        self._sync_pic(serializer, create_staff_lead(self.request, serializer))
 
     def perform_update(self, serializer):
         from .assignment import mark_first_response
@@ -171,8 +228,23 @@ class OrderViewSet(viewsets.ModelViewSet):
         self._guard_fields(serializer)
         was_new = serializer.instance.crm_status == "1. Mới"
         order = serializer.save()
+        self._sync_pic(serializer, order)
         if was_new and order.crm_status != "1. Mới":
             mark_first_response(order)
+
+    @action(detail=False, methods=["get"])
+    def pipeline(self, request):
+        """Number of leads and amount per stage over every filtered lead (the kanban column headers)."""
+        qs = self.filter_queryset(self.get_queryset()).order_by()
+        rows = qs.values("crm_status").annotate(count=Count("pk"), amount=Sum("amount"))
+        stages = [{"stage": r["crm_status"], "count": r["count"], "amount": r["amount"] or 0} for r in rows]
+        return Response(
+            {
+                "stages": stages,
+                "total": sum(s["count"] for s in stages),
+                "paid": qs.filter(status="paid").count(),
+            }
+        )
 
     def perform_destroy(self, instance):
         audit(self.request, "order.delete", instance, order_code=instance.order_code)
@@ -279,6 +351,12 @@ class AdmissionCampaignViewSet(viewsets.ModelViewSet):
         **dict.fromkeys(["create", "update", "partial_update", "destroy"], ["crm.assign_pic"]),
     }
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if self.action in ("list", "retrieve"):
+            context["funnels"] = campaign_funnels()
+        return context
+
     def get_queryset(self):
         # A lead belongs to a campaign by its link or by the campaign code (same rule as the CRM screens).
         enrolled = (
@@ -295,6 +373,30 @@ class AdmissionCampaignViewSet(viewsets.ModelViewSet):
         return AdmissionCampaign.objects.prefetch_related("positions").annotate(
             total_enrolled=Coalesce(Subquery(enrolled), 0)
         )
+
+
+def campaign_funnels() -> dict:
+    """
+    Per campaign: leads per CRM stage and, per course, leads and paid learners. A lead belongs to a
+    campaign by its link or by the campaign code it carries (program courses aside).
+    """
+    by_code = {code.lower(): pk for pk, code in AdmissionCampaign.objects.values_list("pk", "code")}
+    rows = (
+        Order.objects.filter(parent__isnull=True)
+        .filter(Q(campaign__isnull=False) | ~Q(campaign_code=""))
+        .values_list("campaign_id", "campaign_code", "crm_status", "course_id", "status")
+    )
+    funnels: dict = {}
+    for campaign_id, code, stage, course_id, status_ in rows.iterator():
+        for pk in {campaign_id, by_code.get((code or "").lower())} - {None}:
+            f = funnels.setdefault(pk, {"leads": 0, "stages": {}, "courses": {}})
+            f["leads"] += 1
+            f["stages"][stage] = f["stages"].get(stage, 0) + 1
+            if course_id:
+                c = f["courses"].setdefault(course_id, {"leads": 0, "paid": 0})
+                c["leads"] += 1
+                c["paid"] += status_ == "paid"
+    return funnels
 
 
 class CohortRolloverView(APIView):

@@ -43,7 +43,12 @@ export const ConsultingPage: React.FC = () => {
     }
   };
   const outcome = async (a: Appointment, status: Appointment['status']) => {
-    await api.patch(`/staff/appointments/${a.id}/`, { status }).catch(() => undefined);
+    setError('');
+    try {
+      await api.patch(`/staff/appointments/${a.id}/`, { status });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không lưu được kết quả lịch hẹn.');
+    }
     loadAppts();
   };
 
@@ -83,7 +88,11 @@ export const ConsultingPage: React.FC = () => {
         {appts?.map((a) => (
           <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-sm">
             <div>
-              <strong>{new Date(a.startsAt).toLocaleString('vi-VN')}</strong> · {a.customerName} ({a.customerPhone}) · {CHANNEL_LABEL[a.channel]}
+              <strong>{new Date(a.startsAt).toLocaleString('vi-VN')}</strong> ·{' '}
+              <a href={`/app/sales/crm?view=kanban&campaignId=all&orderId=${encodeURIComponent(a.orderId)}`} className="text-[#0073C1] font-semibold hover:underline" title="Mở hồ sơ lead">
+                {a.customerName}
+              </a>{' '}
+              ({a.customerPhone}) · {CHANNEL_LABEL[a.channel]}
               <div className="text-xs text-slate-500">{a.courseTitle} · đơn {a.orderCode}{a.staffName ? ` · ${a.staffName}` : ''}{a.location ? ` · ${a.location}` : ''}</div>
             </div>
             <div className="flex items-center gap-3 text-xs">

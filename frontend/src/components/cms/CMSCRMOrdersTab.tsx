@@ -4,28 +4,24 @@ import { AdmissionCampaign, Course, Order } from '../../types';
 import { CompAILeadDetailModal } from './CompAILeadDetailModal';
 import { CMSCampaignManagementModal } from './CMSCampaignManagementModal';
 import { RecruitmentCampaignsView } from './RecruitmentCampaignsView';
-import { AdmissionRequisitionPage } from './AdmissionRequisitionPage';
 import { LeadPipelineView, PipelineScope } from './LeadPipelineView';
 import { useServerCollection } from '../../lib/serverCollection';
 import { CAMPAIGNS } from '../../lib/cmsCollections';
 import { getSavedCampaigns } from '../../utils/talentCampaigns';
+import { confirmOrderPayment, loadOrder, saveOrderChanges } from '../../admin/data';
 
 /**
  * Sales / admissions (/app/sales/crm):
  *   ?view=campaigns                       the admission campaigns (targets and funnel per campaign)
  *   ?view=kanban&campaignId=<id|all|none> the lead pipeline (kanban or detailed table) of one campaign,
  *                                         of every lead, or of the leads not attached to a campaign
- *   ?action=new_requisition               open a new campaign
- * Intakes (classes, schedule, Moodle course) are managed in /app/sales/intakes only.
+ *   ?action=new_requisition               open a new campaign (campaign settings, "new" form)
+ *   &orderId=<id>                         the lead workspace of one lead
+ * Leads are filtered and counted on the server; intakes (classes, schedule, Moodle course) are managed
+ * in /app/sales/intakes only.
  */
 interface CMSCRMOrdersTabProps {
-  orders: Order[];
   courses?: Course[];
-  onUpdateOrderCRM?: (updatedOrder: Order) => void;
-  /** The full order (the list leaves out identity documents and bank accounts). */
-  onLoadOrder: (orderId: string) => Promise<Order>;
-  /** Finance: record a received amount; resolves to the order as now stored. */
-  onConfirmPayment: (orderId: string, amount: number) => Promise<Order | null>;
 }
 
 // Course categories definition with distinctive color coding and icons
@@ -84,55 +80,48 @@ function readUrl() {
   const campaignId = params.get('campaignId');
   const creating = params.get('action') === 'new_requisition' || window.location.pathname.includes('/requisitions/new');
   const view: View = params.get('view') === 'kanban' || (campaignId && params.get('view') !== 'campaigns') ? 'kanban' : 'campaigns';
-  return { view, scope: (campaignId || 'all') as PipelineScope, creating, templateCourseId: params.get('templateCourseId') || '' };
+  return { view, scope: (campaignId || 'all') as PipelineScope, creating };
 }
 
-export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
-  orders,
-  courses = [],
-  onUpdateOrderCRM,
-  onLoadOrder,
-  onConfirmPayment
-}) => {
-  const { items: campaigns, update: setCampaigns } = useServerCollection<AdmissionCampaign>(CAMPAIGNS, getSavedCampaigns());
+export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({ courses = [] }) => {
+  const { items: campaigns, update: setCampaigns, loaded } = useServerCollection<AdmissionCampaign>(CAMPAIGNS, getSavedCampaigns());
   const initial = readUrl();
   const [view, setView] = useState<View>(initial.view);
   const [scope, setScope] = useState<PipelineScope>(initial.scope);
-  const [creating, setCreating] = useState(initial.creating);
-  const [templateCourseId, setTemplateCourseId] = useState(initial.templateCourseId);
-  const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [campaignModal, setCampaignModal] = useState<'closed' | 'edit' | 'create'>(initial.creating ? 'create' : 'closed');
   const [selectedLead, setSelectedLead] = useState<Order | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const scopeCode = useRef('');
 
-  // A lead opens with its full record from the server (the list holds a summary of each lead).
-  const openLead = (lead: Order) => {
-    onLoadOrder(lead.id)
+  // A lead opens with its full record from the server (the pipeline holds a summary of each lead).
+  const openLead = (lead: Pick<Order, 'id'>) => {
+    loadOrder(lead.id)
       .then(setSelectedLead)
       .catch((err: Error) => window.alert(`Không mở được hồ sơ: ${err.message}`));
   };
 
   // Keep the URL in step with the screen (shareable links, browser history).
   useEffect(() => {
-    if (window.location.pathname.includes('/requisitions/new')) return;
     const params = new URLSearchParams(window.location.search);
     params.set('view', view);
     if (view === 'kanban') params.set('campaignId', scope);
     else params.delete('campaignId');
-    if (creating) params.set('action', 'new_requisition');
-    else {
-      params.delete('action');
-      params.delete('templateCourseId');
-    }
-    const next = `${window.location.pathname}?${params.toString()}`;
+    if (campaignModal === 'create') params.set('action', 'new_requisition');
+    else params.delete('action');
+    params.delete('templateCourseId');
+    if (selectedLead) params.set('orderId', selectedLead.id);
+    else params.delete('orderId');
+    const path = window.location.pathname.includes('/requisitions') ? '/app/sales/crm' : window.location.pathname;
+    const next = `${path}?${params.toString()}`;
     if (next !== window.location.pathname + window.location.search) window.history.replaceState(null, '', next);
-  }, [view, scope, creating]);
+  }, [view, scope, campaignModal, selectedLead]);
 
   useEffect(() => {
     const sync = () => {
       const url = readUrl();
       setView(url.view);
       setScope(url.scope);
-      setCreating(url.creating);
-      setTemplateCourseId(url.templateCourseId);
+      if (url.creating) setCampaignModal('create');
     };
     window.addEventListener('popstate', sync);
     window.addEventListener('twings:navigate', sync);
@@ -142,50 +131,25 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
     };
   }, []);
 
-  // Deep link ?orderId=: open that lead once, as stored on the server (nothing is added to it).
-  const deepLinked = useRef(false);
+  // Deep link ?orderId=: open that lead, as stored on the server (nothing is added to it).
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('orderId');
-    if (id && !selectedLead && !deepLinked.current) {
-      const match = orders.find((o) => o.id === id || o.orderCode === id);
-      if (match) {
-        deepLinked.current = true;
-        openLead(match);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders]);
+    if (id) openLead({ id });
+  }, []);
+
+  // A campaign created a moment ago gets its server id on save: follow it by its code.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (selectedLead) params.set('orderId', selectedLead.id);
-    else params.delete('orderId');
-    const next = `${window.location.pathname}?${params.toString()}`;
-    if (next !== window.location.pathname + window.location.search) window.history.replaceState(null, '', next);
-  }, [selectedLead]);
+    if (!loaded || scope === 'all' || scope === 'none' || campaigns.some((c) => c.id === scope)) return;
+    const match = scopeCode.current ? campaigns.find((c) => c.code === scopeCode.current) : undefined;
+    if (match) setScope(match.id);
+  }, [campaigns, loaded, scope]);
 
   const openPipeline = (next: PipelineScope) => {
+    scopeCode.current = campaigns.find((c) => c.id === next)?.code || '';
     setScope(next);
     setView('kanban');
   };
-  const updateCampaigns = (updated: AdmissionCampaign[]) => {
-    setCampaigns(updated);
-  };
   const activeCampaign = campaigns.find((c) => c.id === scope);
-
-  if (creating) {
-    return (
-      <AdmissionRequisitionPage
-        courses={courses}
-        initialTemplateCourseId={templateCourseId}
-        onSaveCampaign={(campaign) => {
-          updateCampaigns([campaign, ...campaigns.filter((c) => c.id !== campaign.id)]);
-          setCreating(false);
-          openPipeline(campaign.id);
-        }}
-        onCancel={() => setCreating(false)}
-      />
-    );
-  }
 
   return (
     <div className="space-y-6 pb-12">
@@ -202,50 +166,52 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({
       {view === 'campaigns' ? (
         <RecruitmentCampaignsView
           campaigns={campaigns}
-          orders={orders}
           courses={courses}
           onSelectCampaign={openPipeline}
-          onOpenCreateRequisition={() => {
-            setTemplateCourseId('');
-            setCreating(true);
-          }}
-          onEditCampaign={() => setShowCampaignModal(true)}
+          onOpenCreateRequisition={() => setCampaignModal('create')}
         />
       ) : (
         <LeadPipelineView
           scope={scope}
           campaigns={campaigns}
-          orders={orders}
-          onChangeScope={setScope}
+          courses={courses}
+          refreshKey={refreshKey}
+          onChangeScope={openPipeline}
           onBack={() => setView('campaigns')}
-          onUpdateOrderCRM={onUpdateOrderCRM}
           onOpenLeadDetail={openLead}
-          onOpenEditCampaign={() => setShowCampaignModal(true)}
+          onOpenEditCampaign={() => setCampaignModal('edit')}
         />
       )}
 
       {selectedLead && (
         <CompAILeadDetailModal
+          key={selectedLead.id}
           order={selectedLead}
           onClose={() => setSelectedLead(null)}
-          onSave={(updated) => {
-            if (onUpdateOrderCRM) onUpdateOrderCRM(updated);
-            setSelectedLead(null);
+          onSave={async (previous, updated) => {
+            const fresh = await saveOrderChanges(previous, updated);
+            setRefreshKey((k) => k + 1);
+            return fresh;
           }}
-          onConfirmPayment={(amount) => onConfirmPayment(selectedLead.id, amount)}
+          onConfirmPayment={async (amount) => {
+            const fresh = await confirmOrderPayment(selectedLead.id, amount);
+            setRefreshKey((k) => k + 1);
+            return fresh;
+          }}
         />
       )}
 
       <CMSCampaignManagementModal
-        isOpen={showCampaignModal}
-        onClose={() => setShowCampaignModal(false)}
-        campaigns={activeCampaign ? [activeCampaign, ...campaigns.filter((c) => c.id !== activeCampaign.id)] : campaigns}
-        onUpdateCampaigns={updateCampaigns}
-        orders={orders}
+        isOpen={campaignModal !== 'closed'}
+        startCreating={campaignModal === 'create'}
+        focusCampaignId={activeCampaign?.id}
+        onClose={() => setCampaignModal('closed')}
+        campaigns={campaigns}
+        onUpdateCampaigns={setCampaigns}
         courses={courses}
         onSelectCampaign={(id) => {
           openPipeline(id);
-          setShowCampaignModal(false);
+          setCampaignModal('closed');
         }}
       />
     </div>

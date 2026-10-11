@@ -53,7 +53,8 @@ const CRM_STAGES: { id: CRMStatus; label: string }[] = [
 interface CompAILeadDetailModalProps {
   order: Order;
   onClose: () => void;
-  onSave: (updatedOrder: Order) => void;
+  /** Save `updated` against `previous` (the version loaded); resolves to the order as now stored. */
+  onSave: (previous: Order, updated: Order) => Promise<Order>;
   /** Finance: record a received amount; resolves to the order as now stored. */
   onConfirmPayment: (amount: number) => Promise<Order | null>;
 }
@@ -76,6 +77,30 @@ const PAYMENT_METHOD_LABEL: Record<string, string> = {
   bundle: 'Trong gói chương trình'
 };
 
+// Kept up to date by the server after an action (note, task, stage, payment), even while the form has
+// unsaved edits.
+const SERVER_FIELDS: (keyof Order)[] = [
+  'timelineActivities',
+  'followupTasks',
+  'crmStatus',
+  'firstResponseAt',
+  'status',
+  'totalPaidAmount',
+  'paymentStatusDetail',
+  'paidAt'
+];
+const tomorrowIso = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+/** dd/mm/yyyy (older records) or ISO -> the yyyy-mm-dd a date input takes. */
+const isoDate = (value?: string | null) => {
+  if (!value) return '';
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
+  return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : value.slice(0, 10);
+};
+
 const SOURCES = ['Website', 'Hotline', 'Facebook', 'Zalo', 'TikTok', 'Giới thiệu', 'Hội thảo trường ĐH', 'Sự kiện'];
 
 export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
@@ -85,7 +110,10 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
   onConfirmPayment,
 }) => {
   const [order, setOrder] = useState<Order>(initialOrder);
+  // The order as last loaded from / saved to the server: changes are sent against it.
+  const [saved, setSaved] = useState<Order>(initialOrder);
   const [isDirty, setIsDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'contact' | 'timeline' | 'tasks' | 'billing' | 'vietqr' | 'lms' | 'training'>('profile');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
@@ -125,17 +153,20 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 
   // Task composer
   const [taskTitle, setTaskTitle] = useState('');
-  const [taskDate, setTaskDate] = useState('Ngày mai, 10:00');
+  const [taskDate, setTaskDate] = useState(tomorrowIso);
   const [taskPriority, setTaskPriority] = useState<'high' | 'medium' | 'low'>('medium');
-
-  // Quick Note in sidebar
-  const [sidebarNote, setSidebarNote] = useState(order.consultDetail || '');
 
   // Print view state
   const [isPrintPreview, setIsPrintPreview] = useState(false);
 
   // Send Resend Email Modal state
   const [showResendEmailModal, setShowResendEmailModal] = useState(false);
+
+  // Closing with unsaved edits asks first.
+  const requestClose = () => {
+    if (isDirty && !window.confirm('Hồ sơ có thay đổi chưa lưu. Đóng và bỏ các thay đổi này?')) return;
+    onClose();
+  };
 
   // Keyboard shortcut: Ctrl/Cmd + S to save, Esc to close
   useEffect(() => {
@@ -144,13 +175,13 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
         e.preventDefault();
         handleSave();
       }
-      if (e.key === 'Escape') {
-        onClose();
+      if (e.key === 'Escape' && !showResendEmailModal) {
+        requestClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [order]);
+  });
 
   const formatVND = (num?: number) => {
     if (num === undefined || num === null) return '0 ₫';
@@ -171,11 +202,40 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
     setIsDirty(true);
   };
 
-  const handleSave = () => {
-    onSave(order);
-    setIsDirty(false);
+  const flashSaved = () => {
     setShowSaveToast(true);
     setTimeout(() => setShowSaveToast(false), 2500);
+  };
+
+  // Save the whole form (the "Lưu" button / Ctrl+S).
+  const handleSave = async () => {
+    if (busy || !isDirty) return;
+    setBusy(true);
+    try {
+      const fresh = await onSave(saved, order);
+      setSaved(fresh);
+      setOrder(fresh);
+      setIsDirty(false);
+      flashSaved();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // One action (note, task, stage): only that change is sent, unsaved form edits stay in the form.
+  const commit = async (change: (o: Order) => Order) => {
+    setBusy(true);
+    try {
+      const fresh = await onSave(saved, change(saved));
+      setSaved(fresh);
+      setOrder((cur) => {
+        const merged = { ...cur } as Record<string, unknown>;
+        SERVER_FIELDS.forEach((k) => (merged[k] = fresh[k]));
+        return merged as unknown as Order;
+      });
+    } finally {
+      setBusy(false);
+    }
   };
 
   // Pipeline stage click
@@ -185,74 +245,62 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
       setActiveTab('vietqr');
       return;
     }
-    const updated: Order = { ...order, crmStatus: nextStage };
-    setOrder(updated);
-    setIsDirty(true);
-    onSave(updated);
+    if (nextStage === (saved.crmStatus || '1. Mới')) return;
+    commit((o) => ({ ...o, crmStatus: nextStage }));
   };
 
   // Finance confirmed the money (the payments tab asks first); the server records the payment.
   const handleConfirmReceived = async (amount: number) => {
     const fresh = await onConfirmPayment(amount);
-    if (fresh) setOrder(fresh);
+    if (!fresh) return;
+    setSaved(fresh);
+    setOrder((cur) => {
+      const merged = { ...cur } as Record<string, unknown>;
+      SERVER_FIELDS.forEach((k) => (merged[k] = fresh[k]));
+      return merged as unknown as Order;
+    });
   };
 
   // Add Note
-  const handleAddNote = (e: React.FormEvent) => {
+  const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!noteContent.trim()) return;
+    if (!noteContent.trim() || busy) return;
     const newAct = {
       id: `act-${Date.now()}`,
       type: noteType,
       title: noteType === 'call' ? 'Cuộc gọi tư vấn' : noteType === 'zalo' ? 'Tin nhắn Zalo' : noteType === 'meeting' ? 'Gặp trực tiếp' : 'Ghi chú nội bộ',
       content: noteContent.trim(),
-      actor: order.pic || 'Chuyên viên Tuyển sinh',
-      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' hôm nay'
+      actor: '',
+      timestamp: new Date().toISOString()
     };
-
-    const updated = {
-      ...order,
-      timelineActivities: [newAct, ...(order.timelineActivities || [])]
-    };
-    setOrder(updated);
-    setIsDirty(true);
-    onSave(updated);
+    await commit((o) => ({ ...o, timelineActivities: [newAct, ...(o.timelineActivities || [])] }));
     setNoteContent('');
   };
 
   // Add Task
-  const handleAddTask = (e: React.FormEvent) => {
+  const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskTitle.trim()) return;
+    if (!taskTitle.trim() || busy) return;
     const newTask = {
       id: `task-${Date.now()}`,
       title: taskTitle.trim(),
       dueDate: taskDate,
       priority: taskPriority,
       isCompleted: false,
-      assignedTo: order.pic || ''
+      assignedTo: saved.pic || ''
     };
-
-    const updated = {
-      ...order,
-      followupTasks: [newTask, ...(order.followupTasks || [])]
-    };
-    setOrder(updated);
-    setIsDirty(true);
-    onSave(updated);
+    await commit((o) => ({ ...o, followupTasks: [newTask, ...(o.followupTasks || [])] }));
     setTaskTitle('');
+    setTaskDate(tomorrowIso());
   };
 
   // Toggle Task
   const handleToggleTask = (taskId: string) => {
-    if (!order.followupTasks) return;
-    const updatedTasks = order.followupTasks.map((t) =>
-      t.id === taskId ? { ...t, isCompleted: !t.isCompleted } : t
-    );
-    const updated = { ...order, followupTasks: updatedTasks };
-    setOrder(updated);
-    setIsDirty(true);
-    onSave(updated);
+    if (busy) return;
+    commit((o) => ({
+      ...o,
+      followupTasks: (o.followupTasks || []).map((t) => (t.id === taskId ? { ...t, isCompleted: !t.isCompleted } : t))
+    }));
   };
 
   const currentStage = order.crmStatus || '1. Mới';
@@ -383,10 +431,10 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                 type="button"
                 onClick={() => setShowResendEmailModal(true)}
                 className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-                title="Gửi thư tuyển sinh qua Resend API"
+                title="Gửi email cho học viên"
               >
                 <Mail className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Gửi Thư (Resend)</span>
+                <span className="hidden sm:inline">Gửi email</span>
               </button>
 
 
@@ -395,13 +443,13 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                 onClick={handleSave}
                 className={`px-3.5 py-2 font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
                   isDirty
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white'
                     : 'bg-[#0073C1] hover:bg-[#005fa3] text-white'
                 }`}
                 title="Lưu hồ sơ (Phím tắt: Ctrl + S)"
               >
                 <Save className="w-4 h-4" />
-                <span>{isDirty ? 'Lưu Thay Đổi *' : 'Đã Lưu'}</span>
+                <span>{busy ? 'Đang lưu…' : isDirty ? 'Lưu thay đổi' : 'Đã lưu'}</span>
               </button>
 
               <button
@@ -436,7 +484,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 
               <button
                 type="button"
-                onClick={onClose}
+                onClick={requestClose}
                 className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                 title="Đóng cửa sổ (Esc)"
               >
@@ -615,7 +663,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                 { id: 'billing', label: 'Học Phí & Hoàn Tiền', icon: CreditCard, count: null },
                 { id: 'vietqr', label: 'Thanh Toán & VietQR', icon: CreditCard, count: null },
                 { id: 'lms', label: 'Học Tập (LMS)', icon: BookOpen, count: null },
-                { id: 'training', label: 'Đào Tạo & Tuyển Dụng MSB', icon: GraduationCap, count: null }
+                { id: 'training', label: 'Đào tạo & việc làm', icon: GraduationCap, count: null }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -702,10 +750,9 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">Ngày sinh</label>
                       <input
-                        type="text"
-                        value={order.birthDate || ''}
-                        onChange={(e) => handleFieldChange('birthDate', e.target.value)}
-                        placeholder="18/06/2004"
+                        type="date"
+                        value={isoDate(order.birthDate)}
+                        onChange={(e) => handleFieldChange('birthDate', e.target.value || null)}
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-mono"
                       />
                     </div>
@@ -1147,10 +1194,10 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                       className="sm:col-span-2 p-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
                     />
                     <input
-                      type="text"
+                      type="date"
                       value={taskDate}
                       onChange={(e) => setTaskDate(e.target.value)}
-                      placeholder="Hạn chót"
+                      title="Hạn chót"
                       className="p-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
                     />
                     <select
@@ -1426,11 +1473,8 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 
               <textarea
                 rows={3}
-                value={sidebarNote}
-                onChange={(e) => {
-                  setSidebarNote(e.target.value);
-                  handleFieldChange('consultDetail', e.target.value);
-                }}
+                value={order.consultDetail || ''}
+                onChange={(e) => handleFieldChange('consultDetail', e.target.value)}
                 placeholder="Lưu ý quan trọng cần nhớ về ứng viên này..."
                 className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white text-xs leading-relaxed"
               />
@@ -1445,16 +1489,9 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
           isOpen={showResendEmailModal}
           onClose={() => setShowResendEmailModal(false)}
           order={order}
-          onEmailSent={(activity, log) => {
-            const updated = {
-              ...order,
-              timelineActivities: [activity, ...(order.timelineActivities || [])]
-            };
-            setOrder(updated);
-            setIsDirty(true);
-            onSave(updated);
-            setShowSaveToast(true);
-            setTimeout(() => setShowSaveToast(false), 2500);
+          onEmailSent={(activity) => {
+            // The e-mail goes into the lead's history (and counts as a first contact).
+            commit((o) => ({ ...o, timelineActivities: [activity, ...(o.timelineActivities || [])] })).then(flashSaved);
           }}
         />
       )}

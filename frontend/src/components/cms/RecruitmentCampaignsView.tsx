@@ -28,27 +28,20 @@ import {
   CheckCircle2,
   BookOpen
 } from 'lucide-react';
-import { AdmissionCampaign, Order, Course } from '../../types';
-import { inCampaign } from './LeadPipelineView';
+import { AdmissionCampaign, CRMStatus, Course } from '../../types';
 
 interface RecruitmentCampaignsViewProps {
   campaigns: AdmissionCampaign[];
-  orders: Order[];
   courses: Course[];
   onSelectCampaign: (campaignId: string) => void;
   onOpenCreateRequisition: () => void;
-  onEditCampaign?: (campaign: AdmissionCampaign) => void;
-  onDeleteCampaign?: (campaignId: string) => void;
 }
 
 export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> = ({
   campaigns,
-  orders,
   courses,
   onSelectCampaign,
-  onOpenCreateRequisition,
-  onEditCampaign,
-  onDeleteCampaign
+  onOpenCreateRequisition
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -74,37 +67,25 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Helper to calculate stage breakdown for each campaign
+  // Leads per stage of a campaign, counted by the server over every lead (linked or carrying its code).
   const getCampaignFunnelData = (camp: AdmissionCampaign) => {
-    const campOrders = orders.filter((o) => inCampaign(o, camp));
-
-    const s1_new = campOrders.filter((o) => !o.crmStatus || o.crmStatus === '1. Mới').length;
-    const s2_consulting = campOrders.filter(
-      (o) => o.crmStatus === '2. Đã tiếp cận' || o.crmStatus === '3. Đang tư vấn'
-    ).length;
-    const s3_assessed = campOrders.filter((o) => o.crmStatus === '4. Hẹn gặp').length;
-    const s4_pending = campOrders.filter(
-      (o) => o.crmStatus === '5. Đã đóng phí' && o.status !== 'paid'
-    ).length;
-    // Learners who may study (paid, or first installment paid), counted by the server over every lead.
-    const s5_enrolled = camp.totalEnrolled || 0;
-
-    const totalLeads = campOrders.length;
+    const stages = camp.funnel?.stages || [];
+    const n = (...ids: CRMStatus[]) => stages.filter((s) => ids.includes(s.stage)).reduce((sum, s) => sum + s.count, 0);
+    // Learners who may study (paid, or first installment paid).
+    const actualEnrolled = camp.totalEnrolled || 0;
     const targetQuota = camp.targetHeadcount || 0;
-    const actualEnrolled = s5_enrolled;
-    const progressPercent = targetQuota ? Math.min(100, Math.round((actualEnrolled / targetQuota) * 100)) : 0;
-
     return {
-      campOrders,
-      totalLeads,
+      totalLeads: camp.funnel?.leads || 0,
       actualEnrolled,
       targetQuota,
-      progressPercent,
-      s1_new,
-      s2_consulting,
-      s3_assessed,
-      s4_pending,
-      s5_enrolled
+      progressPercent: targetQuota ? Math.min(100, Math.round((actualEnrolled / targetQuota) * 100)) : 0,
+      tiles: [
+        { label: 'Mới', value: n('1. Mới'), box: 'bg-blue-50 border-blue-200/60 text-blue-800' },
+        { label: 'Tư vấn', value: n('2. Đã tiếp cận', '3. Đang tư vấn'), box: 'bg-indigo-50 border-indigo-200/60 text-indigo-800' },
+        { label: 'Hẹn gặp', value: n('4. Hẹn gặp'), box: 'bg-amber-50 border-amber-200/60 text-amber-800' },
+        { label: 'Đã đóng phí', value: n('5. Đã đóng phí'), box: 'bg-emerald-50 border-emerald-200/60 text-emerald-800' },
+        { label: 'Chăm sóc lại', value: n('6. Chăm sóc lại'), box: 'bg-slate-50 border-slate-200 text-slate-700' }
+      ]
     };
   };
 
@@ -117,7 +98,7 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
         camp.name.toLowerCase().includes(q) ||
         camp.code.toLowerCase().includes(q) ||
         (camp.location || '').toLowerCase().includes(q) ||
-        (camp.courseTitle || '').toLowerCase().includes(q) ||
+        (camp.positions || []).some((p) => p.positionTitle.toLowerCase().includes(q)) ||
         (camp.leadRecruiter || '').toLowerCase().includes(q);
 
       const matchesStatus =
@@ -130,11 +111,10 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
         selectedLocation === 'all' ||
         (selectedLocation === 'hn' && (camp.location || '').toLowerCase().includes('hà nội')) ||
         (selectedLocation === 'hcm' && (camp.location || '').toLowerCase().includes('hcm')) ||
-        (selectedLocation === 'online' && (camp.format === 'online_external_lms' || (camp.location || '').toLowerCase().includes('online')));
+        (selectedLocation === 'online' && (camp.location || '').toLowerCase().includes('online'));
 
       const matchesCourse =
         selectedCourseFilter === 'all' ||
-        camp.courseId === selectedCourseFilter ||
         camp.positions?.some((p) => p.courseId === selectedCourseFilter);
 
       return matchesSearch && matchesStatus && matchesLocation && matchesCourse;
@@ -144,24 +124,17 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
   return (
     <div className="space-y-6">
       {/* =============================================================== */}
-      {/* 1. TOP BAR: STATS, SEARCH & REQUISITION ACTIONS */}
-      {/* Inspired by TalentFlow recruitment-view topbar */}
+      {/* 1. TOP BAR: SEARCH & NEW CAMPAIGN */}
       {/* =============================================================== */}
       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-200">
-                TalentFlow 1.0 Recruitment Model
-              </span>
-              <span className="text-xs text-slate-400">&bull; Quản Trị Chỉ Tiêu Tuyển Sinh</span>
-            </div>
             <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
               <Briefcase className="w-5 h-5 text-indigo-600" />
-              <span>Đợt Tuyển Sinh &amp; Các Khóa Học Đang Mở (Requisitions)</span>
+              <span>Chiến dịch tuyển sinh</span>
             </h2>
             <p className="text-xs text-slate-500">
-              Danh sách các chiến dịch tuyển sinh đang nhận đơn. Click vào từng chiến dịch để mở bảng <strong>Pipeline Kanban</strong> quản lý học viên.
+              Mỗi chiến dịch gồm các khóa học, chỉ tiêu và link đăng ký (UTM). Chọn một chiến dịch để mở pipeline lead của nó.
             </p>
           </div>
 
@@ -196,7 +169,7 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
               </button>
             </div>
 
-            {/* Create Requisition Button */}
+            {/* New campaign */}
             <button
               type="button"
               onClick={onOpenCreateRequisition}
@@ -267,13 +240,13 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-indigo-600" />
           <span>
-            Hiển thị <strong>{filteredCampaigns.length}</strong> / <strong>{campaigns.length}</strong> chiến dịch tuyển sinh (requisitions)
+            Hiển thị <strong>{filteredCampaigns.length}</strong> / <strong>{campaigns.length}</strong> chiến dịch tuyển sinh
           </span>
         </div>
       </div>
 
       {/* =============================================================== */}
-      {/* 2. CARD VIEW (TalentFlow rec_card_view.html) */}
+      {/* 2. CARD VIEW */}
       {/* =============================================================== */}
       {viewType === 'card' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -326,7 +299,7 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                         {camp.name}
                       </h3>
 
-                      {/* Linked Template Course */}
+                      {/* Courses of the campaign */}
                       <div className="mt-2 flex items-center gap-1.5 text-xs text-indigo-700 font-medium bg-indigo-50/60 p-2 rounded-xl border border-indigo-100">
                         <BookOpen className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                         <span className="truncate">Khóa học: <strong>{courseTitleDisplay}</strong></span>
@@ -353,12 +326,7 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                       <div className="flex items-center gap-2">
                         <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>
-                          {camp.startDate} &rarr; <strong>{camp.deadline}</strong>
-                          {camp.openingDate ? (
-                            <span className="text-emerald-700 font-medium ml-1">
-                              &bull; Khai giảng: {camp.openingDate}
-                            </span>
-                          ) : null}
+                          {camp.startDate || 'Chưa đặt ngày'} &rarr; <strong>{camp.deadline || 'chưa có hạn'}</strong>
                         </span>
                       </div>
                     </div>
@@ -394,7 +362,7 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                       </div>
                     </div>
 
-                    {/* TalentFlow Mini Candidate Funnel */}
+                    {/* Leads per stage */}
                     <div className="space-y-1.5 pt-1">
                       <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
                         <span className="flex items-center gap-1 font-semibold text-slate-700">
@@ -405,30 +373,12 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                       </div>
 
                       <div className="grid grid-cols-5 gap-1 text-center font-mono">
-                        <div className="p-1.5 rounded-lg bg-blue-50 border border-blue-200/60" title="1. Mới nộp đơn">
-                          <div className="text-[9px] text-blue-700 uppercase font-sans font-bold truncate">Mới</div>
-                          <div className="text-xs font-black text-blue-900">{funnel.s1_new}</div>
-                        </div>
-
-                        <div className="p-1.5 rounded-lg bg-indigo-50 border border-indigo-200/60" title="2. Đang tư vấn / Sàng lọc">
-                          <div className="text-[9px] text-indigo-700 uppercase font-sans font-bold truncate">Tư Vấn</div>
-                          <div className="text-xs font-black text-indigo-900">{funnel.s2_consulting}</div>
-                        </div>
-
-                        <div className="p-1.5 rounded-lg bg-purple-50 border border-purple-200/60" title="3. Thi tuyển / Đánh giá">
-                          <div className="text-[9px] text-purple-700 uppercase font-sans font-bold truncate">Test/PV</div>
-                          <div className="text-xs font-black text-purple-900">{funnel.s3_assessed}</div>
-                        </div>
-
-                        <div className="p-1.5 rounded-lg bg-amber-50 border border-amber-200/60" title="4. Chờ nộp phí / Giữ chỗ">
-                          <div className="text-[9px] text-amber-700 uppercase font-sans font-bold truncate">Chờ Phí</div>
-                          <div className="text-xs font-black text-amber-900">{funnel.s4_pending}</div>
-                        </div>
-
-                        <div className="p-1.5 rounded-lg bg-emerald-50 border border-emerald-200/60" title="5. Đã đóng phí / Nhập học">
-                          <div className="text-[9px] text-emerald-700 uppercase font-sans font-bold truncate">Nhập Học</div>
-                          <div className="text-xs font-black text-emerald-900">{funnel.s5_enrolled}</div>
-                        </div>
+                        {funnel.tiles.map((t) => (
+                          <div key={t.label} className={`p-1.5 rounded-lg border ${t.box}`} title={t.label}>
+                            <div className="text-[9px] uppercase font-sans font-bold truncate">{t.label}</div>
+                            <div className="text-xs font-black">{t.value}</div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>

@@ -22,17 +22,40 @@ import {
   Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { AdmissionCampaign, CampaignPositionTrack, Course, Order } from '../../types';
-import { inCampaign } from './LeadPipelineView';
+import { AdmissionCampaign, CampaignPositionTrack, Course } from '../../types';
 
 interface CMSCampaignManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   campaigns: AdmissionCampaign[];
   onUpdateCampaigns: (updated: AdmissionCampaign[]) => void;
-  orders: Order[];
+  /** Open on the "new campaign" form. */
+  startCreating?: boolean;
+  /** Open on this campaign (the one in view). */
+  focusCampaignId?: string;
   courses: Course[];
   onSelectCampaign?: (campaignId: string) => void;
+}
+
+/** A new campaign: a suggested code, everything else entered by staff. */
+function blankCampaign(): Partial<AdmissionCampaign> {
+  const now = new Date();
+  return {
+    id: `camp-${Date.now()}`,
+    code: `CAMP-${now.getFullYear()}-Q${Math.floor(now.getMonth() / 3) + 1}`,
+    name: '',
+    status: 'planning',
+    timeRange: '',
+    startDate: '',
+    deadline: '',
+    targetHeadcount: 0,
+    totalEnrolled: 0,
+    leadRecruiter: '',
+    scholarshipBudget: 0,
+    location: '',
+    description: '',
+    positions: []
+  };
 }
 
 export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProps> = ({
@@ -40,7 +63,8 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
   onClose,
   campaigns,
   onUpdateCampaigns,
-  orders,
+  startCreating,
+  focusCampaignId,
   courses,
   onSelectCampaign
 }) => {
@@ -58,10 +82,24 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
   const [newPositionCourseId, setNewPositionCourseId] = useState('');
 
   // Campaigns load after the modal mounts, and the screen passes the campaign in view first: show it.
+  // On opening: the "new campaign" form, or the campaign in view.
   useEffect(() => {
-    if (isOpen && !isEditing && !isCreatingNew && campaigns[0]) setActiveCampaign(campaigns[0]);
+    if (!isOpen) return;
+    if (startCreating) {
+      setIsCreatingNew(true);
+      setIsEditing(false);
+      setFormData(blankCampaign());
+    } else {
+      setActiveCampaign(campaigns.find((c) => c.id === focusCampaignId) || campaigns[0] || ({} as AdmissionCampaign));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, campaigns]);
+  }, [isOpen, startCreating]);
+  // Keep the selection when the list reloads (a new campaign gets its server id: follow it by code).
+  useEffect(() => {
+    setActiveCampaign(
+      (prev) => campaigns.find((c) => c.id === prev.id) || campaigns.find((c) => c.code === prev.code) || campaigns[0] || prev
+    );
+  }, [campaigns]);
 
   if (!isOpen) return null;
 
@@ -78,22 +116,7 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
   const handleStartCreate = () => {
     setIsCreatingNew(true);
     setIsEditing(false);
-    setFormData({
-      id: `camp-${Date.now()}`,
-      code: `CAMP-${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`,
-      name: '',
-      status: 'planning',
-      timeRange: '',
-      startDate: '',
-      deadline: '',
-      targetHeadcount: 0,
-      totalEnrolled: 0,
-      leadRecruiter: '',
-      scholarshipBudget: 0,
-      location: '',
-      description: '',
-      positions: []
-    });
+    setFormData(blankCampaign());
   };
 
   const handleStartEdit = (camp: AdmissionCampaign) => {
@@ -107,6 +130,11 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
     e.preventDefault();
     if (!formData.name || !formData.code) {
       alert('Vui lòng nhập tên và mã chiến dịch.');
+      return;
+    }
+    const code = formData.code.trim().toLowerCase();
+    if (campaigns.some((c) => c.id !== formData.id && c.code.toLowerCase() === code)) {
+      alert(`Mã chiến dịch "${formData.code}" đã được dùng. Mã là giá trị utm_campaign của link đăng ký nên phải duy nhất.`);
       return;
     }
 
@@ -129,11 +157,7 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
   };
 
   const handleDeleteCampaign = (campId: string, campName: string) => {
-    if (campaigns.length <= 1) {
-      alert('Hệ thống cần tối thiểu 1 chiến dịch tuyển dụng hoạt động.');
-      return;
-    }
-    if (window.confirm(`Bạn có chắc muốn xóa chiến dịch "${campName}"?`)) {
+    if (window.confirm(`Xóa chiến dịch "${campName}"? Các lead của chiến dịch vẫn được giữ (thành lead chưa gắn chiến dịch).`)) {
       const updated = campaigns.filter((c) => c.id !== campId);
       onUpdateCampaigns(updated);
       setActiveCampaign(updated[0]);
@@ -179,8 +203,9 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
     }));
   };
 
-  // Count leads in active campaign
-  const campaignOrders = orders.filter((o) => inCampaign(o, activeCampaign));
+  // Leads and paid learners of the campaign per course (server counts over every lead).
+  const courseFunnel = (courseId: string) =>
+    activeCampaign.funnel?.courses.find((c) => c.courseId === courseId) || { leads: 0, paid: 0 };
 
   const enrolledCount = activeCampaign.totalEnrolled || 0;
   const targetHeadcount = activeCampaign.targetHeadcount || 0;
@@ -650,9 +675,7 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
 
                     <div className="space-y-2.5">
                       {(activeCampaign.positions || []).map((pos) => {
-                        // Leads of the campaign on this position's course (among the leads loaded on screen).
-                        const posOrders = campaignOrders.filter((o) => o.courseId === pos.courseId);
-                        const posEnrolled = posOrders.filter((o) => o.status === 'paid').length;
+                        const { leads: posLeads, paid: posEnrolled } = courseFunnel(pos.courseId);
                         const posPct = pos.targetQuota ? Math.min(100, Math.round((posEnrolled / pos.targetQuota) * 100)) : 0;
 
                         return (
@@ -671,8 +694,8 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
                               </div>
 
                               <div className="text-right shrink-0">
-                                <span className="text-xs font-bold text-slate-800">{posEnrolled} / {pos.targetQuota}</span>
-                                <span className="text-[10px] text-slate-400 block">chỉ tiêu ({posPct}%)</span>
+                                <span className="text-xs font-bold text-slate-800">{posEnrolled} / {pos.targetQuota || '–'}</span>
+                                <span className="text-[10px] text-slate-400 block">đã đóng phí / chỉ tiêu{pos.targetQuota ? ` (${posPct}%)` : ''}</span>
                               </div>
                             </div>
 
@@ -685,8 +708,8 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
                             </div>
 
                             <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
-                              <span>Mức thu nhập sau tiếp nhận: <strong className="text-emerald-700">{pos.salaryRange || '12 - 25 Tr/tháng'}</strong></span>
-                              <span className="text-blue-600 font-semibold">{posOrders.length} Hồ sơ ứng tuyển</span>
+                              <span>{pos.salaryRange ? <>Mức thu nhập sau tiếp nhận: <strong className="text-emerald-700">{pos.salaryRange}</strong></> : null}</span>
+                              <span className="text-blue-600 font-semibold">{posLeads} lead</span>
                             </div>
                           </div>
                         );

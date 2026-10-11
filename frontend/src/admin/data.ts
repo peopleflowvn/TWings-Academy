@@ -13,112 +13,81 @@ const reportError = (err: unknown) =>
 // Fields the server owns or that have their own endpoints: never sent in a PATCH.
 const ORDER_READ_ONLY = new Set([
   'id', 'orderCode', 'totalPaidAmount', 'paidAt', 'isDuplicate', 'duplicateCount', 'createdAt', 'updatedAt',
-  'privacyConsentAt', 'privacyConsentVersion', 'timelineActivities', 'followupTasks', 'agentResearch'
+  'privacyConsentAt', 'privacyConsentVersion', 'timelineActivities', 'followupTasks', 'agentResearch',
+  'responseDueAt', 'firstResponseAt'
 ]);
 // Derived by the server from recorded payments (confirm-payment, bank webhook): never sent in a PATCH.
 const PAYMENT_DERIVED = new Set(['status', 'paymentStatusDetail', 'paymentDate', 'learningAccess', 'refundedAmount']);
 
+/** Leads for screens that only read a few of them (e-mail previews): the 200 newest. */
 export function useOrders(enabled: boolean) {
   const [orders, setOrders] = useState<Order[]>([]);
-  const ordersRef = useRef<Order[]>([]);
-  ordersRef.current = orders;
-
   const reload = useCallback(async () => {
     const res = await api.get<Paginated<Order>>('/staff/orders/?pageSize=200');
     setOrders(res.results);
   }, []);
-
   useEffect(() => {
     if (enabled) reload().catch(reportError);
   }, [enabled, reload]);
+  return { orders, reload };
+}
 
-  const refreshOne = async (id: string, fallback?: Order) => {
-    try {
-      const fresh = await api.get<Order>(`/staff/orders/${id}/`);
-      setOrders((list) => list.map((o) => (o.id === fresh.id ? fresh : o)));
-    } catch {
-      if (fallback) setOrders((list) => list.map((o) => (o.id === fallback.id ? fallback : o)));
-    }
-  };
+/** One lead in full (the list leaves out identity documents and bank accounts). */
+export const loadOrder = (id: string) => api.get<Order>(`/staff/orders/${id}/`);
 
-  /** One order in full (the list leaves out identity documents and bank accounts); kept in the list too. */
-  const loadOne = async (id: string): Promise<Order> => {
-    const fresh = await api.get<Order>(`/staff/orders/${id}/`);
-    setOrders((list) => list.map((o) => (o.id === fresh.id ? fresh : o)));
-    return fresh;
-  };
+/** Finance: record money received outside the bank webhook (audited on the server); the order as now stored. */
+export async function confirmOrderPayment(id: string, amount: number): Promise<Order | null> {
+  try {
+    await api.post(`/staff/orders/${id}/confirm-payment/`, { amount, note: 'Xác nhận thủ công từ CRM (đã đối soát)' });
+  } catch (err) {
+    reportError(err);
+  }
+  return loadOrder(id).catch(() => null);
+}
 
-  /** Finance: record money received outside the bank webhook (audited on the server). */
-  const confirmPayment = async (id: string, amount: number): Promise<Order | null> => {
-    try {
-      await api.post(`/staff/orders/${id}/confirm-payment/`, { amount, note: 'Xác nhận thủ công từ CRM (đã đối soát)' });
-    } catch (err) {
-      reportError(err);
-    }
-    return loadOne(id).catch(() => null);
-  };
+/**
+ * Save a lead edited in the CMS against the version it was loaded as: only changed fields are PATCHed
+ * (never payment state: payments go through confirmOrderPayment), new activities and follow-ups go to
+ * their endpoints. Resolves to the order as stored on the server; failures are reported, not thrown.
+ */
+export async function saveOrderChanges(previous: Order, updated: Order): Promise<Order> {
+  const prev = previous as unknown as Record<string, unknown>;
+  const next = updated as unknown as Record<string, unknown>;
+  const changed: Record<string, unknown> = {};
+  for (const key of Object.keys(next)) {
+    if (!ORDER_READ_ONLY.has(key) && !PAYMENT_DERIVED.has(key) && JSON.stringify(next[key]) !== JSON.stringify(prev[key])) changed[key] = next[key];
+  }
+  const errors: string[] = [];
+  const push = (err: unknown) => errors.push(err instanceof Error ? err.message : String(err));
+  if (Object.keys(changed).length) await api.patch(`/staff/orders/${updated.id}/`, changed).catch(push);
 
-  /**
-   * Persist a CRM edit made anywhere in the CMS: only changed fields are sent (never payment state:
-   * payments go through confirmPayment), activities and follow-ups use their endpoints, and the order
-   * is reloaded from the server afterwards.
-   */
-  const updateCRM = async (updated: Order) => {
-    const previous = ordersRef.current.find((o) => o.id === updated.id);
-    setOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)));
-    if (!previous) return;
-    const prev = previous as unknown as Record<string, unknown>;
-    const next = updated as unknown as Record<string, unknown>;
-    const changed: Record<string, unknown> = {};
-    for (const key of Object.keys(next)) {
-      if (!ORDER_READ_ONLY.has(key) && !PAYMENT_DERIVED.has(key) && JSON.stringify(next[key]) !== JSON.stringify(prev[key])) changed[key] = next[key];
-    }
-    const errors: string[] = [];
-    const push = (err: unknown) => errors.push(err instanceof Error ? err.message : String(err));
-    try {
-      if (Object.keys(changed).length) await api.patch(`/staff/orders/${updated.id}/`, changed);
+  const knownActivity = new Set((previous.timelineActivities || []).map((a) => a.id));
+  for (const a of updated.timelineActivities || []) {
+    if (knownActivity.has(a.id) || a.type === 'payment') continue;
+    await api.post(`/staff/orders/${updated.id}/activities/`, { type: a.type, title: a.title, content: a.content }).catch(push);
+  }
 
-      const knownActivity = new Set((previous.timelineActivities || []).map((a) => a.id));
-      for (const a of updated.timelineActivities || []) {
-        if (knownActivity.has(a.id) || a.type === 'payment') continue;
-        await api.post(`/staff/orders/${updated.id}/activities/`, { type: a.type, title: a.title, content: a.content });
-      }
+  const prevTasks = new Map((previous.followupTasks || []).map((t) => [t.id, t]));
+  const nextTaskIds = new Set((updated.followupTasks || []).map((t) => t.id));
+  for (const task of updated.followupTasks || []) {
+    const before = prevTasks.get(task.id);
+    const body = {
+      title: task.title,
+      dueDate: /^\d{4}-\d{2}-\d{2}/.test(task.dueDate) ? task.dueDate.slice(0, 10) : null,
+      priority: task.priority,
+      isCompleted: task.isCompleted,
+      assignedTo: task.assignedTo
+    };
+    if (!before) await api.post(`/staff/orders/${updated.id}/followups/`, body).catch(push);
+    else if (JSON.stringify(before) !== JSON.stringify(task))
+      await api.patch(`/staff/orders/${updated.id}/followups/${task.id}/`, body).catch(push);
+  }
+  for (const taskId of prevTasks.keys()) {
+    if (!nextTaskIds.has(taskId)) await api.delete(`/staff/orders/${updated.id}/followups/${taskId}/`).catch(push);
+  }
 
-      const prevTasks = new Map((previous.followupTasks || []).map((t) => [t.id, t]));
-      const nextTaskIds = new Set((updated.followupTasks || []).map((t) => t.id));
-      for (const task of updated.followupTasks || []) {
-        const before = prevTasks.get(task.id);
-        const body = {
-          title: task.title,
-          dueDate: /^\d{4}-\d{2}-\d{2}/.test(task.dueDate) ? task.dueDate.slice(0, 10) : null,
-          priority: task.priority,
-          isCompleted: task.isCompleted,
-          assignedTo: task.assignedTo
-        };
-        try {
-          if (!before) await api.post(`/staff/orders/${updated.id}/followups/`, body);
-          else if (JSON.stringify(before) !== JSON.stringify(task))
-            await api.patch(`/staff/orders/${updated.id}/followups/${task.id}/`, body);
-        } catch (err) {
-          push(err);
-        }
-      }
-      for (const taskId of prevTasks.keys()) {
-        if (nextTaskIds.has(taskId)) continue;
-        try {
-          await api.delete(`/staff/orders/${updated.id}/followups/${taskId}/`);
-        } catch (err) {
-          push(err);
-        }
-      }
-    } catch (err) {
-      push(err);
-    }
-    await refreshOne(updated.id, previous);
-    if (errors.length) reportError(new Error(`Chưa lưu được một phần thay đổi: ${errors.join('; ')}`));
-  };
-
-  return { orders, reload, loadOne, confirmPayment, updateCRM };
+  if (errors.length) reportError(new Error(`Chưa lưu được một phần thay đổi: ${errors.join('; ')}`));
+  return loadOrder(updated.id).catch(() => previous);
 }
 
 export function useCourses(enabled: boolean) {

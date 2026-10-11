@@ -202,6 +202,16 @@ class CampaignPositionSerializer(serializers.ModelSerializer):
 class AdmissionCampaignSerializer(serializers.ModelSerializer):
     positions = CampaignPositionSerializer(many=True, required=False)
     total_enrolled = serializers.IntegerField(read_only=True, default=0)
+    funnel = serializers.SerializerMethodField()
+
+    def get_funnel(self, obj):
+        """Leads of the campaign per stage and per course (lists: dict keys would be re-cased)."""
+        f = self.context.get("funnels", {}).get(obj.pk, {"leads": 0, "stages": {}, "courses": {}})
+        return {
+            "leads": f["leads"],
+            "stages": [{"stage": k, "count": v} for k, v in f["stages"].items()],
+            "courses": [{"course_id": k, **v} for k, v in f["courses"].items()],
+        }
 
     class Meta:
         model = AdmissionCampaign

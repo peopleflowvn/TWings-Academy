@@ -56,3 +56,70 @@ def test_campaign_enrolment_counts_link_and_code(staff_client, course):
     rows = staff_client(Role.SALES_CRM).get("/api/v1/staff/campaigns/").json()
     rows = rows["results"] if isinstance(rows, dict) else rows
     assert next(r for r in rows if r["code"] == "CAMP-X")["totalEnrolled"] == 2
+
+
+def _rows(res):
+    data = res.json()
+    return data["results"] if isinstance(data, dict) and "results" in data else data
+
+
+def test_staff_creates_a_lead_priced_assigned_and_deduplicated(staff_client, course):
+    from .conftest import make_staff
+
+    Order.objects.create(customer_name="Old", course=course, customer_phone="0911222333")
+    consultant = make_staff(Role.SALES_CRM, "tuvan@twings.test")
+    consultant.receives_leads = True
+    consultant.save()
+    res = staff_client(Role.SALES_CRM).post(
+        "/api/v1/staff/orders/",
+        {"customerName": "Walk-in", "customerPhone": "0911222333", "courseId": course.pk},
+        format="json",
+    )
+    assert res.status_code == 201, res.content
+    order = Order.objects.get(pk=res.json()["id"])
+    assert order.amount == course.price and order.total_receivable == course.price
+    assert order.course_title == course.title and order.source == "Nhập tay"
+    assert order.is_duplicate and order.assigned_to == consultant and order.pic == consultant.name
+    assert order.response_due_at is not None
+    assert order.timeline_activities.filter(title="Tạo lead thủ công").exists()
+
+
+def test_pic_follows_the_assigned_consultant(staff_client, course):
+    from .conftest import make_staff
+
+    consultant = make_staff(Role.SALES_CRM, "pic@twings.test")
+    order = Order.objects.create(customer_name="A", course=course, pic="Ai đó")
+    res = staff_client(Role.SUPER_ADMIN).patch(
+        f"/api/v1/staff/orders/{order.pk}/", {"assignedTo": consultant.pk}, format="json"
+    )
+    assert res.status_code == 200, res.content
+    order.refresh_from_db()
+    assert order.pic == consultant.name
+
+
+def test_pipeline_filters_and_stage_counts(staff_client, course):
+    from apps.crm.models import AdmissionCampaign
+
+    camp = AdmissionCampaign.objects.create(code="CAMP-P", name="P")
+    Order.objects.create(customer_name="A", course=course, campaign=camp, amount=100)
+    Order.objects.create(
+        customer_name="B", course=course, campaign_code="camp-p", crm_status="3. Đang tư vấn"
+    )
+    Order.objects.create(customer_name="C", course=course)
+    Order.objects.create(customer_name="D", course=course, campaign_code="UNKNOWN")
+    client = staff_client(Role.SALES_CRM)
+
+    names = {r["customerName"] for r in _rows(client.get(f"/api/v1/staff/orders/?scope={camp.pk}"))}
+    assert names == {"A", "B"}
+    names = {r["customerName"] for r in _rows(client.get("/api/v1/staff/orders/?scope=none"))}
+    assert names == {"C", "D"}
+
+    summary = client.get(f"/api/v1/staff/orders/pipeline/?scope={camp.pk}").json()
+    stages = {s["stage"]: s for s in summary["stages"]}
+    assert (
+        summary["total"] == 2 and stages["1. Mới"]["amount"] == 100 and stages["3. Đang tư vấn"]["count"] == 1
+    )
+
+    funnel = next(c for c in _rows(client.get("/api/v1/staff/campaigns/")) if c["code"] == "CAMP-P")["funnel"]
+    assert funnel["leads"] == 2
+    assert funnel["courses"] == [{"courseId": course.pk, "leads": 2, "paid": 0}]

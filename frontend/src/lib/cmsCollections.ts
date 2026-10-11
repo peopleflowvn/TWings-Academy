@@ -53,6 +53,7 @@ export const CAMPAIGNS: CollectionOptions<AdmissionCampaign> = {
     status: d.status,
     targetHeadcount: d.targetHeadcount,
     totalEnrolled: d.totalEnrolled || 0,
+    funnel: d.funnel || { leads: 0, stages: [], courses: [] },
     positions: (d.positions || []).map((p: any) => ({
       id: p.id,
       courseId: p.courseId,

@@ -196,9 +196,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
     document.title = `${pageTitle} | TWings Quản trị`;
   }, [pageTitle]);
 
-  // Leads are loaded on the pages that use them only (not on every page of the staff app).
-  const needsOrders = path === '/sales/crm' || path.startsWith('/sales/requisitions') || path === '/content/email';
-  const orders = useOrders(can('crm.view_leads') && needsOrders);
+  // E-mail previews read a few leads; the CRM pipeline loads (filtered, paginated) leads itself.
+  const orders = useOrders(can('crm.view_leads') && path === '/content/email');
   const courses = useCourses(can('courses.view'));
   const homepage = useHomepageSections(
     can('homepage.intro_about') || can('homepage.partners') || can('system.sections_toggle')
@@ -240,11 +239,7 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
       case '/sales/requisitions/new':
         return (
           <CMSCRMOrdersTab
-            orders={orders.orders}
             courses={courses.courses}
-            onUpdateOrderCRM={orders.updateCRM}
-            onLoadOrder={orders.loadOne}
-            onConfirmPayment={orders.confirmPayment}
           />
         );
       case '/sales/consulting':

@@ -343,15 +343,14 @@ export interface AdmissionCampaign {
   scholarshipBudget: number;    // e.g. 250000000 (250tr)
   location: string;             // e.g. "Hà Nội & Miền Bắc"
   description: string;
-  // Extended fields for TalentFlow ATS Course Requisition model
-  courseId?: string;            // Template Course ID from catalog
-  courseTitle?: string;         // Template Course Title
-  intakeCohort?: string;        // e.g. "K10-HN"
-  isHot?: boolean;              // Highlight badge
-  isPublished?: boolean;        // Visible on public career/landing site
-  tuitionFee?: number;          // Standard tuition fee for this batch
-  earlyBirdFee?: number;        // Early bird discounted fee
-  format?: 'offline' | 'hybrid' | 'online_external_lms';
+  /** Leads of the campaign (linked or carrying its code), counted by the server over every lead. */
+  funnel?: CampaignFunnel;
+}
+
+export interface CampaignFunnel {
+  leads: number;
+  stages: { stage: CRMStatus; count: number }[];
+  courses: { courseId: string; leads: number; paid: number }[];
 }
 
 // -------------------------------------------------------------

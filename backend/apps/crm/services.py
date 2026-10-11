@@ -140,11 +140,7 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
 
         InvoiceRequest.objects.create(order=order, **invoice)
 
-    duplicates = order.find_duplicates()
-    if duplicates.exists():
-        order.is_duplicate = True
-        order.duplicate_note = f"Trùng SĐT/email/CCCD với {duplicates.count()} hồ sơ khác"
-        order.save(update_fields=["is_duplicate", "duplicate_note", "updated_at"])
+    flag_duplicates(order)
 
     Activity.objects.create(
         order=order,
@@ -158,6 +154,61 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     from .assignment import assign_new_lead
 
     assign_new_lead(order)  # step 4: a consultant and a response deadline right away
+    return order
+
+
+def flag_duplicates(order: Order) -> None:
+    """Mark a new lead that shares a phone, e-mail or CCCD with other leads (program courses aside)."""
+    duplicates = order.find_duplicates().filter(parent__isnull=True)
+    if duplicates.exists():
+        order.is_duplicate = True
+        order.duplicate_note = f"Trùng SĐT/email/CCCD với {duplicates.count()} hồ sơ khác"
+        order.save(update_fields=["is_duplicate", "duplicate_note", "updated_at"])
+
+
+@transaction.atomic
+def create_staff_lead(request, serializer) -> Order:
+    """
+    A lead entered by staff (phone call, walk-in, event): priced from the course / open intake like a
+    website lead, deduplicated, given a consultant and a response deadline.
+    """
+    from .assignment import assign_new_lead
+
+    data = serializer.validated_data
+    extra = {"source": data.get("source") or "Nhập tay", "crm_status": data.get("crm_status") or "1. Mới"}
+    course = data.get("course")
+    if course is not None:
+        cohort = data.get("cohort") or resolve_cohort(course)[0]
+        price = cohort.price() if cohort else course.price
+        extra.update(
+            cohort=cohort,
+            course_title=course.title,
+            interested_course=data.get("interested_course") or course.title,
+        )
+        if not data.get("amount"):
+            extra.update(
+                amount=price,
+                total_receivable=price,
+                tuition_fee=course.price,
+                original_amount=course.price,
+                discount_amount=max(course.price - price, 0),
+            )
+    campaign = data.get("campaign")
+    if campaign is not None and not data.get("campaign_code"):
+        extra["campaign_code"] = campaign.code
+    order = serializer.save(**extra)
+    flag_duplicates(order)
+    user = request.user
+    Activity.objects.create(
+        order=order,
+        type="note",
+        title="Tạo lead thủ công",
+        content=f"Nguồn: {order.source}",
+        actor=user.name or user.email,
+        actor_user=user,
+    )
+    assign_new_lead(order)
+    audit(request, "order.create", order, order_code=order.order_code)
     return order
 
 
