@@ -22,7 +22,6 @@ import {
   Clock,
   Layers
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { Order, EmailTemplate, EmailSendLog } from '../../types';
 import {
   INITIAL_EMAIL_TEMPLATES,
@@ -38,14 +37,8 @@ interface SendResendEmailModalProps {
   isOpen: boolean;
   onClose: () => void;
   order: Order;
-  onEmailSent?: (activity: {
-    id: string;
-    type: 'email';
-    title: string;
-    content: string;
-    actor: string;
-    timestamp: string;
-  }, log: EmailSendLog) => void;
+  /** The server recorded the e-mail (and, for a lead, its history entry): reload the lead. */
+  onEmailSent?: () => void;
 }
 
 export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
@@ -73,7 +66,7 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
   const [sendResult, setSendResult] = useState<{
     success: boolean;
     messageId: string;
-    isLiveApi?: boolean;
+    delivered: boolean;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -121,44 +114,9 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
         return;
       }
 
-      setSendResult({
-        success: true,
-        messageId: result.messageId,
-        isLiveApi: result.isLiveApi
-      });
-
-      confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
-
-      const newActivity = {
-        id: `act-email-${Date.now()}`,
-        type: 'email' as const,
-        title: `Đã gửi: ${currentTemplate.name}`,
-        content: `Đã phát thư điện tử thành công qua Resend API tới ${recipientEmail}. Resend Msg ID: ${result.messageId}`,
-        actor: order.pic || 'Ban Tuyển Sinh',
-        timestamp: new Date().toLocaleString('vi-VN')
-      };
-
-      const newLog: EmailSendLog = {
-        id: `log-${Date.now()}`,
-        templateId: currentTemplate.id,
-        templateName: currentTemplate.name,
-        recipientEmail: recipientEmail.trim(),
-        recipientName: order.customerName,
-        subject: subject,
-        sentAt: new Date().toLocaleString('vi-VN'),
-        deliveredAt: new Date().toLocaleString('vi-VN'),
-        status: result.status,
-        resendMessageId: result.messageId,
-        renderedHtml: htmlBody,
-        webhookEvents: [
-          { type: 'email.sent', timestamp: new Date().toLocaleString('vi-VN'), details: 'Khởi tạo và phát qua Resend API' },
-          { type: 'email.delivered', timestamp: new Date().toLocaleString('vi-VN'), details: 'Máy chủ hộp thư nhận phản hồi 250 OK' }
-        ]
-      };
-
-      if (onEmailSent) {
-        onEmailSent(newActivity, newLog);
-      }
+      // "simulated": the server has no Resend key, nothing reached the learner.
+      setSendResult({ success: true, messageId: result.messageId, delivered: result.status !== 'simulated' });
+      if (onEmailSent) onEmailSent();
     } catch (err: any) {
       setErrorMessage(err?.message || 'Có lỗi xảy ra khi phát thư qua Resend.');
     } finally {
@@ -205,27 +163,33 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
           {/* Success Banner */}
-          {sendResult?.success && (
+          {sendResult?.success && sendResult.delivered && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start justify-between gap-3 text-emerald-900 animate-fadeIn">
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
                 <div className="space-y-1">
-                  <h4 className="font-bold text-sm">Đã phát email thành công qua Resend API!</h4>
+                  <h4 className="font-bold text-sm">Đã gửi email</h4>
                   <p className="text-xs text-emerald-700">
-                    Thư đã được gửi đến <strong>{recipientEmail}</strong>. Lịch sử gửi thư và timeline ứng viên đã được tự động cập nhật.
+                    Gửi tới <strong>{recipientEmail}</strong>, đã ghi vào lịch sử hồ sơ. Trạng thái giao thư (đã nhận, bị trả về…) cập nhật theo webhook trong Mẫu email & lịch sử gửi.
                   </p>
-                  <div className="text-[11px] font-mono text-emerald-800 bg-white/60 px-2 py-1 rounded-md border border-emerald-200 inline-block mt-1">
-                    Message ID: <strong>{sendResult.messageId}</strong> {sendResult.isLiveApi ? '(Live Dispatched)' : '(Sandbox Verified)'}
-                  </div>
+                  {sendResult.messageId && (
+                    <div className="text-[11px] font-mono text-emerald-800 bg-white/60 px-2 py-1 rounded-md border border-emerald-200 inline-block mt-1">
+                      Mã thư: <strong>{sendResult.messageId}</strong>
+                    </div>
+                  )}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setSendResult(null)}
-                className="text-emerald-500 hover:text-emerald-800 p-1"
-              >
+              <button type="button" onClick={() => setSendResult(null)} className="text-emerald-500 hover:text-emerald-800 p-1">
                 <X className="w-4 h-4" />
               </button>
+            </div>
+          )}
+          {sendResult?.success && !sendResult.delivered && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-amber-900 text-xs">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+              <span>
+                <strong>Email chưa được gửi thật:</strong> máy chủ chưa cấu hình khóa Resend (RESEND_API_KEY). Thư được lưu ở chế độ mô phỏng; học viên không nhận được.
+              </span>
             </div>
           )}
 

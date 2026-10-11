@@ -44,6 +44,7 @@ def test_duplicate_count_in_detail(staff_client, course):
     )
     detail = staff_client(Role.SALES_CRM).get(f"/api/v1/staff/orders/{dup.pk}/").json()
     assert detail["duplicateCount"] == 1
+    assert [r["courseTitle"] for r in detail["relatedOrders"]] == [course.title]
 
 
 def test_campaign_enrolment_counts_link_and_code(staff_client, course):
@@ -123,3 +124,27 @@ def test_pipeline_filters_and_stage_counts(staff_client, course):
     funnel = next(c for c in _rows(client.get("/api/v1/staff/campaigns/")) if c["code"] == "CAMP-P")["funnel"]
     assert funnel["leads"] == 2
     assert funnel["courses"] == [{"courseId": course.pk, "leads": 2, "paid": 0}]
+
+
+def test_email_from_the_lead_workspace_goes_into_its_history(staff_client, course, monkeypatch):
+    order = Order.objects.create(customer_name="A", course=course, customer_email="a@example.com")
+    client = staff_client(Role.SALES_CRM)
+    body = {"to": "a@example.com", "subject": "Chào bạn", "html": "<p>Hi</p>", "orderId": order.pk}
+
+    # No Resend key: nothing is delivered, the response and the history say so, no first contact.
+    res = client.post("/api/v1/staff/emails/send/", body, format="json")
+    assert (
+        res.status_code == 201
+        and res.json()["status"] == "simulated"
+        and res.json()["resendMessageId"] is None
+    )
+    assert order.timeline_activities.get(type="email").title.startswith("Email chưa gửi")
+    order.refresh_from_db()
+    assert order.first_response_at is None
+
+    monkeypatch.setattr("apps.notifications.views.send_email", lambda **kw: "msg_1")
+    res = client.post("/api/v1/staff/emails/send/", body, format="json")
+    assert res.json()["status"] == "sent"
+    assert order.timeline_activities.filter(title="Email: Chào bạn").exists()
+    order.refresh_from_db()
+    assert order.first_response_at is not None

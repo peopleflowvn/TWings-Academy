@@ -421,7 +421,7 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
                     <div key={pos.id} className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-2xs">
                       <div className="min-w-0">
                         <p className="font-bold text-slate-800 text-xs truncate">{pos.positionTitle}</p>
-                        <p className="text-[11px] text-slate-500 truncate">{pos.department} &bull; Chỉ tiêu: <strong className="text-blue-700">{pos.targetQuota}</strong> &bull; Lương: {pos.salaryRange}</p>
+                        <p className="text-[11px] text-slate-500 truncate">Chỉ tiêu: <strong className="text-blue-700">{pos.targetQuota || '–'}</strong>{pos.salaryRange ? <> &bull; Thu nhập sau tiếp nhận: {pos.salaryRange}</> : null}</p>
                       </div>
                       <button
                         type="button"
@@ -467,7 +467,7 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
                     type="text"
                     value={newPositionSalary}
                     onChange={(e) => setNewPositionSalary(e.target.value)}
-                    placeholder="Mức lương dự kiến"
+                    placeholder="Thu nhập sau tiếp nhận (nếu có)"
                     className="w-36 px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 text-xs"
                   />
                   <button
@@ -689,7 +689,7 @@ export const CMSCampaignManagementModal: React.FC<CMSCampaignManagementModalProp
                                   <span className="font-bold text-slate-800 text-xs">{pos.positionTitle}</span>
                                 </div>
                                 <p className="text-[11px] text-slate-500 mt-0.5">
-                                  {pos.department} &bull; Giảng viên chủ nhiệm: <strong>{pos.leadInstructorName || '–'}</strong>
+                                  {[pos.department, pos.leadInstructorName && `Giảng viên chủ nhiệm: ${pos.leadInstructorName}`].filter(Boolean).join(' • ')}
                                 </p>
                               </div>
 

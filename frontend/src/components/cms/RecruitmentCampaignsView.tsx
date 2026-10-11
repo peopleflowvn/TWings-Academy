@@ -89,6 +89,12 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
     };
   };
 
+  // The places the campaigns were entered with (no guessing from the text).
+  const locations = useMemo(
+    () => Array.from(new Set(campaigns.map((c) => (c.location || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi')),
+    [campaigns]
+  );
+
   // Filtered campaigns
   const filteredCampaigns = useMemo(() => {
     return campaigns.filter((camp) => {
@@ -107,11 +113,7 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
         (selectedStatus === 'planning' && camp.status === 'planning') ||
         (selectedStatus === 'closed' && camp.status === 'closed');
 
-      const matchesLocation =
-        selectedLocation === 'all' ||
-        (selectedLocation === 'hn' && (camp.location || '').toLowerCase().includes('hà nội')) ||
-        (selectedLocation === 'hcm' && (camp.location || '').toLowerCase().includes('hcm')) ||
-        (selectedLocation === 'online' && (camp.location || '').toLowerCase().includes('online'));
+      const matchesLocation = selectedLocation === 'all' || (camp.location || '').trim() === selectedLocation;
 
       const matchesCourse =
         selectedCourseFilter === 'all' ||
@@ -202,10 +204,10 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
             >
-              <option value="all">Tất Cả Trạng Thái</option>
-              <option value="active">🟢 Đang Tuyển Sinh</option>
-              <option value="planning">🟡 Sắp Mở / Chuẩn Bị</option>
-              <option value="closed">⚪ Đã Đóng Sổ</option>
+              <option value="all">Mọi trạng thái</option>
+              <option value="active">Đang tuyển sinh</option>
+              <option value="planning">Lên kế hoạch</option>
+              <option value="closed">Đã đóng</option>
             </select>
 
             <select
@@ -213,10 +215,10 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
               onChange={(e) => setSelectedLocation(e.target.value)}
               className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
             >
-              <option value="all">Tất Cả Cơ Sở</option>
-              <option value="hn">Hội sở Hà Nội</option>
-              <option value="hcm">Chi nhánh TP.HCM</option>
-              <option value="online">Trực tuyến LMS</option>
+              <option value="all">Mọi địa điểm</option>
+              {locations.map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
             </select>
 
             <select

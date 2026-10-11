@@ -188,6 +188,7 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({ courses = [] }
           key={selectedLead.id}
           order={selectedLead}
           onClose={() => setSelectedLead(null)}
+          onOpenOrder={(id) => openLead({ id })}
           onSave={async (previous, updated) => {
             const fresh = await saveOrderChanges(previous, updated);
             setRefreshKey((k) => k + 1);

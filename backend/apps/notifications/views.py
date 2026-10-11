@@ -58,10 +58,11 @@ class SendEmailView(APIView):
         ser.is_valid(raise_exception=True)
         data = ser.validated_data
         template = EmailTemplate.objects.filter(code=data.get("template_code") or "").first()
+        order = Order.objects.filter(pk=data.get("order_id") or "").first()
         log = EmailLog.objects.create(
             template=template,
             template_code=data.get("template_code", ""),
-            order=Order.objects.filter(pk=data.get("order_id") or "").first(),
+            order=order,
             recipient_email=data["to"],
             recipient_name=data.get("recipient_name", ""),
             subject=data["subject"],
@@ -81,10 +82,35 @@ class SendEmailView(APIView):
         log.resend_message_id = message_id
         log.sent_at = timezone.now()
         log.save(update_fields=["status", "resend_message_id", "sent_at", "updated_at"])
+        if order is not None:
+            _record_on_lead(request, order, log)
+        # No Resend key on the server: nothing was delivered ("simulated"), and the screen says so.
         return Response(
-            {"id": log.pk, "resend_message_id": message_id or f"sim_{log.pk}", "status": log.status},
+            {"id": log.pk, "resend_message_id": message_id, "status": log.status},
             status=201,
         )
+
+
+def _record_on_lead(request, order, log) -> None:
+    """An e-mail sent from the lead workspace goes into the lead's history (a real one is a contact)."""
+    from apps.crm.assignment import mark_first_response
+    from apps.crm.models import Activity
+
+    sent = log.status == "sent"
+    Activity.objects.create(
+        order=order,
+        type="email",
+        title=(
+            f"Email: {log.subject}"
+            if sent
+            else f"Email chưa gửi (máy chủ chưa cấu hình Resend): {log.subject}"
+        )[:300],
+        content=f"Tới {log.recipient_email}",
+        actor=request.user.name or request.user.email,
+        actor_user=request.user,
+    )
+    if sent:
+        mark_first_response(order)
 
 
 class EmailTemplateViewSet(viewsets.ModelViewSet):

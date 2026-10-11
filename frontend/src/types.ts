@@ -408,6 +408,8 @@ export interface Order {
   assignedTo?: string | null;
   /** The admission campaign the lead came from (campaignCode keeps its code). */
   campaign?: string | null;
+  /** Other leads / orders of the same person (phone, e-mail or CCCD): one lead's detail only. */
+  relatedOrders?: { id: string; orderCode: string; courseTitle: string; status: string; crmStatus: string; createdAt: string }[] | null;
   amount: number;
   originalAmount?: number;
   discountAmount?: number;

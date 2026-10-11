@@ -33,6 +33,7 @@ class OrderSerializer(serializers.ModelSerializer):
     timeline_activities = ActivitySerializer(many=True, read_only=True)
     followup_tasks = FollowupTaskSerializer(many=True, read_only=True)
     duplicate_count = serializers.SerializerMethodField()
+    related_orders = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -56,6 +57,23 @@ class OrderSerializer(serializers.ModelSerializer):
     def _is_list(self) -> bool:
         view = self.context.get("view")
         return getattr(view, "action", None) == "list"
+
+    def get_related_orders(self, obj):
+        """Other leads / orders of the same person (phone, e-mail or CCCD), in one order's detail only."""
+        if self._is_list():
+            return None
+        others = obj.find_duplicates().filter(parent__isnull=True).order_by("-created_at")[:20]
+        return [
+            {
+                "id": o.pk,
+                "order_code": o.order_code,
+                "course_title": o.course_title,
+                "status": o.status,
+                "crm_status": o.crm_status,
+                "created_at": o.created_at,
+            }
+            for o in others
+        ]
 
     def get_duplicate_count(self, obj):
         # Counted for one order (detail); the list only flags duplicates (no query per row).

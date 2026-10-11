@@ -57,6 +57,8 @@ interface CompAILeadDetailModalProps {
   onSave: (previous: Order, updated: Order) => Promise<Order>;
   /** Finance: record a received amount; resolves to the order as now stored. */
   onConfirmPayment: (amount: number) => Promise<Order | null>;
+  /** Open another lead (same person) in the workspace. */
+  onOpenOrder?: (orderId: string) => void;
 }
 
 interface Consultant { id: string; name: string }
@@ -108,13 +110,14 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
   onClose,
   onSave,
   onConfirmPayment,
+  onOpenOrder,
 }) => {
   const [order, setOrder] = useState<Order>(initialOrder);
   // The order as last loaded from / saved to the server: changes are sent against it.
   const [saved, setSaved] = useState<Order>(initialOrder);
   const [isDirty, setIsDirty] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'contact' | 'timeline' | 'tasks' | 'billing' | 'vietqr' | 'lms' | 'training'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'contact' | 'timeline' | 'tasks' | 'payment' | 'training'>('profile');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -242,7 +245,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
   const handleStageSelect = (nextStage: CRMStatus) => {
     // "Đã đóng phí" follows a recorded payment (bank webhook or finance confirmation), never a click.
     if (nextStage === '5. Đã đóng phí' && order.status !== 'paid') {
-      setActiveTab('vietqr');
+      setActiveTab('payment');
       return;
     }
     if (nextStage === (saved.crmStatus || '1. Mới')) return;
@@ -311,7 +314,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
     if (activityFilter === 'zalo') return act.type === 'zalo';
     if (activityFilter === 'meeting') return act.type === 'meeting';
     if (activityFilter === 'note') return act.type === 'note';
-    if (activityFilter === 'agent') return act.type === 'agent_research' || act.type === 'payment';
+    if (activityFilter === 'agent') return act.type === 'email' || act.type === 'payment';
     return true;
   });
 
@@ -596,12 +599,12 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
               </select>
             </div>
 
-            {/* Metric 5: Multi-course / Duplicate Alert */}
+            {/* Metric 5: other leads / orders of the same person */}
             <div className="hidden lg:flex bg-slate-50 border border-slate-200 rounded-xl p-2.5 items-center justify-between">
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Lịch Sử Khóa Học</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Hồ sơ khác</span>
                 <span className="font-medium text-slate-700 text-xs">
-                  {order.otherEnrolledCourses?.length ? `${order.otherEnrolledCourses.length + 1} khóa tại TWings` : 'Khóa đầu tiên'}
+                  {order.relatedOrders?.length ? `${order.relatedOrders.length} hồ sơ cùng SĐT/email/CCCD` : 'Không có'}
                 </span>
               </div>
               <GraduationCap className="w-4 h-4 text-blue-600" />
@@ -656,14 +659,12 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
             {/* Clean Segmented Tab Navigation */}
             <div className="flex items-center gap-1 border-b border-slate-200 bg-white p-1 rounded-2xl border shadow-2xs overflow-x-auto">
               {[
-                { id: 'profile', label: 'Hồ Sơ & Học Vấn', icon: User, count: null },
-                { id: 'contact', label: 'Liên Hệ & Lịch Hẹn', icon: Phone, count: null },
-                { id: 'timeline', label: 'Nhật Ký Tương Tác', icon: FileText, count: order.timelineActivities?.length },
-                { id: 'tasks', label: 'Lịch Nhắc Hẹn', icon: CheckSquare, count: order.followupTasks?.filter(t => !t.isCompleted).length },
-                { id: 'billing', label: 'Học Phí & Hoàn Tiền', icon: CreditCard, count: null },
-                { id: 'vietqr', label: 'Thanh Toán & VietQR', icon: CreditCard, count: null },
-                { id: 'lms', label: 'Học Tập (LMS)', icon: BookOpen, count: null },
-                { id: 'training', label: 'Đào tạo & việc làm', icon: GraduationCap, count: null }
+                { id: 'profile', label: 'Hồ sơ', icon: User, count: null },
+                { id: 'contact', label: 'Liên hệ & lịch hẹn', icon: Phone, count: null },
+                { id: 'timeline', label: 'Nhật ký', icon: FileText, count: order.timelineActivities?.length },
+                { id: 'tasks', label: 'Việc cần làm', icon: CheckSquare, count: order.followupTasks?.filter(t => !t.isCompleted).length },
+                { id: 'payment', label: 'Học phí & thanh toán', icon: CreditCard, count: null },
+                { id: 'training', label: 'Học tập & việc làm', icon: GraduationCap, count: null }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -742,7 +743,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                         type="text"
                         value={order.citizenId || ''}
                         onChange={(e) => handleFieldChange('citizenId', e.target.value)}
-                        placeholder="001205019888"
+                        placeholder="12 số"
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-mono text-slate-900"
                       />
                     </div>
@@ -777,7 +778,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                         type="text"
                         value={order.currentResidence || order.area || ''}
                         onChange={(e) => handleFieldChange('currentResidence', e.target.value)}
-                        placeholder="Số 25 ngõ 180 Triều Khúc, Thanh Xuân, Hà Nội"
+                        placeholder="Số nhà, đường, phường/xã, tỉnh/thành"
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
                       />
                     </div>
@@ -788,7 +789,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                         type="text"
                         value={order.permanentAddress || ''}
                         onChange={(e) => handleFieldChange('permanentAddress', e.target.value)}
-                        placeholder="Thành phố Nam Định"
+                        placeholder="Tỉnh / thành phố"
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
                       />
                     </div>
@@ -811,7 +812,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                         type="text"
                         value={order.university || ''}
                         onChange={(e) => handleFieldChange('university', e.target.value)}
-                        placeholder="Học viện Ngân hàng"
+                        placeholder="Tên trường"
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-semibold text-slate-900"
                       />
                     </div>
@@ -822,7 +823,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                         type="text"
                         value={order.major || ''}
                         onChange={(e) => handleFieldChange('major', e.target.value)}
-                        placeholder="Tài chính - Ngân hàng"
+                        placeholder="Ngành học"
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
                       />
                     </div>
@@ -970,7 +971,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                         rows={2}
                         value={order.consultDetail || ''}
                         onChange={(e) => handleFieldChange('consultDetail', e.target.value)}
-                        placeholder="Ứng viên muốn định hướng làm RM KHDN tại MSB Hội sở, cần hỗ trợ thêm kỹ năng thẩm định tín dụng..."
+                        placeholder="Nhu cầu, mong muốn, vướng mắc của học viên…"
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
                       />
                     </div>
@@ -1019,7 +1020,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                         type="text"
                         value={order.referrerName || ''}
                         onChange={(e) => handleFieldChange('referrerName', e.target.value)}
-                        placeholder="Nguyễn Văn A (Alumni K8)"
+                        placeholder="Họ tên người giới thiệu"
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
                       />
                     </div>
@@ -1030,7 +1031,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                         type="text"
                         value={order.referrerPhone || ''}
                         onChange={(e) => handleFieldChange('referrerPhone', e.target.value)}
-                        placeholder="0912345678"
+                        placeholder="Số điện thoại"
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-mono"
                       />
                     </div>
@@ -1052,7 +1053,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                       {[
                         { id: 'call', label: 'Cuộc gọi', icon: PhoneCall },
                         { id: 'zalo', label: 'Zalo / SMS', icon: MessageSquare },
-                        { id: 'meeting', label: 'Hẹn gặp MSB', icon: Video },
+                        { id: 'meeting', label: 'Gặp mặt', icon: Video },
                         { id: 'note', label: 'Ghi chú', icon: FileText }
                       ].map((item) => (
                         <button
@@ -1130,7 +1131,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                               : 'text-slate-500 hover:bg-slate-100'
                           }`}
                         >
-                          {filter === 'all' ? 'Tất cả' : filter === 'call' ? 'Cuộc gọi' : filter === 'zalo' ? 'Zalo' : filter === 'meeting' ? 'Hẹn gặp' : filter === 'note' ? 'Ghi chú' : 'Hệ thống'}
+                          {filter === 'all' ? 'Tất cả' : filter === 'call' ? 'Cuộc gọi' : filter === 'zalo' ? 'Zalo' : filter === 'meeting' ? 'Hẹn gặp' : filter === 'note' ? 'Ghi chú' : 'Email & thanh toán'}
                         </button>
                       ))}
                     </div>
@@ -1284,8 +1285,6 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 
             {/* ============================================================= */}
             {/* TAB: LEARNING ON THE MOODLE LMS (live data, staff actions) */}
-            {activeTab === 'lms' && <LmsLearningPanel orderId={order.id} />}
-            {activeTab === 'billing' && <OrderBillingPanel orderId={order.id} />}
             {activeTab === 'contact' && (
               <LeadContactPanel
                 orderId={order.id}
@@ -1301,10 +1300,17 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 
             {/* TAB 5: VIETQR BILLING & INVOICING */}
             {/* ============================================================= */}
-            {activeTab === 'vietqr' && <LeadPaymentPanel orderId={order.id} onConfirmReceived={handleConfirmReceived} />}
+            {activeTab === 'payment' && (
+              <div className="space-y-4 animate-fadeIn">
+                <LeadPaymentPanel key={`pay-${order.totalPaidAmount}`} orderId={order.id} onConfirmReceived={handleConfirmReceived} />
+                <OrderBillingPanel key={`bill-${order.totalPaidAmount}`} orderId={order.id} />
+              </div>
+            )}
 
             {activeTab === 'training' && (
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4 animate-fadeIn">
+              <div className="space-y-4 animate-fadeIn">
+              <LmsLearningPanel orderId={order.id} />
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
                 <div className="border-b border-slate-100 pb-2.5">
                   <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                     <GraduationCap className="w-4 h-4 text-[#0073C1]" />
@@ -1339,6 +1345,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                   )}
                 </div>
                 <PlacementPanel orderId={order.id} name={order.customerName} />
+              </div>
               </div>
             )}
           </div>
@@ -1426,7 +1433,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
               {order.status === 'pending' && (
                 <button
                   type="button"
-                  onClick={() => setActiveTab('vietqr')}
+                  onClick={() => setActiveTab('payment')}
                   className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <CreditCard className="w-3.5 h-3.5" />
@@ -1435,31 +1442,32 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
               )}
             </div>
 
-            {/* Card 4: Multi-Course & Duplicate Warning Banner */}
-            {order.isDuplicate && (
-              <div className="bg-red-50 p-4 rounded-2xl border border-red-200 space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-red-800 font-bold">
-                  <AlertTriangle className="w-4 h-4 text-red-600" />
-                  <span>Trùng SĐT / email / CCCD với hồ sơ khác{order.duplicateCount ? ` (${order.duplicateCount})` : ''}</span>
+            {/* Card 4: other leads / orders of the same person */}
+            {(order.isDuplicate || (order.relatedOrders?.length ?? 0) > 0) && (
+              <div className={`p-4 rounded-2xl border space-y-2 text-xs ${order.isDuplicate ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
+                <div className={`flex items-center gap-2 font-bold ${order.isDuplicate ? 'text-red-800' : 'text-blue-800'}`}>
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>Hồ sơ khác cùng SĐT / email / CCCD{order.relatedOrders?.length ? ` (${order.relatedOrders.length})` : ''}</span>
                 </div>
-                <p className="text-red-700 text-[11px] leading-relaxed">
-                  {order.duplicateNote}
-                </p>
-              </div>
-            )}
-
-            {order.otherEnrolledCourses && order.otherEnrolledCourses.length > 0 && (
-              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-200 space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-blue-800 font-bold">
-                  <GraduationCap className="w-4 h-4 text-[#0073C1]" />
-                  <span>Học viên đa khóa học (Alumni)</span>
-                </div>
+                {order.duplicateNote && <p className="text-red-700 text-[11px] leading-relaxed">{order.duplicateNote}</p>}
                 <div className="space-y-1 text-[11px]">
-                  {order.otherEnrolledCourses.map((c) => (
-                    <div key={c.id} className="p-1.5 bg-white/80 rounded border border-blue-100 flex items-center justify-between">
-                      <span className="font-semibold text-slate-800">{c.title}</span>
-                      <span className="font-mono text-slate-500">{c.date}</span>
-                    </div>
+                  {(order.relatedOrders || []).map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => {
+                        if (!onOpenOrder) return;
+                        if (isDirty && !window.confirm('Hồ sơ có thay đổi chưa lưu. Mở hồ sơ khác và bỏ các thay đổi này?')) return;
+                        onOpenOrder(r.id);
+                      }}
+                      className="w-full p-1.5 bg-white/80 rounded border border-slate-200 flex items-center justify-between gap-2 text-left hover:border-blue-400 cursor-pointer"
+                    >
+                      <span className="min-w-0">
+                        <span className="font-semibold text-slate-800 block truncate">{r.courseTitle || 'Chưa chọn khóa'}</span>
+                        <span className="font-mono text-slate-500">{r.orderCode} · {new Date(r.createdAt).toLocaleDateString('vi-VN')}</span>
+                      </span>
+                      <span className="shrink-0 text-slate-600">{r.status === 'paid' ? 'Đã đóng phí' : r.crmStatus}</span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1489,9 +1497,9 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
           isOpen={showResendEmailModal}
           onClose={() => setShowResendEmailModal(false)}
           order={order}
-          onEmailSent={(activity) => {
-            // The e-mail goes into the lead's history (and counts as a first contact).
-            commit((o) => ({ ...o, timelineActivities: [activity, ...(o.timelineActivities || [])] })).then(flashSaved);
+          onEmailSent={() => {
+            // The server put the e-mail into the lead's history: reload it (nothing else is sent).
+            commit((o) => o);
           }}
         />
       )}
