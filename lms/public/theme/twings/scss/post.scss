@@ -302,3 +302,604 @@ body, html {
     border-radius: 9999px;
   }
 }
+
+// ==========================================================================
+// TWINGS ACADEMY - MODERN LMS ADMIN DESIGN SYSTEM (/learn/admin/*)
+// Transforms all admin subpages into a clean, modern, card-based interface
+// ==========================================================================
+
+// Global Admin Page Container & Spacing
+.pagelayout-admin,
+body[class*="page-admin-"],
+#page-admin-index,
+#page-admin-search,
+#page-course-management {
+  background-color: #F8FAFC !important;
+
+  #page.drawers .main-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem 1.5rem 3rem;
+  }
+
+  #page-header {
+    background: transparent !important;
+    border-bottom: none !important;
+    padding: 1rem 0 1.5rem;
+
+    .page-header-headings h1,
+    h1 {
+      font-weight: 800;
+      font-size: 1.75rem;
+      letter-spacing: -0.025em;
+      color: #0F172A;
+      margin-bottom: 0.25rem;
+    }
+  }
+
+  // Modern Breadcrumb Bar
+  .breadcrumb {
+    background: transparent !important;
+    padding: 0 0 1rem 0 !important;
+    margin-bottom: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+
+    .breadcrumb-item {
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+
+      &::before {
+        content: "›" !important;
+        font-size: 1.1rem;
+        line-height: 1;
+        color: #94A3B8;
+        padding: 0 0.4rem 0 0.1rem;
+      }
+
+      &:first-child::before {
+        display: none !important;
+      }
+
+      a {
+        color: #64748B;
+        text-decoration: none;
+        padding: 0.25rem 0.55rem;
+        border-radius: 0.5rem;
+        transition: all 0.15s ease;
+
+        &:hover {
+          color: #0073C1;
+          background-color: #EFF6FF;
+        }
+      }
+
+      &.active, span {
+        color: #0073C1;
+        font-weight: 700;
+        background-color: #EFF6FF;
+        padding: 0.25rem 0.65rem;
+        border-radius: 0.5rem;
+      }
+    }
+  }
+
+  // Modern Admin Tabs (Site Administration Root: General, Users, Courses, Plugins, etc.)
+  .nav-tabs {
+    border-bottom: 2px solid #E2E8F0 !important;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0.35rem;
+    padding-bottom: 0;
+    margin-bottom: 2rem !important;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+
+    .nav-item {
+      margin-bottom: -2px;
+      white-space: nowrap;
+    }
+
+    .nav-link {
+      border: none !important;
+      border-bottom: 2px solid transparent !important;
+      background: transparent !important;
+      color: #64748B !important;
+      font-weight: 600;
+      font-size: 0.875rem;
+      padding: 0.75rem 1.15rem;
+      border-radius: 0.75rem 0.75rem 0 0;
+      transition: all 0.15s ease-in-out;
+
+      &:hover {
+        color: #0073C1 !important;
+        background-color: #F1F5F9 !important;
+      }
+
+      &.active {
+        color: #0056D2 !important;
+        font-weight: 800 !important;
+        border-bottom: 2px solid #0073C1 !important;
+        background-color: #ffffff !important;
+        box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.02);
+      }
+    }
+  }
+
+  // Admin Search Box Modernization
+  .adminsearchform,
+  #adminsearchform,
+  .adminsearch {
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-radius: 1.25rem;
+    padding: 1.15rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+
+    label {
+      font-weight: 700;
+      font-size: 0.875rem;
+      color: #1E293B;
+      margin-bottom: 0;
+    }
+
+    input[type="text"],
+    #adminsearchquery {
+      border-radius: 0.75rem !important;
+      border: 1px solid #CBD5E1 !important;
+      padding: 0.65rem 1rem !important;
+      font-size: 0.9rem !important;
+      flex: 1 1 240px;
+      min-width: 200px;
+      transition: all 0.2s ease;
+      background-color: #F8FAFC;
+
+      &:focus {
+        background-color: #ffffff;
+        border-color: #0073C1 !important;
+        box-shadow: 0 0 0 3px rgba(0, 115, 193, 0.15) !important;
+        outline: none;
+      }
+    }
+
+    input[type="submit"],
+    button[type="submit"] {
+      border-radius: 0.75rem !important;
+      background: linear-gradient(135deg, #00388A 0%, #0056D2 50%, #0073C1 100%) !important;
+      color: #ffffff !important;
+      font-weight: 700 !important;
+      font-size: 0.85rem !important;
+      padding: 0.65rem 1.5rem !important;
+      border: none !important;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 115, 193, 0.25) !important;
+      transition: all 0.2s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 115, 193, 0.35) !important;
+      }
+    }
+  }
+
+  // Admin Category Cards & Tree Links
+  .tab-content {
+    .admin_category {
+      background: #ffffff;
+      border: 1px solid #E2E8F0;
+      border-radius: 1.25rem;
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+      &:hover {
+        border-color: #BFDBFE;
+        box-shadow: 0 6px 16px rgba(0, 115, 193, 0.06);
+      }
+
+      > h3,
+      > h4,
+      .category_heading {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #0F172A;
+        letter-spacing: -0.02em;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #F1F5F9;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+
+        &::before {
+          content: "";
+          display: inline-block;
+          width: 4px;
+          height: 1.2rem;
+          background: linear-gradient(180deg, #00388A, #0073C1);
+          border-radius: 9999px;
+        }
+      }
+
+      ul.list-unstyled,
+      ul {
+        padding-left: 0;
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 0.6rem 1.25rem;
+        margin-bottom: 0;
+
+        li {
+          padding: 0.45rem 0.75rem;
+          border-radius: 0.625rem;
+          background: #F8FAFC;
+          border: 1px solid #F1F5F9;
+          transition: all 0.15s ease;
+
+          &:hover {
+            background-color: #EFF6FF;
+            border-color: #BFDBFE;
+            transform: translateX(2px);
+          }
+
+          a {
+            color: #1E293B;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none !important;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+
+            &::before {
+              content: "›";
+              color: #0073C1;
+              font-weight: 800;
+              font-size: 1rem;
+              line-height: 1;
+              transition: transform 0.15s ease;
+            }
+
+            &:hover {
+              color: #0056D2;
+
+              &::before {
+                transform: translateX(2px);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Modern Admin Settings Form (/learn/admin/settings.php)
+  .settingsform,
+  .mform {
+    fieldset.clearfix,
+    fieldset {
+      background: #ffffff;
+      border: 1px solid #E2E8F0 !important;
+      border-radius: 1.25rem !important;
+      padding: 1.75rem !important;
+      margin-bottom: 1.75rem !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+
+      legend {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: #0F172A;
+        letter-spacing: -0.02em;
+        float: none;
+        width: 100%;
+        margin-bottom: 1.25rem;
+        border-bottom: 1px solid #F1F5F9;
+        padding-bottom: 0.65rem;
+      }
+
+      .form-item,
+      .fitem {
+        padding: 1rem 0;
+        border-bottom: 1px solid #F8FAFC;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .form-label,
+        .fitemtitle label {
+          font-weight: 700;
+          font-size: 0.875rem;
+          color: #1E293B;
+          margin-bottom: 0.35rem;
+        }
+
+        .form-description,
+        .form-defaultinfo {
+          font-size: 0.8rem;
+          color: #64748B;
+          line-height: 1.5;
+          margin-top: 0.35rem;
+        }
+
+        .form-defaultinfo {
+          font-size: 0.75rem;
+          color: #94A3B8;
+          font-family: monospace;
+          background: #F8FAFC;
+          padding: 0.25rem 0.5rem;
+          border-radius: 0.375rem;
+          display: inline-block;
+          margin-top: 0.35rem;
+        }
+
+        .form-control,
+        .custom-select,
+        select,
+        textarea,
+        input[type="text"],
+        input[type="password"] {
+          border-radius: 0.625rem;
+          border: 1px solid #CBD5E1;
+          font-size: 0.875rem;
+          padding: 0.5rem 0.85rem;
+          background-color: #ffffff;
+          transition: all 0.15s ease;
+
+          &:focus {
+            border-color: #0073C1;
+            box-shadow: 0 0 0 3px rgba(0, 115, 193, 0.15);
+            outline: none;
+          }
+        }
+      }
+    }
+
+    // Modern Save Button Bar
+    .form-buttons,
+    .row.buttons,
+    .fitem_actionbuttons {
+      background: #ffffff;
+      border: 1px solid #E2E8F0;
+      border-radius: 1rem;
+      padding: 1rem 1.5rem;
+      margin-top: 1.75rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+
+      input[type="submit"],
+      button[type="submit"] {
+        border-radius: 0.75rem !important;
+        background: linear-gradient(135deg, #00388A 0%, #0056D2 50%, #0073C1 100%) !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 0.875rem !important;
+        padding: 0.65rem 1.75rem !important;
+        border: none !important;
+        box-shadow: 0 2px 6px rgba(0, 115, 193, 0.3) !important;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 10px rgba(0, 115, 193, 0.4) !important;
+        }
+      }
+    }
+  }
+
+  // Modern Admin Tables (/learn/admin/user.php, /learn/admin/plugins.php, task logs)
+  table.generaltable,
+  table.admintable,
+  table.flexible {
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 1rem !important;
+    overflow: hidden;
+    background: #ffffff !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    margin-bottom: 1.75rem;
+    width: 100%;
+    border-collapse: separate !important;
+    border-spacing: 0;
+
+    thead th {
+      background: #F8FAFC !important;
+      color: #475569 !important;
+      font-size: 0.75rem !important;
+      font-weight: 800 !important;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.85rem 1rem !important;
+      border-bottom: 1px solid #E2E8F0 !important;
+      border-top: none !important;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 0.85rem 1rem !important;
+      font-size: 0.85rem;
+      color: #334155;
+      border-top: 1px solid #F1F5F9 !important;
+      vertical-align: middle;
+    }
+
+    tbody tr {
+      transition: background-color 0.15s ease;
+
+      &:hover {
+        background-color: #F8FAFC !important;
+      }
+    }
+  }
+
+  // Course & Category Management Layout (/learn/course/management.php, /learn/admin/category.php)
+  #course-category-listings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+
+    .category-listing,
+    .course-listing,
+    .course-detail {
+      background: #ffffff;
+      border: 1px solid #E2E8F0;
+      border-radius: 1.25rem;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+
+      .card-header,
+      .listing-header {
+        background: transparent !important;
+        border-bottom: 1px solid #F1F5F9 !important;
+        padding-bottom: 0.85rem;
+        margin-bottom: 1rem;
+        font-weight: 800;
+        font-size: 1.05rem;
+        color: #0F172A;
+        letter-spacing: -0.01em;
+      }
+
+      .listitem {
+        padding: 0.55rem 0.85rem;
+        border-radius: 0.625rem;
+        margin-bottom: 0.35rem;
+        border: 1px solid transparent;
+        transition: all 0.15s ease;
+
+        &:hover {
+          background-color: #F8FAFC;
+          border-color: #E2E8F0;
+        }
+
+        &.active,
+        &[data-selected="1"] {
+          background-color: #EFF6FF !important;
+          border-color: #BFDBFE !important;
+          color: #0073C1 !important;
+          font-weight: 700;
+        }
+      }
+    }
+  }
+
+  // User Management Filters Box
+  #user-search-form,
+  .user-filters {
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-radius: 1.25rem;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  }
+
+  // Modern Status Badges & Pills in Admin
+  .badge {
+    padding: 0.35rem 0.65rem !important;
+    border-radius: 9999px !important;
+    font-weight: 700 !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.02em;
+
+    &.badge-success,
+    &.bg-success {
+      background-color: #DCFCE7 !important;
+      color: #15803D !important;
+      border: 1px solid #BBF7D0;
+    }
+
+    &.badge-danger,
+    &.bg-danger {
+      background-color: #FEE2E2 !important;
+      color: #B91C1C !important;
+      border: 1px solid #FECACA;
+    }
+
+    &.badge-warning,
+    &.bg-warning {
+      background-color: #FEF3C7 !important;
+      color: #92400E !important;
+      border: 1px solid #FDE68A;
+    }
+
+    &.badge-info,
+    &.bg-info {
+      background-color: #EFF6FF !important;
+      color: #1D4ED8 !important;
+      border: 1px solid #BFDBFE;
+    }
+  }
+
+  // Modern Alert Banners
+  .alert {
+    border-radius: 1rem !important;
+    border-width: 1px !important;
+    padding: 1rem 1.25rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  // Action Menu and Secondary Toolbar
+  .tertiary-navigation {
+    margin-bottom: 1.5rem;
+
+    .btn {
+      border-radius: 0.625rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+  }
+}
+
+// Responsive Optimizations for Admin Pages (Tablet & Mobile)
+@media (max-width: 768px) {
+  .pagelayout-admin,
+  body[class*="page-admin-"],
+  #page-admin-index,
+  #page-admin-search,
+  #page-course-management {
+    #page.drawers .main-inner {
+      padding: 1rem 0.75rem 2rem !important;
+    }
+
+    .settingsform fieldset.clearfix,
+    .settingsform fieldset {
+      padding: 1rem !important;
+    }
+
+    .tab-content .admin_category ul {
+      grid-template-columns: 1fr !important;
+    }
+
+    #course-category-listings {
+      grid-template-columns: 1fr !important;
+    }
+
+    .adminsearchform {
+      flex-direction: column;
+      align-items: stretch;
+
+      input[type="submit"],
+      button[type="submit"] {
+        width: 100%;
+      }
+    }
+  }
+}
+
