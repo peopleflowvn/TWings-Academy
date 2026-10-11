@@ -1,0 +1,62 @@
+"""
+Data for the admissions end-to-end test (run inside Django: manage.py shell -c "exec(open(...).read())").
+Seeds the public content (e-mail templates included), two courses with intakes, a campaign with a
+course quota, a consultant and five leads: one learner with two registrations, one late first response.
+"""
+
+from datetime import timedelta
+
+from django.core.management import call_command
+from django.utils import timezone
+
+from apps.accounts.models import User
+from apps.accounts.rbac import Role
+from apps.catalog.models import Cohort, Course
+from apps.crm.assignment import assign_new_lead
+from apps.crm.models import AdmissionCampaign, CampaignPosition, Order
+from apps.crm.services import flag_duplicates
+
+PASSWORD = "E2e-Test-Passw0rd!"
+
+call_command("seed_content")
+User.objects.create_superuser(email="admin@e2e.test", password=PASSWORD, name="Quản trị")
+sale = User.objects.create_user(
+    email="tuvan@e2e.test", password=PASSWORD, name="Tư vấn Lan", role=Role.SALES_CRM, is_staff=True
+)
+sale.receives_leads = True
+sale.save()
+
+rm = Course.objects.create(
+    status="published", is_published=True, slug="e2e-rm", title="E2E RM Doanh nghiệp", price=8_490_000,
+    installment_count=3, installment_interval_days=30,
+)
+gdv = Course.objects.create(status="published", is_published=True, slug="e2e-gdv", title="E2E Giao dịch viên", price=5_000_000)
+k9 = Cohort.objects.create(course=rm, name="E2E K9", start_date=timezone.localdate() + timedelta(days=20), status="opening")
+Cohort.objects.create(course=gdv, name="E2E GDV K3", start_date=timezone.localdate() + timedelta(days=10), status="opening")
+camp = AdmissionCampaign.objects.create(code="CAMP-E2E", name="Chiến dịch E2E", status="active", target_headcount=10)
+CampaignPosition.objects.create(campaign=camp, course=rm, target_quota=10)
+
+
+def lead(name, phone, email, course, **extra):
+    order = Order.objects.create(
+        customer_name=name, customer_phone=phone, customer_email=email, course=course, course_title=course.title,
+        amount=course.price, total_receivable=course.price, tuition_fee=course.price, **extra,
+    )
+    flag_duplicates(order)
+    assign_new_lead(order)
+    return order
+
+
+lead("Nguyễn Văn An", "0912000001", "an@example.com", rm, cohort=k9, campaign=camp, campaign_code="CAMP-E2E")
+lead("Nguyễn Văn An", "0912000001", "an@example.com", gdv)  # the same learner, a second course
+lead("Trần Thị Bình", "0912000002", "binh@example.com", rm, crm_status="3. Đang tư vấn")
+lead("Lê Văn Cường", "0912000003", "", gdv, interest_level="Cao")
+late = lead("Phạm Thị Dung", "0912000004", "dung@example.com", rm)
+Order.objects.filter(pk=late.pk).update(response_due_at=timezone.now() - timedelta(hours=3))
+# More than one kanban page in a column (30 per load): 32 leads to care for again.
+for i in range(32):
+    Order.objects.create(
+        customer_name=f"Lead chăm sóc {i:02d}", customer_phone=f"09130000{i:02d}", course=gdv,
+        course_title=gdv.title, crm_status="6. Chăm sóc lại",
+    )
+print("e2e seed:", Order.objects.count(), "registrations")

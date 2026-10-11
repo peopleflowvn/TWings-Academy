@@ -34,7 +34,8 @@ const STAGES: { id: CRMStatus; label: string; dot: string }[] = [
 const PAID_STAGE: CRMStatus = '5. Đã đóng phí';
 const INTEREST = ['Rất cao', 'Cao', 'Trung bình', 'Thấp', 'Đang phân vân'];
 const SOURCES = ['Nhập tay', 'Hotline', 'Facebook', 'Zalo', 'TikTok', 'Giới thiệu', 'Hội thảo trường ĐH', 'Sự kiện'];
-const KANBAN_LIMIT = 200;
+/** Leads loaded per kanban column at a time (each column pages on its own). */
+const COLUMN_SIZE = 30;
 const PAGE_SIZE = 50;
 
 interface Summary {
@@ -87,6 +88,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   const [overdue, setOverdue] = useState(false);
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<Order[]>([]);
+  const [colPage, setColPage] = useState<Record<string, number>>({});
   const [count, setCount] = useState(0);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -135,9 +137,22 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     const seq = ++request.current;
     setLoading(true);
     setError('');
-    const size = layout === 'kanban' ? KANBAN_LIMIT : PAGE_SIZE;
-    const qs = `${filters}${filters ? '&' : ''}ordering=-created_at&pageSize=${size}&page=${layout === 'kanban' ? 1 : page}`;
     try {
+      if (layout === 'kanban') {
+        // Each column loads its newest leads; "Xem thêm" pages a column on its own.
+        const stages = stage ? [stage] : STAGES.map((s) => s.id);
+        const [lists, sum] = await Promise.all([
+          Promise.all(stages.map((st) => api.get<Paginated<Order>>(`/staff/orders/?${columnQuery(st, 1)}`))),
+          api.get<Summary>(`/staff/orders/pipeline/?${filters}`)
+        ]);
+        if (seq !== request.current) return;
+        setRows(lists.flatMap((l) => l.results));
+        setCount(lists.reduce((n, l) => n + l.count, 0));
+        setColPage(Object.fromEntries(stages.map((st) => [st, 1])));
+        setSummary(sum);
+        return;
+      }
+      const qs = `${filters}${filters ? '&' : ''}ordering=-created_at&pageSize=${PAGE_SIZE}&page=${page}`;
       const [list, sum] = await Promise.all([
         api.get<Paginated<Order>>(`/staff/orders/?${qs}`),
         api.get<Summary>(`/staff/orders/pipeline/?${filters}`)
@@ -151,7 +166,28 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     } finally {
       if (seq === request.current) setLoading(false);
     }
-  }, [filters, layout, page]);
+  }, [filters, layout, page, stage]);
+
+  // One kanban column's query: the filters, that stage, newest first.
+  function columnQuery(st: string, pg: number) {
+    const params = new URLSearchParams(filters);
+    params.set('crm_status', st);
+    params.set('ordering', '-created_at');
+    params.set('pageSize', String(COLUMN_SIZE));
+    params.set('page', String(pg));
+    return params.toString();
+  }
+
+  const loadMore = async (st: CRMStatus) => {
+    const next = (colPage[st] || 1) + 1;
+    try {
+      const res = await api.get<Paginated<Order>>(`/staff/orders/?${columnQuery(st, next)}`);
+      setRows((list) => [...list, ...res.results.filter((o) => !list.some((r) => r.id === o.id))]);
+      setColPage((pages) => ({ ...pages, [st]: next }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không tải thêm được.');
+    }
+  };
 
   useEffect(() => {
     load();
@@ -333,11 +369,6 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
             </button>
           )}
         </div>
-        {layout === 'kanban' && count > rows.length && (
-          <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-2.5">
-            Kanban hiển thị {rows.length} lead mới nhất trong {count} lead phù hợp (số trên mỗi cột là số đầy đủ). Thu hẹp bộ lọc hoặc dùng Bảng chi tiết để xem tất cả.
-          </p>
-        )}
         {notice && <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2.5">{notice}</p>}
         {error && <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-2.5">{error}</p>}
       </div>
@@ -405,6 +436,11 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
                         {stageSelect(o)}
                       </div>
                     ))}
+                    {deals.length < total.count && (
+                      <button type="button" onClick={() => loadMore(s.id)} className="w-full py-1.5 rounded-xl border border-dashed border-slate-300 text-[11px] font-bold text-slate-600 hover:bg-white cursor-pointer">
+                        Xem thêm ({total.count - deals.length} lead nữa)
+                      </button>
+                    )}
                   </div>
                 </div>
               );

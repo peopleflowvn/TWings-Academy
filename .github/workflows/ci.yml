@@ -137,6 +137,85 @@ jobs:
       - name: Dependency vulnerabilities (pip-audit)
         run: pip-audit --strict --require-hashes --disable-pip -r requirements.txt
 
+  e2e:
+    name: Admissions screens in a browser (end-to-end)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+        env:
+          POSTGRES_DB: twings_e2e
+          POSTGRES_USER: twings
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U twings" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://twings:ci-only-password@localhost:5432/twings_e2e
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DJANGO_SECRET_KEY: ci-e2e-${{ github.run_id }}-0123456789abcdefghijklmnopqrstuvwxyzABCDEF
+      FIELD_ENCRYPTION_KEYS: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      BLIND_INDEX_KEY: ci-e2e
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:3005
+      DJANGO_CSRF_TRUSTED_ORIGINS: http://127.0.0.1:3005
+      E2E_BASE: http://127.0.0.1:3005
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - run: pip install --require-hashes --no-deps -r backend/requirements.txt
+      - name: Playwright (pinned) and its Chromium
+        run: |
+          pip install playwright==1.54.0
+          python -m playwright install --with-deps chromium
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build the staff app against the local API
+        working-directory: frontend
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:8000
+      - name: Database and test data (e2e/seed.py)
+        working-directory: backend
+        run: |
+          python manage.py migrate --noinput
+          python manage.py createcachetable
+          python manage.py shell -c "exec(open('../e2e/seed.py', encoding='utf-8').read())"
+      - name: Start the API and the web app
+        run: |
+          (cd backend && python manage.py runserver 127.0.0.1:8000 --noreload > ../runserver.log 2>&1 &)
+          (cd frontend && npx vite preview --port 3005 --host 127.0.0.1 --strictPort > ../preview.log 2>&1 &)
+          for i in $(seq 60); do
+            curl -sf http://127.0.0.1:8000/api/v1/health/ > /dev/null && curl -sf http://127.0.0.1:3005/app > /dev/null && exit 0
+            sleep 2
+          done
+          echo "::error::stack did not start"; cat runserver.log preview.log; exit 1
+      - name: Admissions end-to-end test
+        run: python e2e/admissions_test.py
+        env:
+          E2E_ARTIFACTS: e2e/artifacts
+      - name: Screenshots and server logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-artifacts
+          path: |
+            e2e/artifacts
+            runserver.log
+            preview.log
+          retention-days: 7
+
   docker:
     name: Docker image builds
     runs-on: ubuntu-24.04
