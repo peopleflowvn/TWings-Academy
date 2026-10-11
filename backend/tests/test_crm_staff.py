@@ -313,6 +313,7 @@ def test_crm_data_check_reports_without_changing_anything(course):
     assert report["campaign_codes_without_campaign"]["old_defaults"] == 1
     assert report["class_without_intake"]["count"] == 1
     assert report["legacy_payment_columns"]["paid_amount_l1"] == 1
+    assert report["emails_sent_with_sample_bank_account"]["count"] == 0
     assert list(Order.objects.values_list("pk", "crm_status", "status", "pic").order_by("pk")) == before
 
 

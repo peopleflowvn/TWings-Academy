@@ -11,7 +11,8 @@ What it reports:
 - a class written as text without the intake (cohort) it belongs to;
 - campaign codes that match no campaign (e.g. the old defaults CAMP-2026-Q4-HN, TW3);
 - legacy payment columns still holding data (to decide whether they can be dropped);
-- registrations without a learner, learners with several registrations, duplicate flags.
+- registrations without a learner, learners with several registrations, duplicate flags;
+- e-mails already sent with the sample bank account of the old tuition template.
 No names, phones, e-mails or identity numbers are printed.
 """
 
@@ -99,6 +100,17 @@ def collect() -> dict:
     report["campaign_codes_without_campaign"] = {
         "values": unknown[:30],
         "old_defaults": leads.filter(campaign_code__in=OLD_DEFAULT_CODES, campaign__isnull=True).count(),
+    }
+
+    from apps.notifications.models import EmailLog
+
+    # E-mails that went out with the sample account of the old tuition template (fixed 11/10/2026).
+    sample = EmailLog.objects.filter(rendered_html__contains="03001010099999")
+    report["emails_sent_with_sample_bank_account"] = {
+        "count": sample.exclude(status__in=("failed", "simulated")).count(),
+        "simulated_or_failed": sample.filter(status__in=("failed", "simulated")).count(),
+        "orders": list(sample.exclude(order=None).values_list("order__order_code", flat=True)[:20]),
+        "note": "Liên hệ các học viên này: số tài khoản trong thư không phải tài khoản nhận học phí.",
     }
 
     report["legacy_payment_columns"] = {
