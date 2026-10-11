@@ -435,7 +435,7 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                           <div className="text-xs font-black text-indigo-900">{funnel.s2_consulting}</div>
                         </div>
 
-                        <div className="p-1.5 rounded-lg bg-purple-50 border border-purple-200/60" title="3. Thi tuyển / Đánh giá Comp AI">
+                        <div className="p-1.5 rounded-lg bg-purple-50 border border-purple-200/60" title="3. Thi tuyển / Đánh giá">
                           <div className="text-[9px] text-purple-700 uppercase font-sans font-bold truncate">Test/PV</div>
                           <div className="text-xs font-black text-purple-900">{funnel.s3_assessed}</div>
                         </div>

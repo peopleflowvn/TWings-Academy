@@ -8,17 +8,9 @@ import {
   Phone,
   Mail,
   User,
-  Calendar,
-  MapPin,
   CreditCard,
-  Building2,
-  Briefcase,
   GraduationCap,
-  Award,
-  Sparkles,
   Bot,
-  Terminal,
-  RefreshCw,
   PhoneCall,
   MessageSquare,
   Video,
@@ -28,34 +20,33 @@ import {
   Square,
   CheckSquare,
   ExternalLink,
-  ChevronRight,
   Maximize2,
   Minimize2,
   AlertTriangle,
-  ArrowRight,
-  DollarSign,
   Copy,
   Printer,
   Share2,
-  Flame,
-  BadgeAlert,
-  ShieldCheck,
-  Tag,
   BookOpen,
   UserCheck,
-  Hash,
   Compass,
-  FileSpreadsheet,
-  AlertCircle
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { Order, CRMStatus, PaymentStatus } from '../../types';
-import { COMP_AI_PIPELINE_STAGES, runCompAIEvidenceEnrichment } from '../../utils/compAiCrm';
+import { Order, CRMStatus } from '../../types';
+import { LeadPaymentPanel } from './LeadPaymentPanel';
 import { SendResendEmailModal } from './SendResendEmailModal';
 import { LmsLearningPanel } from './LmsLearningPanel';
 import { OrderBillingPanel } from './OrderBillingPanel';
 import { LeadContactPanel } from './LeadContactPanel';
 import { PlacementPanel } from '../../admin/pages/PlacementPages';
+
+const CRM_STAGES: { id: CRMStatus; label: string }[] = [
+  { id: '1. Mới', label: 'Mới' },
+  { id: '2. Đã tiếp cận', label: 'Đã tiếp cận' },
+  { id: '3. Đang tư vấn', label: 'Đang tư vấn' },
+  { id: '4. Hẹn gặp', label: 'Hẹn gặp' },
+  { id: '5. Đã đóng phí', label: 'Đã đóng phí' },
+  { id: '6. Chăm sóc lại', label: 'Chăm sóc lại' },
+  { id: '7. Đã hủy', label: 'Đã hủy' }
+];
 
 interface CompAILeadDetailModalProps {
   order: Order;
@@ -72,7 +63,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 }) => {
   const [order, setOrder] = useState<Order>(initialOrder);
   const [isDirty, setIsDirty] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'contact' | 'agent' | 'timeline' | 'tasks' | 'billing' | 'vietqr' | 'lms' | 'training'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'contact' | 'timeline' | 'tasks' | 'billing' | 'vietqr' | 'lms' | 'training'>('profile');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -89,8 +80,6 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
   const [activityFilter, setActivityFilter] = useState<'all' | 'call' | 'zalo' | 'meeting' | 'note' | 'agent'>('all');
 
   // Agent re-run simulation
-  const [isResearching, setIsResearching] = useState(false);
-  const [agentConsoleLogs, setAgentConsoleLogs] = useState<string[]>([]);
 
   // Note composer
   const [noteType, setNoteType] = useState<'call' | 'zalo' | 'meeting' | 'note'>('call');
@@ -100,10 +89,6 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDate, setTaskDate] = useState('Ngày mai, 10:00');
   const [taskPriority, setTaskPriority] = useState<'high' | 'medium' | 'low'>('medium');
-
-  // Fact composer
-  const [factText, setFactText] = useState('');
-  const [factCat, setFactCat] = useState<'background' | 'career_goal' | 'budget' | 'timing'>('career_goal');
 
   // Quick Note in sidebar
   const [sidebarNote, setSidebarNote] = useState(order.consultDetail || '');
@@ -157,119 +142,30 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 
   // Pipeline stage click
   const handleStageSelect = (nextStage: CRMStatus) => {
-    const isPaid = nextStage === '5. Đã đóng phí';
-    const updated: Order = {
-      ...order,
-      crmStatus: nextStage,
-      status: isPaid ? 'paid' : order.status,
-      paymentStatusDetail: isPaid ? 'Đã đóng phí' : order.paymentStatusDetail,
-      totalPaidAmount: isPaid ? (order.tuitionFee || order.amount) : order.totalPaidAmount
-    };
+    // "Đã đóng phí" follows a recorded payment (bank webhook or finance confirmation), never a click.
+    if (nextStage === '5. Đã đóng phí' && order.status !== 'paid') {
+      setActiveTab('vietqr');
+      return;
+    }
+    const updated: Order = { ...order, crmStatus: nextStage };
     setOrder(updated);
     setIsDirty(true);
     onSave(updated);
-
-    if (isPaid) {
-      confetti({ particleCount: 50, spread: 70, origin: { y: 0.5 } });
-    }
   };
 
   // Mark as paid VietQR
   const handleMarkAsPaid = () => {
-    const updated: Order = {
-      ...order,
-      crmStatus: '5. Đã đóng phí',
-      status: 'paid',
-      paymentStatusDetail: 'Đã đóng phí',
-      totalPaidAmount: order.tuitionFee || order.amount,
-      paidAt: new Date().toLocaleDateString('vi-VN'),
-      timelineActivities: [
-        {
-          id: `act-pay-${Date.now()}`,
-          type: 'payment',
-          title: 'Gạch nợ học phí qua VietQR',
-          content: `Xác nhận nhận học phí ${formatVND(order.amount)} thành công. Đã cấp mã học viên và bàn giao quyền truy cập Coursera.`,
-          actor: 'Hệ thống VietQR NAPAS 247',
-          timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' hôm nay'
-        },
-        ...(order.timelineActivities || [])
-      ]
-    };
+    // Saving status 'paid' makes the CMS call confirm-payment for the outstanding amount (finance
+    // permission, audited); the payment shows in the timeline from the server.
+    const updated: Order = { ...order, status: 'paid', crmStatus: '5. Đã đóng phí' };
     setOrder(updated);
     setIsDirty(false);
     onSave(updated);
     if (onUpdateStatus) onUpdateStatus(updated.id, 'paid');
-    confetti({ particleCount: 60, spread: 80, origin: { y: 0.5 } });
     setShowSaveToast(true);
-    setTimeout(() => setShowSaveToast(false), 2500);
   };
 
-  // Re-run single lead agent
-  const handleRerunAgent = () => {
-    setIsResearching(true);
-    setAgentConsoleLogs(['[Comp AI Agent] Khởi động quá trình xác minh học vấn & việc làm cho ' + order.customerName + '...']);
 
-    setTimeout(() => {
-      setAgentConsoleLogs((prev) => [
-        ...prev,
-        '[Comp AI Agent] Kiểm tra hồ sơ ngân hàng liên kết: MSB Ba Đình & Sở Giao Dịch...',
-        '[Comp AI Agent] Xác nhận chỉ tiêu tuyển dụng chuyên viên Khách hàng Doanh nghiệp...',
-        '[Comp AI Agent] Tổng hợp bằng chứng học vấn & đối chiếu năng lực Coursera...'
-      ]);
-    }, 600);
-
-    setTimeout(() => {
-      const enriched = runCompAIEvidenceEnrichment(order);
-      enriched.readinessScore = Math.min(99, (enriched.readinessScore || 80) + 4);
-      const updated: Order = {
-        ...order,
-        agentResearch: enriched,
-        timelineActivities: [
-          {
-            id: `act-agent-${Date.now()}`,
-            type: 'agent_research',
-            title: 'Comp AI Agent hoàn tất quét dữ liệu',
-            content: `Điểm sẵn sàng tuyển dụng đạt ${enriched.readinessScore}%. Bằng chứng kiểm chứng đạt chuẩn 'Nothing is Guessed'.`,
-            actor: 'Comp AI Autonomous Agent',
-            timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' hôm nay'
-          },
-          ...(order.timelineActivities || [])
-        ]
-      };
-      setOrder(updated);
-      onSave(updated);
-      setIsResearching(false);
-      setAgentConsoleLogs((prev) => [
-        ...prev,
-        '[Comp AI Agent] ✅ Hoàn tất xác minh! Dữ liệu đã đồng bộ vào Sổ Bằng Chứng.'
-      ]);
-    }, 1500);
-  };
-
-  // Add verified fact
-  const handleAddFact = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!factText.trim() || !order.agentResearch) return;
-    const newFact = {
-      id: `fact-${Date.now()}`,
-      fact: factText.trim(),
-      verifiedAt: 'Vừa xác minh',
-      confidence: 100,
-      category: factCat,
-      source: 'Xác minh trực tiếp bởi chuyên viên tuyển sinh'
-    };
-
-    const updatedResearch = {
-      ...order.agentResearch,
-      verifiedFacts: [newFact, ...order.agentResearch.verifiedFacts]
-    };
-
-    const updated = { ...order, agentResearch: updatedResearch };
-    setOrder(updated);
-    setIsDirty(true);
-    onSave(updated);
-    setFactText('');
-  };
 
   // Add Note
   const handleAddNote = (e: React.FormEvent) => {
@@ -330,13 +226,6 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
   };
 
   const currentStage = order.crmStatus || '1. Mới';
-  const tier = order.agentResearch?.leadQualityTier || 'Tier B';
-  const readiness = order.agentResearch?.readinessScore || 78;
-
-  // VietQR generation payload
-  const vietQrAmount = order.tuitionFee || order.amount || 8490000;
-  const vietQrTransferDesc = `TW3 ${order.orderCode} ${order.customerName.replace(/[^a-zA-Z0-9 ]/g, '')}`.slice(0, 50).toUpperCase();
-  const vietQrImageUrl = `https://img.vietqr.io/image/MSB-03001010099999-compact2.png?amount=${vietQrAmount}&addInfo=${encodeURIComponent(vietQrTransferDesc)}&accountName=CONG%20TY%20CP%20TWINGS%20ACADEMY`;
 
   const filteredActivities = (order.timelineActivities || []).filter((act) => {
     if (activityFilter === 'all') return true;
@@ -549,9 +438,9 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
             </div>
 
             <div className="grid grid-cols-7 gap-1 bg-slate-100/80 p-1 rounded-xl">
-              {COMP_AI_PIPELINE_STAGES.map((st, index) => {
+              {CRM_STAGES.map((st, index) => {
                 const isCurrent = currentStage === st.id;
-                const isPassed = COMP_AI_PIPELINE_STAGES.findIndex((s) => s.id === currentStage) >= index;
+                const isPassed = CRM_STAGES.findIndex((s) => s.id === currentStage) >= index;
 
                 return (
                   <button
@@ -565,10 +454,10 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                         ? 'text-blue-800 font-semibold hover:bg-white/60'
                         : 'text-slate-500 hover:text-slate-800 hover:bg-white/40'
                     }`}
-                    title={st.label + ': ' + st.description}
+                    title={st.id === '5. Đã đóng phí' && order.status !== 'paid' ? 'Tự chuyển khi ghi nhận thanh toán' : st.id}
                   >
                     <span className={`w-2 h-2 rounded-full shrink-0 ${isPassed ? 'bg-blue-600' : 'bg-slate-300'}`} />
-                    <span className="truncate">{st.shortLabel}</span>
+                    <span className="truncate">{st.label}</span>
                   </button>
                 );
               })}
@@ -590,13 +479,10 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
               </span>
             </div>
 
-            {/* Metric 2: AI Lead Quality */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">AI Phân Hạng</span>
-                <span className="font-bold text-purple-700">{tier} · {readiness}%</span>
-              </div>
-              <Sparkles className="w-4 h-4 text-purple-600" />
+            {/* Metric 2: interest level and source, as recorded on the lead */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Mức quan tâm · Nguồn</span>
+              <span className="font-bold text-slate-800">{order.interestLevel || '–'} · {order.source || '–'}</span>
             </div>
 
             {/* Metric 3: PIC selector */}
@@ -693,7 +579,6 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
               {[
                 { id: 'profile', label: 'Hồ Sơ & Học Vấn', icon: User, count: null },
                 { id: 'contact', label: 'Liên Hệ & Lịch Hẹn', icon: Phone, count: null },
-                { id: 'agent', label: 'Bằng Chứng AI (Evidence)', icon: Bot, count: order.agentResearch?.verifiedFacts.length },
                 { id: 'timeline', label: 'Nhật Ký Tương Tác', icon: FileText, count: order.timelineActivities?.length },
                 { id: 'tasks', label: 'Lịch Nhắc Hẹn', icon: CheckSquare, count: order.followupTasks?.filter(t => !t.isCompleted).length },
                 { id: 'billing', label: 'Học Phí & Hoàn Tiền', icon: CreditCard, count: null },
@@ -912,12 +797,12 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                   </div>
                 </div>
 
-                {/* 1.3 Khóa học Coursera & Ưu đãi học phí */}
+                {/* 1.3 Khóa học & ưu đãi học phí */}
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                     <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-[#0073C1]" />
-                      <span>3. Khóa Học Coursera & Chính Sách Học Phí</span>
+                      <span>3. Khóa Học & Chính Sách Học Phí</span>
                     </h3>
                   </div>
 
@@ -1074,160 +959,6 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
             {/* ============================================================= */}
             {/* TAB 2: AGENTIC RESEARCH & EVIDENCE LEDGER ("NOTHING IS GUESSED") */}
             {/* ============================================================= */}
-            {activeTab === 'agent' && (
-              <div className="space-y-5 animate-fadeIn">
-                {/* Agent Control & Status Card */}
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-900">
-                          Sổ Bằng Chứng Xác Thực (Evidence Ledger)
-                        </span>
-                        <span className="text-slate-400 text-xs">·</span>
-                        <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                          Nothing is Guessed
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Mọi quyết định tư vấn và điểm sẵn sàng đều được đối chiếu trực tiếp từ các sự kiện có thật.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleRerunAgent}
-                      disabled={isResearching}
-                      className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0 shadow-xs"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isResearching ? 'animate-spin' : ''}`} />
-                      <span>{isResearching ? 'Đang xác minh hồ sơ...' : 'Chạy Quét AI Xác Minh'}</span>
-                    </button>
-                  </div>
-
-                  {isResearching && (
-                    <div className="p-3.5 bg-slate-900 rounded-xl font-mono text-xs text-emerald-400 space-y-1.5 border border-slate-800 animate-fadeIn">
-                      <div className="flex items-center gap-2 text-slate-400 text-[11px] pb-1 border-b border-slate-800">
-                        <Terminal className="w-3.5 h-3.5 text-blue-400" />
-                        <span>Comp AI Autonomous Lead Research Agent v2.4</span>
-                      </div>
-                      {agentConsoleLogs.map((log, i) => (
-                        <div key={i} className="leading-relaxed">{log}</div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Evidence List */}
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-                  <div className="flex items-center justify-between text-xs text-slate-500 font-bold border-b border-slate-100 pb-2.5">
-                    <span className="text-slate-900">Các bằng chứng đã xác minh ({order.agentResearch?.verifiedFacts.length || 0})</span>
-                    <span className="text-emerald-700 font-mono">100% Verified Evidence</span>
-                  </div>
-
-                  <div className="divide-y divide-slate-100">
-                    {order.agentResearch?.verifiedFacts.map((fact) => (
-                      <div key={fact.id} className="py-3.5 space-y-1.5">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-2.5">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                            <p className="text-xs text-slate-800 leading-relaxed font-semibold">
-                              {fact.fact}
-                            </p>
-                          </div>
-                          <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0">
-                            {fact.confidence}% Xác thực
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 pl-6.5 flex items-center gap-2">
-                          <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">Nguồn: {fact.source}</span>
-                          <span>·</span>
-                          <span>{fact.verifiedAt}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Add Fact Form */}
-                  <form onSubmit={handleAddFact} className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center gap-2">
-                    <select
-                      value={factCat}
-                      onChange={(e) => setFactCat(e.target.value as any)}
-                      className="p-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white text-slate-700 font-semibold"
-                    >
-                      <option value="career_goal">🎯 Nguyện vọng nghề nghiệp</option>
-                      <option value="background">🎓 Nền tảng học vấn</option>
-                      <option value="budget">💰 Ngân sách học phí</option>
-                      <option value="timing">⏰ Thời gian nhập học</option>
-                    </select>
-
-                    <input
-                      type="text"
-                      value={factText}
-                      onChange={(e) => setFactText(e.target.value)}
-                      placeholder="Nhập bằng chứng xác thực mới về ứng viên..."
-                      className="flex-1 w-full p-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
-                    />
-
-                    <button
-                      type="submit"
-                      className="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shrink-0"
-                    >
-                      Thêm Bằng Chứng
-                    </button>
-                  </form>
-                </div>
-
-                {/* AI Battle Card & Consultation Pitch */}
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
-                    <Sparkles className="w-4 h-4 text-[#0073C1]" />
-                    <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
-                      Chiến Lược Tư Vấn & Kịch Bản Gợi Mở (AI Battle Card)
-                    </h4>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-100 space-y-2">
-                      <div className="font-bold text-xs text-emerald-900 flex items-center gap-1.5">
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Điểm Mạnh & Động Lực Ứng Viên</span>
-                      </div>
-                      <ul className="text-xs text-slate-700 space-y-1.5 pl-4 list-disc leading-relaxed">
-                        {order.agentResearch?.battleCard.strengths.map((str, i) => (
-                          <li key={i}>{str}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className="p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2">
-                      <div className="font-bold text-xs text-amber-900 flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Rào Cản Tâm Lý & Xử Lý Từ Chối</span>
-                      </div>
-                      <ul className="text-xs text-slate-700 space-y-1.5 pl-4 list-disc leading-relaxed">
-                        {order.agentResearch?.battleCard.objections.map((obj, i) => (
-                          <li key={i}>{obj}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                      Kịch Bản Gợi Ý Cho Chuyên Viên Tư Vấn:
-                    </span>
-                    <p className="text-xs text-slate-900 italic leading-relaxed font-medium">
-                      "{order.agentResearch?.battleCard.recommendedPitch}"
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ============================================================= */}
-            {/* TAB 3: ACTIVITY TIMELINE & LOGS */}
-            {/* ============================================================= */}
             {activeTab === 'timeline' && (
               <div className="space-y-4 animate-fadeIn">
                 {/* Note composer */}
@@ -1274,7 +1005,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                         'Hẹn gọi lại sau giờ hành chính',
                         'Đã gửi link VietQR đóng phí',
                         'Mời tham gia Bank Tour MSB',
-                        'Cần hỗ trợ giáo trình Coursera'
+                        'Cần hỗ trợ tài liệu học'
                       ].map((tag) => (
                         <button
                           key={tag}
@@ -1316,7 +1047,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                               : 'text-slate-500 hover:bg-slate-100'
                           }`}
                         >
-                          {filter === 'all' ? 'Tất cả' : filter === 'call' ? 'Cuộc gọi' : filter === 'zalo' ? 'Zalo' : filter === 'meeting' ? 'Hẹn gặp' : filter === 'note' ? 'Ghi chú' : 'AI Agent'}
+                          {filter === 'all' ? 'Tất cả' : filter === 'call' ? 'Cuộc gọi' : filter === 'zalo' ? 'Zalo' : filter === 'meeting' ? 'Hẹn gặp' : filter === 'note' ? 'Ghi chú' : 'Hệ thống'}
                         </button>
                       ))}
                     </div>
@@ -1487,113 +1218,8 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
 
             {/* TAB 5: VIETQR BILLING & INVOICING */}
             {/* ============================================================= */}
-            {activeTab === 'vietqr' && (
-              <div className="space-y-5 animate-fadeIn">
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                  {/* QR Image Card */}
-                  <div className="md:col-span-5 flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-3">
-                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <CreditCard className="w-4 h-4 text-blue-600" />
-                      <span>VietQR Chuẩn NAPAS 247</span>
-                    </div>
+            {activeTab === 'vietqr' && <LeadPaymentPanel orderId={order.id} onConfirmReceived={handleMarkAsPaid} />}
 
-                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs">
-                      <img
-                        src={vietQrImageUrl}
-                        alt="VietQR Chuyển Khoản Học Phí"
-                        className="w-48 h-48 object-contain rounded-lg"
-                        onError={(e) => {
-                          // Fallback placeholder if network fails
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                    </div>
-
-                    <span className="text-[11px] text-slate-500 font-mono">
-                      Quét bằng app mọi ngân hàng để thanh toán
-                    </span>
-                  </div>
-
-                  {/* Transfer Details & Copy */}
-                  <div className="md:col-span-7 space-y-4">
-                    <div className="border-b border-slate-100 pb-2">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                        Thông tin tài khoản thụ hưởng TWings Academy
-                      </span>
-                      <h4 className="text-sm font-bold text-slate-900 mt-1">
-                        Ngân hàng TMCP Hàng Hải Việt Nam (MSB)
-                      </h4>
-                    </div>
-
-                    <div className="space-y-3 text-xs">
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                        <div>
-                          <span className="text-slate-400 text-[11px] block">Số tài khoản:</span>
-                          <span className="font-mono font-bold text-slate-900 text-sm">03001010099999</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard('03001010099999', 'bankAcc')}
-                          className="px-2.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-slate-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
-                        >
-                          {copiedField === 'bankAcc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiedField === 'bankAcc' ? 'Đã sao chép' : 'Sao chép STK'}</span>
-                        </button>
-                      </div>
-
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                        <div>
-                          <span className="text-slate-400 text-[11px] block">Chủ tài khoản:</span>
-                          <span className="font-bold text-slate-900">CONG TY CP TWINGS ACADEMY</span>
-                        </div>
-                      </div>
-
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                        <div>
-                          <span className="text-slate-400 text-[11px] block">Nội dung chuyển khoản (Bắt buộc):</span>
-                          <span className="font-mono font-bold text-blue-700 text-xs">{vietQrTransferDesc}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(vietQrTransferDesc, 'syntax')}
-                          className="px-2.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-slate-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
-                        >
-                          {copiedField === 'syntax' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiedField === 'syntax' ? 'Đã sao chép' : 'Sao chép cú pháp'}</span>
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="text-slate-600">Số tiền cần đóng:</span>
-                        <span className="font-mono font-bold text-slate-900 text-base">{formatVND(vietQrAmount)}</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-2">
-                      {order.status === 'paid' ? (
-                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-xs font-bold">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span>Học viên đã đóng đủ học phí {formatVND(order.amount)} vào ngày {order.paidAt || '02/10/2026'}.</span>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleMarkAsPaid}
-                          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-98"
-                        >
-                          <Check className="w-4 h-4" />
-                          <span>Xác Nhận Đã Nhận Tiền & Gạch Nợ Ngay</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ============================================================= */}
-            {/* TAB 6: TRAINING & MSB PLACEMENT */}
-            {/* ============================================================= */}
             {activeTab === 'training' && (
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4 animate-fadeIn">
                 <div className="border-b border-slate-100 pb-2.5">
@@ -1684,37 +1310,6 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                   <span>Gửi Mail</span>
                 </button>
               </div>
-            </div>
-
-            {/* Card 2: AI Lead Quality & Readiness Gauge */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Chỉ Số Chuyển Đổi (AI Quality)
-                </span>
-                <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                  {tier}
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-600 font-medium">Điểm sẵn sàng (Readiness Score):</span>
-                  <span className="font-mono font-bold text-slate-900">{readiness}%</span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className="h-2.5 rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 transition-all duration-500"
-                    style={{ width: `${readiness}%` }}
-                  />
-                </div>
-              </div>
-
-              <p className="text-[11px] text-slate-500 italic leading-relaxed pt-1">
-                {tier === 'Tier A'
-                  ? 'Ứng viên có động lực cao, khớp chỉ tiêu tuyển dụng MSB, sẵn sàng chuyển khoản học phí.'
-                  : 'Ứng viên đang cân nhắc thời gian khóa học, nên gợi ý hỗ trợ chia kỳ thanh toán.'}
-              </p>
             </div>
 
             {/* Card 3: Financial & VietQR Summary */}
