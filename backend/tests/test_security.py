@@ -252,8 +252,7 @@ def test_bank_webhook_partial_payment_not_paid(api, course):
         HTTP_AUTHORIZATION="Apikey test-bank-key",
     )
     order.refresh_from_db()
-    assert order.status == "pending"
-    assert order.payment_status_detail == "Đã đóng 1 phần"
+    assert order.status == "pending" and order.total_paid_amount == 200 and not order.learning_access
 
 
 # ------------------------------------------------------------------ Resend webhook
@@ -294,22 +293,23 @@ def test_resend_webhook_signature(client, settings):
 
 
 # ------------------------------------------------------------------ encryption at rest
-def test_citizen_id_encrypted_at_rest(course):
-    order = Order.objects.create(customer_name="A", course=course, citizen_id="001099012345")
+def test_citizen_id_encrypted_at_rest(db):
+    from apps.crm.models import Learner
+
+    learner = Learner.objects.create(full_name="A", citizen_id="001099012345")
     with connection.cursor() as cur:
-        cur.execute("SELECT citizen_id FROM crm_order WHERE id = %s", [order.pk])
+        cur.execute("SELECT citizen_id FROM crm_learner WHERE id = %s", [learner.pk])
         raw = cur.fetchone()[0]
     assert "001099012345" not in raw and raw.startswith("enc1:")
-    assert Order.objects.get(pk=order.pk).citizen_id == "001099012345"
+    assert Learner.objects.get(pk=learner.pk).citizen_id == "001099012345"
 
 
-def test_duplicate_detection_uses_blind_index(api, registration_payload, course):
-    Order.objects.create(
-        customer_name="Old", course=course, customer_phone="0900000000", citizen_id="001099012345"
-    )
-    dup = Order(customer_name="New", course=course, citizen_id=" 001 099 012345 ")
-    dup.save()
-    assert dup.find_duplicates().count() == 1
+def test_learner_matched_by_cccd_through_the_blind_index(db):
+    from apps.crm.learners import find_learner
+    from apps.crm.models import Learner
+
+    learner = Learner.objects.create(full_name="Old", phone="0900000000", citizen_id="001099012345")
+    assert find_learner(citizen_id=" 001 099 012345 ") == learner
 
 
 # ------------------------------------------------------------------ headers & CSV
@@ -322,7 +322,10 @@ def test_security_headers(api):
 
 
 def test_csv_export_neutralises_formulas_and_omits_cccd(staff_client, course):
-    Order.objects.create(customer_name='=HYPERLINK("http://evil")', course=course, citizen_id="001099012345")
+    from apps.crm.services import flag_duplicates
+
+    order = Order.objects.create(customer_name='=HYPERLINK("http://evil")', course=course)
+    flag_duplicates(order, {"citizen_id": "001099012345"})
     res = staff_client(Role.SALES_CRM).get("/api/v1/staff/orders/export/")
     assert res.status_code == 200
     content = b"".join(res.streaming_content).decode("utf-8")

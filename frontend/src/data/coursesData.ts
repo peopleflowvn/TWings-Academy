@@ -610,56 +610,6 @@ export const INITIAL_COURSES: Course[] = [
   }
 ];
 
-export const INITIAL_ORDERS: Order[] = [
-  {
-    id: 'ord-101',
-    orderCode: 'TW-89241',
-    courseId: 'course-qhkh-ca-nhan',
-    courseTitle: 'Quan hệ Khách hàng cá nhân',
-    amount: 7599000,
-    originalAmount: 9500000,
-    discountAmount: 1901000,
-    status: 'paid',
-    paymentMethod: 'vietqr',
-    customerName: 'Nguyễn Văn Minh',
-    customerEmail: 'minh.nguyen99@gmail.com',
-    customerPhone: '0912345678',
-    createdAt: '2026-09-28T09:15:00Z',
-    paidAt: '2026-09-28T09:17:24Z'
-  },
-  {
-    id: 'ord-102',
-    orderCode: 'TW-89242',
-    courseId: 'course-mbo-to-okr',
-    courseTitle: 'Di Sản Từ MBO Đến Kỷ Nguyên OKR',
-    amount: 1890000,
-    originalAmount: 3200000,
-    discountAmount: 1310000,
-    status: 'paid',
-    paymentMethod: 'vietqr',
-    customerName: 'Trần Thị Thu Hà',
-    customerEmail: 'thuha.tran@msb.com.vn',
-    customerPhone: '0988776655',
-    createdAt: '2026-09-29T14:30:00Z',
-    paidAt: '2026-09-29T14:31:45Z'
-  },
-  {
-    id: 'ord-103',
-    orderCode: 'TW-89243',
-    courseId: 'course-ai-ngan-hang',
-    courseTitle: 'Khai mở sức mạnh AI',
-    amount: 1352000,
-    originalAmount: 3200000,
-    discountAmount: 1848000,
-    discountCode: 'TWINGS2026',
-    status: 'pending',
-    paymentMethod: 'vietqr',
-    customerName: 'Lê Hoàng Anh',
-    customerEmail: 'hoanganh.le@gmail.com',
-    customerPhone: '0977112233',
-    createdAt: '2026-09-30T20:10:00Z'
-  }
-];
 
 export const INITIAL_STUDENTS: StudentEnrollment[] = [
   {

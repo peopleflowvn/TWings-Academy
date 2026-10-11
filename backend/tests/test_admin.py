@@ -68,9 +68,7 @@ def test_campaign_positions_are_saved_as_a_nested_list(staff_client, course):
             "code": "CAMP-T1",
             "name": "Chiến dịch test",
             "status": "active",
-            "positions": [
-                {"courseId": course.id, "positionTitle": "RM", "shortName": "RM", "targetQuota": 10}
-            ],
+            "positions": [{"courseId": course.id, "positionTitle": "RM", "targetQuota": 10}],
         },
         format="json",
     )
@@ -85,16 +83,15 @@ def test_campaign_positions_are_saved_as_a_nested_list(staff_client, course):
                     "id": kept,
                     "courseId": course.id,
                     "positionTitle": "RM",
-                    "shortName": "RM",
                     "targetQuota": 20,
                 },
-                {"id": "local-123", "courseId": course.id, "positionTitle": "GDV", "shortName": "GDV"},
+                {"id": "local-123", "courseId": course.id, "positionTitle": "GDV"},
             ]
         },
         format="json",
     )
     assert res.status_code == 200, res.content
-    positions = {p["shortName"]: p for p in res.json()["positions"]}
+    positions = {p["positionTitle"]: p for p in res.json()["positions"]}
     assert positions["RM"]["id"] == kept and positions["RM"]["targetQuota"] == 20
     assert positions["GDV"]["id"] != "local-123"
     res = admin.patch(f"/api/v1/staff/campaigns/{camp['id']}/", {"positions": []}, format="json")

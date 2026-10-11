@@ -184,10 +184,15 @@ def overview() -> dict:
     for camp in AdmissionCampaign.objects.exclude(status="closed").prefetch_related("positions__course"):
         positions = []
         for pos in camp.positions.all():
-            enrolled = Order.objects.filter(campaign=camp, course=pos.course, learning_access=True).count()
+            # Same rule as the campaign list: linked to the campaign or carrying its code.
+            enrolled = (
+                Order.objects.filter(Q(campaign=camp) | Q(campaign_code__iexact=camp.code))
+                .filter(course=pos.course, learning_access=True, parent__isnull=True)
+                .count()
+            )
             positions.append(
                 {
-                    "title": pos.short_name or pos.position_title,
+                    "title": pos.position_title or pos.course.title,
                     "course_title": pos.course.title,
                     "target": pos.target_quota,
                     "enrolled": enrolled,

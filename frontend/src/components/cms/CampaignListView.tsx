@@ -30,18 +30,20 @@ import {
 } from 'lucide-react';
 import { AdmissionCampaign, CRMStatus, Course } from '../../types';
 
-interface RecruitmentCampaignsViewProps {
+interface CampaignListViewProps {
   campaigns: AdmissionCampaign[];
   courses: Course[];
   onSelectCampaign: (campaignId: string) => void;
-  onOpenCreateRequisition: () => void;
+  onCreateCampaign: () => void;
+  onEditCampaign: (campaignId: string) => void;
 }
 
-export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> = ({
+export const CampaignListView: React.FC<CampaignListViewProps> = ({
   campaigns,
   courses,
   onSelectCampaign,
-  onOpenCreateRequisition
+  onCreateCampaign,
+  onEditCampaign
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -174,11 +176,11 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
             {/* New campaign */}
             <button
               type="button"
-              onClick={onOpenCreateRequisition}
+              onClick={onCreateCampaign}
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Mở Đợt Tuyển Sinh Mới</span>
+              <span>Chiến dịch mới</span>
             </button>
           </div>
         </div>
@@ -362,6 +364,21 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                           style={{ width: `${funnel.progressPercent}%` }}
                         />
                       </div>
+                      {(camp.positions || []).length > 0 && (
+                        <div className="pt-1 space-y-0.5 text-[11px] text-slate-600">
+                          {camp.positions.map((p) => {
+                            const got = camp.funnel?.courses.find((c) => c.courseId === p.courseId);
+                            return (
+                              <div key={p.id} className="flex items-center justify-between gap-2">
+                                <span className="truncate">{courses.find((c) => c.id === p.courseId)?.title || p.positionTitle}</span>
+                                <span className="font-mono shrink-0">
+                                  {got?.paid || 0}/{p.targetQuota || '–'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
                     {/* Leads per stage */}
@@ -400,6 +417,17 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditCampaign(camp.id);
+                      }}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors cursor-pointer"
+                      title="Sửa chiến dịch, chỉ tiêu"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={(e) => handleCopyLink(camp, e)}
                       className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors"
                       title="Sao chép link đăng ký tuyển sinh"
@@ -415,7 +443,7 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                       }}
                       className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-2xs flex items-center gap-1 text-xs cursor-pointer group-hover:scale-102"
                     >
-                      <span>Vào Pipeline</span>
+                      <span>Pipeline</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -497,9 +525,19 @@ export const RecruitmentCampaignsView: React.FC<RecruitmentCampaignsViewProps> =
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
+                            onEditCampaign(camp.id);
+                          }}
+                          className="px-3 py-1 mr-1.5 border border-slate-200 font-bold rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             onSelectCampaign(camp.id);
                           }}
-                          className="px-3 py-1 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors"
+                          className="px-3 py-1 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
                         >
                           Pipeline &rarr;
                         </button>

@@ -60,10 +60,15 @@ def pick_consultant(order: Order):
         if owner.is_active and owner.receives_leads:
             return owner
     previous = (
-        order.find_duplicates()
-        .filter(assigned_to__isnull=False, assigned_to__is_active=True)
+        Order.objects.filter(
+            learner_id=order.learner_id, assigned_to__isnull=False, assigned_to__is_active=True
+        )
+        .exclude(pk=order.pk)
         .order_by("-created_at")
-    ).first()
+        .first()
+        if order.learner_id
+        else None
+    )
     if previous is not None and previous.assigned_to.receives_leads:
         return previous.assigned_to
     return (

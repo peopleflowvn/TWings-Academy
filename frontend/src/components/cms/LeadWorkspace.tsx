@@ -51,7 +51,7 @@ const CRM_STAGES: { id: CRMStatus; label: string }[] = [
   { id: '7. Đã hủy', label: 'Đã hủy' }
 ];
 
-interface CompAILeadDetailModalProps {
+interface LeadWorkspaceProps {
   order: Order;
   onClose: () => void;
   /** Save `updated` against `previous` (the version loaded); resolves to the order as now stored. */
@@ -89,7 +89,6 @@ const SERVER_FIELDS: (keyof Order)[] = [
   'firstResponseAt',
   'status',
   'totalPaidAmount',
-  'paymentStatusDetail',
   'paidAt'
 ];
 const tomorrowIso = () => {
@@ -113,7 +112,11 @@ const when = (value?: string) => {
 
 const SOURCES = ['Website', 'Hotline', 'Facebook', 'Zalo', 'TikTok', 'Giới thiệu', 'Hội thảo trường ĐH', 'Sự kiện'];
 
-export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
+/**
+ * One registration (lead) in full: course, class, stage, consultation history, tasks, appointments,
+ * payment and learning, with a summary of the learner (whose details are on the learner page).
+ */
+export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   order: initialOrder,
   onClose,
   onSave,
@@ -727,15 +730,17 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-2 text-xs">
                     {[
-                      ['Họ và tên', order.customerName],
+                      ['Họ và tên', order.learnerProfile?.fullName || order.customerName],
                       ['Số điện thoại', order.customerPhone],
                       ['Email', order.customerEmail],
-                      ['Ngày sinh', order.birthDate ? isoDate(order.birthDate).split('-').reverse().join('/') : ''],
-                      ['Giới tính', order.gender],
-                      ['CCCD', order.citizenId ? `•••••••••${order.citizenId.slice(-3)}` : ''],
-                      ['Trường', order.university],
-                      ['Ngành', order.major],
-                      ['Nơi ở hiện tại', order.currentResidence || order.area]
+                      ['Ngày sinh', order.learnerProfile?.birthDate ? isoDate(order.learnerProfile.birthDate).split('-').reverse().join('/') : ''],
+                      ['Giới tính', order.learnerProfile?.gender],
+                      ['CCCD', order.learnerProfile?.citizenIdMasked],
+                      ['Trường', order.learnerProfile?.university],
+                      ['Ngành', order.learnerProfile?.major],
+                      ['Nơi ở hiện tại', order.learnerProfile?.currentResidence || order.learnerProfile?.area],
+                      ['Hồ sơ nhập học', order.learnerProfile ? (order.learnerProfile.dossierMissing.length ? `Thiếu ${order.learnerProfile.dossierMissing.length} mục` : 'Đủ') : ''],
+                      ['CV', order.learnerProfile ? (order.learnerProfile.hasCv ? 'Đã có' : 'Chưa có') : '']
                     ].map(([label, value]) => (
                       <div key={label}>
                         <span className="text-slate-400 block">{label}</span>
@@ -816,16 +821,6 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                       <div className="p-2.5 border border-slate-100 rounded-xl bg-slate-50 font-mono font-bold text-slate-900">
                         {formatVND(order.tuitionFee || order.originalAmount || order.amount)}
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Chương trình khuyến mãi (CTKM)</label>
-                      <input
-                        type="text"
-                        value={order.promotionProgram || ''}
-                        onChange={(e) => handleFieldChange('promotionProgram', e.target.value)}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
-                      />
                     </div>
 
                     <div>
@@ -1165,7 +1160,7 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                 responseDueAt={order.responseDueAt}
                 firstResponseAt={order.firstResponseAt}
                 dossierSubmittedAt={order.dossierSubmittedAt}
-                hasCv={(order.cvLink || '').startsWith('private:')}
+                hasCv={Boolean(order.learnerProfile?.hasCv)}
               />
             )}
 
@@ -1208,12 +1203,6 @@ export const CompAILeadDetailModal: React.FC<CompAILeadDetailModalProps> = ({
                       <option value="Thôi học">Thôi học</option>
                     </select>
                   </div>
-                  {order.certificateNumber && (
-                    <div>
-                      <span className="font-bold text-slate-700 block mb-1">Chứng chỉ</span>
-                      <span className="font-mono font-bold">{order.certificateNumber}</span>
-                    </div>
-                  )}
                 </div>
                 <PlacementPanel orderId={order.id} name={order.customerName} />
               </div>

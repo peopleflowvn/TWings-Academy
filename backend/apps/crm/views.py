@@ -1,7 +1,7 @@
 import csv
 
 from django.db import transaction
-from django.db.models import Count, OuterRef, Q, Subquery, Sum
+from django.db.models import Count, F, OuterRef, Q, Subquery, Sum
 from django.db.models.functions import Coalesce, Lower
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
@@ -24,7 +24,6 @@ from .serializers import (
     ASSIGN_FIELDS,
     FINANCE_FIELDS,
     PAID_STAGE,
-    REFERRAL_FIELDS,
     ActivitySerializer,
     AdmissionCampaignSerializer,
     FollowupTaskSerializer,
@@ -55,14 +54,14 @@ class PublicRegistrationView(APIView):
 
 CANCELLED_STAGE = "7. Đã hủy"
 
-# CSV export deliberately omits encrypted identity fields (CCCD, addresses, bank accounts).
+# CSV export: registrations only (identity documents and addresses stay on the learner page).
 EXPORT_FIELDS = [
     "order_code",
+    "learner_code",
     "created_at",
     "customer_name",
     "customer_phone",
     "customer_email",
-    "area",
     "course_title",
     "batch_cohort",
     "source",
@@ -71,11 +70,10 @@ EXPORT_FIELDS = [
     "crm_status",
     "interest_level",
     "status",
-    "payment_status_detail",
     "amount",
     "total_paid_amount",
     "training_status",
-    "placement_status",
+    "placement_stage",
 ]
 
 
@@ -124,7 +122,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         "customer_name",
         "customer_phone",
         "customer_email",
-        "university",
+        "learner__code",
+        "learner__university",
         "batch_cohort",
     ]
     ordering_fields = ["created_at", "amount", "crm_status"]
@@ -191,11 +190,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         changed = set(serializer.validated_data)
         if changed & FINANCE_FIELDS and not has_perm_code(user, "finance.confirm_manual"):
             raise PermissionDenied("Thông tin thanh toán chỉ Kế toán được chỉnh sửa.")
-        if changed & REFERRAL_FIELDS and not has_perm_code(user, "finance.referral_bonus"):
-            raise PermissionDenied("Cần quyền finance.referral_bonus.")
         if changed & ASSIGN_FIELDS and not has_perm_code(user, "crm.assign_pic"):
             raise PermissionDenied("Cần quyền crm.assign_pic để phân công PIC.")
-        other = changed - FINANCE_FIELDS - REFERRAL_FIELDS - ASSIGN_FIELDS
+        other = changed - FINANCE_FIELDS - ASSIGN_FIELDS
         if other and not has_perm_code(user, "crm.edit_status"):
             raise PermissionDenied("Cần quyền crm.edit_status.")
         self._guard_payment_state(serializer)
@@ -232,11 +229,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         was_cancelled = serializer.instance.crm_status == CANCELLED_STAGE
         order = serializer.save()
         self._sync_pic(serializer, order)
-        from .learners import sync_from_order
-
-        sync_from_order(
-            order, serializer.validated_data.keys()
-        )  # the person's details, on every registration
         if "crm_status" in serializer.validated_data:
             self._follow_cancel_stage(order, was_cancelled)
         if was_new and order.crm_status != "1. Mới":
@@ -361,7 +353,14 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def export(self, request):
-        queryset = self.filter_queryset(self.get_queryset())
+        from .models import Placement
+
+        latest_stage = (
+            Placement.objects.filter(order=OuterRef("pk")).order_by("-updated_at").values("stage")[:1]
+        )
+        queryset = self.filter_queryset(self.get_queryset()).annotate(
+            learner_code=F("learner__code"), placement_stage=Subquery(latest_stage)
+        )
         audit(request, "order.export_csv", None, count=queryset.count(), query=request.GET.dict())
         writer = csv.writer(_Echo())
 
@@ -571,9 +570,10 @@ class OrderCvView(APIView):
         from django.http import FileResponse, Http404
 
         order = get_object_or_404(Order, pk=pk)
-        if not order.cv_link.startswith("private:"):
+        cv = order.learner.cv_link if order.learner_id else ""
+        if not cv.startswith("private:"):
             raise Http404
-        name = order.cv_link.removeprefix("private:")
+        name = cv.removeprefix("private:")
         audit(request, "order.cv_download", order)
         return FileResponse(
             storages["private"].open(name, "rb"),
@@ -588,18 +588,17 @@ class CohortRosterView(APIView):
     permission_classes = [require_perms("courses.view", "crm.view_leads", "lms.view")]
 
     def get(self, request, pk):
-        from apps.sso.account import DOSSIER_REQUIRED
+        from .learners import dossier_missing
 
         cohort = get_object_or_404(Cohort, pk=pk)
         rows = []
         orders = (
             Order.objects.filter(cohort=cohort)
             .exclude(status__in=("cancelled", "refunded"))
-            .select_related("parent", "lms_enrollment")
+            .select_related("parent", "lms_enrollment", "learner")
             .order_by("customer_name")
         )
         for o in orders:
-            file_order = o.parent or o  # program components keep the file on the program order
             enrollment = getattr(o, "lms_enrollment", None)
             billing = o.parent or o
             rows.append(
@@ -616,8 +615,9 @@ class CohortRosterView(APIView):
                     "remaining": max(
                         (billing.total_receivable or billing.amount) - billing.total_paid_amount, 0
                     ),
-                    "dossier_missing": [f for f in DOSSIER_REQUIRED if not getattr(file_order, f)],
-                    "has_cv": bool(file_order.cv_link),
+                    "learner_id": o.learner_id,
+                    "dossier_missing": dossier_missing(o.learner),
+                    "has_cv": bool(o.learner and o.learner.cv_link),
                     "lms_status": enrollment.get_status_display() if enrollment else "",
                     "progress": enrollment.progress if enrollment else None,
                 }

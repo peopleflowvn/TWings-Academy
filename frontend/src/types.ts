@@ -311,37 +311,36 @@ export interface Coupon {
 }
 
 // -------------------------------------------------------------
-// ADMISSION & TALENT ACQUISITION CAMPAIGN ARCHITECTURE (TalentFlow ATS)
+// ADMISSION CAMPAIGNS (courses, quotas, registration links)
 // -------------------------------------------------------------
-export interface CampaignPositionTrack {
+/**
+ * A course offered by an admission campaign: its quota and, for train-to-hire courses, the job it leads
+ * to at the partner (used when referring graduates).
+ */
+export interface CampaignCourse {
   id: string;
   courseId: string;
-  positionTitle: string;        // e.g. "Chuyên viên QHKH Doanh Nghiệp (CIB/SME)"
-  shortName: string;            // e.g. "RM Doanh Nghiệp"
-  department: string;           // e.g. "Khối Khách Hàng Doanh Nghiệp MSB"
-  targetQuota: number;          // Chỉ tiêu tuyển sinh/tuyển dụng (e.g. 25)
-  enrolledCount: number;        // Đã nhập học
-  leadInstructorName?: string;  // Giám đốc Khối / Giảng viên phụ trách
-  salaryRange?: string;         // e.g. "12 - 25 Triệu / tháng"
-  badgeBg: string;
-  iconName?: string;
+  targetQuota: number;
+  positionTitle: string;
+  department: string;
+  salaryRange: string;
 }
 
 export interface AdmissionCampaign {
   id: string;
-  code: string;                 // e.g. "CAMP-2026-Q4-HN"
-  name: string;                 // e.g. "Chiến Dịch Tuyển Sinh Fresher Banker Q4/2026 - Hà Nội"
-  timeRange: string;            // e.g. "Tháng 09/2026 - 12/2026"
-  startDate: string;
-  deadline: string;
-  openingDate?: string;         // e.g. "20/10/2026" (Ngày khai giảng dự kiến)
+  /** The utm_campaign value of its registration links (unique). */
+  code: string;
+  name: string;
+  startDate: string; // dd/mm/yyyy
+  deadline: string; // dd/mm/yyyy
   status: 'active' | 'planning' | 'closed';
-  targetHeadcount: number;      // e.g. 100 (Chỉ tiêu tuyển sinh)
-  totalEnrolled: number;        // e.g. 78
-  positions: CampaignPositionTrack[];
-  leadRecruiter: string;        // e.g. "ThS. Lê Hoàng Tùng & Ban Nhân sự MSB"
-  scholarshipBudget: number;    // e.g. 250000000 (250tr)
-  location: string;             // e.g. "Hà Nội & Miền Bắc"
+  targetHeadcount: number;
+  /** Learners who may study (paid, or first installment paid), counted by the server. */
+  totalEnrolled: number;
+  positions: CampaignCourse[];
+  leadRecruiter: string;
+  scholarshipBudget: number;
+  location: string;
   description: string;
   /** Leads of the campaign (linked or carrying its code), counted by the server over every lead. */
   funnel?: CampaignFunnel;
@@ -392,150 +391,93 @@ export type CRMStatus =
 
 export type PaymentStatus = 'Chưa thanh toán' | 'Đã đóng phí' | 'Đã đóng 1 phần' | 'Đã hoàn tiền';
 
+/** The person behind a registration, as one registration's detail shows it (CCCD masked). */
+export interface LearnerProfile {
+  id: string;
+  code: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  birthDate: string | null;
+  gender: string;
+  area: string;
+  currentResidence: string;
+  educationLevel: string;
+  university: string;
+  major: string;
+  citizenIdMasked: string;
+  hasCv: boolean;
+  dossierMissing: string[];
+}
+
+/**
+ * One registration of a learner to a course or program (staff API /staff/orders/): from first contact
+ * through consultation, payment, learning and job placement. The person's details are the learner's.
+ */
 export interface Order {
-  /** Steps 4-6 (staff API) */
-  responseDueAt?: string | null;
-  firstResponseAt?: string | null;
-  termsAcceptedAt?: string | null;
-  dossierSubmittedAt?: string | null;
   id: string;
   orderCode: string;
   courseId: string;
   courseTitle: string;
   /** The intake (class) the learner is placed in; batchCohort keeps its name. */
   cohortId?: string | null;
+  batchCohort?: string;
   /** The consultant (staff user id) in charge; pic keeps their name. */
   assignedTo?: string | null;
+  pic?: string;
   /** The learner (one per person) this registration belongs to. */
   learnerId?: string | null;
   learnerCode?: string;
+  /** Detail only: the learner's details (the list leaves it out). */
+  learnerProfile?: LearnerProfile | null;
+  /** Detail only: the learner's other registrations. */
+  relatedOrders?: { id: string; orderCode: string; courseTitle: string; status: string; crmStatus: string; createdAt: string }[] | null;
   /** The admission campaign the lead came from (campaignCode keeps its code). */
   campaign?: string | null;
-  /** Other leads / orders of the same person (phone, e-mail or CCCD): one lead's detail only. */
-  relatedOrders?: { id: string; orderCode: string; courseTitle: string; status: string; crmStatus: string; createdAt: string }[] | null;
+  campaignCode?: string;
+
+  // Contact typed for this registration
+  customerName: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  referrerName?: string;
+  referrerPhone?: string;
+  referrerStaffCode?: string;
+
+  // Consultation
+  source?: string;
+  consultNeed?: string;
+  interestedCourse?: string;
+  interestLevel?: 'Rất cao' | 'Cao' | 'Trung bình' | 'Thấp' | 'Đang phân vân';
+  crmStatus?: CRMStatus;
+  consultDetail?: string;
+  /** First response to a new lead (deadline and when it happened). */
+  responseDueAt?: string | null;
+  firstResponseAt?: string | null;
+  termsAcceptedAt?: string | null;
+  dossierSubmittedAt?: string | null;
+
+  // Tuition (payments, installments and refunds: /billing/)
   amount: number;
   originalAmount?: number;
   discountAmount?: number;
   discountCode?: string;
+  tuitionFee?: number;
+  totalReceivable?: number;
+  totalPaidAmount?: number;
   status: 'paid' | 'pending' | 'cancelled' | 'refunded';
   paymentMethod: 'vietqr' | 'free' | 'card' | 'transfer' | 'cash';
-  createdAt: string;
   paidAt?: string;
+  createdAt: string;
 
-  // 1: THÔNG TIN CÁ NHÂN (Image 4)
-  registrationCode?: string;      // Mã đăng ký (e.g. 0412_TW3_Nguyen Thi Khanh Linh)
-  customerName: string;          // Họ và tên *
-  birthDate?: string;             // Ngày sinh * (dd/mm/yyyy)
-  gender?: 'Nam' | 'Nữ' | 'Khác';// Giới tính
-  customerPhone?: string;         // Số điện thoại *
-  customerEmail?: string;         // Email *
-  area?: string;                  // Khu vực * (Hà Nội, TP.HCM, Đà Nẵng, Online...)
-  permanentAddress?: string;     // Hộ khẩu *
-  citizenId?: string;            // CCCD *
-  issuedPlace?: string;          // Nơi cấp
-  currentResidence?: string;     // Nơi ở hiện tại *
-  campaignCode?: string;         // Mã chiến dịch * (TW3, FB_ADS, TIKTOK, EVENT...)
-  referrerName?: string;         // Tên NGT (Người giới thiệu)
-  referrerEmail?: string;        // Email NGT
-  referrerPhone?: string;        // SĐT NGT
-  referrerStaffCode?: string;    // MNV NGT (Mã nhân viên người giới thiệu)
-  educationLevel?: string;       // Trình độ (Đại học, Cao đẳng, Đã đi làm...)
-  major?: string;                // Ngành học (Tài chính - Ngân hàng, Kế toán...)
-  university?: string;           // Trường học (NEU, Học viện Ngân hàng, FTU...)
-  graduationYear?: string;       // Năm tốt nghiệp
-  contactPersonName?: string;    // Tên Người liên hệ
-  contactPersonPhone?: string;   // SĐT Người liên hệ
-  contactRelation?: string;      // Mối quan hệ NLH (Bố, Mẹ, Anh/Chị...)
-  cvLink?: string;               // Link CV
+  // Learning (Moodle progress and certificates: /lms/; jobs: placements)
+  trainingStatus?: string;
 
-  // 2: THÔNG TIN TIẾP CẬN VÀ CHĂM SÓC HỌC VIÊN TIỀM NĂNG (Image 4)
-  source?: string;               // Nguồn * (Facebook, Website, Hotline, Giới thiệu...)
-  registeredAt?: string;          // Ngày đăng ký *
-  reachedDate?: string;          // Ngày tiếp cận *
-  consultNeed?: string;          // Cần tư vấn về
-  interestedCourse?: string;     // Khóa quan tâm *
-  pic?: string;                   // PIC * (Người phụ trách: HuongNT22, TungLH, ChiNK...)
-  studyArea?: string;            // Khu vực học * (Hà Nội, TP.HCM, Online...)
-  approachMethod?: string;       // Hình thức tiếp cận * (Gọi điện, Zalo, Gặp trực tiếp HO MSB...)
-  interestLevel?: 'Rất cao' | 'Cao' | 'Trung bình' | 'Thấp' | 'Đang phân vân'; // Mức độ quan tâm *
-  crmStatus?: CRMStatus;          // Trạng thái * (1. Mới, 2. Đã tiếp cận, 3. Đang tư vấn, 4. Hẹn gặp, 5. Đã đóng phí...)
-  enrolledCourseName?: string;   // Khóa đăng ký *
-  batchCohort?: string;          // Đợt khai giảng * (Khóa học 8, Khóa học 9...)
-  promotionProgram?: string;     // CTKM * (Cashback 2tr, Học bổng 20%...)
-  consultDetail?: string;        // Chi tiết * (Ghi chú tư vấn)
-
-  // 3: THÔNG TIN THANH TOÁN CỦA HỌC VIÊN (Image 4)
-  tuitionFee?: number;           // Học phí *
-  totalReceivable?: number;      // Số tiền phải thu *
-  paidAmountL1?: number;         // Số tiền đã đóng L1 *
-  paymentStatusDetail?: PaymentStatus; // Trạng thái TT *
-  paymentMethodDetail?: string;  // Phương thức TT * (Chuyển khoản, Tiền mặt...)
-  paymentDate?: string;          // Ngày thanh toán *
-  paidAmountL2?: number;         // Số tiền đã đóng L2 *
-  transactionCode?: string;      // Mã giao dịch
-  bankAccountNumber?: string;    // STK
-  bankName?: string;             // Ngân hàng
-  totalPaidAmount?: number;      // Tổng tiền đã đóng
-  referralCommission?: number;   // Hoa hồng cho NGT
-  paymentNote?: string;          // Ghi chú thanh toán
-
-  // 4: THÔNG TIN THANH TOÁN THƯỞNG GIỚI THIỆU NẾU CÓ (Image 5)
-  referralRewardAmount?: number; // Số tiền thưởng
-  referralRewardStatus?: 'Chờ duyệt' | 'Đã chi' | 'Không duyệt'; // Tình trạng
-  referralRewardBankAcc?: string;// STK
-  referralRewardDate?: string;   // Ngày trả thưởng
-  referralRewardNote?: string;   // Ghi chú TT thưởng
-
-  // 5: QUẢN LÝ ĐÀO TẠO & VIỆC LÀM (Image 5)
-  traineeEmail?: string;         // Email
-  partnerTraineeId?: string;     // ID MSB
-  partnerEmail?: string;         // Email MSB
-  trainingStatus?: 'Đang học' | 'Đã tốt nghiệp' | 'Bảo lưu' | 'Thôi học'; // TT chương trình
-  certificateType?: string;      // Loại chứng nhận
-  certificateDate?: string;      // Ngày cấp CN
-  certificateNumber?: string;    // Mã số chứng nhận
-  placementCompany?: string;     // ĐV tiếp nhận LV (Đơn vị tiếp nhận làm việc)
-  placementStatus?: 'Chờ phỏng vấn' | 'Đã thực tập' | 'Đã ký HĐLĐ'; // TT tiếp nhận CV
-  workStartDate?: string;        // Ngày vào LV
-  guaranteeStartDate?: string;   // Ngày bắt đầu BL (Bảo lãnh)
-  trainingNote?: string;         // Ghi chú QLĐT
-
-  // 6: THÔNG TIN THANH TOÁN HỌC LẠI NẾU CÓ (Image 5)
-  reExamCount?: number;          // Số môn Thi lại
-  retakeCount?: number;          // Số môn Học lại
-  fieldStudyRetake?: string;     // Học lại thực địa
-  retakeAmount?: number;         // Số tiền HL/TL
-  retakePaymentStatus?: string;  // Tình trạng đóng
-  retakeNote?: string;           // Ghi chú TTHL
-
-  // 7: CRM PHÁT HIỆN TRÙNG LẶP & ĐA KHÓA HỌC
+  /** Same learner, same course, still open. */
   isDuplicate?: boolean;
   duplicateCount?: number;
   duplicateNote?: string;
-  otherEnrolledCourses?: Array<{ id: string; code: string; title: string; date: string }>;
 
-  // 8: COMP AI AGENTIC CRM (Evidence Ledger, Battle Card & Autonomous Research)
-  agentResearch?: {
-    verifiedFacts: Array<{
-      id: string;
-      fact: string;
-      verifiedAt: string;
-      confidence: number;
-      category: 'background' | 'career_goal' | 'budget' | 'timing';
-      source: string;
-    }>;
-    leadQualityTier: 'Tier A' | 'Tier B' | 'Tier C' | 'Tier D';
-    readinessScore: number; // 0 - 100
-    battleCard: {
-      candidateProfileSummary: string;
-      strengths: string[];
-      objections: string[];
-      recommendedPitch: string;
-      suggestedCoursePackage: string;
-    };
-    researchStatus: 'idle' | 'running' | 'completed';
-    lastResearchedAt: string;
-  };
   timelineActivities?: Array<{
     id: string;
     type: 'call' | 'zalo' | 'email' | 'meeting' | 'note' | 'agent_research' | 'payment';

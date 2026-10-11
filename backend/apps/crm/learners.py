@@ -2,14 +2,13 @@
 Learners and their registrations.
 
 A Learner is one person; each registration to a course or program is an Order linked to it (a person
-can study any number of courses). The Learner holds the person's details; the same fields on Order
-are a copy kept in step from here, because SSO, Moodle enrolment, class lists and exports read them
-from the order.
+can study any number of courses). Personal details (identity, addresses, education, emergency
+contact, CV) exist on the Learner only. A registration keeps the contact typed for it (name, phone,
+e-mail): SSO, journeys and payment e-mails use it, and the learner page shows both.
 
 - A new registration (website, checkout, staff) is matched to a learner by e-mail, then phone, then
-  CCCD; a new learner is created otherwise. The form only fills what the learner record lacks.
-- Edits by staff (learner page or lead workspace) and the learner's own enrolment file update the
-  learner and every registration of the person.
+  CCCD; a new learner is created otherwise. What the form brings fills what the learner lacks.
+- Staff editing the learner's name / phone / e-mail updates every registration of the person.
 - A registration is a duplicate only when the same learner already has an active registration for the
   same course / program; a returning learner on another course is not one.
 """
@@ -23,28 +22,28 @@ from apps.core.crypto import blind_index
 
 from .models import Activity, Learner, Order
 
-# Learner field -> Order field.
-PERSON_FIELDS = {
-    "full_name": "customer_name",
-    "phone": "customer_phone",
-    "email": "customer_email",
-    "birth_date": "birth_date",
-    "gender": "gender",
-    "area": "area",
-    "citizen_id": "citizen_id",
-    "issued_place": "issued_place",
-    "permanent_address": "permanent_address",
-    "current_residence": "current_residence",
-    "education_level": "education_level",
-    "major": "major",
-    "university": "university",
-    "graduation_year": "graduation_year",
-    "contact_person_name": "contact_person_name",
-    "contact_person_phone": "contact_person_phone",
-    "contact_relation": "contact_relation",
-    "cv_link": "cv_link",
-}
-ORDER_PERSON_FIELDS = {v: k for k, v in PERSON_FIELDS.items()}
+# Learner field -> Order field: the contact kept on each registration.
+CONTACT_FIELDS = {"full_name": "customer_name", "phone": "customer_phone", "email": "customer_email"}
+# Personal details a form may bring for the learner (public registration, enrolment file).
+PERSON_FIELDS = [
+    "birth_date",
+    "gender",
+    "area",
+    "citizen_id",
+    "issued_place",
+    "permanent_address",
+    "current_residence",
+    "education_level",
+    "major",
+    "university",
+    "graduation_year",
+    "contact_person_name",
+    "contact_person_phone",
+    "contact_relation",
+    "cv_link",
+]
+# What the learner must provide before studying (enrolment file).
+DOSSIER_REQUIRED = ["birth_date", "citizen_id", "permanent_address", "education_level"]
 ACTIVE = ~Q(status__in=("cancelled", "refunded")) & ~Q(crm_status="7. Đã hủy")
 
 
@@ -73,81 +72,60 @@ def find_learner(*, email: str = "", phone: str = "", citizen_id: str = "") -> L
     return None
 
 
-def _order_values(order: Order) -> dict:
-    return {lf: getattr(order, of) for lf, of in PERSON_FIELDS.items()}
+def fill_missing(learner: Learner, values: dict) -> None:
+    """Set the learner's empty details from `values` (a form never overwrites what is known)."""
+    missing = {f: v for f, v in values.items() if v not in (None, "") and not getattr(learner, f)}
+    for field, value in missing.items():
+        setattr(learner, field, value)
+    if missing:
+        learner.save(update_fields=[*missing, "updated_at"])
 
 
 @transaction.atomic
-def attach_learner(order: Order) -> Learner:
+def attach_learner(order: Order, details: dict | None = None) -> Learner:
     """
-    Link a new registration to its learner (matched or created). Program courses follow the program
-    registration. The registration's details fill what the learner lacks, and the learner's fill what
-    the registration lacks (CCCD, address, education are not asked again); what the person typed on
-    this registration (e.g. a newer e-mail) is kept.
+    Link a new registration to its learner (matched or created); `details` are personal details the
+    form brought (birth date, education…). Program courses follow the program registration.
     """
+    details = {k: v for k, v in (details or {}).items() if k in PERSON_FIELDS}
+    contact = {lf: getattr(order, of) for lf, of in CONTACT_FIELDS.items()}
     if order.parent_id:
         learner = order.parent.learner or attach_learner(order.parent)
-    elif order.learner_id:
-        learner = order.learner  # registered from the learner's page
-        missing = {f: v for f, v in _order_values(order).items() if v and not getattr(learner, f)}
-        for field, value in missing.items():
-            setattr(learner, field, value)
-        if missing:
-            learner.save(update_fields=[*missing, "updated_at"])
     else:
-        learner = find_learner(
-            email=order.customer_email, phone=order.customer_phone, citizen_id=order.citizen_id
+        learner = order.learner or find_learner(
+            email=order.customer_email, phone=order.customer_phone, citizen_id=details.get("citizen_id", "")
         )
         if learner is None:
-            learner = Learner(**_order_values(order), owner=order.assigned_to)
+            learner = Learner(**contact, **details, owner=order.assigned_to)
+            learner.full_name = learner.full_name or order.order_code
             learner.save()
         else:
-            missing = {f: v for f, v in _order_values(order).items() if v and not getattr(learner, f)}
-            if missing:
-                for field, value in missing.items():
-                    setattr(learner, field, value)
-                learner.save(update_fields=[*missing, "updated_at"])
-    order.learner = learner
-    copy_to_order(learner, order, only_empty=True)
-    order.save()
+            fill_missing(learner, {**contact, **details})
+    if order.learner_id != learner.pk:
+        order.learner = learner
+        order.save(update_fields=["learner", "updated_at"])
     return learner
 
 
-def copy_to_order(learner: Learner, order: Order, fields=None, *, only_empty=False) -> list[str]:
-    """Set the registration's person fields from the learner; returns the order fields changed."""
-    changed = []
-    for lf in fields or PERSON_FIELDS:
-        of = PERSON_FIELDS[lf]
-        value = getattr(learner, lf)
-        if only_empty and (getattr(order, of) or not value):
-            continue
-        if getattr(order, of) != value:
-            setattr(order, of, value)
-            changed.append(of)
-    return changed
-
-
 @transaction.atomic
-def update_learner(learner: Learner, values: dict, *, skip: Order | None = None) -> None:
-    """Change the learner's details and copy them to every registration of the person."""
-    fields = [f for f in values if f in PERSON_FIELDS]
+def update_learner(learner: Learner, values: dict) -> None:
+    """Change the learner's details; a new name / phone / e-mail reaches every registration."""
+    fields = [f for f in values if f in PERSON_FIELDS or f in CONTACT_FIELDS]
     for field in fields:
         setattr(learner, field, values[field])
     if fields:
         learner.save(update_fields=[*fields, "updated_at"])
-    for order in learner.orders.exclude(pk=getattr(skip, "pk", None)):
-        changed = copy_to_order(learner, order, fields)
-        if changed:
-            order.save(update_fields=[*changed, "updated_at"])
+    contact = {CONTACT_FIELDS[f]: getattr(learner, f) for f in fields if f in CONTACT_FIELDS}
+    if contact:
+        learner.orders.update(**contact)
 
 
-def sync_from_order(order: Order, order_fields) -> None:
-    """Person fields edited on one registration (staff, enrolment file) become the learner's."""
-    values = {ORDER_PERSON_FIELDS[f]: getattr(order, f) for f in order_fields if f in ORDER_PERSON_FIELDS}
-    if not values:
-        return
-    learner = order.learner or attach_learner(order)
-    update_learner(learner, values, skip=order)
+def dossier_missing(learner: Learner | None) -> list[str]:
+    return (
+        list(DOSSIER_REQUIRED)
+        if learner is None
+        else [f for f in DOSSIER_REQUIRED if not getattr(learner, f)]
+    )
 
 
 def active_duplicates(order: Order):
@@ -172,19 +150,14 @@ def merge_learners(keep: Learner, other: Learner, request=None) -> Learner:
     """Two records of the same person: registrations move to `keep`, empty details are filled from `other`."""
     from apps.core.models import audit
 
-    missing = {f: getattr(other, f) for f in PERSON_FIELDS if getattr(other, f) and not getattr(keep, f)}
-    if missing:
-        for field, value in missing.items():
-            setattr(keep, field, value)
-        keep.save(update_fields=[*missing, "updated_at"])
+    fill_missing(keep, {f: getattr(other, f) for f in [*PERSON_FIELDS, *CONTACT_FIELDS, "note"]})
     if not keep.owner_id and other.owner_id:
         keep.owner_id = other.owner_id
         keep.save(update_fields=["owner", "updated_at"])
     moved = list(other.orders.all())
     for order in moved:
         order.learner = keep
-        changed = copy_to_order(keep, order)
-        order.save(update_fields=["learner", *changed, "updated_at"])
+        order.save(update_fields=["learner", "updated_at"])
         Activity.objects.create(
             order=order,
             type="note",

@@ -46,9 +46,6 @@ def _credit(order: Order, amount: int, *, source: str, txn=None, user=None, note
     order.recompute_payment_totals()
     if order.status == "paid" and not was_paid:
         order.paid_at = timezone.now()
-        order.payment_date = timezone.localdate()
-    if txn is not None:
-        order.transaction_code = txn.reference_code or txn.provider_txn_id
     order.save()
     # Step 5: printable receipt e-mailed to the learner once the payment is committed.
     from .receipts import send_receipt
@@ -166,7 +163,6 @@ def refund_order(
     full = order.refunded_amount >= order.total_paid_amount
     if full or revoke_access:
         order.status = "refunded"
-        order.payment_status_detail = "Đã hoàn tiền"
         order.crm_status = "7. Đã hủy"
     order.save()
     Activity.objects.create(

@@ -46,10 +46,11 @@ class OrderSerializer(serializers.ModelSerializer):
         source="learner", queryset=Learner.objects.all(), required=False, allow_null=True
     )
     learner_code = serializers.CharField(source="learner.code", read_only=True, default="")
+    learner_profile = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        exclude = ["course", "cohort", "learner", "citizen_id_index"]
+        exclude = ["course", "cohort", "learner"]
         read_only_fields = [
             "order_code",
             "total_paid_amount",
@@ -88,6 +89,32 @@ class OrderSerializer(serializers.ModelSerializer):
             for o in others
         ]
 
+    def get_learner_profile(self, obj):
+        """The person behind one registration (detail only; the CCCD is masked, the learner page has it)."""
+        learner = obj.learner
+        if self._is_list() or learner is None:
+            return None
+        from .learners import dossier_missing
+
+        cid = learner.citizen_id or ""
+        return {
+            "id": learner.pk,
+            "code": learner.code,
+            "full_name": learner.full_name,
+            "phone": learner.phone,
+            "email": learner.email,
+            "birth_date": learner.birth_date,
+            "gender": learner.gender,
+            "area": learner.area,
+            "current_residence": learner.current_residence,
+            "education_level": learner.education_level,
+            "university": learner.university,
+            "major": learner.major,
+            "citizen_id_masked": f"•••••••••{cid[-3:]}" if cid else "",
+            "has_cv": learner.cv_link.startswith("private:"),
+            "dossier_missing": dossier_missing(learner),
+        }
+
     def get_duplicate_count(self, obj):
         # Counted for one order (detail); the list only flags duplicates (no query per row).
         if not obj.is_duplicate:
@@ -96,24 +123,8 @@ class OrderSerializer(serializers.ModelSerializer):
 
         return None if self._is_list() else active_duplicates(obj).count()
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        if self._is_list():
-            for field in LIST_HIDDEN_FIELDS:
-                data.pop(field, None)
-        return data
-
 
 PAID_STAGE = "5. Đã đóng phí"
-# Identity documents, addresses and bank accounts: only in one order's detail, never in the list.
-LIST_HIDDEN_FIELDS = (
-    "citizen_id",
-    "permanent_address",
-    "current_residence",
-    "bank_account_number",
-    "referral_reward_bank_acc",
-)
-
 
 # Field groups that need a specific permission to change (beyond basic CRM editing).
 FINANCE_FIELDS = {
@@ -125,23 +136,6 @@ FINANCE_FIELDS = {
     "payment_method",
     "tuition_fee",
     "total_receivable",
-    "paid_amount_l1",
-    "paid_amount_l2",
-    "payment_status_detail",
-    "payment_method_detail",
-    "payment_date",
-    "transaction_code",
-    "bank_account_number",
-    "bank_name",
-    "referral_commission",
-    "payment_note",
-}
-REFERRAL_FIELDS = {
-    "referral_reward_amount",
-    "referral_reward_status",
-    "referral_reward_bank_acc",
-    "referral_reward_date",
-    "referral_reward_note",
 }
 ASSIGN_FIELDS = {"pic", "assigned_to"}
 

@@ -111,35 +111,21 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       }
     }
 
-    // Local copy for the in-browser CRM demo; in live mode the server record is authoritative.
+    // What the page shows back (the server record is the registration).
     const newOrder: Order = {
       id: registrationCode,
       orderCode: registrationCode,
       courseId: targetCourse.id,
       courseTitle: targetCourse.title,
       amount: targetCourse.price,
-      originalAmount: targetCourse.originalPrice,
       status: 'pending',
       paymentMethod: 'transfer',
       createdAt: new Date().toISOString(),
-      registrationCode,
       customerName: fullName,
-      birthDate,
       customerPhone: phone,
       customerEmail: email,
-      area,
-      educationLevel,
-      major,
-      source: 'Website Form Tư vấn',
-      registeredAt: new Date().toLocaleString('vi-VN'),
-      consultNeed: consultNote || 'Tư vấn lộ trình học và hỗ trợ kết nối việc làm',
-      interestedCourse: targetCourse.title,
-      studyArea: area,
-      crmStatus: '1. Mới',
-      enrolledCourseName: targetCourse.title,
-      consultDetail: consultNote ? `Ghi chú học viên: ${consultNote}` : 'Đăng ký tư vấn từ form website.',
-      tuitionFee: targetCourse.price,
-      totalReceivable: targetCourse.price
+      consultNeed: consultNote,
+      crmStatus: '1. Mới'
     };
 
     onSubmitSuccess(newOrder);

@@ -48,25 +48,19 @@ export const CAMPAIGNS: CollectionOptions<AdmissionCampaign> = {
     id: d.id,
     code: d.code,
     name: d.name,
-    timeRange: d.timeRange || '',
     startDate: isoToViDate(d.startDate),
     deadline: isoToViDate(d.deadline),
     status: d.status,
-    targetHeadcount: d.targetHeadcount,
+    targetHeadcount: d.targetHeadcount || 0,
     totalEnrolled: d.totalEnrolled || 0,
     funnel: d.funnel || { leads: 0, stages: [], courses: [] },
     positions: (d.positions || []).map((p: any) => ({
       id: p.id,
       courseId: p.courseId,
-      positionTitle: p.positionTitle,
-      shortName: p.shortName,
+      targetQuota: p.targetQuota || 0,
+      positionTitle: p.positionTitle || '',
       department: p.department || '',
-      targetQuota: p.targetQuota,
-      enrolledCount: p.enrolledCount || 0,
-      leadInstructorName: p.leadInstructorName || '',
-      salaryRange: p.salaryRange || '',
-      badgeBg: p.badgeBg || '',
-      iconName: p.iconName || ''
+      salaryRange: p.salaryRange || ''
     })),
     leadRecruiter: d.leadRecruiter || '',
     scholarshipBudget: d.scholarshipBudget || 0,
@@ -76,7 +70,6 @@ export const CAMPAIGNS: CollectionOptions<AdmissionCampaign> = {
   toServer: (c) => ({
     code: c.code,
     name: c.name,
-    timeRange: c.timeRange || '',
     startDate: viDateToIso(c.startDate),
     deadline: viDateToIso(c.deadline),
     status: c.status,
@@ -88,14 +81,10 @@ export const CAMPAIGNS: CollectionOptions<AdmissionCampaign> = {
     positions: (c.positions || []).map((p) => ({
       id: p.id,
       courseId: p.courseId,
-      positionTitle: p.positionTitle,
-      shortName: p.shortName,
-      department: p.department || '',
       targetQuota: p.targetQuota || 0,
-      leadInstructorName: p.leadInstructorName || '',
-      salaryRange: p.salaryRange || '',
-      badgeBg: p.badgeBg || '',
-      iconName: p.iconName || ''
+      positionTitle: p.positionTitle || '',
+      department: p.department || '',
+      salaryRange: p.salaryRange || ''
     }))
   })
 };

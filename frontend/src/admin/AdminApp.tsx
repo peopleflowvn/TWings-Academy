@@ -42,7 +42,6 @@ import { useServerCollection } from '../lib/serverCollection';
 import { BANNERS } from '../lib/cmsCollections';
 import { AdminUser, CMSSectionsConfig, HeroBannerItem, PartnerItem } from '../types';
 import { ChangePasswordDialog, StaffLoginGate } from '../components/cms/StaffLoginGate';
-import { CMSCRMOrdersTab } from '../components/cms/CMSCRMOrdersTab';
 import { CMSCoursesTab } from '../components/cms/CMSCoursesTab';
 import { CMSInstructorsTab } from '../components/cms/CMSInstructorsTab';
 import { CMSLmsTab } from '../components/cms/CMSLmsTab';
@@ -63,6 +62,7 @@ import { ProgramsPage } from './pages/ProgramsPage';
 import { JourneysPage } from './pages/JourneysPage';
 import { IntakesPage } from './pages/IntakesPage';
 import { LearnersPage } from './pages/LearnersPage';
+import { AdmissionsPage } from './pages/AdmissionsPage';
 import { CampaignLinksPage, ReviewsPage } from './pages/MarketingPages';
 import { ConsultingPage, InvoicesPage } from './pages/JourneyPages';
 import { LearningSupportPage } from './pages/LearningPages';
@@ -98,7 +98,6 @@ const NAV: { title: string; items: NavItem[] }[] = [
         path: '/sales/crm',
         label: 'Chiến dịch tuyển sinh & pipeline',
         icon: Briefcase,
-        aliasPaths: ['/sales/requisitions', '/sales/requisitions/new'],
         perms: ['crm.view_leads']
       },
       { path: '/sales/learners', label: 'Học viên', icon: UserRound, perms: ['crm.view_leads'] },
@@ -239,12 +238,7 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
       case '/content/journeys':
         return <JourneysPage canEdit={can('crm.edit_status')} />;
       case '/sales/crm':
-      case '/sales/requisitions/new':
-        return (
-          <CMSCRMOrdersTab
-            courses={courses.courses}
-          />
-        );
+        return <AdmissionsPage courses={courses.courses} />;
       case '/sales/learners':
         return <LearnersPage courses={courses.courses} />;
       case '/sales/consulting':

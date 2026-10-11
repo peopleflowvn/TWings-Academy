@@ -10,7 +10,6 @@ What it reports:
 - PIC names that are not a staff member, and PIC without an assigned consultant;
 - a class written as text without the intake (cohort) it belongs to;
 - campaign codes that match no campaign (e.g. the old defaults CAMP-2026-Q4-HN, TW3);
-- legacy payment columns still holding data (to decide whether they can be dropped);
 - registrations without a learner, learners with several registrations, duplicate flags;
 - e-mails already sent with the sample bank account of the old tuition template.
 No names, phones, e-mails or identity numbers are printed.
@@ -21,17 +20,6 @@ import json
 from django.core.management.base import BaseCommand
 from django.db.models import Count, Q
 
-LEGACY_COLUMNS = {
-    "paid_amount_l1": Q(paid_amount_l1__gt=0),
-    "paid_amount_l2": Q(paid_amount_l2__gt=0),
-    "payment_method_detail": ~Q(payment_method_detail=""),
-    "payment_date": Q(payment_date__isnull=False),
-    "transaction_code": ~Q(transaction_code=""),
-    "bank_account_number": ~Q(bank_account_number=""),
-    "bank_name": ~Q(bank_name=""),
-    "referral_commission": Q(referral_commission__gt=0),
-    "payment_note": ~Q(payment_note=""),
-}
 OLD_DEFAULT_CODES = ["CAMP-2026-Q4-HN", "TW3"]
 OLD_DEFAULT_PICS = ["HuongNT22", "TuanNM", "PhuongVU", "ChiNK", "TungLH"]
 
@@ -111,10 +99,6 @@ def collect() -> dict:
         "simulated_or_failed": sample.filter(status__in=("failed", "simulated")).count(),
         "orders": list(sample.exclude(order=None).values_list("order__order_code", flat=True)[:20]),
         "note": "Liên hệ các học viên này: số tài khoản trong thư không phải tài khoản nhận học phí.",
-    }
-
-    report["legacy_payment_columns"] = {
-        name: Order.objects.filter(q).count() for name, q in LEGACY_COLUMNS.items()
     }
 
     report["learners_check"] = {

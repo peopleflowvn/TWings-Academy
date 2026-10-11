@@ -90,7 +90,9 @@ class Command(BaseCommand):
                 "dossiers_complete": leads.filter(
                     learning_access=True, dossier_submitted_at__isnull=False
                 ).count(),
-                "with_cv": leads.filter(learning_access=True, cv_link__startswith="private:").count(),
+                "with_cv": leads.filter(
+                    learning_access=True, learner__cv_link__startswith="private:"
+                ).count(),
             },
         }
         self.stdout.write(json.dumps(report, ensure_ascii=False, indent=1, default=str))

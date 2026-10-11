@@ -319,12 +319,12 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
 
             <button
               type="button"
-              onClick={() => navigate(`/sales/crm?action=new_requisition&templateCourseId=${currentCourse?.id || ''}`)}
+              onClick={() => navigate(`/sales/crm?action=new_campaign&courseId=${currentCourse?.id || ''}`)}
               className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-emerald-300 shadow-2xs"
-              title="Dùng khóa học này làm Master Template để mở đợt tuyển sinh / chiến dịch mới (giống TalentFlow Requisition Page)"
+              title="Tạo chiến dịch tuyển sinh có sẵn khóa học này"
             >
               <Briefcase className="w-4 h-4 text-emerald-600" />
-              <span>🚀 Mở Đợt Tuyển Sinh Từ Khóa Này</span>
+              <span>Mở chiến dịch cho khóa này</span>
             </button>
 
             <button

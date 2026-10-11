@@ -82,9 +82,7 @@ def test_daily_refresh_closes_after_deadline_and_starts_classes(course):
 def test_overview_counts_seats_and_campaign_quotas(course, staff_client, api):
     cohort = Cohort.objects.create(course=course, name="Khóa 12", status="opening", capacity=10)
     camp = AdmissionCampaign.objects.create(code="C1", name="Q4", status="active", target_headcount=20)
-    CampaignPosition.objects.create(
-        campaign=camp, course=course, position_title="RM", short_name="RM", target_quota=5
-    )
+    CampaignPosition.objects.create(campaign=camp, course=course, position_title="RM", target_quota=5)
     order = _paid(course, cohort)
     order.campaign = camp
     order.save()

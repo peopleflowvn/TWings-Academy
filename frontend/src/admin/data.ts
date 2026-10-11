@@ -13,11 +13,11 @@ const reportError = (err: unknown) =>
 // Fields the server owns or that have their own endpoints: never sent in a PATCH.
 const ORDER_READ_ONLY = new Set([
   'id', 'orderCode', 'totalPaidAmount', 'paidAt', 'isDuplicate', 'duplicateCount', 'createdAt', 'updatedAt',
-  'privacyConsentAt', 'privacyConsentVersion', 'timelineActivities', 'followupTasks', 'agentResearch',
+  'privacyConsentAt', 'privacyConsentVersion', 'timelineActivities', 'followupTasks', 'learnerProfile',
   'responseDueAt', 'firstResponseAt', 'learnerId', 'learnerCode', 'relatedOrders'
 ]);
 // Derived by the server from recorded payments (confirm-payment, bank webhook): never sent in a PATCH.
-const PAYMENT_DERIVED = new Set(['status', 'paymentStatusDetail', 'paymentDate', 'learningAccess', 'refundedAmount']);
+const PAYMENT_DERIVED = new Set(['status', 'learningAccess', 'refundedAmount', 'paidAt']);
 
 /** Leads for screens that only read a few of them (e-mail previews): the 200 newest. */
 export function useOrders(enabled: boolean) {

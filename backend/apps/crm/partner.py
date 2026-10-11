@@ -127,9 +127,10 @@ def partner_cv(request, token: str, placement_id: str):
     if not share.allow_cv:
         raise Http404
     p = share.placements.filter(pk=placement_id).select_related("order").first()
-    if p is None or not p.order.cv_link.startswith("private:"):
+    cv = p.order.learner.cv_link if p is not None and p.order.learner_id else ""
+    if not cv.startswith("private:"):
         raise Http404
-    name = p.order.cv_link.removeprefix("private:")
+    name = cv.removeprefix("private:")
     audit(request, "placement.partner_cv", p, share=share.id, actor_label=f"partner:{share.employer}")
     return _secure(
         FileResponse(

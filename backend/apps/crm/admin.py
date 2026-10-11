@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Activity, AdmissionCampaign, CampaignPosition, FollowupTask, Order
+from .models import Activity, AdmissionCampaign, CampaignPosition, FollowupTask, Learner, Order
 
 
 class ActivityInline(admin.TabularInline):
@@ -23,7 +23,8 @@ class OrderAdmin(admin.ModelAdmin):
     ]
     list_filter = ["crm_status", "status", "source"]
     search_fields = ["order_code", "customer_name", "customer_phone", "customer_email"]
-    readonly_fields = ["order_code", "citizen_id_index", "privacy_consent_at", "privacy_consent_version"]
+    readonly_fields = ["order_code", "privacy_consent_at", "privacy_consent_version"]
+    raw_id_fields = ["learner", "parent"]
     inlines = [ActivityInline]
 
 
@@ -36,6 +37,13 @@ class PositionInline(admin.TabularInline):
 class AdmissionCampaignAdmin(admin.ModelAdmin):
     list_display = ["code", "name", "status", "target_headcount"]
     inlines = [PositionInline]
+
+
+@admin.register(Learner)
+class LearnerAdmin(admin.ModelAdmin):
+    list_display = ["code", "full_name", "phone", "email", "owner", "created_at"]
+    search_fields = ["code", "full_name", "phone", "email"]
+    readonly_fields = ["code", "citizen_id_index", "phone_index"]
 
 
 admin.site.register(FollowupTask, list_display=["title", "order", "due_date", "is_completed"])

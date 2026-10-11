@@ -1,44 +1,45 @@
+/**
+ * Tuyển sinh (/app/sales/crm):
+ *   ?view=campaigns                       admission campaigns (quotas and leads per stage)
+ *   ?view=kanban&campaignId=<id|all|none> the lead pipeline (kanban or table) of one campaign, of every
+ *                                         lead, or of the leads not attached to a campaign
+ *   ?action=new_campaign                  the new-campaign form
+ *   &orderId=<id>                         one registration in the lead workspace
+ * Leads are filtered and counted on the server; intakes (classes, schedule, Moodle course) are managed in
+ * /app/sales/intakes, learners (one per person) in /app/sales/learners.
+ */
 import React, { useEffect, useRef, useState } from 'react';
 import { AdmissionCampaign, Course, Order } from '../../types';
-import { CompAILeadDetailModal } from './CompAILeadDetailModal';
-import { CMSCampaignManagementModal } from './CMSCampaignManagementModal';
-import { RecruitmentCampaignsView } from './RecruitmentCampaignsView';
-import { LeadPipelineView, PipelineScope } from './LeadPipelineView';
+import { LeadWorkspace } from '../../components/cms/LeadWorkspace';
+import { CampaignEditor } from '../../components/cms/CampaignEditor';
+import { CampaignListView } from '../../components/cms/CampaignListView';
+import { LeadPipelineView, PipelineScope } from '../../components/cms/LeadPipelineView';
 import { useServerCollection } from '../../lib/serverCollection';
 import { CAMPAIGNS } from '../../lib/cmsCollections';
-import { getSavedCampaigns } from '../../utils/talentCampaigns';
-import { confirmOrderPayment, loadOrder, saveOrderChanges } from '../../admin/data';
-
-/**
- * Sales / admissions (/app/sales/crm):
- *   ?view=campaigns                       the admission campaigns (targets and funnel per campaign)
- *   ?view=kanban&campaignId=<id|all|none> the lead pipeline (kanban or detailed table) of one campaign,
- *                                         of every lead, or of the leads not attached to a campaign
- *   ?action=new_requisition               open a new campaign (campaign settings, "new" form)
- *   &orderId=<id>                         the lead workspace of one lead
- * Leads are filtered and counted on the server; intakes (classes, schedule, Moodle course) are managed
- * in /app/sales/intakes only.
- */
-interface CMSCRMOrdersTabProps {
-  courses?: Course[];
-}
+import { confirmOrderPayment, loadOrder, saveOrderChanges } from '../data';
 
 type View = 'campaigns' | 'kanban';
+/** The campaign form: closed, a new campaign, or the campaign with this id. */
+type Editing = null | 'new' | string;
 
 function readUrl() {
   const params = new URLSearchParams(window.location.search);
   const campaignId = params.get('campaignId');
-  const creating = params.get('action') === 'new_requisition' || window.location.pathname.includes('/requisitions/new');
   const view: View = params.get('view') === 'kanban' || (campaignId && params.get('view') !== 'campaigns') ? 'kanban' : 'campaigns';
-  return { view, scope: (campaignId || 'all') as PipelineScope, creating };
+  return {
+    view,
+    scope: (campaignId || 'all') as PipelineScope,
+    creating: params.get('action') === 'new_campaign',
+    courseId: params.get('courseId') || '' // "new campaign for this course" from the course page
+  };
 }
 
-export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({ courses = [] }) => {
-  const { items: campaigns, update: setCampaigns, loaded } = useServerCollection<AdmissionCampaign>(CAMPAIGNS, getSavedCampaigns());
+export const AdmissionsPage: React.FC<{ courses: Course[] }> = ({ courses }) => {
+  const { items: campaigns, update: setCampaigns, loaded } = useServerCollection<AdmissionCampaign>(CAMPAIGNS, []);
   const initial = readUrl();
   const [view, setView] = useState<View>(initial.view);
   const [scope, setScope] = useState<PipelineScope>(initial.scope);
-  const [campaignModal, setCampaignModal] = useState<'closed' | 'edit' | 'create'>(initial.creating ? 'create' : 'closed');
+  const [editing, setEditing] = useState<Editing>(initial.creating ? 'new' : null);
   const [selectedLead, setSelectedLead] = useState<Order | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const scopeCode = useRef('');
@@ -56,22 +57,23 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({ courses = [] }
     params.set('view', view);
     if (view === 'kanban') params.set('campaignId', scope);
     else params.delete('campaignId');
-    if (campaignModal === 'create') params.set('action', 'new_requisition');
-    else params.delete('action');
-    params.delete('templateCourseId');
+    if (editing === 'new') params.set('action', 'new_campaign');
+    else {
+      params.delete('action');
+      params.delete('courseId');
+    }
     if (selectedLead) params.set('orderId', selectedLead.id);
     else params.delete('orderId');
-    const path = window.location.pathname.includes('/requisitions') ? '/app/sales/crm' : window.location.pathname;
-    const next = `${path}?${params.toString()}`;
+    const next = `${window.location.pathname}?${params.toString()}`;
     if (next !== window.location.pathname + window.location.search) window.history.replaceState(null, '', next);
-  }, [view, scope, campaignModal, selectedLead]);
+  }, [view, scope, editing, selectedLead]);
 
   useEffect(() => {
     const sync = () => {
       const url = readUrl();
       setView(url.view);
       setScope(url.scope);
-      if (url.creating) setCampaignModal('create');
+      if (url.creating) setEditing('new');
     };
     window.addEventListener('popstate', sync);
     window.addEventListener('twings:navigate', sync);
@@ -81,7 +83,7 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({ courses = [] }
     };
   }, []);
 
-  // Deep link ?orderId=: open that lead, as stored on the server (nothing is added to it).
+  // Deep link ?orderId=: open that registration, as stored on the server.
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('orderId');
     if (id) openLead({ id });
@@ -99,7 +101,7 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({ courses = [] }
     setScope(next);
     setView('kanban');
   };
-  const activeCampaign = campaigns.find((c) => c.id === scope);
+  const editedCampaign = editing && editing !== 'new' ? campaigns.find((c) => c.id === editing) || null : null;
 
   return (
     <div className="space-y-6 pb-12">
@@ -114,11 +116,12 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({ courses = [] }
         </div>
       )}
       {view === 'campaigns' ? (
-        <RecruitmentCampaignsView
+        <CampaignListView
           campaigns={campaigns}
           courses={courses}
           onSelectCampaign={openPipeline}
-          onOpenCreateRequisition={() => setCampaignModal('create')}
+          onCreateCampaign={() => setEditing('new')}
+          onEditCampaign={(id) => setEditing(id)}
         />
       ) : (
         <LeadPipelineView
@@ -129,12 +132,12 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({ courses = [] }
           onChangeScope={openPipeline}
           onBack={() => setView('campaigns')}
           onOpenLeadDetail={openLead}
-          onOpenEditCampaign={() => setCampaignModal('edit')}
+          onOpenEditCampaign={() => setEditing(scope)}
         />
       )}
 
       {selectedLead && (
-        <CompAILeadDetailModal
+        <LeadWorkspace
           key={selectedLead.id}
           order={selectedLead}
           onClose={() => setSelectedLead(null)}
@@ -152,19 +155,31 @@ export const CMSCRMOrdersTab: React.FC<CMSCRMOrdersTabProps> = ({ courses = [] }
         />
       )}
 
-      <CMSCampaignManagementModal
-        isOpen={campaignModal !== 'closed'}
-        startCreating={campaignModal === 'create'}
-        focusCampaignId={activeCampaign?.id}
-        onClose={() => setCampaignModal('closed')}
-        campaigns={campaigns}
-        onUpdateCampaigns={setCampaigns}
-        courses={courses}
-        onSelectCampaign={(id) => {
-          openPipeline(id);
-          setCampaignModal('closed');
-        }}
-      />
+      {editing && (editing === 'new' || editedCampaign) && (
+        <CampaignEditor
+          key={editing}
+          campaign={editedCampaign}
+          initialCourseId={editing === 'new' ? initial.courseId : ''}
+          campaigns={campaigns}
+          courses={courses}
+          onClose={() => setEditing(null)}
+          onOpenPipeline={(id) => {
+            setEditing(null);
+            openPipeline(id);
+          }}
+          onSave={(list, saved) => {
+            setCampaigns(list);
+            setEditing(null);
+            if (editing === 'new') {
+              scopeCode.current = saved.code;
+              setScope(saved.id);
+              setView('kanban');
+            } else if (!list.some((c) => c.id === saved.id) && scope === saved.id) {
+              setScope('all'); // the campaign in view was deleted
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

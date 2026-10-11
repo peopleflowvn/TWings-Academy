@@ -204,7 +204,7 @@ def test_learner_completes_the_enrolment_file_and_uploads_a_cv(
     assert res.status_code == 200 and res.json()["missing"] == []
     assert res.json()["citizenIdMasked"].endswith("345") and "001202012345" not in str(res.json())
     order.refresh_from_db()
-    assert order.dossier_submitted_at and order.citizen_id == "001202012345"
+    assert order.dossier_submitted_at and order.learner.citizen_id == "001202012345"
 
     cv_url = f"/api/v1/public/account/orders/{order.order_code}/cv/"
     fake = SimpleUploadedFile("cv.pdf", b"<html>not a pdf</html>")
@@ -212,7 +212,8 @@ def test_learner_completes_the_enrolment_file_and_uploads_a_cv(
     pdf = SimpleUploadedFile("cv.pdf", b"%PDF-1.4 minimal")
     assert client.post(cv_url, {"file": pdf}, format="multipart", HTTP_X_CSRFTOKEN=token).json()["hasCv"]
     order.refresh_from_db()
-    assert order.cv_link.startswith("private:cv/")
+    order.learner.refresh_from_db()
+    assert order.learner.cv_link.startswith("private:cv/")
     download = staff_client(Role.SALES_CRM).get(f"/api/v1/staff/orders/{order.pk}/cv/")
     assert download.status_code == 200 and b"".join(download.streaming_content).startswith(b"%PDF")
     other, other_token = _signed_in("other@example.com", monkeypatch)

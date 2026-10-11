@@ -80,7 +80,7 @@ def placement_data(p: Placement) -> dict:
         "certificate_code": certificate.code if certificate and not certificate.revoked else "",
         "grade_percent": enrollment.grade_percent if enrollment else None,
         "attendance_rate": enrollment.attendance_rate if enrollment else None,
-        "has_cv": order.cv_link.startswith("private:"),
+        "has_cv": _has_cv(order),
         "created_at": p.created_at.isoformat(),
         "updated_at": p.updated_at.isoformat(),
     }
@@ -139,7 +139,7 @@ def candidates() -> list[dict]:
                 "graduated_at": enrollment.certificate.issued_at.date().isoformat(),
                 "grade_percent": enrollment.grade_percent,
                 "attendance_rate": enrollment.attendance_rate,
-                "has_cv": order.cv_link.startswith("private:"),
+                "has_cv": _has_cv(order),
                 "previous": [f"{p.employer} – {STAGE_LABEL[p.stage]}" for p in mine],
                 "rereferral": bool(hired),
                 "positions": [
@@ -166,29 +166,10 @@ def _log(p: Placement, title: str, content: str, user=None, actor_name: str = ""
     )
 
 
-def sync_order(order: Order) -> None:
-    """Keep the order's legacy placement fields (CRM list, exports, reports) in line."""
-    latest = order.placements.exclude(stage__in=CLOSED_STAGES).order_by("-updated_at").first()
-    latest = latest or order.placements.order_by("-updated_at").first()
-    if latest is None:
-        return
-    order.placement_company = " – ".join(x for x in (latest.employer, latest.unit) if x)[:200]
-    order.placement_status = STAGE_LABEL[latest.stage]
-    if latest.stage == "hired" and latest.left_at:
-        order.placement_status = "Đã nghỉ việc"
-    order.work_start_date = latest.start_date if latest.stage == "hired" else None
-    order.guarantee_start_date = (
-        latest.start_date if latest.stage == "hired" and latest.guarantee_until else None
-    )
-    order.save(
-        update_fields=[
-            "placement_company",
-            "placement_status",
-            "work_start_date",
-            "guarantee_start_date",
-            "updated_at",
-        ]
-    )
+def _has_cv(order) -> bool:
+    """The learner's CV (kept on the learner, shared by all their registrations)."""
+    learner = order.learner
+    return bool(learner and learner.cv_link.startswith("private:"))
 
 
 def refer(order: Order, user, *, position: CampaignPosition | None = None, **fields) -> Placement:
@@ -207,7 +188,6 @@ def refer(order: Order, user, *, position: CampaignPosition | None = None, **fie
         staff=user,
     )
     _log(p, f"Đề cử việc làm: {p.employer}", " – ".join(x for x in (p.job_title, p.unit) if x), user)
-    sync_order(order)
     return p
 
 
@@ -285,7 +265,6 @@ def move(
     )
     if stage == "hired":
         _schedule_followups(p)
-    sync_order(p.order)
     if notify and stage in ("interview", "offer", "hired"):
         transaction.on_commit(lambda: notify_learner(p.pk))
     return p
@@ -346,7 +325,6 @@ def record_outcome(
             assigned_to=(p.staff.name or p.staff.email)[:100] if p.staff_id else "",
         )
     _log(p, f"Sau tuyển dụng – {p.employer}", "\n".join(changes), user)
-    sync_order(p.order)
     return p
 
 
@@ -514,7 +492,9 @@ def outcomes() -> dict:
         row["avg_days_to_job"] = round(sum(days) / len(days)) if days else None
         rows.append(row)
     quotas = []
-    for pos in CampaignPosition.objects.select_related("campaign").order_by("campaign__code", "short_name"):
+    for pos in CampaignPosition.objects.select_related("campaign").order_by(
+        "campaign__code", "position_title"
+    ):
         mine = [p for p in placements if p.position_id == pos.id]
         quotas.append(
             {

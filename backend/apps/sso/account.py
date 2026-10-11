@@ -16,6 +16,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.crm.learners import dossier_missing
 from apps.crm.models import Activity, FollowupTask, Order
 from apps.payments.billing import order_billing
 
@@ -98,7 +99,7 @@ def _order_item(order: Order) -> dict:
             if invoice
             else None
         ),
-        "dossier_missing": [f for f in DOSSIER_REQUIRED if not getattr(order, f)],
+        "dossier_missing": dossier_missing(order.learner),
         "title": order.course_title,
         "kind": "program" if order.is_program_order else "course",
         "created_at": order.created_at.isoformat(),
@@ -321,7 +322,6 @@ DOSSIER_FIELDS = [
     "contact_person_phone",
     "contact_relation",
 ]
-DOSSIER_REQUIRED = ["birth_date", "citizen_id", "permanent_address", "education_level"]
 
 
 class DossierSerializer(serializers.Serializer):
@@ -340,13 +340,21 @@ class DossierSerializer(serializers.Serializer):
     contact_relation = serializers.CharField(max_length=50, required=False, allow_blank=True)
 
 
+def _learner(order: Order):
+    from apps.crm.learners import attach_learner
+
+    return order.learner or attach_learner(order)
+
+
 def dossier_data(order: Order) -> dict:
-    data = {f: getattr(order, f) for f in DOSSIER_FIELDS}
-    data["birth_date"] = order.birth_date.isoformat() if order.birth_date else None
-    cid = order.citizen_id or ""
+    """The learner's enrolment file, shared by every course they register for."""
+    learner = _learner(order)
+    data = {f: getattr(learner, f) for f in DOSSIER_FIELDS}
+    data["birth_date"] = learner.birth_date.isoformat() if learner.birth_date else None
+    cid = learner.citizen_id or ""
     data["citizen_id_masked"] = f"•••••••••{cid[-3:]}" if cid else ""
-    data["has_cv"] = bool(order.cv_link)
-    data["missing"] = [f for f in DOSSIER_REQUIRED if not getattr(order, f)]
+    data["has_cv"] = bool(learner.cv_link)
+    data["missing"] = dossier_missing(learner)
     data["submitted_at"] = order.dossier_submitted_at.isoformat() if order.dossier_submitted_at else None
     return data
 
@@ -366,19 +374,21 @@ class DossierView(_LearnerView):
             return error
         ser = DossierSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
+        learner = _learner(order)
+        fields = []
         for field, value in ser.validated_data.items():
             if field == "citizen_id" and not value:
                 continue  # empty = keep the stored number
-            setattr(order, field, value if value is not None else None)
-        if not [f for f in DOSSIER_REQUIRED if not getattr(order, f)] and order.dossier_submitted_at is None:
+            setattr(learner, field, value if value is not None else None)
+            fields.append(field)
+        if fields:
+            learner.save(update_fields=[*fields, "updated_at"])
+        if not dossier_missing(learner) and order.dossier_submitted_at is None:
             order.dossier_submitted_at = timezone.now()
+            order.save(update_fields=["dossier_submitted_at", "updated_at"])
             Activity.objects.create(
                 order=order, type="note", title="Học viên đã nộp hồ sơ nhập học", actor=order.customer_email
             )
-        order.save()
-        from apps.crm.learners import sync_from_order
-
-        sync_from_order(order, ser.validated_data.keys())  # the same file for every course of the learner
         return Response(dossier_data(order))
 
 
@@ -411,14 +421,12 @@ class CvUploadView(_LearnerView):
             return Response({"detail": "Chỉ nhận CV dạng PDF hoặc DOCX."}, status=400)
         upload.seek(0)
         storage = storages["private"]
-        name = storage.save(f"cv/{order.pk}/{secrets.token_hex(8)}.{ext}", ContentFile(upload.read()))
-        if order.cv_link.startswith("private:"):
-            storage.delete(order.cv_link.removeprefix("private:"))
-        order.cv_link = f"private:{name}"
-        order.save(update_fields=["cv_link", "updated_at"])
-        from apps.crm.learners import sync_from_order
-
-        sync_from_order(order, ["cv_link"])
+        learner = _learner(order)
+        name = storage.save(f"cv/{learner.pk}/{secrets.token_hex(8)}.{ext}", ContentFile(upload.read()))
+        if learner.cv_link.startswith("private:"):
+            storage.delete(learner.cv_link.removeprefix("private:"))
+        learner.cv_link = f"private:{name}"
+        learner.save(update_fields=["cv_link", "updated_at"])
         Activity.objects.create(
             order=order, type="note", title="Học viên tải lên CV", actor=order.customer_email
         )

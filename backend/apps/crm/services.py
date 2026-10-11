@@ -86,6 +86,9 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     terms_accepted = data.pop("terms_accepted", False)
     invoice = data.pop("invoice", None)
     source = data.pop("source", "") or "Website"
+    from .learners import PERSON_FIELDS
+
+    details = {f: data.pop(f) for f in PERSON_FIELDS if f in data}
     item = course or program
     if item is None:
         raise CheckoutError("Vui lòng chọn khóa học hoặc chương trình.")
@@ -124,7 +127,6 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     )
     if amount == 0 and with_payment:
         order.status = "paid"
-        order.payment_status_detail = "Đã đóng phí"
         order.crm_status = "5. Đã đóng phí"
         order.paid_at = timezone.now()
     order.save()
@@ -140,7 +142,7 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
 
         InvoiceRequest.objects.create(order=order, **invoice)
 
-    flag_duplicates(order)
+    flag_duplicates(order, details)
 
     Activity.objects.create(
         order=order,
@@ -157,14 +159,14 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     return order
 
 
-def flag_duplicates(order: Order) -> None:
+def flag_duplicates(order: Order, details: dict | None = None) -> None:
     """
     Link a new registration to its learner, then flag it when the learner already has an active
     registration for the same course / program (a returning learner on another course is not one).
     """
     from .learners import active_duplicates, attach_learner
 
-    attach_learner(order)
+    attach_learner(order, details)
     duplicates = list(active_duplicates(order).values_list("order_code", flat=True)[:5])
     if duplicates:
         order.is_duplicate = True
@@ -293,7 +295,6 @@ def sync_program_components(order: Order) -> int:
             component.status = status
             component.paid_at = order.paid_at if status == "paid" else component.paid_at
             component.crm_status = order.crm_status
-            component.payment_status_detail = order.payment_status_detail
         component.save()
         existing[link.course_id] = component
     return len(existing)

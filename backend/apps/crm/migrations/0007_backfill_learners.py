@@ -8,11 +8,51 @@ registration. A registration stays flagged as a duplicate only when the same lea
 the same course / program earlier and that registration is still active.
 """
 
+import re
+import secrets
+
 from django.db import migrations
 
 from apps.core.crypto import blind_index
-from apps.crm.learners import PERSON_FIELDS, phone_key
-from apps.crm.models import new_learner_code
+
+# Self-contained (migrations must not depend on code that changes later).
+ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
+PERSON_FIELDS = {
+    "full_name": "customer_name",
+    "phone": "customer_phone",
+    "email": "customer_email",
+    **{
+        f: f
+        for f in (
+            "birth_date",
+            "gender",
+            "area",
+            "citizen_id",
+            "issued_place",
+            "permanent_address",
+            "current_residence",
+            "education_level",
+            "major",
+            "university",
+            "graduation_year",
+            "contact_person_name",
+            "contact_person_phone",
+            "contact_relation",
+            "cv_link",
+        )
+    },
+}
+
+
+def new_learner_code() -> str:
+    return "HV" + "".join(secrets.choice(ALPHABET) for _ in range(8))
+
+
+def phone_key(phone: str) -> str:
+    digits = re.sub(r"\D", "", phone or "")
+    if digits.startswith("84") and len(digits) >= 11:
+        digits = "0" + digits[2:]
+    return digits
 
 
 def forwards(apps, schema_editor):

@@ -8,7 +8,6 @@ import {
 } from './types';
 import { 
   COURSES, 
-  INITIAL_ORDERS as COURSERA_INITIAL_ORDERS,
   HERO_BANNERS,
   INITIAL_ARTICLES
 } from './data/courseraData';
@@ -69,7 +68,7 @@ export default function App() {
   // Core Data
   // Live site: only what the API returns, never the bundled samples (they are for demo mode only).
   const [courses, setCourses] = useState<Course[]>(LIVE ? [] : COURSES);
-  const [orders, setOrders] = useState<Order[]>(LIVE ? [] : COURSERA_INITIAL_ORDERS);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [articles, setArticles] = useState<Article[]>(LIVE ? [] : INITIAL_ARTICLES);
   const [cmsSections, setCmsSections] = useState<CMSSectionsConfig>(LIVE ? LIVE_SECTIONS : DEFAULT_CMS_SECTIONS);
   const [banners, setBanners] = useState<HeroBannerItem[]>(LIVE ? [] : HERO_BANNERS);

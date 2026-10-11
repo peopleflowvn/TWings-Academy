@@ -11,7 +11,7 @@ from apps.accounts.permissions import ActionPermission
 from apps.accounts.rbac import has_perm_code
 from apps.core.models import audit
 
-from .learners import PERSON_FIELDS, merge_learners, update_learner
+from .learners import CONTACT_FIELDS, PERSON_FIELDS, merge_learners, update_learner
 from .models import Activity, Appointment, Learner, Order, Placement
 
 # Identity documents and addresses: on one learner's page only, never in the list.
@@ -149,7 +149,9 @@ class LearnerViewSet(
 
     def perform_update(self, serializer):
         learner = serializer.instance
-        values = {k: v for k, v in serializer.validated_data.items() if k in PERSON_FIELDS}
+        values = {
+            k: v for k, v in serializer.validated_data.items() if k in PERSON_FIELDS or k in CONTACT_FIELDS
+        }
         if "owner_id" in self.request.data:
             if not has_perm_code(self.request.user, "crm.assign_pic"):
                 raise PermissionDenied("Cần quyền crm.assign_pic để đổi tư vấn viên phụ trách.")

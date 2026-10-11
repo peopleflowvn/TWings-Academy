@@ -41,7 +41,6 @@ def position(course):
         campaign=campaign,
         course=course,
         position_title="RM KHDN",
-        short_name="RM",
         department="MSB Hà Nội",
         target_quota=10,
     )
@@ -79,8 +78,8 @@ def test_candidate_referral_to_hire_and_followups(
         res = staff.post(move, {"stage": "hired", "startDate": "2026-11-02"}, format="json")
     body = res.json()
     assert body["probationEnd"] == "2027-01-01" and body["guaranteeUntil"] == "2027-11-02"
-    graduate.refresh_from_db()
-    assert graduate.placement_status == "Đã nhận việc" and graduate.work_start_date == date(2026, 11, 2)
+    hired = graduate.placements.get()
+    assert hired.stage == "hired" and hired.start_date == date(2026, 11, 2)
     assert FollowupTask.objects.filter(order=graduate, title__startswith="Việc làm:").count() == 5
     assert EmailLog.objects.filter(template_code="placement_hired").exists()
 

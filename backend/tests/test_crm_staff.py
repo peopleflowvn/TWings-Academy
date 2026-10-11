@@ -4,15 +4,20 @@ from apps.accounts.rbac import Role
 from apps.crm.models import Order
 
 
-def test_list_hides_identity_and_bank_fields_detail_shows_them(staff_client, course):
-    order = Order.objects.create(
-        customer_name="A", course=course, citizen_id="001205019888", bank_account_number="123456"
-    )
+def test_identity_documents_live_on_the_learner_only(staff_client, course):
+    from apps.crm.services import flag_duplicates
+
+    order = Order.objects.create(customer_name="A", course=course, customer_email="a@example.com")
+    flag_duplicates(order, {"citizen_id": "001205019888", "university": "NEU"})
     client = staff_client(Role.SALES_CRM)
     row = next(r for r in client.get("/api/v1/staff/orders/").json()["results"] if r["id"] == order.pk)
-    assert "citizenId" not in row and "bankAccountNumber" not in row
-    detail = client.get(f"/api/v1/staff/orders/{order.pk}/").json()
-    assert detail["citizenId"] == "001205019888"
+    assert "citizenId" not in row and row["learnerProfile"] is None
+    profile = client.get(f"/api/v1/staff/orders/{order.pk}/").json()["learnerProfile"]
+    assert profile["citizenIdMasked"].endswith("888") and "001205019888" not in str(profile)
+    assert profile["university"] == "NEU"
+    learner = client.get(f"/api/v1/staff/learners/{order.learner_id}/").json()
+    assert learner["citizenId"] == "001205019888"
+    assert "citizenId" not in client.get("/api/v1/staff/learners/").json()["results"][0]
 
 
 def test_list_and_export_leave_out_program_components(staff_client, course):
@@ -185,28 +190,29 @@ def test_learner_page_and_edit_reach_every_registration(staff_client, course):
         format="json",
     )
     assert res.status_code == 200, res.content
+    a.learner.refresh_from_db()
+    assert a.learner.citizen_id == "001205019888" and a.learner.university == "NEU"
+    res = client.patch(f"/api/v1/staff/learners/{learner_id}/", {"phone": "0988777666"}, format="json")
     for order in (a, b):
         order.refresh_from_db()
-        assert order.citizen_id == "001205019888" and order.university == "NEU"
+        assert order.customer_phone == "0988777666"  # a new phone reaches every registration
 
     page = client.get(f"/api/v1/staff/learners/{learner_id}/").json()
     assert {r["courseTitle"] for r in page["registrations"]} == {course.title, course2.title}
     assert page["citizenId"] == "001205019888"
 
 
-def test_editing_one_registration_updates_the_learner(staff_client, course):
-    from apps.catalog.models import Course
+def test_public_form_details_fill_the_learner_without_overwriting(api, course):
     from apps.crm.services import flag_duplicates
 
-    course2 = Course.objects.create(status="published", slug="gdv3", title="GDV", price=1000)
-    a = Order.objects.create(customer_name="Minh", course=course, customer_phone="0909000111")
-    flag_duplicates(a)
-    b = Order.objects.create(customer_name="Minh", course=course2, customer_phone="0909000111")
-    flag_duplicates(b)
-    staff_client(Role.SALES_CRM).patch(f"/api/v1/staff/orders/{a.pk}/", {"major": "Kế toán"}, format="json")
-    b.refresh_from_db()
-    a.learner.refresh_from_db()
-    assert a.learner.major == "Kế toán" and b.major == "Kế toán"
+    first = Order.objects.create(customer_name="Minh", course=course, customer_phone="0909000111")
+    flag_duplicates(first, {"university": "NEU"})
+    second = Order.objects.create(customer_name="Minh", course=course, customer_phone="0909000111")
+    flag_duplicates(second, {"university": "FTU", "major": "Kế toán"})
+    learner = second.learner
+    learner.refresh_from_db()
+    assert second.learner_id == first.learner_id
+    assert learner.university == "NEU" and learner.major == "Kế toán"
 
 
 def test_merge_two_records_of_one_person(staff_client, course):
@@ -223,40 +229,6 @@ def test_merge_two_records_of_one_person(staff_client, course):
     assert res.status_code == 200, res.content
     b.refresh_from_db()
     assert b.learner_id == a.learner_id and len(res.json()["registrations"]) == 2
-
-
-def test_backfill_groups_existing_registrations_into_learners(course):
-    import importlib
-
-    from django.apps import apps as django_apps
-
-    from apps.catalog.models import Course
-    from apps.crm.models import Learner
-
-    backfill = importlib.import_module("apps.crm.migrations.0007_backfill_learners")
-    course2 = Course.objects.create(status="published", slug="bf", title="BF", price=1)
-    old = Order.objects.create(customer_name="Old name", course=course, customer_phone="0912 000 111")
-    new = Order.objects.create(
-        customer_name="New name",
-        course=course2,
-        customer_phone="+84912000111",
-        university="HVNH",
-        is_duplicate=True,
-    )
-    again = Order.objects.create(
-        customer_name="New name", course=course, customer_phone="0912000111", is_duplicate=True
-    )
-    alone = Order.objects.create(customer_name="Someone", course=course, customer_email="x@example.com")
-
-    backfill.forwards(django_apps, None)
-
-    for o in (old, new, again, alone):
-        o.refresh_from_db()
-    assert old.learner_id == new.learner_id == again.learner_id != alone.learner_id
-    learner = Learner.objects.get(pk=old.learner_id)
-    assert learner.full_name == "New name" and learner.university == "HVNH"
-    assert not new.is_duplicate  # another course: a returning learner
-    assert again.is_duplicate and old.order_code in again.duplicate_note
 
 
 def test_cancel_stage_cancels_an_unpaid_order_and_reopening_restores_it(staff_client, course):
@@ -300,7 +272,6 @@ def test_crm_data_check_reports_without_changing_anything(course):
     Order.objects.create(
         customer_name="B", course=course, campaign_code="TW3", batch_cohort="Khóa học 9 - Hà Nội"
     )
-    Order.objects.create(customer_name="C", course=course, paid_amount_l1=500)
     before = list(Order.objects.values_list("pk", "crm_status", "status", "pic").order_by("pk"))
 
     out = StringIO()
@@ -312,7 +283,6 @@ def test_crm_data_check_reports_without_changing_anything(course):
     assert report["pic"]["old_default_names"] == 1
     assert report["campaign_codes_without_campaign"]["old_defaults"] == 1
     assert report["class_without_intake"]["count"] == 1
-    assert report["legacy_payment_columns"]["paid_amount_l1"] == 1
     assert report["emails_sent_with_sample_bank_account"]["count"] == 0
     assert list(Order.objects.values_list("pk", "crm_status", "status", "pic").order_by("pk")) == before
 
