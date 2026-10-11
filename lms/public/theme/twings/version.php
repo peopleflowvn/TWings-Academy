@@ -12,8 +12,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'theme_twings';
-$plugin->version   = 2026101100;  // YYYYMMDDXX.
+$plugin->version   = 2026101102;  // YYYYMMDDXX.
 $plugin->requires  = 2026042000;  // Moodle 5.2.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.1';
+$plugin->release   = '2.0';
 $plugin->dependencies = ['theme_boost' => 2026042000];

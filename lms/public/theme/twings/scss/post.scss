@@ -1,143 +1,797 @@
-// TWings Academy look for Moodle (learner dashboard, course cards, navigation, blocks, buttons).
-// Ported from the styles injected by twings_setup.php before this theme existed.
+// ==========================================================================
+// TWINGS ACADEMY - MODERN EDTECH THEME FOR MOODLE LMS (Moodle 5.2)
+// Brand Identity: TWings Blue (#0073C1), Royal Blue (#0056D2), Navy (#00388A)
+// Aesthetic: Sleek EdTech, Micro-interactions, Clean Card UI, Glassmorphism
+// ==========================================================================
 
+// --------------------------------------------------------------------------
+// 1. DESIGN TOKENS & CSS VARIABLES
+// --------------------------------------------------------------------------
 :root {
-  --font-family-base: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --twings-navy: #00388A;
+  --twings-royal: #0056D2;
   --twings-primary: #0073C1;
-  --twings-primary-dark: #0056D2;
-  --twings-primary-navy: #00388A;
-  --twings-surface: #F8FAFC;
+  --twings-sky: #38BDF8;
+  --twings-sky-light: #E0F2FE;
+
+  --twings-primary-gradient: linear-gradient(135deg, #00388A 0%, #0056D2 50%, #0073C1 100%);
+  --twings-hero-gradient: linear-gradient(135deg, #001E4D 0%, #00388A 55%, #0056D2 100%);
+  --twings-surface-gradient: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+
+  --twings-canvas: #F8FAFC;
+  --twings-surface: #FFFFFF;
+  --twings-surface-hover: #F1F5F9;
   --twings-border: #E2E8F0;
+  --twings-border-subtle: #F1F5F9;
+
   --twings-text-main: #0F172A;
+  --twings-text-body: #334155;
   --twings-text-muted: #64748B;
+  --twings-text-light: #94A3B8;
+
+  --twings-success: #10B981;
+  --twings-success-bg: #ECFDF5;
+  --twings-warning: #F59E0B;
+  --twings-warning-bg: #FFFBEB;
+  --twings-danger: #EF4444;
+  --twings-danger-bg: #FEF2F2;
+  --twings-info: #0284C7;
+  --twings-info-bg: #F0F9FF;
+
+  --twings-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --twings-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --twings-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --twings-shadow-elevated: 0 20px 25px -5px rgba(0, 56, 138, 0.08), 0 8px 10px -6px rgba(0, 56, 138, 0.04);
+  --twings-shadow-glow: 0 0 20px rgba(0, 115, 193, 0.25);
+
+  --twings-radius-sm: 0.5rem;
+  --twings-radius-md: 0.75rem;
+  --twings-radius-lg: 1rem;
+  --twings-radius-xl: 1.25rem;
+  --twings-radius-2xl: 1.5rem;
+  --twings-radius-pill: 9999px;
+
+  --twings-transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --twings-transition-base: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --twings-transition-slow: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-body, html {
-  font-family: var(--font-family-base) !important;
-  background-color: var(--twings-surface) !important;
-  color: var(--twings-text-main) !important;
+// Global Base Typography & Body
+html, body {
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif !important;
+  background-color: var(--twings-canvas) !important;
+  color: var(--twings-text-body) !important;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
 }
 
-// Top Navbar Modernization
-.navbar.fixed-top {
-  background: #ffffff !important;
-  border-bottom: 1px solid var(--twings-border) !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04) !important;
-  height: 64px;
-  padding: 0 1.5rem;
+h1, h2, h3, h4, h5, h6 {
+  color: var(--twings-text-main);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
 
+a {
+  color: var(--twings-primary);
+  text-decoration: none;
+  transition: var(--twings-transition-fast);
+
+  &:hover {
+    color: var(--twings-royal);
+    text-decoration: none;
+  }
+}
+
+// Custom Smooth Scrollbars
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+  transition: var(--twings-transition-fast);
+
+  &:hover {
+    background: var(--twings-primary);
+  }
+}
+
+// --------------------------------------------------------------------------
+// 2. MODERN GLASSMORPHISM TOP NAVBAR
+// --------------------------------------------------------------------------
+.navbar.fixed-top {
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--twings-border) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.03) !important;
+  height: 68px;
+  padding: 0 1.5rem;
+  transition: var(--twings-transition-base);
+
+  // Modern Brand Emblem
   .navbar-brand {
     font-weight: 800;
     font-size: 1.15rem;
-    letter-spacing: -0.025em;
-    color: var(--twings-primary-navy) !important;
+    letter-spacing: -0.03em;
+    color: var(--twings-navy) !important;
     text-transform: uppercase;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.65rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--twings-radius-md);
 
     &::before {
       content: "TW";
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 34px;
-      height: 34px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #00388A 0%, #0056D2 50%, #0073C1 100%);
+      width: 36px;
+      height: 36px;
+      border-radius: 0.625rem;
+      background: var(--twings-primary-gradient);
       color: #ffffff;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       font-weight: 900;
       letter-spacing: 0;
-      box-shadow: 0 2px 4px rgba(0, 115, 193, 0.25);
+      box-shadow: 0 3px 8px rgba(0, 115, 193, 0.35);
+      transition: var(--twings-transition-base);
+    }
+
+    &:hover::before {
+      transform: translateY(-1px) scale(1.03);
+      box-shadow: 0 6px 14px rgba(0, 115, 193, 0.45);
     }
   }
 
+  // Primary Navigation Menu Items
   .primary-navigation .navigation .nav-link {
     font-weight: 600;
     font-size: 0.875rem;
-    color: #475569;
-    border-radius: 0.75rem;
-    padding: 0.5rem 0.875rem;
-    transition: all 0.15s ease-in-out;
+    color: var(--twings-text-muted);
+    border-radius: var(--twings-radius-md);
+    padding: 0.55rem 1rem;
+    margin: 0 0.15rem;
+    transition: var(--twings-transition-fast);
+    position: relative;
 
     &:hover {
-      color: var(--twings-primary-dark);
-      background-color: #F1F5F9;
+      color: var(--twings-royal);
+      background-color: var(--twings-surface-hover);
     }
 
     &.active {
-      color: var(--twings-primary-dark);
-      background-color: #EFF6FF;
+      color: var(--twings-primary) !important;
+      background-color: #EFF6FF !important;
+      font-weight: 700;
+
+      &::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 20%;
+        right: 20%;
+        height: 2px;
+        background: var(--twings-primary-gradient);
+        border-radius: 9999px;
+      }
     }
   }
-}
 
-// Modern Dashboard Header & Welcome Banner
-.pagelayout-mydashboard {
-  #page-header {
-    background: transparent;
-    padding: 1.75rem 0 1rem;
-    border-bottom: none;
+  // Action Buttons & Icons in Navbar
+  #usernavigation {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 
-    .page-context-header {
-      .page-header-headings {
-        h1 {
-          font-weight: 800;
-          font-size: 1.85rem;
+    .divider {
+      height: 24px !important;
+      border-color: #E2E8F0 !important;
+    }
+
+    .btn-icon,
+    .popover-region-toggle {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--twings-radius-md);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--twings-text-muted);
+      background: transparent;
+      transition: var(--twings-transition-fast);
+
+      &:hover {
+        background-color: var(--twings-surface-hover);
+        color: var(--twings-primary);
+      }
+    }
+
+    // Modern Edit Switch
+    .editmode-switch-form {
+      .custom-switch {
+        padding-left: 2.75rem;
+
+        .custom-control-label::before {
+          border-radius: 9999px;
+          height: 1.35rem;
+          width: 2.35rem;
+          background-color: #CBD5E1;
+          border: none;
+        }
+
+        .custom-control-label::after {
+          border-radius: 9999px;
+          height: 1.15rem;
+          width: 1.15rem;
+          top: calc(0.2rem + 2px);
+          left: calc(-2.75rem + 3px);
+          background-color: #ffffff;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .custom-control-input:checked ~ .custom-control-label::before {
+          background-color: var(--twings-primary);
+        }
+
+        .custom-control-input:checked ~ .custom-control-label::after {
+          transform: translateX(1rem);
+        }
+      }
+    }
+
+    // User Profile Dropdown Pill
+    .usermenu {
+      .dropdown-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: var(--twings-radius-pill);
+        border: 1px solid var(--twings-border);
+        background: #ffffff;
+        transition: var(--twings-transition-fast);
+
+        &:hover {
+          border-color: #CBD5E1;
+          background: var(--twings-surface-hover);
+          box-shadow: var(--twings-shadow-sm);
+        }
+
+        .userpicture {
+          width: 32px;
+          height: 32px;
+          border-radius: 9999px;
+          border: 1.5px solid #BFDBFE;
+        }
+
+        .usertext {
+          font-weight: 600;
+          font-size: 0.85rem;
           color: var(--twings-text-main);
-          letter-spacing: -0.025em;
+        }
+      }
+
+      // Dropdown Menu Card
+      .dropdown-menu {
+        border-radius: var(--twings-radius-lg);
+        border: 1px solid var(--twings-border);
+        box-shadow: var(--twings-shadow-lg);
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        background: #ffffff;
+        animation: twingsDropdownFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+        .dropdown-item {
+          border-radius: var(--twings-radius-md);
+          padding: 0.6rem 0.85rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: var(--twings-text-body);
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          transition: var(--twings-transition-fast);
+
+          &:hover {
+            background-color: #EFF6FF;
+            color: var(--twings-primary);
+          }
         }
       }
     }
   }
 }
 
-// Course Cards Modernization (Coursera/Modern LMS Aesthetics)
+@keyframes twingsDropdownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// --------------------------------------------------------------------------
+// 3. SPLIT-SCREEN EDTECH LOGIN REDESIGN (/learn/login/index.php)
+// --------------------------------------------------------------------------
+body.pagelayout-login,
+#page-login-index {
+  background-color: #F8FAFC !important;
+
+  #page-wrapper {
+    background-color: #F8FAFC !important;
+  }
+
+  // Left Brand Hero Panel
+  .login-layout-left {
+    background: var(--twings-hero-gradient) !important;
+    position: relative;
+    overflow: hidden;
+    padding: 3rem !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    &::before {
+      content: "";
+      position: absolute;
+      top: -15%;
+      right: -15%;
+      width: 450px;
+      height: 450px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(0, 86, 210, 0) 70%);
+      filter: blur(40px);
+      pointer-events: none;
+    }
+
+    &::after {
+      content: "";
+      position: absolute;
+      bottom: -10%;
+      left: -10%;
+      width: 380px;
+      height: 380px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 115, 193, 0.3) 0%, rgba(0, 30, 77, 0) 70%);
+      filter: blur(50px);
+      pointer-events: none;
+    }
+
+    .twings-login-hero {
+      position: relative;
+      z-index: 2;
+      max-width: 520px;
+      margin: 0 auto;
+      color: #ffffff;
+
+      .twings-login-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+
+        .twings-brand-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.6rem;
+          background: rgba(255, 255, 255, 0.12);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          padding: 0.4rem 0.85rem;
+          border-radius: var(--twings-radius-pill);
+
+          .brand-monogram {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: #ffffff;
+            color: var(--twings-navy);
+            font-weight: 900;
+            font-size: 0.8rem;
+          }
+
+          .brand-text {
+            font-size: 0.85rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            color: #ffffff;
+          }
+        }
+
+        .badge-tag {
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: #38BDF8;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+      }
+
+      .twings-login-title {
+        color: #ffffff !important;
+        font-weight: 800;
+        font-size: 2.25rem;
+        line-height: 1.25;
+        letter-spacing: -0.03em;
+        margin-bottom: 1rem;
+      }
+
+      .twings-login-subtitle {
+        color: #E2E8F0;
+        font-size: 1rem;
+        line-height: 1.6;
+        font-weight: 400;
+      }
+
+      .twings-login-features {
+        display: flex;
+        flex-direction: column;
+        gap: 1.15rem;
+
+        .feature-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 1rem;
+          background: rgba(255, 255, 255, 0.06);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 0.85rem 1.15rem;
+          border-radius: var(--twings-radius-lg);
+          transition: var(--twings-transition-base);
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateX(4px);
+          }
+
+          .feature-icon {
+            font-size: 1.35rem;
+            line-height: 1;
+            padding-top: 0.15rem;
+          }
+
+          .feature-text {
+            display: flex;
+            flex-direction: column;
+
+            strong {
+              color: #ffffff;
+              font-size: 0.925rem;
+              font-weight: 700;
+            }
+
+            span {
+              color: #CBD5E1;
+              font-size: 0.8rem;
+              line-height: 1.4;
+            }
+          }
+        }
+      }
+
+      .twings-login-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+
+        .login-layout-stat {
+          display: flex;
+          flex-direction: column;
+
+          .login-layout-stat-value {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #38BDF8;
+            letter-spacing: -0.02em;
+          }
+
+          span {
+            font-size: 0.75rem;
+            color: #E2E8F0;
+            font-weight: 500;
+          }
+        }
+      }
+    }
+  }
+
+  // Right Form Container
+  .login-layout-right {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    background: #F8FAFC;
+
+    .login-container {
+      width: 100%;
+      max-width: 440px;
+      background: #ffffff;
+      border: 1px solid var(--twings-border);
+      border-radius: var(--twings-radius-2xl);
+      padding: 2.5rem;
+      box-shadow: var(--twings-shadow-elevated);
+
+      .loginheading {
+        font-weight: 800;
+        font-size: 1.75rem;
+        color: var(--twings-text-main);
+        letter-spacing: -0.025em;
+        margin-bottom: 0.5rem;
+        text-align: left;
+      }
+
+      .logininstructions {
+        font-size: 0.875rem;
+        color: var(--twings-text-muted);
+        margin-bottom: 1.75rem;
+        text-align: left;
+      }
+
+      .form-group {
+        margin-bottom: 1.25rem;
+
+        label {
+          font-weight: 600;
+          font-size: 0.85rem;
+          color: var(--twings-text-main);
+          margin-bottom: 0.35rem;
+        }
+
+        .form-control {
+          height: 48px;
+          border-radius: var(--twings-radius-md);
+          border: 1px solid #CBD5E1;
+          padding: 0.65rem 1rem;
+          font-size: 0.925rem;
+          transition: var(--twings-transition-fast);
+
+          &:focus {
+            border-color: var(--twings-primary);
+            box-shadow: 0 0 0 3px rgba(0, 115, 193, 0.15);
+            outline: none;
+          }
+        }
+      }
+
+      .rememberpass {
+        margin: 1rem 0 1.5rem;
+        font-size: 0.85rem;
+        color: var(--twings-text-muted);
+      }
+
+      .btn-primary,
+      #loginbtn {
+        height: 48px;
+        border-radius: var(--twings-radius-md);
+        background: var(--twings-primary-gradient) !important;
+        border: none !important;
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(0, 115, 193, 0.3);
+        transition: var(--twings-transition-base);
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 18px rgba(0, 115, 193, 0.4);
+        }
+
+        &:active {
+          transform: translateY(0);
+        }
+      }
+
+      .forgetpass {
+        margin-top: 1.25rem;
+        text-align: center;
+        font-size: 0.85rem;
+
+        a {
+          font-weight: 600;
+          color: var(--twings-primary);
+
+          &:hover {
+            color: var(--twings-royal);
+            text-decoration: underline;
+          }
+        }
+      }
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
+// 4. LEARNER DASHBOARD (/learn/my/) & MY COURSES
+// --------------------------------------------------------------------------
+.pagelayout-mydashboard {
+  #page.drawers .main-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  // Dashboard Welcome Banner
+  #page-header {
+    background: transparent;
+    padding: 0 0 1.5rem;
+    border: none;
+
+    .page-context-header {
+      .page-header-headings h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--twings-text-main);
+        letter-spacing: -0.03em;
+        margin-bottom: 0.35rem;
+      }
+    }
+  }
+
+  // Dashboard Top Stats Widget (Injected or CSS generated cards)
+  .twings-dashboard-hero {
+    background: linear-gradient(135deg, #001E4D 0%, #00388A 60%, #0056D2 100%);
+    border-radius: var(--twings-radius-2xl);
+    padding: 2.25rem;
+    color: #ffffff;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--twings-shadow-elevated);
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: -30%;
+      right: -10%;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(0, 86, 210, 0) 70%);
+      filter: blur(35px);
+      pointer-events: none;
+    }
+
+    h2 {
+      color: #ffffff;
+      font-size: 1.65rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      color: #E2E8F0;
+      font-size: 0.95rem;
+      max-width: 600px;
+      margin-bottom: 0;
+    }
+  }
+}
+
+// Course Overview Block Redesign (Coursera / Modern EdTech Style)
 .block_myoverview {
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
 
-  .card-grid {
-    gap: 1.5rem 0;
+  // Filter Bar & Search Controls
+  .filters {
+    background: #ffffff;
+    border: 1px solid var(--twings-border);
+    border-radius: var(--twings-radius-xl);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.75rem;
+    box-shadow: var(--twings-shadow-sm);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+
+    .btn-outline-secondary {
+      border-radius: var(--twings-radius-md);
+      border-color: #E2E8F0;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--twings-text-body);
+      padding: 0.45rem 0.85rem;
+
+      &:hover,
+      &.active {
+        background-color: #EFF6FF;
+        border-color: #BFDBFE;
+        color: var(--twings-primary);
+      }
+    }
+
+    .form-control {
+      border-radius: var(--twings-radius-md);
+      border-color: #E2E8F0;
+      font-size: 0.875rem;
+      padding: 0.45rem 0.85rem;
+    }
   }
 
-  .course-card {
+  // Course Cards Grid
+  .card-grid {
+    gap: 1.75rem 0;
+  }
+
+  .course-card,
+  .dashboard-card {
     border: 1px solid var(--twings-border) !important;
-    border-radius: 1rem !important;
+    border-radius: var(--twings-radius-xl) !important;
     overflow: hidden;
     background: #ffffff !important;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    box-shadow: var(--twings-shadow-sm) !important;
     height: 100%;
     display: flex;
     flex-direction: column;
 
     &:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 10px 25px -5px rgba(0, 115, 193, 0.1), 0 8px 10px -6px rgba(0, 115, 193, 0.06) !important;
+      transform: translateY(-4px);
+      box-shadow: var(--twings-shadow-elevated) !important;
       border-color: #BFDBFE !important;
+
+      .card-img-top {
+        transform: scale(1.03);
+      }
     }
 
+    // Image Container
+    .dashboard-card-img,
     .card-img-top {
-      height: 9rem !important;
+      height: 9.5rem !important;
       background-size: cover;
       background-position: center;
       position: relative;
+      transition: transform 0.35s ease;
 
       &::after {
         content: "";
         position: absolute;
         inset: 0;
-        background: linear-gradient(180deg, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.4) 100%);
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.45) 100%);
       }
     }
 
+    // Category floating pill
+    .categoryname {
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      z-index: 2;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(8px);
+      color: var(--twings-navy);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.25rem 0.65rem;
+      border-radius: var(--twings-radius-pill);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
     .card-body {
-      padding: 1.25rem 1.25rem 0.75rem !important;
+      padding: 1.35rem !important;
       flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
 
       .coursename {
         font-weight: 700;
@@ -149,435 +803,220 @@ body, html {
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
+        transition: var(--twings-transition-fast);
 
         &:hover {
-          color: var(--twings-primary-dark) !important;
+          color: var(--twings-primary) !important;
         }
       }
 
-      .categoryname {
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--twings-primary-dark);
-        background: #EFF6FF;
-        padding: 0.2rem 0.6rem;
-        border-radius: 9999px;
-        display: inline-block;
+      // Modern Progress Bar
+      .progress {
+        height: 7px !important;
+        border-radius: var(--twings-radius-pill) !important;
+        background-color: #E2E8F0 !important;
+        margin-top: auto;
         margin-bottom: 0.5rem;
+        overflow: hidden;
+
+        .progress-bar {
+          background: var(--twings-primary-gradient) !important;
+          border-radius: var(--twings-radius-pill) !important;
+          transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+      }
+
+      .text-muted {
+        font-size: 0.775rem;
+        color: var(--twings-text-muted) !important;
       }
     }
 
     .card-footer {
-      background: #ffffff !important;
-      border-top: 1px solid #F1F5F9 !important;
-      padding: 0.85rem 1.25rem !important;
+      background: #F8FAFC !important;
+      border-top: 1px solid var(--twings-border-subtle) !important;
+      padding: 0.75rem 1.25rem !important;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
 
-      .progress-text {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--twings-text-muted);
-        margin-bottom: 0.35rem;
-        display: flex;
-        justify-content: space-between;
-      }
-
-      .progress {
-        height: 6px !important;
-        border-radius: 9999px !important;
-        background-color: #F1F5F9 !important;
-        overflow: hidden;
-
-        .progress-bar {
-          background: linear-gradient(90deg, #0073C1 0%, #0056D2 100%) !important;
-          border-radius: 9999px;
-        }
+      .btn {
+        border-radius: var(--twings-radius-md);
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 0.35rem 0.75rem;
       }
     }
   }
-
-  // Filter toolbar styling
-  [data-region="filter"] {
-    background: #ffffff;
-    border: 1px solid var(--twings-border);
-    border-radius: 0.875rem;
-    padding: 0.75rem 1rem;
-    margin-bottom: 1.5rem !important;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-
-    .btn, .form-control, .custom-select {
-      border-radius: 0.625rem;
-      font-size: 0.85rem;
-      font-weight: 500;
-      border-color: var(--twings-border);
-    }
-  }
 }
 
-// Side Drawers & Blocks styling
-.drawer {
-  border-left: 1px solid var(--twings-border);
-  box-shadow: -4px 0 15px rgba(0, 0, 0, 0.03);
-}
-
-.block {
-  border: 1px solid var(--twings-border) !important;
-  border-radius: 1rem !important;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
-  background: #ffffff !important;
-  margin-bottom: 1.5rem;
-
-  .card-title {
-    font-weight: 700;
-    font-size: 1rem;
-    color: var(--twings-text-main);
-    letter-spacing: -0.01em;
-  }
-}
-
-// Modern buttons
-.btn-primary {
-  background-color: var(--twings-primary) !important;
-  border-color: var(--twings-primary) !important;
-  border-radius: 0.75rem !important;
-  font-weight: 600 !important;
-  padding: 0.5rem 1.15rem !important;
-  box-shadow: 0 1px 2px 0 rgba(0, 115, 193, 0.2) !important;
-  transition: all 0.15s ease-in-out !important;
-
-  &:hover, &:focus {
-    background-color: var(--twings-primary-dark) !important;
-    border-color: var(--twings-primary-dark) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(0, 115, 193, 0.3) !important;
-  }
-}
-
-.btn-secondary {
-  border-radius: 0.75rem !important;
-  font-weight: 600 !important;
-}
-
-// TWings mark next to the site name in the navigation bar.
-.navbar-brand::before {
-  content: "TW";
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  margin-right: 0.6rem;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #00388A 0%, #0056D2 50%, #0073C1 100%);
-  color: #ffffff;
-  font-size: 0.85rem;
-  font-weight: 900;
-  box-shadow: 0 2px 6px rgba(0, 115, 193, 0.3);
-}
-
-#page.drawers .main-inner {
-  max-width: 1280px;
-  margin: 0 auto;
-  background: transparent;
-}
-
-.block_timeline,
-.block_calendar_month {
-  border-radius: 1.25rem;
-  border: 1px solid var(--twings-border);
-}
-
-.block_calendar_month {
-  .calendartable th,
-  .calendartable td {
-    border-radius: 0.5rem;
-  }
-
-  .today {
-    background-color: #EFF6FF;
-    color: var(--twings-primary);
-    font-weight: 800;
-    border-radius: 9999px;
-  }
-}
-
-// ==========================================================================
-// TWINGS ACADEMY - MODERN LMS ADMIN DESIGN SYSTEM (/learn/admin/*)
-// Transforms all admin subpages into a clean, modern, card-based interface
-// ==========================================================================
-
-// Global Admin Page Container & Spacing
-.pagelayout-admin,
-body[class*="page-admin-"],
-#page-admin-index,
-#page-admin-search,
-#page-course-management {
-  background-color: #F8FAFC !important;
-
+// --------------------------------------------------------------------------
+// 5. COURSE VIEW & LEARNING SPACE (/learn/course/view.php)
+// --------------------------------------------------------------------------
+.pagelayout-course {
   #page.drawers .main-inner {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 1.5rem 1.5rem 3rem;
+    padding: 1.5rem 1.5rem 4rem;
   }
 
+  // Course Header Banner
   #page-header {
-    background: transparent !important;
-    border-bottom: none !important;
-    padding: 1rem 0 1.5rem;
+    background: #ffffff;
+    border: 1px solid var(--twings-border);
+    border-radius: var(--twings-radius-xl);
+    padding: 1.75rem 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--twings-shadow-sm);
 
-    .page-header-headings h1,
-    h1 {
+    .page-header-headings h1 {
+      font-size: 1.85rem;
       font-weight: 800;
-      font-size: 1.75rem;
+      color: var(--twings-text-main);
       letter-spacing: -0.025em;
-      color: #0F172A;
       margin-bottom: 0.25rem;
     }
+
+    .breadcrumb {
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      font-size: 0.825rem;
+      font-weight: 500;
+    }
   }
 
-  // Modern Breadcrumb Bar
-  .breadcrumb {
-    background: transparent !important;
-    padding: 0 0 1rem 0 !important;
-    margin-bottom: 0.5rem;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.35rem;
+  // Course Sections Container
+  .course-content {
+    ul.topics,
+    ul.weeks {
+      padding: 0;
+      list-style: none;
 
-    .breadcrumb-item {
-      font-size: 0.8rem;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-
-      &::before {
-        content: "›" !important;
-        font-size: 1.1rem;
-        line-height: 1;
-        color: #94A3B8;
-        padding: 0 0.4rem 0 0.1rem;
-      }
-
-      &:first-child::before {
-        display: none !important;
-      }
-
-      a {
-        color: #64748B;
-        text-decoration: none;
-        padding: 0.25rem 0.55rem;
-        border-radius: 0.5rem;
-        transition: all 0.15s ease;
+      li.section {
+        background: #ffffff;
+        border: 1px solid var(--twings-border);
+        border-radius: var(--twings-radius-xl);
+        padding: 1.75rem;
+        margin-bottom: 1.75rem;
+        box-shadow: var(--twings-shadow-sm);
+        transition: var(--twings-transition-base);
 
         &:hover {
-          color: #0073C1;
-          background-color: #EFF6FF;
+          border-color: #CBD5E1;
+          box-shadow: var(--twings-shadow-md);
         }
-      }
 
-      &.active, span {
-        color: #0073C1;
-        font-weight: 700;
-        background-color: #EFF6FF;
-        padding: 0.25rem 0.65rem;
-        border-radius: 0.5rem;
-      }
-    }
-  }
-
-  // Modern Admin Tabs (Site Administration Root: General, Users, Courses, Plugins, etc.)
-  .nav-tabs {
-    border-bottom: 2px solid #E2E8F0 !important;
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 0.35rem;
-    padding-bottom: 0;
-    margin-bottom: 2rem !important;
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-    &::-webkit-scrollbar { display: none; }
-
-    .nav-item {
-      margin-bottom: -2px;
-      white-space: nowrap;
-    }
-
-    .nav-link {
-      border: none !important;
-      border-bottom: 2px solid transparent !important;
-      background: transparent !important;
-      color: #64748B !important;
-      font-weight: 600;
-      font-size: 0.875rem;
-      padding: 0.75rem 1.15rem;
-      border-radius: 0.75rem 0.75rem 0 0;
-      transition: all 0.15s ease-in-out;
-
-      &:hover {
-        color: #0073C1 !important;
-        background-color: #F1F5F9 !important;
-      }
-
-      &.active {
-        color: #0056D2 !important;
-        font-weight: 800 !important;
-        border-bottom: 2px solid #0073C1 !important;
-        background-color: #ffffff !important;
-        box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.02);
-      }
-    }
-  }
-
-  // Admin Search Box Modernization
-  .adminsearchform,
-  #adminsearchform,
-  .adminsearch {
-    background: #ffffff;
-    border: 1px solid #E2E8F0;
-    border-radius: 1.25rem;
-    padding: 1.15rem 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    margin-bottom: 2rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-
-    label {
-      font-weight: 700;
-      font-size: 0.875rem;
-      color: #1E293B;
-      margin-bottom: 0;
-    }
-
-    input[type="text"],
-    #adminsearchquery {
-      border-radius: 0.75rem !important;
-      border: 1px solid #CBD5E1 !important;
-      padding: 0.65rem 1rem !important;
-      font-size: 0.9rem !important;
-      flex: 1 1 240px;
-      min-width: 200px;
-      transition: all 0.2s ease;
-      background-color: #F8FAFC;
-
-      &:focus {
-        background-color: #ffffff;
-        border-color: #0073C1 !important;
-        box-shadow: 0 0 0 3px rgba(0, 115, 193, 0.15) !important;
-        outline: none;
-      }
-    }
-
-    input[type="submit"],
-    button[type="submit"] {
-      border-radius: 0.75rem !important;
-      background: linear-gradient(135deg, #00388A 0%, #0056D2 50%, #0073C1 100%) !important;
-      color: #ffffff !important;
-      font-weight: 700 !important;
-      font-size: 0.85rem !important;
-      padding: 0.65rem 1.5rem !important;
-      border: none !important;
-      cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0, 115, 193, 0.25) !important;
-      transition: all 0.2s ease;
-
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 115, 193, 0.35) !important;
-      }
-    }
-  }
-
-  // Admin Category Cards & Tree Links
-  .tab-content {
-    .admin_category {
-      background: #ffffff;
-      border: 1px solid #E2E8F0;
-      border-radius: 1.25rem;
-      padding: 1.5rem 1.75rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-      &:hover {
-        border-color: #BFDBFE;
-        box-shadow: 0 6px 16px rgba(0, 115, 193, 0.06);
-      }
-
-      > h3,
-      > h4,
-      .category_heading {
-        font-size: 1.15rem;
-        font-weight: 800;
-        color: #0F172A;
-        letter-spacing: -0.02em;
-        margin-bottom: 1.25rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px solid #F1F5F9;
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-
-        &::before {
-          content: "";
-          display: inline-block;
-          width: 4px;
-          height: 1.2rem;
-          background: linear-gradient(180deg, #00388A, #0073C1);
-          border-radius: 9999px;
+        .sectionname {
+          font-size: 1.25rem;
+          font-weight: 800;
+          color: var(--twings-text-main);
+          letter-spacing: -0.02em;
+          margin-bottom: 0.85rem;
+          padding-bottom: 0.65rem;
+          border-bottom: 1px solid var(--twings-border-subtle);
         }
-      }
 
-      ul.list-unstyled,
-      ul {
-        padding-left: 0;
-        list-style: none;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 0.6rem 1.25rem;
-        margin-bottom: 0;
+        .summary {
+          font-size: 0.9rem;
+          color: var(--twings-text-muted);
+          line-height: 1.6;
+          margin-bottom: 1.25rem;
+        }
 
-        li {
-          padding: 0.45rem 0.75rem;
-          border-radius: 0.625rem;
-          background: #F8FAFC;
-          border: 1px solid #F1F5F9;
-          transition: all 0.15s ease;
+        // Activities List in Course View
+        ul.section {
+          padding: 0;
+          margin: 0;
+          list-style: none;
 
-          &:hover {
-            background-color: #EFF6FF;
-            border-color: #BFDBFE;
-            transform: translateX(2px);
-          }
-
-          a {
-            color: #1E293B;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-decoration: none !important;
+          li.activity {
+            padding: 0.85rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: var(--twings-radius-lg);
+            border: 1px solid transparent;
+            background: #F8FAFC;
+            transition: var(--twings-transition-fast);
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-
-            &::before {
-              content: "›";
-              color: #0073C1;
-              font-weight: 800;
-              font-size: 1rem;
-              line-height: 1;
-              transition: transform 0.15s ease;
-            }
 
             &:hover {
-              color: #0056D2;
+              background: #EFF6FF;
+              border-color: #BFDBFE;
+              transform: translateX(3px);
+            }
 
-              &::before {
-                transform: translateX(2px);
+            .activity-item {
+              display: flex;
+              align-items: center;
+              width: 100%;
+              gap: 1rem;
+
+              .activityiconcontainer {
+                width: 42px;
+                height: 42px;
+                border-radius: 0.625rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                background: #E2E8F0;
+                flex-shrink: 0;
+
+                &.quiz {
+                  background: #F3E8FF !important;
+                  color: #7E22CE;
+                }
+
+                &.assign {
+                  background: #FEF3C7 !important;
+                  color: #D97706;
+                }
+
+                &.resource,
+                &.page {
+                  background: #E0F2FE !important;
+                  color: #0284C7;
+                }
+
+                &.scorm,
+                &.h5pactivity {
+                  background: #EEF2FF !important;
+                  color: #4F46E5;
+                }
+
+                &.forum {
+                  background: #D1FAE5 !important;
+                  color: #059669;
+                }
+              }
+
+              .activity-name-area {
+                flex: 1 1 auto;
+
+                .activityname {
+                  font-size: 0.925rem;
+                  font-weight: 700;
+                  color: var(--twings-text-main);
+
+                  a {
+                    color: inherit;
+
+                    &:hover {
+                      color: var(--twings-primary);
+                    }
+                  }
+                }
+              }
+
+              // Completion Status Pill
+              .activity-completion {
+                .btn {
+                  border-radius: var(--twings-radius-pill);
+                  font-size: 0.75rem;
+                  font-weight: 600;
+                  padding: 0.3rem 0.75rem;
+                }
               }
             }
           }
@@ -586,34 +1025,436 @@ body[class*="page-admin-"],
     }
   }
 
-  // Modern Admin Settings Form (/learn/admin/settings.php)
+  // Left Course Index Drawer
+  #theme_boost-drawers-courseindex {
+    background: #ffffff;
+    border-right: 1px solid var(--twings-border);
+    box-shadow: var(--twings-shadow-md);
+
+    .courseindex-section {
+      border-radius: var(--twings-radius-md);
+      margin-bottom: 0.35rem;
+
+      .courseindex-section-title {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--twings-text-main);
+        padding: 0.5rem 0.75rem;
+      }
+
+      .courseindex-item {
+        border-radius: var(--twings-radius-sm);
+        padding: 0.4rem 0.65rem;
+        font-size: 0.8rem;
+        color: var(--twings-text-body);
+        transition: var(--twings-transition-fast);
+
+        &:hover {
+          background-color: var(--twings-surface-hover);
+          color: var(--twings-primary);
+        }
+
+        &.pageitem {
+          background-color: #EFF6FF;
+          color: var(--twings-primary);
+          font-weight: 700;
+          border-left: 3px solid var(--twings-primary);
+        }
+      }
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
+// 6. ACTIVITIES & QUIZ / ASSIGNMENT PAGES
+// --------------------------------------------------------------------------
+// Quiz Attempt Page
+#page-mod-quiz-attempt,
+#page-mod-quiz-review {
+  .que {
+    background: #ffffff;
+    border: 1px solid var(--twings-border);
+    border-radius: var(--twings-radius-xl);
+    padding: 1.75rem;
+    margin-bottom: 1.75rem;
+    box-shadow: var(--twings-shadow-sm);
+
+    .info {
+      background: #F8FAFC;
+      border: 1px solid var(--twings-border-subtle);
+      border-radius: var(--twings-radius-lg);
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+
+      .no {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--twings-navy);
+      }
+
+      .grade,
+      .state {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--twings-text-muted);
+      }
+    }
+
+    .content {
+      .qtext {
+        font-size: 1.05rem;
+        font-weight: 600;
+        line-height: 1.6;
+        color: var(--twings-text-main);
+        margin-bottom: 1.5rem;
+      }
+
+      .answer {
+        .r0, .r1 {
+          background: #F8FAFC;
+          border: 1px solid var(--twings-border);
+          border-radius: var(--twings-radius-md);
+          padding: 0.75rem 1rem;
+          margin-bottom: 0.65rem;
+          transition: var(--twings-transition-fast);
+          cursor: pointer;
+
+          &:hover {
+            background-color: #EFF6FF;
+            border-color: #BFDBFE;
+          }
+
+          input[type="radio"],
+          input[type="checkbox"] {
+            margin-right: 0.65rem;
+          }
+        }
+      }
+    }
+  }
+
+  // Quiz Navigation Block
+  #mod_quiz_navblock {
+    .qnbutton {
+      border-radius: var(--twings-radius-sm);
+      font-weight: 700;
+      font-size: 0.8rem;
+      border: 1px solid #CBD5E1;
+      width: 32px;
+      height: 32px;
+      line-height: 32px;
+      padding: 0;
+
+      &.answersaved {
+        background-color: #EFF6FF;
+        border-color: #93C5FD;
+        color: var(--twings-primary);
+      }
+
+      &.thispage {
+        border: 2px solid var(--twings-primary) !important;
+      }
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
+// 7. SIDEBAR BLOCKS & DRAWERS (#theme_boost-drawers-blocks)
+// --------------------------------------------------------------------------
+.drawer-right {
+  background: #ffffff;
+  border-left: 1px solid var(--twings-border);
+  box-shadow: var(--twings-shadow-lg);
+
+  .drawerheader {
+    border-bottom: 1px solid var(--twings-border-subtle);
+    padding: 1rem 1.25rem;
+  }
+
+  .block {
+    background: #ffffff;
+    border: 1px solid var(--twings-border);
+    border-radius: var(--twings-radius-xl);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--twings-shadow-sm);
+
+    .card-title {
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: var(--twings-text-main);
+      letter-spacing: -0.01em;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--twings-border-subtle);
+    }
+  }
+
+  // Modern Mini Calendar
+  .block_calendar_month {
+    table.minicalendar {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 2px;
+
+      th {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--twings-text-muted);
+        text-transform: uppercase;
+        text-align: center;
+        padding: 0.35rem 0;
+      }
+
+      td {
+        text-align: center;
+        font-size: 0.775rem;
+        font-weight: 600;
+        padding: 0.4rem 0;
+        border-radius: var(--twings-radius-sm);
+
+        &.today {
+          background-color: var(--twings-primary) !important;
+          color: #ffffff !important;
+          font-weight: 800;
+        }
+
+        &.hasevents {
+          background-color: #EFF6FF;
+          color: var(--twings-primary);
+          font-weight: 800;
+        }
+      }
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
+// 8. SITE ADMINISTRATION & SUBPAGES (/learn/admin/*)
+// --------------------------------------------------------------------------
+.pagelayout-admin,
+body[class*="page-admin-"],
+#page-admin-index,
+#page-admin-search,
+#page-course-management {
+  background-color: var(--twings-canvas) !important;
+
+  #page.drawers .main-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 2rem 5rem !important;
+  }
+
+  .breadcrumb {
+    background: #ffffff;
+    border: 1px solid var(--twings-border);
+    border-radius: var(--twings-radius-pill);
+    padding: 0.55rem 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--twings-shadow-sm);
+    display: inline-flex;
+    align-items: center;
+
+    .breadcrumb-item {
+      font-size: 0.85rem;
+      font-weight: 600;
+
+      a {
+        color: var(--twings-text-muted);
+
+        &:hover {
+          color: var(--twings-primary);
+        }
+      }
+
+      &.active {
+        color: var(--twings-primary);
+        font-weight: 700;
+      }
+    }
+  }
+
+  // Administration Tab Bar
+  .nav-tabs {
+    background: #ffffff;
+    border: 1px solid var(--twings-border) !important;
+    border-radius: var(--twings-radius-xl);
+    padding: 0.45rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--twings-shadow-sm);
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0.35rem;
+
+    .nav-item {
+      flex-shrink: 0;
+      margin-bottom: 0;
+
+      .nav-link {
+        border: none !important;
+        border-radius: var(--twings-radius-md) !important;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: var(--twings-text-muted);
+        padding: 0.65rem 1.15rem;
+        transition: var(--twings-transition-fast);
+
+        &:hover {
+          color: var(--twings-royal);
+          background-color: var(--twings-surface-hover);
+        }
+
+        &.active {
+          background-color: #EFF6FF !important;
+          color: var(--twings-primary) !important;
+          font-weight: 800;
+          box-shadow: 0 1px 2px rgba(0, 115, 193, 0.1);
+        }
+      }
+    }
+  }
+
+  // Admin Search Bar
+  .adminsearchform {
+    background: #ffffff;
+    border: 1px solid var(--twings-border);
+    border-radius: var(--twings-radius-xl);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--twings-shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    input[type="text"],
+    #adminsearchquery {
+      flex: 1 1 auto;
+      border-radius: var(--twings-radius-md);
+      border: 1px solid #CBD5E1;
+      font-size: 0.9rem;
+      padding: 0.65rem 1rem;
+      background: #F8FAFC;
+      transition: var(--twings-transition-fast);
+
+      &:focus {
+        background: #ffffff;
+        border-color: var(--twings-primary);
+        box-shadow: 0 0 0 3px rgba(0, 115, 193, 0.15);
+        outline: none;
+      }
+    }
+
+    input[type="submit"],
+    button[type="submit"] {
+      border-radius: var(--twings-radius-md);
+      background: var(--twings-primary-gradient);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.875rem;
+      padding: 0.65rem 1.5rem;
+      border: none;
+      box-shadow: 0 2px 6px rgba(0, 115, 193, 0.3);
+      cursor: pointer;
+      transition: var(--twings-transition-fast);
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0, 115, 193, 0.4);
+      }
+    }
+  }
+
+  // Admin Category Cards Grid
+  .tab-content {
+    .admin_category {
+      background: #ffffff;
+      border: 1px solid var(--twings-border);
+      border-radius: var(--twings-radius-xl);
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--twings-shadow-sm);
+      position: relative;
+      overflow: hidden;
+
+      &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--twings-primary-gradient);
+      }
+
+      h4, h3 {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--twings-text-main);
+        letter-spacing: -0.02em;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--twings-border-subtle);
+      }
+
+      ul {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.65rem 1.5rem;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+
+        li {
+          a {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--twings-text-body);
+            padding: 0.4rem 0.65rem;
+            border-radius: var(--twings-radius-sm);
+            transition: var(--twings-transition-fast);
+
+            &:hover {
+              background-color: #EFF6FF;
+              color: var(--twings-primary);
+              transform: translateX(4px);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Modern Admin Settings Form
   .settingsform,
   .mform {
     fieldset.clearfix,
     fieldset {
       background: #ffffff;
-      border: 1px solid #E2E8F0 !important;
-      border-radius: 1.25rem !important;
+      border: 1px solid var(--twings-border) !important;
+      border-radius: var(--twings-radius-xl) !important;
       padding: 1.75rem !important;
       margin-bottom: 1.75rem !important;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      box-shadow: var(--twings-shadow-sm);
 
       legend {
         font-size: 1.2rem;
         font-weight: 800;
-        color: #0F172A;
+        color: var(--twings-text-main);
         letter-spacing: -0.02em;
         float: none;
         width: 100%;
         margin-bottom: 1.25rem;
-        border-bottom: 1px solid #F1F5F9;
+        border-bottom: 1px solid var(--twings-border-subtle);
         padding-bottom: 0.65rem;
       }
 
       .form-item,
       .fitem {
         padding: 1rem 0;
-        border-bottom: 1px solid #F8FAFC;
+        border-bottom: 1px solid var(--twings-canvas);
 
         &:last-child {
           border-bottom: none;
@@ -623,44 +1464,26 @@ body[class*="page-admin-"],
         .fitemtitle label {
           font-weight: 700;
           font-size: 0.875rem;
-          color: #1E293B;
+          color: var(--twings-text-main);
           margin-bottom: 0.35rem;
         }
 
-        .form-description,
-        .form-defaultinfo {
+        .form-description {
           font-size: 0.8rem;
-          color: #64748B;
+          color: var(--twings-text-muted);
           line-height: 1.5;
-          margin-top: 0.35rem;
-        }
-
-        .form-defaultinfo {
-          font-size: 0.75rem;
-          color: #94A3B8;
-          font-family: monospace;
-          background: #F8FAFC;
-          padding: 0.25rem 0.5rem;
-          border-radius: 0.375rem;
-          display: inline-block;
-          margin-top: 0.35rem;
         }
 
         .form-control,
-        .custom-select,
         select,
-        textarea,
-        input[type="text"],
-        input[type="password"] {
-          border-radius: 0.625rem;
+        textarea {
+          border-radius: var(--twings-radius-md);
           border: 1px solid #CBD5E1;
           font-size: 0.875rem;
           padding: 0.5rem 0.85rem;
-          background-color: #ffffff;
-          transition: all 0.15s ease;
 
           &:focus {
-            border-color: #0073C1;
+            border-color: var(--twings-primary);
             box-shadow: 0 0 0 3px rgba(0, 115, 193, 0.15);
             outline: none;
           }
@@ -668,24 +1491,24 @@ body[class*="page-admin-"],
       }
     }
 
-    // Modern Save Button Bar
+    // Save Button Bar
     .form-buttons,
     .row.buttons,
     .fitem_actionbuttons {
       background: #ffffff;
-      border: 1px solid #E2E8F0;
-      border-radius: 1rem;
+      border: 1px solid var(--twings-border);
+      border-radius: var(--twings-radius-lg);
       padding: 1rem 1.5rem;
       margin-top: 1.75rem;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      box-shadow: var(--twings-shadow-sm);
       display: flex;
       align-items: center;
       gap: 1rem;
 
       input[type="submit"],
       button[type="submit"] {
-        border-radius: 0.75rem !important;
-        background: linear-gradient(135deg, #00388A 0%, #0056D2 50%, #0073C1 100%) !important;
+        border-radius: var(--twings-radius-md) !important;
+        background: var(--twings-primary-gradient) !important;
         color: #ffffff !important;
         font-weight: 700 !important;
         font-size: 0.875rem !important;
@@ -693,7 +1516,7 @@ body[class*="page-admin-"],
         border: none !important;
         box-shadow: 0 2px 6px rgba(0, 115, 193, 0.3) !important;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: var(--twings-transition-fast);
 
         &:hover {
           transform: translateY(-1px);
@@ -703,15 +1526,15 @@ body[class*="page-admin-"],
     }
   }
 
-  // Modern Admin Tables (/learn/admin/user.php, /learn/admin/plugins.php, task logs)
+  // Modern General Data Tables
   table.generaltable,
   table.admintable,
   table.flexible {
-    border: 1px solid #E2E8F0 !important;
-    border-radius: 1rem !important;
+    border: 1px solid var(--twings-border) !important;
+    border-radius: var(--twings-radius-lg) !important;
     overflow: hidden;
     background: #ffffff !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    box-shadow: var(--twings-shadow-sm);
     margin-bottom: 1.75rem;
     width: 100%;
     border-collapse: separate !important;
@@ -719,22 +1542,21 @@ body[class*="page-admin-"],
 
     thead th {
       background: #F8FAFC !important;
-      color: #475569 !important;
+      color: var(--twings-text-muted) !important;
       font-size: 0.75rem !important;
       font-weight: 800 !important;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       padding: 0.85rem 1rem !important;
-      border-bottom: 1px solid #E2E8F0 !important;
+      border-bottom: 1px solid var(--twings-border) !important;
       border-top: none !important;
-      white-space: nowrap;
     }
 
     tbody td {
       padding: 0.85rem 1rem !important;
       font-size: 0.85rem;
-      color: #334155;
-      border-top: 1px solid #F1F5F9 !important;
+      color: var(--twings-text-body);
+      border-top: 1px solid var(--twings-border-subtle) !important;
       vertical-align: middle;
     }
 
@@ -747,7 +1569,7 @@ body[class*="page-admin-"],
     }
   }
 
-  // Course & Category Management Layout (/learn/course/management.php, /learn/admin/category.php)
+  // Course Category Listings
   #course-category-listings {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -757,130 +1579,157 @@ body[class*="page-admin-"],
     .course-listing,
     .course-detail {
       background: #ffffff;
-      border: 1px solid #E2E8F0;
-      border-radius: 1.25rem;
+      border: 1px solid var(--twings-border);
+      border-radius: var(--twings-radius-xl);
       padding: 1.25rem 1.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      box-shadow: var(--twings-shadow-sm);
 
       .card-header,
       .listing-header {
         background: transparent !important;
-        border-bottom: 1px solid #F1F5F9 !important;
+        border-bottom: 1px solid var(--twings-border-subtle) !important;
         padding-bottom: 0.85rem;
         margin-bottom: 1rem;
         font-weight: 800;
         font-size: 1.05rem;
-        color: #0F172A;
-        letter-spacing: -0.01em;
+        color: var(--twings-text-main);
       }
 
       .listitem {
         padding: 0.55rem 0.85rem;
-        border-radius: 0.625rem;
+        border-radius: var(--twings-radius-sm);
         margin-bottom: 0.35rem;
         border: 1px solid transparent;
-        transition: all 0.15s ease;
+        transition: var(--twings-transition-fast);
 
         &:hover {
           background-color: #F8FAFC;
-          border-color: #E2E8F0;
+          border-color: var(--twings-border);
         }
 
         &.active,
         &[data-selected="1"] {
           background-color: #EFF6FF !important;
           border-color: #BFDBFE !important;
-          color: #0073C1 !important;
+          color: var(--twings-primary) !important;
           font-weight: 700;
         }
       }
     }
   }
+}
 
-  // User Management Filters Box
-  #user-search-form,
-  .user-filters {
-    background: #ffffff;
-    border: 1px solid #E2E8F0;
-    border-radius: 1.25rem;
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 1.75rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-  }
+// --------------------------------------------------------------------------
+// 9. MODALS, DIALOGS, ALERTS & BADGES
+// --------------------------------------------------------------------------
+.modal-content {
+  border-radius: var(--twings-radius-2xl) !important;
+  border: 1px solid var(--twings-border) !important;
+  box-shadow: var(--twings-shadow-elevated) !important;
+  overflow: hidden;
 
-  // Modern Status Badges & Pills in Admin
-  .badge {
-    padding: 0.35rem 0.65rem !important;
-    border-radius: 9999px !important;
-    font-weight: 700 !important;
-    font-size: 0.75rem !important;
-    letter-spacing: 0.02em;
+  .modal-header {
+    border-bottom: 1px solid var(--twings-border-subtle);
+    padding: 1.25rem 1.75rem;
 
-    &.badge-success,
-    &.bg-success {
-      background-color: #DCFCE7 !important;
-      color: #15803D !important;
-      border: 1px solid #BBF7D0;
-    }
-
-    &.badge-danger,
-    &.bg-danger {
-      background-color: #FEE2E2 !important;
-      color: #B91C1C !important;
-      border: 1px solid #FECACA;
-    }
-
-    &.badge-warning,
-    &.bg-warning {
-      background-color: #FEF3C7 !important;
-      color: #92400E !important;
-      border: 1px solid #FDE68A;
-    }
-
-    &.badge-info,
-    &.bg-info {
-      background-color: #EFF6FF !important;
-      color: #1D4ED8 !important;
-      border: 1px solid #BFDBFE;
+    .modal-title {
+      font-weight: 800;
+      font-size: 1.15rem;
+      color: var(--twings-text-main);
     }
   }
 
-  // Modern Alert Banners
-  .alert {
-    border-radius: 1rem !important;
-    border-width: 1px !important;
-    padding: 1rem 1.25rem !important;
-    font-size: 0.875rem !important;
-    font-weight: 500;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  .modal-body {
+    padding: 1.75rem;
   }
 
-  // Action Menu and Secondary Toolbar
-  .tertiary-navigation {
-    margin-bottom: 1.5rem;
+  .modal-footer {
+    border-top: 1px solid var(--twings-border-subtle);
+    padding: 1rem 1.75rem;
+  }
+}
 
-    .btn {
-      border-radius: 0.625rem;
+.badge {
+  padding: 0.35rem 0.65rem !important;
+  border-radius: var(--twings-radius-pill) !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+
+  &.badge-success,
+  &.bg-success {
+    background-color: var(--twings-success-bg) !important;
+    color: var(--twings-success) !important;
+    border: 1px solid #A7F3D0;
+  }
+
+  &.badge-danger,
+  &.bg-danger {
+    background-color: var(--twings-danger-bg) !important;
+    color: var(--twings-danger) !important;
+    border: 1px solid #FECACA;
+  }
+
+  &.badge-warning,
+  &.bg-warning {
+    background-color: var(--twings-warning-bg) !important;
+    color: var(--twings-warning) !important;
+    border: 1px solid #FDE68A;
+  }
+
+  &.badge-info,
+  &.bg-info {
+    background-color: var(--twings-info-bg) !important;
+    color: var(--twings-info) !important;
+    border: 1px solid #BAE6FD;
+  }
+}
+
+.alert {
+  border-radius: var(--twings-radius-lg) !important;
+  border-width: 1px !important;
+  padding: 1rem 1.25rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500;
+  box-shadow: var(--twings-shadow-sm);
+}
+
+// --------------------------------------------------------------------------
+// 10. MODERN FOOTER (#page-footer)
+// --------------------------------------------------------------------------
+#page-footer {
+  background: #ffffff !important;
+  border-top: 1px solid var(--twings-border) !important;
+  padding: 2.5rem 0 1.5rem !important;
+  margin-top: 4rem;
+
+  .footer-content-popover {
+    max-width: 1400px;
+    margin: 0 auto;
+
+    .footer-section {
+      border-color: var(--twings-border-subtle) !important;
       font-size: 0.85rem;
-      font-weight: 600;
+      color: var(--twings-text-muted);
     }
   }
 }
 
-// Responsive Optimizations for Admin Pages (Tablet & Mobile)
+// --------------------------------------------------------------------------
+// 11. RESPONSIVE BREAKPOINTS (Mobile & Tablet)
+// --------------------------------------------------------------------------
 @media (max-width: 768px) {
+  .navbar.fixed-top {
+    height: 60px;
+    padding: 0 1rem;
+  }
+
   .pagelayout-admin,
   body[class*="page-admin-"],
   #page-admin-index,
   #page-admin-search,
   #page-course-management {
     #page.drawers .main-inner {
-      padding: 1rem 0.75rem 2rem !important;
-    }
-
-    .settingsform fieldset.clearfix,
-    .settingsform fieldset {
-      padding: 1rem !important;
+      padding: 1rem 0.75rem 2.5rem !important;
     }
 
     .tab-content .admin_category ul {
@@ -901,5 +1750,15 @@ body[class*="page-admin-"],
       }
     }
   }
-}
 
+  body.pagelayout-login,
+  #page-login-index {
+    .login-layout-right {
+      padding: 2rem 1rem;
+
+      .login-container {
+        padding: 1.75rem 1.25rem;
+      }
+    }
+  }
+}

@@ -1,7 +1,37 @@
-// TWings Academy brand: the website's palette and font (frontend/src/index.css), as Bootstrap variables
-// so Boost's own components (buttons, links, progress bars, badges...) follow without overrides.
+// TWings Academy brand: the website's palette and font, as Bootstrap 5 variables.
+// Boost's own components (buttons, links, progress bars, cards, badges...) follow without overrides.
+
 $primary: #0073C1;
 $info: #0056D2;
+$success: #10B981;
+$warning: #F59E0B;
+$danger: #EF4444;
+$secondary: #64748B;
+$light: #F8FAFC;
+$dark: #0F172A;
+
 $font-family-sans-serif: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 $body-bg: #F8FAFC;
 $body-color: #0F172A;
+$link-color: #0073C1;
+$link-hover-color: #0056D2;
+$link-decoration: none;
+
+$border-radius: 0.75rem;
+$border-radius-sm: 0.5rem;
+$border-radius-lg: 1rem;
+$border-radius-xl: 1.25rem;
+
+$card-border-radius: 1.25rem;
+$card-border-color: #E2E8F0;
+$card-bg: #ffffff;
+
+$btn-border-radius: 0.625rem;
+$btn-border-radius-sm: 0.5rem;
+$btn-border-radius-lg: 0.75rem;
+
+$input-border-radius: 0.625rem;
+$input-border-radius-sm: 0.5rem;
+$input-border-radius-lg: 0.75rem;
+$input-border-color: #CBD5E1;
+$input-focus-border-color: #0073C1;

@@ -1,0 +1,68 @@
+{{!
+    This file is part of TWings Academy Moodle theme.
+    @template core/login_panel
+    Custom split-screen branding panel for TWings Academy LMS.
+}}
+<div class="login-layout-left-content twings-login-hero">
+    {{^leftinstructions}}
+        <div class="twings-login-brand mb-4">
+            <div class="twings-brand-badge">
+                <span class="brand-monogram">TW</span>
+                <span class="brand-text">TWINGS ACADEMY</span>
+            </div>
+            <span class="badge-tag">AVIATION TRAINING LMS</span>
+        </div>
+
+        <h1 class="twings-login-title">
+            Nền Tảng Đào Tạo & Huấn Luyện Hàng Không Số
+        </h1>
+
+        <p class="twings-login-subtitle">
+            Học viện Đào tạo Hàng không Quốc tế TWings cung cấp hệ thống giáo trình chuẩn ICAO & CAAV với trải nghiệm học tập số thông minh, trực quan và hiện đại.
+        </p>
+
+        <div class="twings-login-features my-4">
+            <div class="feature-item">
+                <div class="feature-icon">✈️</div>
+                <div class="feature-text">
+                    <strong>Giáo trình chuẩn Quốc tế</strong>
+                    <span>Cập nhật liên tục theo tiêu chuẩn Hàng không Dân dụng</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🎓</div>
+                <div class="feature-text">
+                    <strong>Lộ trình học tập cá nhân hóa</strong>
+                    <span>Theo dõi tiến độ, thi đánh giá và cấp chứng chỉ số</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🌐</div>
+                <div class="feature-text">
+                    <strong>Học tập mọi lúc, mọi nơi</strong>
+                    <span>Tương thích đa thiết bị với thư viện tài liệu phong phú</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="login-layout-stats twings-login-stats mt-4">
+            <div class="login-layout-stat">
+                <strong class="login-layout-stat-value">100%</strong>
+                <span>Chuẩn CAAV / ICAO</span>
+            </div>
+            <div class="login-layout-stat">
+                <strong class="login-layout-stat-value">24/7</strong>
+                <span>Học tập trực tuyến</span>
+            </div>
+            <div class="login-layout-stat">
+                <strong class="login-layout-stat-value">ISO</strong>
+                <span>Chất lượng đào tạo</span>
+            </div>
+        </div>
+    {{/leftinstructions}}
+    {{#leftinstructions}}
+        <div class="mx-auto text-start">
+            {{{leftinstructions}}}
+        </div>
+    {{/leftinstructions}}
+</div>
