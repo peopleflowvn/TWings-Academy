@@ -55,6 +55,61 @@ class CampaignPosition(BaseModel):
         ordering = ["campaign", "short_name"]
 
 
+def new_learner_code() -> str:
+    return "HV" + "".join(secrets.choice(ORDER_CODE_ALPHABET) for _ in range(8))
+
+
+class Learner(BaseModel):
+    """
+    One person, whatever they register for: identity, contact, education, emergency contact, CV and the
+    consultant who looks after them. Each registration to a course or program is an Order linked here;
+    the person fields on Order are a copy kept in step (apps.crm.learners), read by SSO, Moodle and the
+    class lists.
+    """
+
+    code = models.CharField(max_length=20, unique=True, default=new_learner_code, editable=False)
+    full_name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=32, blank=True)
+    phone_index = models.CharField(max_length=20, blank=True, db_index=True, editable=False)
+    email = models.EmailField(blank=True, db_index=True)
+    birth_date = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=10, blank=True)
+    area = models.CharField(max_length=100, blank=True)
+    citizen_id = EncryptedTextField(blank=True)
+    citizen_id_index = models.CharField(max_length=64, blank=True, db_index=True, editable=False)
+    issued_place = models.CharField(max_length=200, blank=True)
+    permanent_address = EncryptedTextField(blank=True)
+    current_residence = EncryptedTextField(blank=True)
+    education_level = models.CharField(max_length=100, blank=True)
+    major = models.CharField(max_length=200, blank=True)
+    university = models.CharField(max_length=200, blank=True)
+    graduation_year = models.CharField(max_length=10, blank=True)
+    contact_person_name = models.CharField(max_length=200, blank=True)
+    contact_person_phone = models.CharField(max_length=32, blank=True)
+    contact_relation = models.CharField(max_length=50, blank=True)
+    cv_link = models.CharField(max_length=500, blank=True)
+    # The consultant who looks after this person (each registration also has its own).
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="learners"
+    )
+    note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.code} – {self.full_name}"
+
+    def save(self, *args, **kwargs):
+        from .learners import phone_key
+
+        self.citizen_id_index = blind_index(self.citizen_id or "")
+        self.phone_index = phone_key(self.phone)
+        if "update_fields" in kwargs and kwargs["update_fields"] is not None:
+            kwargs["update_fields"] = {*kwargs["update_fields"], "citizen_id_index", "phone_index"}
+        super().save(*args, **kwargs)
+
+
 class Order(BaseModel):
     """
     A lead / application / order. One record follows an applicant from first contact to placement,
@@ -92,6 +147,10 @@ class Order(BaseModel):
     ]
 
     order_code = models.CharField(max_length=20, unique=True, default=new_order_code, editable=False)
+    # The person who registers (one learner, any number of registrations).
+    learner = models.ForeignKey(
+        Learner, null=True, blank=True, on_delete=models.SET_NULL, related_name="orders"
+    )
     course = models.ForeignKey(
         Course, null=True, blank=True, on_delete=models.SET_NULL, related_name="orders"
     )

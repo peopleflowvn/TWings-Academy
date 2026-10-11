@@ -376,6 +376,9 @@ class DossierView(_LearnerView):
                 order=order, type="note", title="Học viên đã nộp hồ sơ nhập học", actor=order.customer_email
             )
         order.save()
+        from apps.crm.learners import sync_from_order
+
+        sync_from_order(order, ser.validated_data.keys())  # the same file for every course of the learner
         return Response(dossier_data(order))
 
 
@@ -413,6 +416,9 @@ class CvUploadView(_LearnerView):
             storage.delete(order.cv_link.removeprefix("private:"))
         order.cv_link = f"private:{name}"
         order.save(update_fields=["cv_link", "updated_at"])
+        from apps.crm.learners import sync_from_order
+
+        sync_from_order(order, ["cv_link"])
         Activity.objects.create(
             order=order, type="note", title="Học viên tải lên CV", actor=order.customer_email
         )

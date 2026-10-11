@@ -229,6 +229,11 @@ class OrderViewSet(viewsets.ModelViewSet):
         was_new = serializer.instance.crm_status == "1. Mới"
         order = serializer.save()
         self._sync_pic(serializer, order)
+        from .learners import sync_from_order
+
+        sync_from_order(
+            order, serializer.validated_data.keys()
+        )  # the person's details, on every registration
         if was_new and order.crm_status != "1. Mới":
             mark_first_response(order)
 

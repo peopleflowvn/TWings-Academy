@@ -3,7 +3,15 @@ from rest_framework import serializers
 
 from apps.catalog.models import Cohort, Course, Program
 
-from .models import Activity, AdmissionCampaign, Appointment, CampaignPosition, FollowupTask, Order
+from .models import (
+    Activity,
+    AdmissionCampaign,
+    Appointment,
+    CampaignPosition,
+    FollowupTask,
+    Learner,
+    Order,
+)
 
 PRIVACY_POLICY_VERSION = "2026-10"
 
@@ -34,10 +42,14 @@ class OrderSerializer(serializers.ModelSerializer):
     followup_tasks = FollowupTaskSerializer(many=True, read_only=True)
     duplicate_count = serializers.SerializerMethodField()
     related_orders = serializers.SerializerMethodField()
+    learner_id = serializers.PrimaryKeyRelatedField(
+        source="learner", queryset=Learner.objects.all(), required=False, allow_null=True
+    )
+    learner_code = serializers.CharField(source="learner.code", read_only=True, default="")
 
     class Meta:
         model = Order
-        exclude = ["course", "cohort", "citizen_id_index"]
+        exclude = ["course", "cohort", "learner", "citizen_id_index"]
         read_only_fields = [
             "order_code",
             "total_paid_amount",
@@ -59,10 +71,11 @@ class OrderSerializer(serializers.ModelSerializer):
         return getattr(view, "action", None) == "list"
 
     def get_related_orders(self, obj):
-        """Other leads / orders of the same person (phone, e-mail or CCCD), in one order's detail only."""
-        if self._is_list():
-            return None
-        others = obj.find_duplicates().filter(parent__isnull=True).order_by("-created_at")[:20]
+        """The learner's other registrations, in one order's detail only."""
+        if self._is_list() or not obj.learner_id:
+            return None if self._is_list() else []
+        others = Order.objects.filter(learner_id=obj.learner_id, parent__isnull=True).exclude(pk=obj.pk)
+        others = others.order_by("-created_at")[:20]
         return [
             {
                 "id": o.pk,
@@ -79,7 +92,9 @@ class OrderSerializer(serializers.ModelSerializer):
         # Counted for one order (detail); the list only flags duplicates (no query per row).
         if not obj.is_duplicate:
             return 0
-        return None if self._is_list() else obj.find_duplicates().count()
+        from .learners import active_duplicates
+
+        return None if self._is_list() else active_duplicates(obj).count()
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

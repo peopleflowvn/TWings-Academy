@@ -37,14 +37,25 @@ def test_paid_stage_needs_a_recorded_payment(staff_client, course):
     assert (order.status, order.crm_status) == ("pending", "1. Mới")
 
 
-def test_duplicate_count_in_detail(staff_client, course):
-    Order.objects.create(customer_name="A", course=course, customer_phone="0912345678")
-    dup = Order.objects.create(
-        customer_name="A", course=course, customer_phone="0912345678", is_duplicate=True
-    )
-    detail = staff_client(Role.SALES_CRM).get(f"/api/v1/staff/orders/{dup.pk}/").json()
-    assert detail["duplicateCount"] == 1
-    assert [r["courseTitle"] for r in detail["relatedOrders"]] == [course.title]
+def test_duplicate_means_same_learner_same_course(staff_client, course):
+    from apps.catalog.models import Course
+    from apps.crm.services import flag_duplicates
+
+    course2 = Course.objects.create(status="published", slug="gdv", title="Giao dịch viên", price=1000)
+
+    first = Order.objects.create(customer_name="A", course=course, customer_phone="0912 345 678")
+    flag_duplicates(first)
+    again = Order.objects.create(customer_name="A", course=course, customer_phone="+84912345678")
+    flag_duplicates(again)
+    other_course = Order.objects.create(customer_name="A", course=course2, customer_phone="0912345678")
+    flag_duplicates(other_course)
+
+    assert first.learner_id == again.learner_id == other_course.learner_id
+    assert again.is_duplicate and first.order_code in again.duplicate_note
+    assert not other_course.is_duplicate  # a returning learner on another course is not a duplicate
+    detail = staff_client(Role.SALES_CRM).get(f"/api/v1/staff/orders/{again.pk}/").json()
+    assert detail["duplicateCount"] == 1 and detail["learnerCode"].startswith("HV")
+    assert {r["id"] for r in detail["relatedOrders"]} == {first.pk, other_course.pk}
 
 
 def test_campaign_enrolment_counts_link_and_code(staff_client, course):
@@ -65,13 +76,15 @@ def _rows(res):
 
 
 def test_staff_creates_a_lead_priced_assigned_and_deduplicated(staff_client, course):
+    from apps.crm.services import flag_duplicates
+
     from .conftest import make_staff
 
-    Order.objects.create(customer_name="Old", course=course, customer_phone="0911222333")
+    flag_duplicates(Order.objects.create(customer_name="Old", course=course, customer_phone="0911222333"))
     consultant = make_staff(Role.SALES_CRM, "tuvan@twings.test")
     consultant.receives_leads = True
     consultant.save()
-    res = staff_client(Role.SALES_CRM).post(
+    res = staff_client(Role.SUPER_ADMIN).post(  # the creator is not a consultant receiving leads
         "/api/v1/staff/orders/",
         {"customerName": "Walk-in", "customerPhone": "0911222333", "courseId": course.pk},
         format="json",
@@ -148,3 +161,99 @@ def test_email_from_the_lead_workspace_goes_into_its_history(staff_client, cours
     assert order.timeline_activities.filter(title="Email: Chào bạn").exists()
     order.refresh_from_db()
     assert order.first_response_at is not None
+
+
+def test_learner_page_and_edit_reach_every_registration(staff_client, course):
+    from apps.catalog.models import Course
+    from apps.crm.services import flag_duplicates
+
+    course2 = Course.objects.create(status="published", slug="gdv2", title="Giao dịch viên", price=1000)
+    a = Order.objects.create(customer_name="Lan", course=course, customer_email="lan@example.com")
+    flag_duplicates(a)
+    b = Order.objects.create(customer_name="Lan", course=course2, customer_email="LAN@example.com")
+    flag_duplicates(b)
+    learner_id = a.learner_id
+    assert b.learner_id == learner_id
+
+    client = staff_client(Role.SALES_CRM)
+    rows = _rows(client.get("/api/v1/staff/learners/?search=lan"))
+    assert rows[0]["registrations"] == 2 and "citizenId" not in rows[0]
+
+    res = client.patch(
+        f"/api/v1/staff/learners/{learner_id}/",
+        {"citizenId": "001205019888", "university": "NEU"},
+        format="json",
+    )
+    assert res.status_code == 200, res.content
+    for order in (a, b):
+        order.refresh_from_db()
+        assert order.citizen_id == "001205019888" and order.university == "NEU"
+
+    page = client.get(f"/api/v1/staff/learners/{learner_id}/").json()
+    assert {r["courseTitle"] for r in page["registrations"]} == {course.title, course2.title}
+    assert page["citizenId"] == "001205019888"
+
+
+def test_editing_one_registration_updates_the_learner(staff_client, course):
+    from apps.catalog.models import Course
+    from apps.crm.services import flag_duplicates
+
+    course2 = Course.objects.create(status="published", slug="gdv3", title="GDV", price=1000)
+    a = Order.objects.create(customer_name="Minh", course=course, customer_phone="0909000111")
+    flag_duplicates(a)
+    b = Order.objects.create(customer_name="Minh", course=course2, customer_phone="0909000111")
+    flag_duplicates(b)
+    staff_client(Role.SALES_CRM).patch(f"/api/v1/staff/orders/{a.pk}/", {"major": "Kế toán"}, format="json")
+    b.refresh_from_db()
+    a.learner.refresh_from_db()
+    assert a.learner.major == "Kế toán" and b.major == "Kế toán"
+
+
+def test_merge_two_records_of_one_person(staff_client, course):
+    from apps.crm.services import flag_duplicates
+
+    a = Order.objects.create(customer_name="Hà", course=course, customer_email="ha@example.com")
+    flag_duplicates(a)
+    b = Order.objects.create(customer_name="Hà", course=course, customer_email="ha.work@example.com")
+    flag_duplicates(b)
+    assert a.learner_id != b.learner_id
+    res = staff_client(Role.SUPER_ADMIN).post(
+        f"/api/v1/staff/learners/{a.learner_id}/merge/", {"other": b.learner_id}, format="json"
+    )
+    assert res.status_code == 200, res.content
+    b.refresh_from_db()
+    assert b.learner_id == a.learner_id and len(res.json()["registrations"]) == 2
+
+
+def test_backfill_groups_existing_registrations_into_learners(course):
+    import importlib
+
+    from django.apps import apps as django_apps
+
+    from apps.catalog.models import Course
+    from apps.crm.models import Learner
+
+    backfill = importlib.import_module("apps.crm.migrations.0007_backfill_learners")
+    course2 = Course.objects.create(status="published", slug="bf", title="BF", price=1)
+    old = Order.objects.create(customer_name="Old name", course=course, customer_phone="0912 000 111")
+    new = Order.objects.create(
+        customer_name="New name",
+        course=course2,
+        customer_phone="+84912000111",
+        university="HVNH",
+        is_duplicate=True,
+    )
+    again = Order.objects.create(
+        customer_name="New name", course=course, customer_phone="0912000111", is_duplicate=True
+    )
+    alone = Order.objects.create(customer_name="Someone", course=course, customer_email="x@example.com")
+
+    backfill.forwards(django_apps, None)
+
+    for o in (old, new, again, alone):
+        o.refresh_from_db()
+    assert old.learner_id == new.learner_id == again.learner_id != alone.learner_id
+    learner = Learner.objects.get(pk=old.learner_id)
+    assert learner.full_name == "New name" and learner.university == "HVNH"
+    assert not new.is_duplicate  # another course: a returning learner
+    assert again.is_duplicate and old.order_code in again.duplicate_note

@@ -158,11 +158,17 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
 
 
 def flag_duplicates(order: Order) -> None:
-    """Mark a new lead that shares a phone, e-mail or CCCD with other leads (program courses aside)."""
-    duplicates = order.find_duplicates().filter(parent__isnull=True)
-    if duplicates.exists():
+    """
+    Link a new registration to its learner, then flag it when the learner already has an active
+    registration for the same course / program (a returning learner on another course is not one).
+    """
+    from .learners import active_duplicates, attach_learner
+
+    attach_learner(order)
+    duplicates = list(active_duplicates(order).values_list("order_code", flat=True)[:5])
+    if duplicates:
         order.is_duplicate = True
-        order.duplicate_note = f"Trùng SĐT/email/CCCD với {duplicates.count()} hồ sơ khác"
+        order.duplicate_note = f"Học viên đã có đăng ký đang mở cho khóa này: {', '.join(duplicates)}"[:300]
         order.save(update_fields=["is_duplicate", "duplicate_note", "updated_at"])
 
 
@@ -268,6 +274,7 @@ def sync_program_components(order: Order) -> int:
             cohort, _ = resolve_cohort(link.course)
             component = Order(
                 parent=order,
+                learner=order.learner,
                 program=order.program,
                 course=link.course,
                 course_title=link.course.title,

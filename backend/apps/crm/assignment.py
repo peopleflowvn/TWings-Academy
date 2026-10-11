@@ -53,6 +53,12 @@ def consultants():
 
 
 def pick_consultant(order: Order):
+    # The consultant who already looks after this learner keeps them.
+    learner = order.learner
+    if learner is not None and learner.owner_id:
+        owner = learner.owner
+        if owner.is_active and owner.receives_leads:
+            return owner
     previous = (
         order.find_duplicates()
         .filter(assigned_to__isnull=False, assigned_to__is_active=True)
@@ -83,6 +89,9 @@ def assign_new_lead(order: Order) -> None:
         order.pic = (consultant.name or consultant.email)[:100]
         fields += ["assigned_to", "pic"]
     order.save(update_fields=fields)
+    if order.learner_id and not order.learner.owner_id and order.assigned_to_id:
+        order.learner.owner_id = order.assigned_to_id
+        order.learner.save(update_fields=["owner", "updated_at"])
     if consultant is None:
         return
     due = timezone.localtime(order.response_due_at)
