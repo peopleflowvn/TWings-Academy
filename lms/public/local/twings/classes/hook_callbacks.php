@@ -37,7 +37,7 @@ class hook_callbacks {
         }
         $hook->get_primaryview()->add(
             get_string('account', 'local_twings'),
-            new \moodle_url('/tai-khoan'),
+            new \moodle_url('/user/profile.php'),
             navigation_node::TYPE_CUSTOM,
             null,
             'twingsaccount'

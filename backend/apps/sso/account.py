@@ -30,6 +30,9 @@ def learner_email(request) -> str | None:
     learner = request.session.get(LEARNER)
     if learner and time.time() - learner["at"] < services.LEARNER_SESSION_TTL:
         return learner["email"]
+    user = getattr(request, "user", None)
+    if user and user.is_authenticated and user.is_active and user.email:
+        return user.email
     return None
 
 

@@ -17,12 +17,12 @@ if (path === '/login' || path === '/login/') {
 }
 
 const isAdmin = /^\/app(\/|$)/.test(path);
-// The learner account & profile is unified at /learn/tai-khoan.
-if (/^\/tai-khoan(\/|$)/.test(path) || /^\/learn\/user\/profile(\.php)?(\/|$)/.test(path) || /^\/user\/profile(\.php)?(\/|$)/.test(path)) {
-  window.location.replace('/learn/tai-khoan' + window.location.search + window.location.hash);
+// The learner account & profile is unified at /learn/user/profile.php.
+if (/^\/(learn\/)?tai-khoan(\/|$)/.test(path)) {
+  window.location.replace('/learn/user/profile.php' + window.location.search + window.location.hash);
 }
 
-const isStorefront = /^\/(chuong-trinh|tai-khoan|learn\/tai-khoan|chinh-sach-bao-mat|dieu-khoan)(\/|$)/.test(path);
+const isStorefront = /^\/(chuong-trinh|chinh-sach-bao-mat|dieu-khoan)(\/|$)/.test(path);
 
 // Favicon, logo, default title/description from /app → Cài đặt SEO (not for the staff app).
 if (!isAdmin) {

@@ -4,4 +4,4 @@
 # divergence from upstream is deliberate, reviewed and easy to carry over when Moodle is updated.
 # TWings' own plugins (lms/public/local/twings, lms/public/theme/twings) are not patches: no entry needed.
 
-lms/public/user/profile.php Redirects learner to unified /learn/tai-khoan portal page
+lms/public/user/profile.php Integrates TWings learner account and dossier into profile

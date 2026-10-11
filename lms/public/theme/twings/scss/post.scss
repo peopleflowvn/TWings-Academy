@@ -1762,3 +1762,210 @@ body[class*="page-admin-"],
     }
   }
 }
+
+// --------------------------------------------------------------------------
+// 19. TWINGS UNIFIED PROFILE & LEARNER ACCOUNT (user/profile.php)
+// --------------------------------------------------------------------------
+.twings-merged-profile {
+  .twings-profile-hero {
+    background: #FFFFFF;
+    border: 1px solid var(--twings-border);
+    border-radius: var(--twings-radius-2xl);
+    padding: 1.5rem;
+    box-shadow: var(--twings-shadow-sm);
+
+    .twings-hero-body {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .twings-hero-avatar {
+      width: 4rem;
+      height: 4rem;
+      border-radius: var(--twings-radius-xl);
+      background: var(--twings-primary-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 1.35rem;
+      box-shadow: 0 4px 12px rgba(0, 86, 210, 0.25);
+      flex-shrink: 0;
+    }
+
+    .twings-hero-details {
+      flex: 1;
+      min-width: 240px;
+
+      .twings-hero-name-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.35rem;
+
+        .twings-hero-name {
+          margin: 0;
+          font-size: 1.35rem;
+          font-weight: 800;
+          color: var(--twings-text-main);
+          letter-spacing: -0.02em;
+        }
+      }
+
+      .twings-hero-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--twings-text-muted);
+
+        .tw-icon {
+          width: 0.85rem;
+          height: 0.85rem;
+          vertical-align: -0.1rem;
+          margin-right: 0.2rem;
+        }
+
+        .twings-meta-dot {
+          color: var(--twings-border);
+        }
+      }
+    }
+
+    .twings-hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  }
+
+  .twings-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: var(--twings-radius-pill);
+    font-size: 0.75rem;
+    font-weight: 700;
+
+    .tw-icon {
+      width: 0.75rem;
+      height: 0.75rem;
+    }
+
+    &.twings-pill-success {
+      background: var(--twings-success-bg);
+      color: var(--twings-success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    &.twings-pill-info {
+      background: var(--twings-info-bg);
+      color: var(--twings-royal);
+      border: 1px solid rgba(0, 86, 210, 0.2);
+    }
+  }
+
+  .twings-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--twings-radius-lg);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none !important;
+    transition: var(--twings-transition-fast);
+
+    .tw-icon {
+      width: 0.9rem;
+      height: 0.9rem;
+    }
+
+    &.twings-btn-primary {
+      background: var(--twings-primary-gradient);
+      color: #FFFFFF !important;
+      border: none;
+      box-shadow: 0 2px 6px rgba(0, 86, 210, 0.2);
+
+      &:hover {
+        opacity: 0.95;
+        transform: translateY(-1px);
+      }
+    }
+
+    &.twings-btn-light {
+      background: var(--twings-surface-hover);
+      color: var(--twings-text-body) !important;
+      border: 1px solid var(--twings-border);
+
+      &:hover {
+        background: #E2E8F0;
+        color: var(--twings-text-main) !important;
+      }
+    }
+  }
+
+  .twings-tabs-nav {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    border-bottom: 2px solid var(--twings-border-subtle);
+
+    .twings-tab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.6rem 1rem;
+      border-radius: var(--twings-radius-lg);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--twings-text-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--twings-transition-fast);
+
+      .tw-icon {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      &:hover {
+        color: var(--twings-royal);
+        background: var(--twings-sky-light);
+      }
+
+      &.active {
+        color: var(--twings-royal);
+        background: #EFF6FF;
+        border-bottom: 2px solid var(--twings-royal);
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+    }
+  }
+
+  .twings-order-card {
+    transition: var(--twings-transition-fast);
+    border: 1px solid var(--twings-border);
+
+    &:hover {
+      box-shadow: var(--twings-shadow-md) !important;
+      border-color: #CBD5E1;
+    }
+  }
+
+  .rounded-xl {
+    border-radius: var(--twings-radius-xl) !important;
+  }
+}
+

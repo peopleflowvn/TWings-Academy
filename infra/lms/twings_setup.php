@@ -79,8 +79,8 @@ set_config('scss', '', 'theme_boost');
 set_config('brandcolor', '', 'theme_boost');
 // The website and the account page are in the primary navigation (local_twings' navigation hook).
 set_config('custommenuitems', '');
-// Profile in user menu points directly to the unified learner account & profile at /tai-khoan (/learn/tai-khoan).
-set_config('customusermenuitems', "profile,moodle|/tai-khoan|grades,grades|/grade/report/mygrades.php|calendar,core_calendar|/calendar/view.php?view=month");
+// Profile in user menu points to the unified learner account & profile at /user/profile.php.
+set_config('customusermenuitems', "profile,moodle|/user/profile.php|grades,grades|/grade/report/mygrades.php|calendar,core_calendar|/calendar/view.php?view=month");
 
 
 // ---------------------------------------------------------------- Vietnamese language pack
