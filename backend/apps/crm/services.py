@@ -174,6 +174,84 @@ def flag_duplicates(order: Order, details: dict | None = None) -> None:
         order.save(update_fields=["is_duplicate", "duplicate_note", "updated_at"])
 
 
+def check_sellable(course: Course | None, program: Program | None) -> None:
+    """New or changed registrations: a course or a program on sale, not both."""
+    from rest_framework.exceptions import ValidationError
+
+    if course is not None and program is not None:
+        raise ValidationError({"course_id": "Chọn một khóa học hoặc một chương trình."})
+    item = course or program
+    if item is not None and not item.sellable:
+        raise ValidationError(
+            {"course_id": f"“{item.title}” chưa mở bán (đang nháp, chờ duyệt hoặc đã lưu trữ)."}
+        )
+
+
+def price_registration(order: Order, course: Course | None, program: Program | None) -> list[str]:
+    """
+    Course / program, intake and fees of an unpaid registration from the catalogue (the open intake's
+    price for a course). Returns the fields set.
+    """
+    item = course or program
+    cohort = resolve_cohort(course)[0] if course is not None else None
+    price = (
+        (cohort.price() if cohort else course.price)
+        if course is not None
+        else (program.price if program else 0)
+    )
+    order.course, order.program, order.cohort = course, program, cohort
+    order.course_title = item.title if item else ""
+    order.interested_course = item.title if item else order.interested_course
+    order.batch_cohort = cohort.name if cohort else ""
+    list_price = item.price if item else 0
+    order.amount = order.total_receivable = price
+    order.tuition_fee = order.original_amount = list_price
+    order.discount_amount = max(list_price - price, 0)
+    order.discount_code = ""
+    order.installment_count = 1
+    return [
+        "course",
+        "program",
+        "cohort",
+        "course_title",
+        "interested_course",
+        "batch_cohort",
+        "amount",
+        "total_receivable",
+        "tuition_fee",
+        "original_amount",
+        "discount_amount",
+        "discount_code",
+        "installment_count",
+    ]
+
+
+@transaction.atomic
+def change_registration_item(order: Order, course: Course | None, program: Program | None, user) -> None:
+    """Staff moves an unpaid registration to another course / program: repriced, intake reset."""
+    from rest_framework.exceptions import ValidationError
+
+    if order.total_paid_amount or order.status != "pending" or order.parent_id:
+        raise ValidationError(
+            {
+                "course_id": "Đăng ký đã thu học phí (hoặc là khóa của chương trình): "
+                "tạo đăng ký mới thay vì đổi khóa."
+            }
+        )
+    check_sellable(course, program)
+    before = order.course_title
+    order.installments.all().delete()
+    fields = price_registration(order, course, program)
+    order.save(update_fields=[*fields, "updated_at"])
+    Activity.objects.create(
+        order=order,
+        type="note",
+        title=f"Đổi khóa: {before or '–'} → {order.course_title or '–'}",
+        actor=user.name or user.email,
+        actor_user=user,
+    )
+
+
 @transaction.atomic
 def create_staff_lead(request, serializer) -> Order:
     """
@@ -184,22 +262,31 @@ def create_staff_lead(request, serializer) -> Order:
 
     data = serializer.validated_data
     extra = {"source": data.get("source") or "Nhập tay", "crm_status": data.get("crm_status") or "1. Mới"}
-    course = data.get("course")
-    if course is not None:
-        cohort = data.get("cohort") or resolve_cohort(course)[0]
-        price = cohort.price() if cohort else course.price
+    course, program = data.get("course"), data.get("program")
+    check_sellable(course, program)
+    if course is not None or program is not None:
+        draft = Order()
+        price_registration(draft, course, program)
         extra.update(
-            cohort=cohort,
-            course_title=course.title,
-            interested_course=data.get("interested_course") or course.title,
+            {
+                f: getattr(draft, f)
+                for f in ("course", "program", "cohort", "course_title", "batch_cohort", "interested_course")
+            }
         )
+        if data.get("cohort") is not None:
+            extra.update(cohort=data["cohort"], batch_cohort=data["cohort"].name)
         if not data.get("amount"):
             extra.update(
-                amount=price,
-                total_receivable=price,
-                tuition_fee=course.price,
-                original_amount=course.price,
-                discount_amount=max(course.price - price, 0),
+                {
+                    f: getattr(draft, f)
+                    for f in (
+                        "amount",
+                        "total_receivable",
+                        "tuition_fee",
+                        "original_amount",
+                        "discount_amount",
+                    )
+                }
             )
     campaign = data.get("campaign")
     if campaign is not None and not data.get("campaign_code"):

@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.accounts.rbac import Role
-from apps.catalog.models import Cohort, Course
+from apps.catalog.models import Cohort, Course, Program
 from apps.crm.assignment import assign_new_lead
 from apps.crm.models import AdmissionCampaign, CampaignPosition, Order
 from apps.crm.services import flag_duplicates
@@ -31,6 +31,8 @@ rm = Course.objects.create(
     installment_count=3, installment_interval_days=30,
 )
 gdv = Course.objects.create(status="published", is_published=True, slug="e2e-gdv", title="E2E Giao dịch viên", price=5_000_000)
+Course.objects.create(status="draft", slug="e2e-draft", title="E2E Khóa nháp", price=1)  # not on sale
+Program.objects.create(slug="e2e-goi", title="E2E Gói RM", price=12_000_000, is_published=True)
 k9 = Cohort.objects.create(course=rm, name="E2E K9", start_date=timezone.localdate() + timedelta(days=20), status="opening")
 Cohort.objects.create(course=gdv, name="E2E GDV K3", start_date=timezone.localdate() + timedelta(days=10), status="opening")
 camp = AdmissionCampaign.objects.create(code="CAMP-E2E", name="Chiến dịch E2E", status="active", target_headcount=10)

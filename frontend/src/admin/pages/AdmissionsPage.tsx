@@ -16,7 +16,7 @@ import { CampaignListView } from '../../components/cms/CampaignListView';
 import { LeadPipelineView, PipelineScope } from '../../components/cms/LeadPipelineView';
 import { useServerCollection } from '../../lib/serverCollection';
 import { CAMPAIGNS } from '../../lib/cmsCollections';
-import { confirmOrderPayment, loadOrder, saveOrderChanges } from '../data';
+import { confirmOrderPayment, loadOrder, saveOrderChanges, usePrograms } from '../data';
 
 type View = 'campaigns' | 'kanban';
 /** The campaign form: closed, a new campaign, or the campaign with this id. */
@@ -36,6 +36,7 @@ function readUrl() {
 
 export const AdmissionsPage: React.FC<{ courses: Course[] }> = ({ courses }) => {
   const { items: campaigns, update: setCampaigns, loaded } = useServerCollection<AdmissionCampaign>(CAMPAIGNS, []);
+  const programs = usePrograms();
   const initial = readUrl();
   const [view, setView] = useState<View>(initial.view);
   const [scope, setScope] = useState<PipelineScope>(initial.scope);
@@ -128,6 +129,7 @@ export const AdmissionsPage: React.FC<{ courses: Course[] }> = ({ courses }) => 
           scope={scope}
           campaigns={campaigns}
           courses={courses}
+          programs={programs}
           refreshKey={refreshKey}
           onChangeScope={openPipeline}
           onBack={() => setView('campaigns')}
@@ -142,6 +144,8 @@ export const AdmissionsPage: React.FC<{ courses: Course[] }> = ({ courses }) => 
           order={selectedLead}
           onClose={() => setSelectedLead(null)}
           onOpenOrder={(id) => openLead({ id })}
+          courses={courses}
+          programs={programs}
           onSave={async (previous, updated) => {
             const fresh = await saveOrderChanges(previous, updated);
             setRefreshKey((k) => k + 1);

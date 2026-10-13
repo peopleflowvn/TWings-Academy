@@ -38,6 +38,9 @@ class OrderSerializer(serializers.ModelSerializer):
     cohort_id = serializers.PrimaryKeyRelatedField(
         source="cohort", queryset=Cohort.objects.all(), required=False, allow_null=True
     )
+    program_id = serializers.PrimaryKeyRelatedField(
+        source="program", queryset=Program.objects.all(), required=False, allow_null=True
+    )
     timeline_activities = ActivitySerializer(many=True, read_only=True)
     followup_tasks = FollowupTaskSerializer(many=True, read_only=True)
     duplicate_count = serializers.SerializerMethodField()
@@ -50,14 +53,13 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        exclude = ["course", "cohort", "learner"]
+        exclude = ["course", "cohort", "learner", "program"]
         read_only_fields = [
             "order_code",
             "total_paid_amount",
             "refunded_amount",
             "learning_access",
             "installment_count",
-            "program",
             "parent",
             "paid_at",
             "is_duplicate",

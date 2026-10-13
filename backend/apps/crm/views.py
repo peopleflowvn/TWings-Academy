@@ -109,6 +109,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         "crm_status",
         "status",
         "course",
+        "program",
         "cohort",
         "campaign",
         "pic",
@@ -227,6 +228,28 @@ class OrderViewSet(viewsets.ModelViewSet):
         self._guard_fields(serializer)
         was_new = serializer.instance.crm_status == "1. Mới"
         was_cancelled = serializer.instance.crm_status == CANCELLED_STAGE
+        data = serializer.validated_data
+        item_changed = ("course" in data or "program" in data) and (
+            data.get("course", serializer.instance.course) != serializer.instance.course
+            or data.get("program", serializer.instance.program) != serializer.instance.program
+        )
+        if item_changed:
+            from .services import change_registration_item
+
+            sent = self.request.data
+            course = data.get("course") if "course_id" in sent else serializer.instance.course
+            program = data.get("program") if "program_id" in sent else serializer.instance.program
+            if course is not None and "program_id" not in sent:
+                program = None  # a course replaces the program
+            if program is not None and "course_id" not in sent:
+                course = None
+            data.pop("course", None)
+            data.pop("program", None)
+            change_registration_item(serializer.instance, course, program, self.request.user)
+            data.pop("cohort", None)  # the new course's open intake was chosen
+        else:
+            data.pop("course", None)
+            data.pop("program", None)
         order = serializer.save()
         self._sync_pic(serializer, order)
         if "crm_status" in serializer.validated_data:

@@ -4,6 +4,7 @@ import { AdmissionCampaign, CRMStatus, Course, Order } from '../../types';
 import { api, API_ROOT, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
+import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../../admin/catalog';
 
 /** Leads of every campaign ('all'), of none ('none'), or of one campaign (its id). */
 export type PipelineScope = 'all' | 'none' | string;
@@ -12,6 +13,7 @@ interface LeadPipelineViewProps {
   scope: PipelineScope;
   campaigns: AdmissionCampaign[];
   courses: Course[];
+  programs: ProgramOption[];
   /** Changes whenever a lead was saved elsewhere (lead workspace): the pipeline reloads. */
   refreshKey: number;
   onChangeScope: (scope: PipelineScope) => void;
@@ -65,6 +67,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   scope,
   campaigns,
   courses,
+  programs,
   refreshKey,
   onChangeScope,
   onBack,
@@ -119,7 +122,9 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     const params = new URLSearchParams();
     if (scope !== 'all') params.set('scope', scope);
     if (query) params.set('search', query);
-    if (course) params.set('course', course);
+    const picked = itemFields(course);
+    if (picked.courseId) params.set('course', picked.courseId);
+    if (picked.programId) params.set('program', picked.programId);
     if (cohort) params.set('cohort', cohort);
     if (stage) params.set('crm_status', stage);
     if (payment) params.set('paid', payment);
@@ -226,7 +231,8 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
 
   const exportUrl = `${API_ROOT}/staff/orders/export/?${filters}`;
   const stageCount = (id: CRMStatus) => summary?.stages.find((s) => s.stage === id) || { count: 0, amount: 0 };
-  const courseCohorts = cohorts.filter((c) => !course || c.course === course);
+  const pickedCourse = itemFields(course).courseId;
+  const courseCohorts = cohorts.filter((c) => !course || c.course === pickedCourse);
   const pages = Math.max(1, Math.ceil(count / PAGE_SIZE));
   const select = 'px-2.5 py-2 border border-slate-200 rounded-xl text-xs bg-white';
 
@@ -340,8 +346,8 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
             {consultants.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <select value={course} onChange={(e) => { setCourse(e.target.value); setCohort(''); }} className={select}>
-            <option value="">Mọi khóa học</option>
-            {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+            <option value="">Mọi khóa học / chương trình</option>
+            <CatalogOptions items={catalogItems(courses, programs, 'all')} />
           </select>
           <select value={cohort} onChange={(e) => setCohort(e.target.value)} className={select}>
             <option value="">Mọi lớp / đợt</option>
@@ -518,6 +524,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
       {creating && (
         <NewLeadDialog
           courses={courses}
+          programs={programs}
           campaign={campaign}
           onClose={() => setCreating(false)}
           onCreated={(order) => {
@@ -534,10 +541,11 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
 /** A lead from a phone call, a walk-in or an event: priced, deduplicated and assigned by the server. */
 const NewLeadDialog: React.FC<{
   courses: Course[];
+  programs: ProgramOption[];
   campaign: AdmissionCampaign | null;
   onClose: () => void;
   onCreated: (order: Order) => void;
-}> = ({ courses, campaign, onClose, onCreated }) => {
+}> = ({ courses, programs, campaign, onClose, onCreated }) => {
   const [form, setForm] = useState({ customerName: '', customerPhone: '', customerEmail: '', courseId: '', source: 'Nhập tay', consultNeed: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -555,7 +563,7 @@ const NewLeadDialog: React.FC<{
     try {
       const created = await api.post<Order>('/staff/orders/', {
         ...form,
-        courseId: form.courseId || null,
+        ...itemFields(form.courseId),
         campaign: campaign?.id || null
       });
       onCreated(created);
@@ -590,10 +598,10 @@ const NewLeadDialog: React.FC<{
         </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="font-bold text-slate-700 block mb-1">Khóa học quan tâm</span>
+            <span className="font-bold text-slate-700 block mb-1">Khóa học / chương trình quan tâm</span>
             <select value={form.courseId} onChange={set('courseId')} className={input}>
               <option value="">Chưa rõ</option>
-              {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              <CatalogOptions items={catalogItems(courses, programs, 'sellable')} />
             </select>
           </label>
           <label className="block">

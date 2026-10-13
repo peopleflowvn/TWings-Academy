@@ -90,6 +90,19 @@ export async function saveOrderChanges(previous: Order, updated: Order): Promise
   return loadOrder(updated.id).catch(() => previous);
 }
 
+/** Programs (gói khóa) for course pickers: id, title and whether they are on sale. */
+export function usePrograms(enabled = true) {
+  const [programs, setPrograms] = useState<{ id: string; title: string; isPublished: boolean }[]>([]);
+  useEffect(() => {
+    if (!enabled) return;
+    api
+      .get<{ id: string; title: string; isPublished: boolean }[] | Paginated<{ id: string; title: string; isPublished: boolean }>>('/staff/programs/')
+      .then((res) => setPrograms((Array.isArray(res) ? res : res.results).map((p) => ({ id: p.id, title: p.title, isPublished: p.isPublished }))))
+      .catch(() => setPrograms([]));
+  }, [enabled]);
+  return programs;
+}
+
 export function useCourses(enabled: boolean) {
   const [courses, setCourses] = useState<Course[]>([]);
 

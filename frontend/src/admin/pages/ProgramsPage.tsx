@@ -172,7 +172,7 @@ export const ProgramsPage: React.FC<{ courses: Course[]; canEdit: boolean }> = (
               ))}
               <select className={input} value="" onChange={(e) => e.target.value && setDraft({ ...draft, courseIds: [...draft.courseIds, e.target.value] })}>
                 <option value="">+ Thêm khóa học…</option>
-                {courses.filter((c) => !draft.courseIds.includes(c.id)).map((c) => (
+                {courses.filter((c) => !draft.courseIds.includes(c.id) && c.status !== 'archived').map((c) => (
                   <option key={c.id} value={c.id}>{c.title} – {formatVND(c.price)}</option>
                 ))}
               </select>

@@ -316,3 +316,65 @@ def test_tuition_template_migration_removes_the_sample_account(db):
     ):
         assert var in fixed.body
     assert "Đoạn nhân viên tự viết" in fixed.body and "accountNumber" in fixed.variables
+
+
+def test_renamed_course_program_and_intake_reach_the_registrations(course):
+    from apps.catalog.models import Cohort, Program
+
+    cohort = Cohort.objects.create(course=course, name="K1", status="opening")
+    program = Program.objects.create(slug="goi", title="Gói cũ", price=1, is_published=True)
+    a = Order.objects.create(customer_name="A", course=course, cohort=cohort)
+    p = Order.objects.create(customer_name="P", program=program, course_title="Gói cũ")
+    course.title, cohort.name, program.title = "Tên khóa mới", "K1 – Hà Nội", "Gói mới"
+    course.save()
+    cohort.save()
+    program.save()
+    a.refresh_from_db()
+    p.refresh_from_db()
+    assert (a.course_title, a.batch_cohort, p.course_title) == ("Tên khóa mới", "K1 – Hà Nội", "Gói mới")
+
+
+def test_new_registrations_only_for_courses_and_programs_on_sale(staff_client, course):
+    from apps.catalog.models import Course, Program
+
+    draft = Course.objects.create(status="draft", slug="nhap", title="Khóa nháp", price=1)
+    program = Program.objects.create(slug="goi-ban", title="Gói đang bán", price=9_000_000, is_published=True)
+    client = staff_client(Role.SUPER_ADMIN)
+    url = "/api/v1/staff/orders/"
+    res = client.post(
+        url, {"customerName": "A", "customerPhone": "0901", "courseId": draft.pk}, format="json"
+    )
+    assert res.status_code == 400 and "chưa mở bán" in str(res.json())
+    res = client.post(
+        url, {"customerName": "B", "customerPhone": "0902", "programId": program.pk}, format="json"
+    )
+    assert res.status_code == 201, res.content
+    order = Order.objects.get(pk=res.json()["id"])
+    assert order.program == program and order.course is None and order.amount == 9_000_000
+    assert order.course_title == "Gói đang bán"
+
+
+def test_changing_the_course_of_an_unpaid_registration_reprices_it(staff_client, course):
+    from apps.catalog.models import Cohort, Course
+
+    other = Course.objects.create(status="published", slug="khac", title="Khóa khác", price=3_000_000)
+    k = Cohort.objects.create(course=other, name="Khác K1", status="opening")
+    order = Order.objects.create(
+        customer_name="A", course=course, amount=course.price, total_receivable=course.price
+    )
+    client = staff_client(Role.SALES_CRM)
+    res = client.patch(f"/api/v1/staff/orders/{order.pk}/", {"courseId": other.pk}, format="json")
+    assert res.status_code == 200, res.content
+    order.refresh_from_db()
+    assert (order.course, order.cohort, order.amount, order.course_title) == (
+        other,
+        k,
+        3_000_000,
+        "Khóa khác",
+    )
+    assert order.timeline_activities.filter(title__startswith="Đổi khóa").exists()
+
+    order.total_paid_amount = 100
+    order.save()
+    res = client.patch(f"/api/v1/staff/orders/{order.pk}/", {"courseId": course.pk}, format="json")
+    assert res.status_code == 400

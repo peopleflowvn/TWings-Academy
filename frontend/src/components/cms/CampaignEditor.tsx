@@ -8,6 +8,7 @@ import React, { useMemo, useState } from 'react';
 import { ExternalLink, Plus, Save, Trash2, X } from 'lucide-react';
 import { AdmissionCampaign, CampaignCourse, Course } from '../../types';
 import { isoToViDate, viDateToIso } from '../../lib/serverCollection';
+import { CatalogOptions, catalogItems } from '../../admin/catalog';
 
 interface Props {
   /** The campaign to edit, or null for a new one. */
@@ -200,9 +201,12 @@ export const CampaignEditor: React.FC<Props> = ({ campaign, initialCourseId, cam
                     return (
                       <tr key={p.id} className="border-t border-slate-100">
                         <td className="px-2 py-1.5 min-w-[180px]">
-                          <select value={p.courseId} onChange={(e) => setCourse(i, { courseId: e.target.value })} className={input}>
+                          <select value={p.courseId ? `c:${p.courseId}` : ''} onChange={(e) => setCourse(i, { courseId: e.target.value.slice(2) })} className={input}>
                             <option value="">Chọn khóa…</option>
-                            {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                            <CatalogOptions
+                              items={catalogItems(courses, [], 'active', { withPrograms: false })}
+                              current={p.courseId ? { value: `c:${p.courseId}`, title: courses.find((c) => c.id === p.courseId)?.title || 'Khóa đã lưu trữ' } : undefined}
+                            />
                           </select>
                         </td>
                         <td className="px-2 py-1.5">

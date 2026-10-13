@@ -4,6 +4,28 @@ from django.db import models
 from apps.core.models import BaseModel
 
 
+def sync_registration_names(*, course=None, program=None, cohort=None) -> None:
+    """
+    Registrations keep the name of their course / program / intake (e-mails, exports, SSO read it):
+    a renamed course, program or intake is renamed on every registration too.
+    """
+    from apps.crm.models import Order
+
+    if course is not None:
+        stale = Order.objects.filter(course=course).exclude(course_title=course.title)
+        stale.update(course_title=course.title)
+        Order.objects.filter(course=course, parent__isnull=True).exclude(
+            interested_course=course.title
+        ).update(interested_course=course.title)
+    if program is not None:
+        mine = Order.objects.filter(program=program, parent__isnull=True, course__isnull=True)
+        mine.exclude(course_title=program.title).update(
+            course_title=program.title, interested_course=program.title
+        )
+    if cohort is not None:
+        Order.objects.filter(cohort=cohort).exclude(batch_cohort=cohort.name).update(batch_cohort=cohort.name)
+
+
 class Partner(BaseModel):
     name = models.CharField(max_length=200)
     type = models.CharField(
@@ -152,6 +174,12 @@ class Course(InstallmentPlan, BaseModel):
         if "update_fields" in kwargs and kwargs["update_fields"] is not None:
             kwargs["update_fields"] = {*kwargs["update_fields"], "is_published"}
         super().save(*args, **kwargs)
+        sync_registration_names(course=self)
+
+    @property
+    def sellable(self) -> bool:
+        """New registrations are taken for courses on sale only."""
+        return self.status == "published"
 
 
 class Cohort(BaseModel):
@@ -210,6 +238,10 @@ class Cohort(BaseModel):
         """What a learner pays for this intake today (before coupons)."""
         return self.early_bird_price if self.early_bird_active(today) else self.course.price
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        sync_registration_names(cohort=self)
+
 
 class CohortSession(BaseModel):
     """One class session of an intake; mirrored as an event in the intake's Moodle course calendar."""
@@ -250,6 +282,14 @@ class Program(InstallmentPlan, BaseModel):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        sync_registration_names(program=self)
+
+    @property
+    def sellable(self) -> bool:
+        return self.is_published
 
 
 class ProgramCourse(models.Model):

@@ -90,6 +90,9 @@ def workspace_email_has_no_sample_account(page: Page):
 def add_lead_and_table(page: Page):
     page.locator("button:has-text('Thêm lead')").click()
     form = page.locator("form").last
+    options = form.locator("select").first.inner_text()
+    assert "E2E Khóa nháp" not in options, "a draft course offered for a new lead"
+    assert "E2E Gói RM" in options and "E2E RM Doanh nghiệp" in options, "courses / programs on sale missing"
     form.locator("input").nth(0).fill("Võ Thị Em")
     form.locator("input").nth(1).fill("0912000009")
     form.locator("select").first.select_option(label="E2E Giao dịch viên")
@@ -101,6 +104,23 @@ def add_lead_and_table(page: Page):
     page.wait_for_selector("th:has-text('Tư vấn viên')", timeout=20000)
     assert page.locator("tbody tr").count() >= 6
     assert page.locator("text=38 lead").count() >= 1, "table: 37 + the new lead"
+
+
+@step
+def change_course_of_an_unpaid_registration(page: Page):
+    page.locator("button:has-text('Kanban')").click()
+    page.locator("text=Lê Văn Cường").first.click()
+    page.wait_for_selector("text=Mở hồ sơ học viên", timeout=20000)
+    course = page.locator("select:has(optgroup[label='Khóa học'])").last  # the workspace (the pipeline filter lists every course)
+    assert "E2E Khóa nháp" not in course.inner_text(), "draft course offered in the workspace"
+    course.select_option(label="E2E RM Doanh nghiệp")
+    page.locator("button:has-text('Lưu thay đổi')").click()
+    page.wait_for_selector("button:has-text('Đã lưu')", timeout=20000)
+    assert "8.490.000" in page.locator("text=Phải thu").first.locator("..").inner_text(), "not repriced"
+    page.locator("button:has-text('Nhật ký')").first.click()
+    page.wait_for_selector("text=Đổi khóa: E2E Giao dịch viên → E2E RM Doanh nghiệp", timeout=20000)
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(500)
 
 
 @step

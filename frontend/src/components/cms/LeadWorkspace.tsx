@@ -30,7 +30,8 @@ import {
   UserCheck,
   Compass,
 } from 'lucide-react';
-import { Order, CRMStatus } from '../../types';
+import { Course, Order, CRMStatus } from '../../types';
+import { CatalogOptions, catalogItems, itemFields, itemValue, ProgramOption } from '../../admin/catalog';
 import { LeadPaymentPanel } from './LeadPaymentPanel';
 import { SendResendEmailModal } from './SendResendEmailModal';
 import { LmsLearningPanel } from './LmsLearningPanel';
@@ -60,6 +61,9 @@ interface LeadWorkspaceProps {
   onConfirmPayment: (amount: number) => Promise<Order | null>;
   /** Open another lead (same person) in the workspace. */
   onOpenOrder?: (orderId: string) => void;
+  /** The catalogue (courses on sale and programs) for the course of this registration. */
+  courses: Course[];
+  programs: ProgramOption[];
 }
 
 interface Consultant { id: string; name: string }
@@ -122,6 +126,8 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   onSave,
   onConfirmPayment,
   onOpenOrder,
+  courses,
+  programs,
 }) => {
   const [order, setOrder] = useState<Order>(initialOrder);
   // The order as last loaded from / saved to the server: changes are sent against it.
@@ -764,30 +770,29 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 text-xs">
                     <div className="sm:col-span-2">
-                      <label className="font-bold text-slate-700 block mb-1">Tên khóa học quan tâm *</label>
+                      <label className="font-bold text-slate-700 block mb-1">Khóa học / chương trình *</label>
                       <div className="space-y-1.5">
                         <select
-                          value={order.courseTitle}
+                          value={itemValue(order)}
+                          disabled={order.status !== 'pending' || (order.totalPaidAmount || 0) > 0}
                           onChange={(e) => {
-                            const selected = e.target.value;
-                            handleFieldChange('courseTitle', selected);
-                            if (selected.includes('doanh nghiệp')) {
-                              handleFieldChange('courseId', 'twings-qhkh-doanh-nghiep');
-                            } else if (selected.includes('cá nhân')) {
-                              handleFieldChange('courseId', 'twings-qhkh-ca-nhan');
-                            } else if (selected.includes('Giao dịch viên')) {
-                              handleFieldChange('courseId', 'gdv-ngan-hang');
-                            } else if (selected.includes('AI')) {
-                              handleFieldChange('courseId', 'deeplearning-ai-agents');
-                            }
+                            const next = itemFields(e.target.value);
+                            // The server reprices and picks the open intake of the new course on save.
+                            setOrder((prev) => ({ ...prev, ...next, courseId: next.courseId || '', cohortId: null }));
+                            setIsDirty(true);
                           }}
-                          className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-semibold text-slate-900 text-xs"
+                          className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0073C1] font-semibold text-slate-900 text-xs disabled:opacity-70"
                         >
-                          <option value="Khóa Quan hệ Khách hàng doanh nghiệp">🏢 Khóa Quan hệ Khách hàng doanh nghiệp (RM CIB)</option>
-                          <option value="Quan hệ Khách hàng cá nhân">👤 Quan hệ Khách hàng cá nhân (RM RB)</option>
-                          <option value="Giao dịch viên & Vận hành Dịch vụ Khách hàng">💳 Giao dịch viên & Vận hành Dịch vụ Khách hàng (GDV)</option>
-                          <option value="Xây dựng các Đại lý AI & Quy trình Làm việc Tự động">🤖 Xây dựng các Đại lý AI & Quy trình Làm việc Tự động</option>
+                          {!itemValue(order) && <option value="">Chưa chọn</option>}
+                          <CatalogOptions items={catalogItems(courses, programs, 'sellable')} current={{ value: itemValue(saved), title: saved.courseTitle }} />
                         </select>
+                        <p className="text-[11px] text-slate-500">
+                          {order.status !== 'pending' || (order.totalPaidAmount || 0) > 0
+                            ? 'Đã thu học phí: đổi khóa bằng một đăng ký mới (và hoàn tiền nếu cần).'
+                            : itemValue(order) !== itemValue(saved)
+                              ? 'Lưu để áp dụng: học phí và lớp được tính lại theo khóa mới.'
+                              : 'Chỉ các khóa / chương trình đang mở bán.'}
+                        </p>
                       </div>
                     </div>
 

@@ -418,6 +418,8 @@ export interface Order {
   id: string;
   orderCode: string;
   courseId: string;
+  /** A program registration (gói khóa) has a program and no course. */
+  programId?: string | null;
   courseTitle: string;
   /** The intake (class) the learner is placed in; batchCohort keeps its name. */
   cohortId?: string | null;

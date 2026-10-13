@@ -211,7 +211,18 @@ const SessionsEditor: React.FC<{ intake: IntakeRow; onClose: () => void; onSaved
 
 type Draft = Partial<IntakeRow> & { id?: string; courseId: string };
 
-const IntakeEditor: React.FC<{ draft: Draft; courses: { id: string; title: string }[]; intakes: IntakeRow[]; onClose: () => void; onSaved: () => void }> = ({ draft: initial, courses, intakes, onClose, onSaved }) => {
+const IntakeEditor: React.FC<{ draft: Draft; courses: { id: string; title: string }[]; intakes: IntakeRow[]; onClose: () => void; onSaved: () => void }> = ({ draft: initial, courses: allCourses, intakes, onClose, onSaved }) => {
+  // A new intake is opened for a course that is not archived (drafts labelled); an existing one keeps its course.
+  const [statusById, setStatusById] = useState<Record<string, string>>({});
+  useEffect(() => {
+    api
+      .get<{ results: { id: string; status: string }[] }>('/staff/courses/?pageSize=200')
+      .then((res) => setStatusById(Object.fromEntries(res.results.map((c) => [c.id, c.status]))))
+      .catch(() => setStatusById({}));
+  }, []);
+  const courses = allCourses
+    .filter((c) => c.id === initial.courseId || statusById[c.id] !== 'archived')
+    .map((c) => ({ ...c, title: statusById[c.id] && statusById[c.id] !== 'published' && statusById[c.id] !== 'archived' ? `${c.title} (chưa mở bán)` : c.title }));
   const [d, setD] = useState<Draft>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');

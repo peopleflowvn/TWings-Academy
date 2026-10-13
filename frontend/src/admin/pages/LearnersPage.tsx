@@ -12,6 +12,8 @@ import { api, ApiError, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { navigate, useAppSearch } from '../router';
 import { Course } from '../../types';
+import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../catalog';
+import { usePrograms } from '../data';
 
 interface LearnerRow {
   id: string;
@@ -229,6 +231,7 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
   const [consultants, setConsultants] = useState<{ id: string; name: string }[]>([]);
   const [registering, setRegistering] = useState(false);
   const [merging, setMerging] = useState(false);
+  const programs = usePrograms();
 
   const load = useCallback(async () => {
     try {
@@ -472,7 +475,7 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
         </div>
       )}
 
-      {registering && <RegisterDialog learner={learner} courses={courses} onClose={() => setRegistering(false)} />}
+      {registering && <RegisterDialog learner={learner} courses={courses} programs={programs} onClose={() => setRegistering(false)} />}
       {merging && (
         <MergeDialog
           learner={learner}
@@ -488,7 +491,12 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
 };
 
 /** A new registration of this learner: priced, assigned and checked for duplicates by the server. */
-const RegisterDialog: React.FC<{ learner: LearnerDetail; courses: Course[]; onClose: () => void }> = ({ learner, courses, onClose }) => {
+const RegisterDialog: React.FC<{ learner: LearnerDetail; courses: Course[]; programs: ProgramOption[]; onClose: () => void }> = ({
+  learner,
+  courses,
+  programs,
+  onClose
+}) => {
   const [courseId, setCourseId] = useState('');
   const [source, setSource] = useState('Nhập tay');
   const [note, setNote] = useState('');
@@ -509,7 +517,7 @@ const RegisterDialog: React.FC<{ learner: LearnerDetail; courses: Course[]; onCl
         customerName: learner.fullName,
         customerPhone: learner.phone,
         customerEmail: learner.email,
-        courseId,
+        ...itemFields(courseId),
         source,
         consultNeed: note
       });
@@ -525,12 +533,12 @@ const RegisterDialog: React.FC<{ learner: LearnerDetail; courses: Course[]; onCl
       <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl border border-slate-200 w-full max-w-md p-5 space-y-3 text-xs">
         <h3 className="font-bold text-sm text-slate-900">Đăng ký thêm khóa cho {learner.fullName}</h3>
         <label className="block">
-          <span className="font-bold text-slate-700 block mb-1">Khóa học *</span>
+          <span className="font-bold text-slate-700 block mb-1">Khóa học / chương trình *</span>
           <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl">
-            <option value="">Chọn khóa…</option>
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>{c.title}{registered.has(c.title) ? ' (đang có đăng ký)' : ''}</option>
-            ))}
+            <option value="">Chọn…</option>
+            <CatalogOptions
+              items={catalogItems(courses, programs, 'sellable').map((i) => (registered.has(i.title) ? { ...i, note: 'đang có đăng ký' } : i))}
+            />
           </select>
         </label>
         <label className="block">
