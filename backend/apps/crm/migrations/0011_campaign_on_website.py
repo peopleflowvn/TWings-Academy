@@ -49,7 +49,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='admissioncampaign',
             name='slug',
-            field=models.SlugField(blank=True, max_length=90, default=''),
+            field=models.SlugField(blank=True, max_length=90, default='', db_index=False),  # unique (and its indexes) below
             preserve_default=False,
         ),
         migrations.RunPython(fill_slugs, migrations.RunPython.noop),
