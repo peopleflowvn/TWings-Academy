@@ -333,7 +333,7 @@ export interface AdmissionCampaign {
   name: string;
   startDate: string; // dd/mm/yyyy
   deadline: string; // dd/mm/yyyy
-  status: 'active' | 'planning' | 'closed';
+  status: CampaignStatus;
   targetHeadcount: number;
   /** Learners who may study (paid, or first installment paid), counted by the server. */
   totalEnrolled: number;
@@ -344,7 +344,32 @@ export interface AdmissionCampaign {
   description: string;
   /** Leads of the campaign (linked or carrying its code), counted by the server over every lead. */
   funnel?: CampaignFunnel;
+
+  // On the public site, like a job posting (/tuyen-sinh/<slug>)
+  slug: string;
+  /** "Hiện trên website": only while the status is "active"; dates still apply. */
+  isPublished: boolean;
+  isFeatured: boolean;
+  /** Show the places left on the site. */
+  showQuota: boolean;
+  summary: string;
+  image: string;
+  viewCount: number;
+  /** Server: live | scheduled | off, and why. */
+  websiteState?: 'live' | 'scheduled' | 'off';
+  websiteLabel?: string;
 }
+
+export type CampaignStatus = 'planning' | 'active' | 'paused' | 'full' | 'closed' | 'expired';
+
+export const CAMPAIGN_STATUS_LABEL: Record<CampaignStatus, string> = {
+  planning: 'Lên kế hoạch',
+  active: 'Đang tuyển sinh',
+  paused: 'Tạm dừng',
+  full: 'Đã đủ chỉ tiêu',
+  closed: 'Đã đóng',
+  expired: 'Hết hạn'
+};
 
 export interface CampaignFunnel {
   leads: number;

@@ -65,7 +65,16 @@ export const CAMPAIGNS: CollectionOptions<AdmissionCampaign> = {
     leadRecruiter: d.leadRecruiter || '',
     scholarshipBudget: d.scholarshipBudget || 0,
     location: d.location || '',
-    description: d.description || ''
+    description: d.description || '',
+    slug: d.slug || '',
+    isPublished: Boolean(d.isPublished),
+    isFeatured: Boolean(d.isFeatured),
+    showQuota: d.showQuota !== false,
+    summary: d.summary || '',
+    image: d.image || '',
+    viewCount: d.viewCount || 0,
+    websiteState: d.websiteState,
+    websiteLabel: d.websiteLabel
   }),
   toServer: (c) => ({
     code: c.code,
@@ -78,6 +87,12 @@ export const CAMPAIGNS: CollectionOptions<AdmissionCampaign> = {
     scholarshipBudget: c.scholarshipBudget || 0,
     location: c.location || '',
     description: c.description || '',
+    slug: c.slug || '',
+    isPublished: c.status === 'active' && c.isPublished,
+    isFeatured: c.isFeatured,
+    showQuota: c.showQuota,
+    summary: c.summary || '',
+    image: c.image || '',
     positions: (c.positions || []).map((p) => ({
       id: p.id,
       courseId: p.courseId,

@@ -378,3 +378,81 @@ def test_changing_the_course_of_an_unpaid_registration_reprices_it(staff_client,
     order.save()
     res = client.patch(f"/api/v1/staff/orders/{order.pk}/", {"courseId": course.pk}, format="json")
     assert res.status_code == 400
+
+
+def _published_campaign(course, **extra):
+    from apps.crm.models import AdmissionCampaign, CampaignPosition
+
+    fields = {"code": "CAMP-WEB", "name": "Tuyển sinh Đà Nẵng", "status": "active", "is_published": True}
+    camp = AdmissionCampaign.objects.create(**{**fields, **extra})
+    CampaignPosition.objects.create(campaign=camp, course=course, target_quota=10)
+    return camp
+
+
+def test_campaign_on_the_website_like_a_job_posting(api, course):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.crm.models import AdmissionCampaign
+
+    today = timezone.localdate()
+    camp = _published_campaign(course, target_headcount=20, deadline=today + timedelta(days=5))
+    assert camp.slug == "tuyen-sinh-da-nang"
+    listed = api.get("/api/v1/public/campaigns/").json()
+    assert [c["slug"] for c in listed] == ["tuyen-sinh-da-nang"] and listed[0]["placesLeft"] == 20
+    detail = api.get("/api/v1/public/campaigns/tuyen-sinh-da-nang/").json()
+    assert detail["courses"][0]["title"] == course.title and detail["courses"][0]["placesLeft"] == 10
+    camp.refresh_from_db()
+    assert camp.view_count == 1
+
+    camp.show_quota = False
+    camp.save()
+    assert "placesLeft" not in api.get("/api/v1/public/campaigns/").json()[0]
+
+    camp.start_date = today + timedelta(days=1)  # scheduled: not yet on the site
+    camp.save()
+    assert api.get("/api/v1/public/campaigns/").json() == []
+    assert camp.website_state()[0] == "scheduled"
+
+    camp.start_date, camp.status = None, "paused"  # a status that does not recruit takes it off
+    camp.save()
+    camp.refresh_from_db()
+    assert camp.is_published is False
+    assert api.get("/api/v1/public/campaigns/tuyen-sinh-da-nang/").status_code == 404
+    assert AdmissionCampaign.objects.on_website().count() == 0
+
+
+def test_publishing_a_campaign_is_checked(staff_client, course):
+    from apps.catalog.models import Course
+
+    draft = Course.objects.create(status="draft", slug="nhap2", title="Nháp", price=1)
+    client = staff_client(Role.SUPER_ADMIN)
+    body = {"code": "CAMP-X", "name": "X", "status": "planning", "isPublished": True, "positions": []}
+    res = client.post("/api/v1/staff/campaigns/", body, format="json")
+    assert res.status_code == 400 and "isPublished" in res.json() and "positions" in res.json()
+    body.update(status="active", positions=[{"courseId": draft.pk, "targetQuota": 5}])
+    assert client.post("/api/v1/staff/campaigns/", body, format="json").status_code == 400
+    body["positions"] = [{"courseId": course.pk, "targetQuota": 5}]
+    res = client.post("/api/v1/staff/campaigns/", body, format="json")
+    assert res.status_code == 201, res.content
+    assert res.json()["websiteState"] == "live" and res.json()["slug"] == "x"
+
+
+def test_expired_campaigns_leave_the_site_and_registrations_link_by_code(api, course, registration_payload):
+    from datetime import timedelta
+
+    from django.core.management import call_command
+    from django.utils import timezone
+
+    camp = _published_campaign(course, deadline=timezone.localdate() - timedelta(days=1))
+    assert api.get("/api/v1/public/campaigns/").json() == []  # past its deadline: off the same day
+    call_command("refresh_campaigns")
+    camp.refresh_from_db()
+    assert camp.status == "expired" and not camp.is_published
+
+    res = api.post(
+        "/api/v1/public/registrations/", {**registration_payload, "campaignCode": "camp-web"}, format="json"
+    )
+    assert res.status_code == 201, res.content
+    assert Order.objects.get(order_code=res.json()["registrationCode"]).campaign == camp

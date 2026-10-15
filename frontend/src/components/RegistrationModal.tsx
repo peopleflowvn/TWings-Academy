@@ -27,6 +27,8 @@ interface RegistrationModalProps {
   onClose: () => void;
   onSubmitSuccess: (newOrder: Order) => void;
   onOpenVietQR?: (course: Course, prefill?: CheckoutPrefill) => void;
+  /** Registering from a campaign page: the lead belongs to that campaign. */
+  campaignCode?: string;
 }
 
 export const RegistrationModal: React.FC<RegistrationModalProps> = ({
@@ -35,6 +37,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   onClose,
   onSubmitSuccess,
   onOpenVietQR,
+  campaignCode,
 }) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -97,7 +100,8 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
           educationLevel,
           major,
           consultNeed: consultNote,
-          source: 'Website Form Tư vấn',
+          source: campaignCode ? 'Website · Trang tuyển sinh' : 'Website Form Tư vấn',
+          campaignCode: campaignCode || '',
           privacyConsent,
           attribution: getAttribution(),
           website: honeypot

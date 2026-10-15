@@ -2,7 +2,7 @@
  * URLs of the public site (homepage app). Keep in step with backend/apps/cms/seo.py, which renders the
  * same paths for link-preview / search bots and lists them in the sitemap.
  */
-export type View = 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about';
+export type View = 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'campaigns' | 'campaign-detail';
 
 export interface Route {
   view: View;
@@ -15,6 +15,7 @@ export function parseRoute(pathname: string): Route | null {
   if (parts[0] === 'khoa-hoc') return parts[1] ? { view: 'course-detail', slug: parts[1] } : { view: 'catalog' };
   if (parts[0] === 'tin-tuc') return parts[1] ? { view: 'article-detail', slug: parts[1] } : { view: 'articles' };
   if (parts[0] === 've-chung-toi' && parts.length === 1) return { view: 'about' };
+  if (parts[0] === 'tuyen-sinh') return parts[1] ? { view: 'campaign-detail', slug: parts[1] } : { view: 'campaigns' };
   return null;
 }
 
@@ -30,6 +31,10 @@ export function routePath(view: View, slug?: string): string {
       return slug ? `/tin-tuc/${encodeURIComponent(slug)}` : '/tin-tuc';
     case 'about':
       return '/ve-chung-toi';
+    case 'campaigns':
+      return '/tuyen-sinh';
+    case 'campaign-detail':
+      return slug ? `/tuyen-sinh/${encodeURIComponent(slug)}` : '/tuyen-sinh';
     default:
       return '/';
   }

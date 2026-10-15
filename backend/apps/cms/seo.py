@@ -22,7 +22,7 @@ from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
-from django.utils.html import strip_tags
+from django.utils.html import escape, strip_tags
 from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
@@ -265,6 +265,42 @@ def _program(seo, slug) -> Page:
     )
 
 
+def _campaigns():
+    from apps.crm.models import AdmissionCampaign
+
+    return AdmissionCampaign.objects.on_website().order_by("-is_featured", "deadline")
+
+
+def _campaigns_page(seo) -> Page:
+    camps = list(_campaigns())
+    return Page(
+        path="/tuyen-sinh",
+        title=f"Tuyển sinh | {SITE_NAME}",
+        description="Các đợt tuyển sinh đang mở: khóa học, hạn nhận hồ sơ và số suất còn lại.",
+        heading="Đang tuyển sinh",
+        links=[(c.name, f"/tuyen-sinh/{c.slug}") for c in camps],
+    )
+
+
+def _campaign(seo, slug) -> Page:
+    camp = _campaigns().filter(slug=slug).prefetch_related("positions__course").first()
+    if camp is None:
+        raise Http404
+    courses = [p.course for p in camp.positions.all() if p.course.sellable]
+    deadline = f" Hạn nhận hồ sơ {camp.deadline:%d/%m/%Y}." if camp.deadline else ""
+    return Page(
+        path=f"/tuyen-sinh/{camp.slug}",
+        title=f"{camp.name} | {SITE_NAME}",
+        description=plain((camp.summary or camp.description) + deadline),
+        image=absolute(camp.image) if camp.image else default_image(seo),
+        heading=camp.name,
+        body_html=f"<p>{escape(plain(camp.description, 2000))}</p>" if camp.description else "",
+        links=[(c.title, f"/khoa-hoc/{c.slug}") for c in courses]
+        + [("Tất cả đợt tuyển sinh", "/tuyen-sinh")],
+        jsonld=[_breadcrumb([("Tuyển sinh", "/tuyen-sinh"), (camp.name, f"/tuyen-sinh/{camp.slug}")])],
+    )
+
+
 def _about(seo) -> Page:
     about = _config(SiteConfig.KEY_HOMEPAGE_SECTIONS).get("about") or {}
     lead = about.get("lead") or seo.get("default_meta_description") or ""
@@ -375,6 +411,10 @@ def resolve(path: str) -> Page:
             return _programs_page(seo)
         case ["chuong-trinh", slug]:
             return _program(seo, slug)
+        case ["tuyen-sinh"]:
+            return _campaigns_page(seo)
+        case ["tuyen-sinh", slug]:
+            return _campaign(seo, slug)
         case ["ve-chung-toi"]:
             return _about(seo)
         case ["tin-tuc"]:
@@ -461,6 +501,10 @@ def sitemap(request):
     urls += [(f"{base}/khoa-hoc/{c.slug}", c.updated_at) for c in _courses()]
     urls += [(f"{base}/chuong-trinh/{p.slug}", p.updated_at) for p in _programs()]
     urls += [(f"{base}/tin-tuc/{a.slug}", a.updated_at) for a in _articles()]
+    campaigns = list(_campaigns())
+    if campaigns:
+        urls.append((f"{base}/tuyen-sinh", None))
+    urls += [(f"{base}/tuyen-sinh/{c.slug}", c.updated_at) for c in campaigns]
     rows = "".join(
         f"<url><loc>{loc}</loc>" + (f"<lastmod>{at.date().isoformat()}</lastmod>" if at else "") + "</url>"
         for loc, at in urls

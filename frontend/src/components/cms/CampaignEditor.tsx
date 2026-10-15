@@ -6,7 +6,8 @@
  */
 import React, { useMemo, useState } from 'react';
 import { ExternalLink, Plus, Save, Trash2, X } from 'lucide-react';
-import { AdmissionCampaign, CampaignCourse, Course } from '../../types';
+import { AdmissionCampaign, CAMPAIGN_STATUS_LABEL, CampaignCourse, CampaignStatus, Course } from '../../types';
+import { ImageUploadField } from './ImageUploadField';
 import { isoToViDate, viDateToIso } from '../../lib/serverCollection';
 import { CatalogOptions, catalogItems } from '../../admin/catalog';
 
@@ -40,7 +41,14 @@ function blank(): AdmissionCampaign {
     leadRecruiter: '',
     scholarshipBudget: 0,
     location: '',
-    description: ''
+    description: '',
+    slug: '',
+    isPublished: false,
+    isFeatured: false,
+    showQuota: true,
+    summary: '',
+    image: '',
+    viewCount: 0
   };
 }
 
@@ -119,10 +127,18 @@ export const CampaignEditor: React.FC<Props> = ({ campaign, initialCourseId, cam
             </label>
             <label className="block">
               <span className={label}>Trạng thái</span>
-              <select value={form.status} onChange={(e) => set('status', e.target.value as AdmissionCampaign['status'])} className={input}>
-                <option value="planning">Lên kế hoạch</option>
-                <option value="active">Đang tuyển sinh</option>
-                <option value="closed">Đã đóng</option>
+              <select
+                value={form.status}
+                onChange={(e) => {
+                  const status = e.target.value as CampaignStatus;
+                  // Like a job posting: a campaign that does not recruit comes off the site.
+                  setForm((f) => ({ ...f, status, isPublished: status === 'active' ? f.isPublished : false }));
+                }}
+                className={input}
+              >
+                {(Object.keys(CAMPAIGN_STATUS_LABEL) as CampaignStatus[]).map((st) => (
+                  <option key={st} value={st}>{CAMPAIGN_STATUS_LABEL[st]}</option>
+                ))}
               </select>
             </label>
             <label className="block">
@@ -153,6 +169,49 @@ export const CampaignEditor: React.FC<Props> = ({ campaign, initialCourseId, cam
               <span className={label}>Mô tả</span>
               <textarea rows={2} value={form.description} onChange={(e) => set('description', e.target.value)} className={input} />
             </label>
+          </div>
+
+          <div className="space-y-3 p-4 rounded-xl border border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-bold text-slate-900">Đăng trên website (trang Tuyển sinh)</h3>
+              {!isNew && campaign.websiteLabel && (
+                <span className={`px-2 py-0.5 rounded-full font-bold border ${campaign.websiteState === 'live' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : campaign.websiteState === 'scheduled' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                  {campaign.websiteLabel}
+                  {campaign.viewCount ? ` · ${campaign.viewCount} lượt xem` : ''}
+                </span>
+              )}
+            </div>
+            <label className={`flex items-center gap-2 font-bold ${form.status !== 'active' ? 'text-slate-400' : 'text-slate-800'}`}>
+              <input type="checkbox" disabled={form.status !== 'active'} checked={form.isPublished} onChange={(e) => set('isPublished', e.target.checked)} />
+              Hiện trên website
+              {form.status !== 'active' && <span className="font-normal">(chỉ khi trạng thái là “Đang tuyển sinh”)</span>}
+            </label>
+            <p className="text-slate-500">
+              Hiện từ ngày bắt đầu (nếu có) đến hết hạn nhận hồ sơ; qua hạn chiến dịch tự chuyển “Hết hạn” và rời website. Tạm dừng, đủ chỉ tiêu hay đóng cũng gỡ khỏi website.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="flex items-center gap-2"><input type="checkbox" checked={form.isFeatured} onChange={(e) => set('isFeatured', e.target.checked)} /> Nổi bật (lên đầu, có nhãn)</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={form.showQuota} onChange={(e) => set('showQuota', e.target.checked)} /> Hiện số suất còn lại</label>
+              <label className="block sm:col-span-2">
+                <span className={label}>Giới thiệu ngắn trên thẻ (tối đa 300 ký tự)</span>
+                <input maxLength={300} value={form.summary} onChange={(e) => set('summary', e.target.value)} className={input} />
+              </label>
+              <label className="block">
+                <span className={label}>Đường dẫn</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-slate-400">/tuyen-sinh/</span>
+                  <input value={form.slug} onChange={(e) => set('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))} placeholder="tự tạo từ tên" className={`${input} font-mono`} />
+                </div>
+              </label>
+              <div>
+                <ImageUploadField label="Ảnh đại diện" value={form.image} onChange={(url) => set('image', url)} previewClassName="w-24 h-14 object-cover rounded" hint="Trống: dùng ảnh khóa học đầu tiên." />
+              </div>
+            </div>
+            {!isNew && campaign.websiteState === 'live' && campaign.slug && (
+              <a href={`/tuyen-sinh/${encodeURIComponent(campaign.slug)}`} target="_blank" rel="noopener" className="inline-flex items-center gap-1 font-bold text-[#0073C1] hover:underline">
+                Xem trên website <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
           </div>
 
           {!isNew && (

@@ -28,7 +28,7 @@ import {
   CheckCircle2,
   BookOpen
 } from 'lucide-react';
-import { AdmissionCampaign, CRMStatus, Course } from '../../types';
+import { AdmissionCampaign, CAMPAIGN_STATUS_LABEL, CRMStatus, Course } from '../../types';
 
 interface CampaignListViewProps {
   campaigns: AdmissionCampaign[];
@@ -61,9 +61,16 @@ export const CampaignListView: React.FC<CampaignListViewProps> = ({
   // which the site's attribution turns into Order.campaign (apps.crm.attribution).
   const handleCopyLink = (camp: AdmissionCampaign, e: React.MouseEvent) => {
     e.stopPropagation();
+    // The campaign's own page once it is on the site; until then its first course's page.
     const slug = courses.find((c) => c.id === camp.positions?.[0]?.courseId)?.slug;
     const params = new URLSearchParams({ utm_source: 'twings', utm_medium: 'campaign', utm_campaign: camp.code });
-    const url = `${window.location.origin}${slug ? `/khoa-hoc/${encodeURIComponent(slug)}` : '/khoa-hoc'}?${params}`;
+    const page =
+      camp.websiteState === 'live' && camp.slug
+        ? `/tuyen-sinh/${encodeURIComponent(camp.slug)}`
+        : slug
+          ? `/khoa-hoc/${encodeURIComponent(slug)}`
+          : '/khoa-hoc';
+    const url = `${window.location.origin}${page}?${params}`;
     navigator.clipboard.writeText(url);
     setCopiedId(camp.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -111,9 +118,7 @@ export const CampaignListView: React.FC<CampaignListViewProps> = ({
 
       const matchesStatus =
         selectedStatus === 'all' ||
-        (selectedStatus === 'active' && camp.status === 'active') ||
-        (selectedStatus === 'planning' && camp.status === 'planning') ||
-        (selectedStatus === 'closed' && camp.status === 'closed');
+        (selectedStatus === 'website' ? camp.websiteState === 'live' : camp.status === selectedStatus);
 
       const matchesLocation = selectedLocation === 'all' || (camp.location || '').trim() === selectedLocation;
 
@@ -207,9 +212,10 @@ export const CampaignListView: React.FC<CampaignListViewProps> = ({
               className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
             >
               <option value="all">Mọi trạng thái</option>
-              <option value="active">Đang tuyển sinh</option>
-              <option value="planning">Lên kế hoạch</option>
-              <option value="closed">Đã đóng</option>
+              <option value="website">Đang hiện trên website</option>
+              {Object.entries(CAMPAIGN_STATUS_LABEL).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
             </select>
 
             <select
@@ -289,7 +295,13 @@ export const CampaignListView: React.FC<CampaignListViewProps> = ({
                             : 'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}
                       >
-                        {camp.status === 'active' ? 'Đang Tuyển Sinh' : camp.status === 'planning' ? 'Sắp Mở' : 'Đã Đóng Sổ'}
+                        {CAMPAIGN_STATUS_LABEL[camp.status] || camp.status}
+                      </span>
+                      <span
+                        title={camp.websiteLabel}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${camp.websiteState === 'live' ? 'bg-sky-50 text-sky-700 border-sky-200' : camp.websiteState === 'scheduled' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
+                      >
+                        {camp.websiteState === 'live' ? 'Trên website' : camp.websiteState === 'scheduled' ? 'Hẹn giờ đăng' : 'Ẩn khỏi website'}
                       </span>
 
                     </div>
@@ -517,7 +529,7 @@ export const CampaignListView: React.FC<CampaignListViewProps> = ({
                               : 'bg-amber-50 text-amber-800 border border-amber-200'
                           }`}
                         >
-                          {camp.status === 'active' ? 'Đang Mở' : camp.status === 'planning' ? 'Chuẩn Bị' : 'Đã Đóng'}
+                          {CAMPAIGN_STATUS_LABEL[camp.status] || camp.status}{camp.websiteState === 'live' ? ' · trên web' : ''}
                         </span>
                       </td>
                       <td className="p-3.5 text-right pr-5">

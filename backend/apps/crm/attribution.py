@@ -90,6 +90,11 @@ def apply(order_fields: dict, attribution: dict) -> dict:
     from .models import AdmissionCampaign
 
     last = attribution.get("last") or attribution.get("first") or {}
+    code = (order_fields.get("campaign_code") or "").strip()
+    if code and "campaign" not in order_fields:
+        campaign = AdmissionCampaign.objects.filter(code__iexact=code).first()
+        if campaign is not None:
+            order_fields["campaign"], order_fields["campaign_code"] = campaign, campaign.code
     if attribution:
         order_fields["attribution"] = attribution
     if last.get("source") or last.get("referrer"):

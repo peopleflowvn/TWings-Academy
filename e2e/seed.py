@@ -35,7 +35,10 @@ Course.objects.create(status="draft", slug="e2e-draft", title="E2E Khóa nháp",
 Program.objects.create(slug="e2e-goi", title="E2E Gói RM", price=12_000_000, is_published=True)
 k9 = Cohort.objects.create(course=rm, name="E2E K9", start_date=timezone.localdate() + timedelta(days=20), status="opening")
 Cohort.objects.create(course=gdv, name="E2E GDV K3", start_date=timezone.localdate() + timedelta(days=10), status="opening")
-camp = AdmissionCampaign.objects.create(code="CAMP-E2E", name="Chiến dịch E2E", status="active", target_headcount=10)
+camp = AdmissionCampaign.objects.create(
+    code="CAMP-E2E", name="Chiến dịch E2E", status="active", target_headcount=10, is_published=True,
+    summary="Đợt tuyển sinh thử nghiệm E2E",
+)
 CampaignPosition.objects.create(campaign=camp, course=rm, target_quota=10)
 
 

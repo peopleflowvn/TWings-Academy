@@ -159,6 +159,28 @@ def campaign_quota_and_new_campaign(page: Page):
 
 
 @step
+def campaign_on_the_website_like_a_job_posting(page: Page):
+    page.goto(f"{BASE}/tuyen-sinh")
+    page.wait_for_selector("text=Chiến dịch E2E", timeout=20000)
+    assert page.locator("text=Còn 10/10 suất").count() >= 1, "places left on the card"
+    page.locator("text=Chiến dịch E2E").first.click()
+    page.wait_for_selector("h1:has-text('Chiến dịch E2E')", timeout=20000)
+    page.locator("button:has-text('Đăng ký')").first.click()
+    page.wait_for_selector("text=ĐĂNG KÝ TƯ VẤN KHÓA HỌC", timeout=20000)
+    # Staff switch it off: the page leaves the site.
+    page.goto(f"{BASE}/app/sales/crm?view=campaigns")
+    page.wait_for_selector("text=CAMP-E2E", timeout=20000)
+    page.locator("button[title='Sửa chiến dịch, chỉ tiêu']").first.click()
+    page.wait_for_selector("text=Đăng trên website", timeout=20000)
+    assert page.locator("text=Đang hiện trên website").count() >= 1
+    page.locator("label:has-text('Hiện trên website') input").uncheck()
+    page.locator("button:has-text('Lưu')").last.click()
+    page.wait_for_timeout(2500)
+    page.goto(f"{BASE}/tuyen-sinh/chien-dich-e2e")
+    page.wait_for_selector("text=Đợt tuyển sinh không còn mở", timeout=20000)
+
+
+@step
 def other_sales_pages(page: Page):
     for path, marker in (
         ("/app/sales/consulting", "Lịch hẹn tư vấn sắp tới"),

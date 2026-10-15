@@ -13,6 +13,7 @@ from apps.catalog.views import (
 from apps.cms.analytics import TrackView
 from apps.cms.legal import legal_view
 from apps.cms.views import PublicArticleViewSet, PublicBannerViewSet, PublicSiteConfigViewSet
+from apps.crm.public_campaigns import PublicCampaignDetailView, PublicCampaignListView
 from apps.crm.views import PublicRegistrationView
 from apps.payments.views import PublicCheckoutView, PublicOrderStatusView
 from apps.sso import account
@@ -29,6 +30,8 @@ router.register("site-config", PublicSiteConfigViewSet, basename="public-site-co
 
 urlpatterns = [
     path("registrations/", PublicRegistrationView.as_view(), name="public-registration"),
+    path("campaigns/", PublicCampaignListView.as_view(), name="public-campaigns"),
+    path("campaigns/<slug:slug>/", PublicCampaignDetailView.as_view(), name="public-campaign"),
     path("checkout/", PublicCheckoutView.as_view(), name="public-checkout"),
     path("orders/<str:order_code>/status/", PublicOrderStatusView.as_view(), name="public-order-status"),
     path("legal/<str:key>/", legal_view, name="public-legal"),

@@ -37,6 +37,7 @@ import { CourseraArticleDetailPage } from './components/CourseraArticleDetailPag
 import { CourseraAboutPage } from './components/CourseraAboutPage';
 import { CourseraCheckoutModal, CheckoutPrefill } from './components/CourseraCheckoutModal';
 import { RegistrationModal } from './components/RegistrationModal';
+import { CampaignDetailPage, CampaignsPage, CampaignsStrip } from './components/CampaignPages';
 import { YouTubeTrialModal } from './components/YouTubeTrialModal';
 import { FloatingContact } from './components/FloatingContact';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -86,6 +87,11 @@ export default function App() {
   const [checkoutPrefill, setCheckoutPrefill] = useState<CheckoutPrefill | undefined>(undefined);
   const [registrationCourse, setRegistrationCourse] = useState<Course | null>(null);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
+  // Registration opened from a campaign page carries its code (the lead belongs to the campaign).
+  const [registrationCampaign, setRegistrationCampaign] = useState('');
+  const [campaignSlug, setCampaignSlug] = useState<string | undefined>(
+    initialRoute.view === 'campaign-detail' ? initialRoute.slug : undefined
+  );
   const [trialVideo, setTrialVideo] = useState<{ videoId: string; title: string; course?: Course } | null>(null);
 
   // Enrolled courses state
@@ -146,6 +152,7 @@ export default function App() {
       const route = parseRoute(window.location.pathname) ?? { view: 'home' as View };
       setCurrentView(route.view);
       setPendingSlug(route.slug);
+      if (route.view === 'campaign-detail') setCampaignSlug(route.slug);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -223,6 +230,8 @@ export default function App() {
       fallback = `${selectedCourse.title} | TWings Academy`;
     } else if (currentView === 'about') {
       fallback = 'Về chúng tôi | TWings Academy';
+    } else if (currentView === 'campaigns') {
+      fallback = 'Tuyển sinh | TWings Academy';
     }
 
     applyPageMeta(window.location.pathname, fallback);
@@ -243,7 +252,13 @@ export default function App() {
     go('article-detail', article.slug);
   };
 
-  const handleOpenRegistration = (course?: Course) => {
+  const openCampaign = (slug: string) => {
+    setCampaignSlug(slug);
+    go('campaign-detail', slug);
+  };
+
+  const handleOpenRegistration = (course?: Course, campaignCode = '') => {
+    setRegistrationCampaign(campaignCode);
     setRegistrationCourse(course || selectedCourse || courses[0]);
     setShowRegistrationModal(true);
   };
@@ -267,7 +282,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-white font-sans text-slate-800">
       {/* 1. Global Coursera Top Header */}
       <CourseraHeader
-        currentView={currentView}
+        currentView={currentView === 'campaigns' || currentView === 'campaign-detail' ? 'home' : currentView}
         onNavigate={handleNavigate}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -348,6 +363,20 @@ export default function App() {
         />
       )}
 
+      {/* Admission campaigns (like job postings): what the server lists as recruiting now */}
+      {currentView === 'campaigns' && <CampaignsPage onOpen={openCampaign} onBrowseCourses={() => handleNavigate('catalog')} />}
+      {currentView === 'campaign-detail' && campaignSlug && (
+        <CampaignDetailPage
+          slug={campaignSlug}
+          onBack={() => handleNavigate('campaigns')}
+          onOpenCourse={(slug) => {
+            const found = courses.find((c) => c.slug === slug);
+            if (found) handleSelectCourse(found);
+          }}
+          onRegister={(courseId, code) => handleOpenRegistration(courses.find((c) => c.id === courseId), code)}
+        />
+      )}
+
       {/* 5. Subpage: Coursera Official Homepage */}
       {currentView === 'home' && (
         <main className="flex-1">
@@ -368,6 +397,9 @@ export default function App() {
               onOpenYouTubeTrial={(videoId, title) => handleOpenYouTubeTrial(videoId, title)}
             />
           )}
+
+          {/* Campaigns recruiting now (nothing shown when none is open) */}
+          <CampaignsStrip onOpen={openCampaign} onSeeAll={() => handleNavigate('campaigns')} />
 
           {/* Institutional Partners Bar (Managed in CMS) */}
           {cmsSections.partners.enabled && (
@@ -498,6 +530,7 @@ export default function App() {
         <RegistrationModal
           course={registrationCourse}
           allCourses={courses}
+          campaignCode={registrationCampaign}
           onClose={() => setShowRegistrationModal(false)}
           onSubmitSuccess={(order) => {
             handleRegistrationSuccess(order);

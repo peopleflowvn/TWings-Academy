@@ -232,6 +232,37 @@ class AdmissionCampaignSerializer(serializers.ModelSerializer):
     positions = CampaignPositionSerializer(many=True, required=False)
     total_enrolled = serializers.IntegerField(read_only=True, default=0)
     funnel = serializers.SerializerMethodField()
+    website_state = serializers.SerializerMethodField()
+    website_label = serializers.SerializerMethodField()
+
+    def get_website_state(self, obj):
+        return obj.website_state()[0]
+
+    def get_website_label(self, obj):
+        return obj.website_state()[1]
+
+    def validate(self, attrs):
+        """Publishing is checked like a job posting: recruiting, with something to apply for, not expired."""
+        instance = self.instance
+        get = lambda f: attrs.get(f, getattr(instance, f, None))  # noqa: E731
+        if get("is_published"):
+            errors = {}
+            if get("status") != "active":
+                errors["is_published"] = "Chuyển trạng thái sang “Đang tuyển sinh” để hiện trên website."
+            deadline = get("deadline")
+            if deadline and deadline < timezone.localdate():
+                errors["deadline"] = "Hạn nhận hồ sơ đã qua: gia hạn trước khi hiện trên website."
+            positions = attrs.get("positions")
+            has_course = (
+                any(p.get("course") is not None and p["course"].sellable for p in positions)
+                if positions is not None
+                else bool(instance and instance.positions.filter(course__status="published").exists())
+            )
+            if not has_course:
+                errors["positions"] = "Cần ít nhất một khóa học đang mở bán để hiện trên website."
+            if errors:
+                raise serializers.ValidationError(errors)
+        return attrs
 
     def get_funnel(self, obj):
         """Leads of the campaign per stage and per course (lists: dict keys would be re-cased)."""
@@ -245,6 +276,7 @@ class AdmissionCampaignSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdmissionCampaign
         exclude = ["created_at", "updated_at"]
+        read_only_fields = ["view_count"]
 
     def create(self, validated_data):
         positions = validated_data.pop("positions", [])
