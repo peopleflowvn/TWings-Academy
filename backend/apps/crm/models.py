@@ -255,6 +255,9 @@ class Order(BaseModel):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default="vietqr")
     paid_at = models.DateTimeField(null=True, blank=True)
+    # Checkout (pay online): the price, coupon and seat are held until then; unpaid after it, the
+    # order is cancelled (expire_checkouts) and a later transfer goes to finance as unmatched.
+    hold_expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     # Contact typed for this registration (the learner's details: Learner)
     customer_name = models.CharField(max_length=200)

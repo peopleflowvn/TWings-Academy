@@ -23,7 +23,7 @@ PRICE_FIELDS = (
     "original_price",
     "installment_count",
     "installment_interval_days",
-    "is_free_enrollment_available",
+    "sale_ends_on",
 )
 
 
@@ -77,10 +77,10 @@ def readiness(course, *, moodle_template: bool | None = None) -> list[dict]:
         ),
         (
             "price",
-            "Học phí (hoặc đánh dấu miễn phí)",
+            "Học phí (khóa miễn phí: học phí và giá niêm yết đều bằng 0)",
             True,
-            course.price > 0 or course.is_free_enrollment_available,
-            "",
+            course.price > 0 or course.original_price == 0,
+            "Giá niêm yết > 0 mà học phí 0: kiểm tra lại học phí",
         ),
         (
             "intake",
@@ -92,10 +92,12 @@ def readiness(course, *, moodle_template: bool | None = None) -> list[dict]:
         ("objectives", "≥ 3 mục tiêu đầu ra", False, len(course.learning_objectives or []) >= 3, ""),
         (
             "original_price",
-            "Giá niêm yết ≥ học phí",
+            "Giá gạch là khuyến mại có hạn (đặt ngày kết thúc, giảm tối đa 50%)",
             False,
-            not course.original_price or course.original_price >= course.price,
-            "",
+            not course.original_price
+            or course.original_price <= course.price
+            or bool(course.sale_ends_on and course.original_price <= 2 * course.price),
+            "Không có ngày kết thúc: giá gạch không hiện trên website",
         ),
         (
             "guarantees",

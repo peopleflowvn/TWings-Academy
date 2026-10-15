@@ -49,6 +49,8 @@ interface CheckoutInfo {
   /** Whole price after discount; `amount` is what to transfer now (first installment when paying in installments). */
   totalAmount?: number;
   installments?: InstallmentRow[];
+  /** Seat, price and coupon are held until then; an unpaid order is cancelled afterwards. */
+  holdExpiresAt?: string | null;
 }
 
 // Offline demo only (no backend configured): mirrors the seeded coupons.
@@ -86,8 +88,8 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
     installmentCount: (program?.installmentCount ?? course!.installmentCount) || 1
   };
   const [payInInstallments, setPayInInstallments] = useState(false);
-  // Course sold in intakes: the learner picks one (its early-bird price applies until the deadline).
-  const intakes = (course?.upcomingCohorts || []).filter((c) => c.status === 'opening' && c.seatsLeft > 0);
+  // Course sold in intakes: the learner picks one, open or announced (early-bird price until the deadline).
+  const intakes = (course?.upcomingCohorts || []).filter((c) => c.seatsLeft > 0);
   const [intakeName, setIntakeName] = useState(intakes[0]?.name || '');
   const chosenIntake = intakes.find((c) => c.name === intakeName);
   if (chosenIntake?.price !== undefined) item.price = chosenIntake.price;
@@ -107,7 +109,6 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
   // Once created, the order (and its transfer memo) never changes while this modal is open.
   const [checkout, setCheckout] = useState<CheckoutInfo | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'verifying' | 'paid'>('pending');
-  const [countdownSeconds, setCountdownSeconds] = useState(15 * 60);
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,21 +226,6 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
     setCopiedField(fieldName);
     setTimeout(() => setCopiedField(null), 2000);
   };
-
-  // Countdown timer (shown while waiting for the transfer)
-  useEffect(() => {
-    if (!checkout || paymentStatus !== 'pending') return;
-    const timer = setInterval(() => {
-      setCountdownSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [checkout, paymentStatus]);
 
   // Offline demo only: pretend the bank webhook arrived.
   const handleSimulatePaymentSuccess = () => {
@@ -418,6 +404,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                             {c.startDate ? ` – khai giảng ${new Date(`${c.startDate}T00:00:00`).toLocaleDateString('vi-VN')}` : ''}
                             {c.price !== undefined ? ` – ${formatVND(c.price)}` : ''}
                             {c.earlyBirdDeadline ? ' (ưu đãi sớm)' : ''}
+                            {c.status === 'upcoming' ? ' – sắp mở' : ''}
                             {` – còn ${c.seatsLeft} chỗ`}
                           </option>
                         ))}
@@ -554,9 +541,21 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       Quét bằng App Ngân Hàng bất kỳ
                     </div>
                   </div>
-                  <div className="text-[11px] text-slate-500 font-mono">
-                    Hết hạn sau: {Math.floor(countdownSeconds / 60)}:{(countdownSeconds % 60).toString().padStart(2, '0')}
-                  </div>
+                  {checkout.holdExpiresAt && (
+                    <div className="text-[11px] text-slate-600 text-center">
+                      Giữ chỗ và giá đến{' '}
+                      <b>
+                        {new Date(checkout.holdExpiresAt).toLocaleString('vi-VN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}
+                      </b>
+                      . Sau thời điểm này đơn chưa thanh toán sẽ tự hủy.
+                    </div>
+                  )}
                 </div>
 
                 {/* Transfer Info with Copy Buttons */}

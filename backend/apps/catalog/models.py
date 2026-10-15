@@ -1,5 +1,6 @@
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 from apps.core.models import BaseModel
 
@@ -59,8 +60,6 @@ class Instructor(BaseModel):
     avatar = models.CharField(max_length=500, blank=True)
     bio = models.TextField(blank=True)
     credential = models.CharField(max_length=300, blank=True)
-    rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
-    students_count = models.PositiveIntegerField(default=0)
     years_of_experience = models.PositiveIntegerField(null=True, blank=True)
     bank_position = models.CharField(max_length=200, blank=True)
     linkedin_url = models.URLField(max_length=500, blank=True)
@@ -119,18 +118,16 @@ class Course(InstallmentPlan, BaseModel):
     badge_type = models.CharField(max_length=50, blank=True)
     thumbnail = models.CharField(max_length=500, blank=True)
     duration = models.CharField(max_length=100, blank=True)
-    rating = models.DecimalField(
-        max_digits=3, decimal_places=2, default=0, validators=[MinValueValidator(0), MaxValueValidator(5)]
-    )
-    reviews_count = models.PositiveIntegerField(default=0)
-    enrolled_count = models.CharField(max_length=50, blank=True)
-    lessons_count = models.PositiveIntegerField(default=0)
-    students_count = models.PositiveIntegerField(default=0)
+    # Rating, review and learner counts are not stored: the public API counts approved learner reviews
+    # (CourseReview) and learners who may study, so the site never shows a figure nobody measured.
+    lessons_count = models.PositiveIntegerField(default=0)  # from the syllabus (apps.lms.outline)
 
     # Prices in VND. The checkout always reads these server-side; the client never supplies amounts.
-    price = models.PositiveBigIntegerField(default=0)
+    price = models.PositiveBigIntegerField(default=0)  # 0 = free course
+    # A struck-through list price is a price promotion: it is shown only until `sale_ends_on`
+    # (no date = never shown), and may be at most twice the price (discount ≤ 50%).
     original_price = models.PositiveBigIntegerField(default=0)
-    is_free_enrollment_available = models.BooleanField(default=False)
+    sale_ends_on = models.DateField(null=True, blank=True)
     # Step 8 – certificate only with at least this attendance (% of sessions taken) when the intake
     # takes attendance; 0 = no attendance requirement.
     min_attendance_rate = models.PositiveSmallIntegerField(default=80, validators=[MaxValueValidator(100)])
@@ -147,7 +144,6 @@ class Course(InstallmentPlan, BaseModel):
     guarantees = models.JSONField(default=list, blank=True)
     # Module[] tree (modules → lessons → quizzes/flashcards). Public API strips non-preview lessons.
     syllabus = models.JSONField(default=list, blank=True)
-    reviews = models.JSONField(default=list, blank=True)
 
     # Lifecycle: draft -> review -> published (on sale) -> archived. Only "published" is public; the
     # price is approved by whoever publishes (courses.publish), later changes need courses.pricing.
@@ -180,6 +176,13 @@ class Course(InstallmentPlan, BaseModel):
     def sellable(self) -> bool:
         """New registrations are taken for courses on sale only."""
         return self.status == "published"
+
+    def list_price(self, today=None) -> int:
+        """The struck-through price shown today: the list price while the promotion runs, else the price."""
+        today = today or timezone.localdate()
+        if self.original_price > self.price and self.sale_ends_on and self.sale_ends_on >= today:
+            return self.original_price
+        return self.price
 
 
 class Cohort(BaseModel):

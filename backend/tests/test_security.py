@@ -193,7 +193,8 @@ def test_checkout_prices_server_side_with_coupon(api, registration_payload, coup
     assert body["transferContent"] == body["orderCode"]
     assert body["orderCode"] in body["qrImageUrl"]
     coupon.refresh_from_db()
-    assert coupon.usage_count == 1
+    assert coupon.usage_count == 0  # counted when the payment arrives, not at checkout
+    assert body["holdExpiresAt"]
 
 
 def test_checkout_rejects_invalid_coupon(api, registration_payload):

@@ -82,6 +82,12 @@ class CourseSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """A course on sale keeps the price it was approved with unless the user may set prices."""
+        get = lambda f: attrs.get(f, getattr(self.instance, f, None) if self.instance else None)  # noqa: E731
+        price, original, ends = get("price") or 0, get("original_price") or 0, get("sale_ends_on")
+        if original > price and ends and original > 2 * price:
+            raise serializers.ValidationError(
+                {"original_price": "Giá gạch tối đa gấp đôi học phí (mức giảm khuyến mại không quá 50%)."}
+            )
         from apps.accounts.rbac import has_perm_code
 
         from .publishing import PRICE_FIELDS
@@ -98,14 +104,15 @@ class CourseSerializer(serializers.ModelSerializer):
 
 def upcoming_cohorts(course) -> list[dict]:
     """Intakes a visitor can still join: opening or upcoming, not started yet (or no date set)."""
-    from django.db.models import Count, Q
+    from django.db.models import Q
     from django.utils import timezone
+
+    from .intakes import JOINABLE, seats_taken
 
     today = timezone.localdate()
     rows = (
-        course.cohorts.filter(status__in=("opening", "upcoming"))
+        course.cohorts.filter(status__in=JOINABLE)
         .filter(Q(start_date__isnull=True) | Q(start_date__gte=today))
-        .annotate(taken=Count("orders", filter=Q(orders__learning_access=True)))
         .order_by("start_date")[:4]
     )
     return [
@@ -115,7 +122,7 @@ def upcoming_cohorts(course) -> list[dict]:
             "registration_deadline": c.registration_deadline.isoformat() if c.registration_deadline else None,
             "location": c.location,
             "status": c.status,
-            "seats_left": max(c.capacity - c.taken, 0),
+            "seats_left": max(c.capacity - seats_taken(c), 0),
             "schedule_text": c.schedule_text,
             "price": c.price(today),
             "early_bird_deadline": c.early_bird_deadline.isoformat() if c.early_bird_active(today) else None,
@@ -125,6 +132,10 @@ def upcoming_cohorts(course) -> list[dict]:
 
 
 class PublicCourseSerializer(serializers.ModelSerializer):
+    rating = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
+    learners_count = serializers.SerializerMethodField()
+    original_price = serializers.SerializerMethodField()
     instructors = PublicInstructorSerializer(many=True, read_only=True)
     upcoming_cohorts = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
@@ -135,14 +146,14 @@ class PublicCourseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Course
-        exclude = ["is_published", "sort_order", "created_at", "updated_at"]
+        exclude = ["is_published", "sort_order", "created_at", "updated_at", "sale_ends_on"]
 
     def get_upcoming_cohorts(self, obj):
         return upcoming_cohorts(obj)
 
     def get_reviews(self, obj):
-        """Approved reviews from learners who took the course first, then any written in /app."""
-        learner = [
+        """Approved reviews of learners who took the course (nothing written by staff)."""
+        return [
             {
                 "id": r.id,
                 "student_name": r.display_name,
@@ -155,7 +166,22 @@ class PublicCourseSerializer(serializers.ModelSerializer):
             }
             for r in obj.learner_reviews.filter(status="approved")[:50]
         ]
-        return learner + list(obj.reviews or [])
+
+    def get_rating(self, obj):
+        from django.db.models import Avg
+
+        avg = obj.learner_reviews.filter(status="approved").aggregate(a=Avg("rating"))["a"]
+        return round(float(avg), 1) if avg is not None else 0
+
+    def get_reviews_count(self, obj):
+        return obj.learner_reviews.filter(status="approved").count()
+
+    def get_learners_count(self, obj):
+        """Learners who may study the course (single purchases and program courses)."""
+        return obj.orders.filter(learning_access=True).count()
+
+    def get_original_price(self, obj):
+        return obj.list_price()
 
     def get_instructor(self, obj):
         first = next(iter(obj.instructors.all()), None)

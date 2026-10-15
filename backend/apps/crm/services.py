@@ -1,6 +1,8 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from apps.catalog.models import Cohort, Coupon, Course, Program
@@ -15,18 +17,30 @@ class CheckoutError(Exception):
 
 def resolve_cohort(course: Course, preferred_label: str = "") -> tuple[Cohort | None, bool]:
     """
-    Pick the cohort for a new applicant. A full/closed preferred cohort routes to its successor.
-    Returns (cohort, was_rerouted).
+    Pick the intake for a new applicant: the one asked for if it takes registrations and has a seat,
+    else (following its successors) the next that does, else the earliest joinable intake with a
+    seat. Open and announced (upcoming) intakes take registrations. Returns (cohort, was_rerouted).
     """
+    from apps.catalog.intakes import JOINABLE, has_seat
+
+    today = timezone.localdate()
     cohorts = Cohort.objects.filter(course=course)
+
+    def joinable(c: Cohort) -> bool:
+        return c.status in JOINABLE and (c.start_date is None or c.start_date >= today) and has_seat(c)
+
     preferred = cohorts.filter(name__iexact=preferred_label.strip()).first() if preferred_label else None
-    if preferred:
-        if preferred.status == "opening":
-            return preferred, False
-        if preferred.next_cohort_id:
-            return preferred.next_cohort, True
-    opening = cohorts.filter(status="opening").order_by("start_date").first()
-    return opening, False
+    seen = set()
+    candidate = preferred
+    while candidate is not None and candidate.pk not in seen:
+        if joinable(candidate):
+            return candidate, candidate != preferred
+        seen.add(candidate.pk)
+        candidate = candidate.next_cohort
+    for cohort in cohorts.filter(status__in=JOINABLE).order_by(F("start_date").asc(nulls_last=True)):
+        if joinable(cohort):
+            return cohort, preferred is not None
+    return None, preferred is not None
 
 
 @transaction.atomic
@@ -42,17 +56,31 @@ def price_with_coupon(
     if not code:
         return amount, 0, ""
     coupon = Coupon.objects.select_for_update().filter(code=code, is_active=True).first()
+    # A use is counted when the money arrives (count_coupon_use); checkouts still holding the code
+    # keep a place so a limited code cannot be oversold.
+    held = (
+        Order.objects.filter(discount_code=coupon.code, status="pending", hold_expires_at__gt=timezone.now())
+        .exclude(learning_access=True)
+        .count()
+        if coupon is not None
+        else 0
+    )
     if (
         coupon is None
         or (coupon.valid_until and coupon.valid_until < timezone.localdate())
-        or (coupon.max_usage is not None and coupon.usage_count >= coupon.max_usage)
+        or (coupon.max_usage is not None and coupon.usage_count + held >= coupon.max_usage)
         or amount < coupon.min_order_amount
     ):
         raise CheckoutError("Mã giảm giá không hợp lệ hoặc đã hết hạn.")
     discount = coupon.discount_for(amount)
-    coupon.usage_count += 1
-    coupon.save(update_fields=["usage_count", "updated_at"])
     return amount - discount, discount, coupon.code
+
+
+def count_coupon_use(order: Order) -> None:
+    """The order's coupon is used once its learner may study (first payment / full payment)."""
+    if not order.discount_code:
+        return
+    Coupon.objects.filter(code=order.discount_code).update(usage_count=F("usage_count") + 1)
 
 
 def installment_amounts(amount: int, count: int) -> list[int]:
@@ -94,6 +122,11 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
         raise CheckoutError("Vui lòng chọn khóa học hoặc chương trình.")
 
     cohort, rerouted = resolve_cohort(course, preferred_cohort) if course else (None, False)
+    if with_payment and course is not None and cohort is None and course.cohorts.exists():
+        raise CheckoutError(
+            "Các đợt khai giảng của khóa này đã đủ chỗ hoặc đã đóng. "
+            "Vui lòng để lại thông tin để được tư vấn đợt sau."
+        )
     # The intake decides the price (early bird until its deadline), then the coupon applies.
     list_price = cohort.price() if cohort else item.price
     amount, discount, applied = (
@@ -125,6 +158,8 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
         source=source,
         crm_status="1. Mới",
     )
+    if with_payment and amount > 0:
+        order.hold_expires_at = timezone.now() + timedelta(hours=settings.CHECKOUT_HOLD_HOURS)
     if amount == 0 and with_payment:
         order.status = "paid"
         order.crm_status = "5. Đã đóng phí"

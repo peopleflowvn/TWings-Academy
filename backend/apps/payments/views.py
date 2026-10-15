@@ -59,6 +59,7 @@ class PublicCheckoutView(APIView):
                 "status": order.status,
                 "learning_access": order.learning_access,
                 "installments": order_billing(order)["installments"],
+                "hold_expires_at": order.hold_expires_at,
             },
             status=status.HTTP_201_CREATED,
         )

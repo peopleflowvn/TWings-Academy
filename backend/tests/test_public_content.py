@@ -29,7 +29,6 @@ def test_demo_catalog_is_hidden_not_deleted(course):
     draft = Course.objects.create(
         slug="khoa-hoc-moi-123",
         title="Khóa Học Nghiệp Vụ Mới 2026",
-        reviews=[{"id": 1}],
         status="published",
     )
     edited = Course.objects.create(
@@ -38,7 +37,7 @@ def test_demo_catalog_is_hidden_not_deleted(course):
     _migration("catalog", "0003_hide_demo_catalog").hide_demo_catalog(django_apps, None)
     for c in (foreign, draft, edited, course):
         c.refresh_from_db()
-    assert not foreign.is_published and not draft.is_published and draft.reviews == []
+    assert not foreign.is_published and not draft.is_published
     assert edited.is_published and course.is_published  # real content stays
     assert not Partner.objects.get(pk=google.pk).is_active and Partner.objects.get(pk=msb.pk).is_active
 

@@ -14,6 +14,7 @@ import { navigate, useAppSearch } from '../router';
 import { Course } from '../../types';
 import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../catalog';
 import { usePrograms } from '../data';
+import { viDateToIso } from '../../lib/serverCollection';
 
 interface LearnerRow {
   id: string;
@@ -72,7 +73,13 @@ interface LearnerDetail extends Omit<LearnerRow, 'registrations'> {
 }
 
 const vnd = (n?: number) => `${new Intl.NumberFormat('vi-VN').format(n || 0)} ₫`;
-const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('vi-VN') : '–');
+// The API sends dates as dd/mm/yyyy and some values (placements) as ISO.
+const day = (value?: string | null) => {
+  if (!value) return '–';
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(value)) return value.slice(0, 10);
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString('vi-VN');
+};
 const openRegistration = (orderId: string) => navigate(`/sales/crm?view=kanban&campaignId=all&orderId=${encodeURIComponent(orderId)}`);
 const errorText = (e: unknown) => (e instanceof ApiError || e instanceof Error ? e.message : 'Thao tác thất bại.');
 
@@ -296,7 +303,7 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
           {(f.options || []).map((o) => <option key={o} value={o}>{o || 'Chưa rõ'}</option>)}
         </select>
       ) : (
-        <input disabled={!canEdit} type={f.type === 'date' ? 'date' : 'text'} value={form[f.key as string] || ''} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} className="w-full p-2.5 border border-slate-200 rounded-xl" />
+        <input disabled={!canEdit} type={f.type === 'date' ? 'date' : 'text'} value={(f.type === 'date' ? viDateToIso(form[f.key as string]) : form[f.key as string]) || ''} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} className="w-full p-2.5 border border-slate-200 rounded-xl" />
       )}
     </label>
   );

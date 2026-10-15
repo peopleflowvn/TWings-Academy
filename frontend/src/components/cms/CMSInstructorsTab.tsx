@@ -54,8 +54,6 @@ export const INITIAL_EXTENDED_INSTRUCTORS: Instructor[] = [
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
     credential: 'Thạc sĩ Tài chính Ngân hàng · Giảng viên Cao cấp Học viện Ngân hàng',
     bio: 'Hơn 18 năm giữ các cương vị điều hành cấp cao trong hệ thống ngân hàng thương mại, trực tiếp tuyển dụng và đào tạo hơn 5.000 cán bộ tín dụng, giao dịch viên trên toàn quốc.',
-    rating: 5.0,
-    studentsCount: 5200,
     email: 'tung.lh@twings.edu.vn',
     phone: '0983 123 456',
     yearsOfExperience: 18,
@@ -114,8 +112,6 @@ export const CMSInstructorsTab: React.FC = () => {
       avatar: '',
       credential: '',
       bio: '',
-      rating: 0,
-      studentsCount: 0,
       email: '',
       phone: '',
       yearsOfExperience: 0,
@@ -308,15 +304,8 @@ export const CMSInstructorsTab: React.FC = () => {
                   <div className="flex items-center gap-3 text-slate-400 text-xs mt-1.5 font-mono">
                     <span className="flex items-center gap-1 text-slate-700 font-bold">
                       <Briefcase className="w-3.5 h-3.5 text-blue-600" />
-                      <span>{inst.yearsOfExperience || 20} năm KN</span>
+                      <span>{inst.yearsOfExperience ? `${inst.yearsOfExperience} năm KN` : 'Chưa nhập số năm KN'}</span>
                     </span>
-                    <span>·</span>
-                    <span className="flex items-center gap-1 text-amber-600 font-bold">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span>{inst.rating || 5.0}</span>
-                    </span>
-                    <span>·</span>
-                    <span>{inst.studentsCount?.toLocaleString('vi-VN')} HV</span>
                   </div>
                 </div>
               </div>

@@ -31,12 +31,13 @@ import {
   Briefcase
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Course, Module, Lesson, Instructor, CourseReview } from '../../types';
+import { Course, Module, Lesson, Instructor } from '../../types';
 import { api, isBackendEnabled, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { CoursePublishingPanel } from './CoursePublishingPanel';
 import { ImageUploadField } from './ImageUploadField';
 import { navigate } from '../../admin/router';
+import { viDateToIso } from '../../lib/serverCollection';
 
 interface CMSCoursesTabProps {
   courses: Course[];
@@ -191,10 +192,9 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
       deliveryFormat: 'online_external_lms',
       locationText: 'Hệ thống LMS chuyên biệt + Cố vấn 1-1 trực tiếp tại ROX Tower',
       price: 6990000,
-      originalPrice: 8900000,
-      rating: 0,
+      originalPrice: 6990000,
+      rating: 0, // computed by the server from approved learner reviews
       reviewsCount: 0,
-      studentsCount: 320,
       duration: '40 giờ học thực chiến',
       lessonsCount: 0,
       badgeType: 'new',
@@ -479,7 +479,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
             }`}
           >
             <Star className="w-4 h-4 text-amber-500 fill-current" />
-            <span>5. Review Cựu Học Viên ({editForm.reviews?.length || 0})</span>
+            <span>5. Đánh giá học viên</span>
           </button>
 
           <button
@@ -618,7 +618,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
 
                 {/* Original Price */}
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Học phí niêm yết gốc (Gạch chân) *</label>
+                  <label className="font-bold text-slate-700 block mb-1">Giá gốc trước khuyến mãi (gạch ngang)</label>
                   <input
                     type="number"
                     disabled={priceLocked}
@@ -626,6 +626,21 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                     onChange={(e) => setEditForm({ ...editForm, originalPrice: Number(e.target.value) })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-slate-600"
                   />
+                </div>
+
+                {/* Promotion end: without it the website shows only the selling price */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Khuyến mãi đến hết ngày</label>
+                  <input
+                    type="date"
+                    disabled={priceLocked}
+                    value={viDateToIso(editForm.saleEndsOn) || ''}
+                    onChange={(e) => setEditForm({ ...editForm, saleEndsOn: e.target.value || null })}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Giá gạch ngang chỉ hiện trong thời gian khuyến mãi và giảm tối đa 50%. Để trống: website chỉ hiện học phí.
+                  </p>
                 </div>
 
                 {/* Graduation rule */}
@@ -892,13 +907,10 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                       // Add new instructor blank
                       const newInst: Instructor = {
                         id: `inst-${Date.now()}`,
-                        name: 'Chuyên gia MSB mới',
-                        title: 'Giám đốc Vùng / Trưởng phòng Nghiệp vụ',
-                        credential: '15+ năm KN Ngân hàng',
-                        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
-                        bio: 'Chuyên gia có nhiều năm kinh nghiệm quản trị và đào tạo nghiệp vụ tín dụng thực chiến tại hệ thống ngân hàng.',
-                        rating: 5.0,
-                        studentsCount: 2000
+                        name: '',
+                        title: '',
+                        avatar: '',
+                        bio: ''
                       };
                       const current = editForm.instructors || (editForm.instructor ? [editForm.instructor] : []);
                       setEditForm({ ...editForm, instructors: [...current, newInst] });
@@ -1245,199 +1257,23 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
           {/* SUB-TAB 5: REVIEW & ĐÁNH GIÁ CỰU HỌC VIÊN */}
           {/* ======================================================== */}
           {activeSubTab === 'reviews' && (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-                <div>
-                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                    <Star className="w-4 h-4 text-amber-500 fill-current" />
-                    <span>Quản Lý Review & Đánh Giá Cựu Học Viên ({editForm.reviews?.length || 0})</span>
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Xuất hiện trực tiếp trong phần đánh giá trang chi tiết để tạo uy tín & tăng tỷ lệ chuyển đổi đăng ký.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const currentReviews = editForm.reviews || [];
-                    // Blank: staff enter a review collected elsewhere (survey...), never placeholder text.
-                    const newRev: CourseReview = {
-                      id: `rev-${Date.now()}`,
-                      studentName: '',
-                      role: '',
-                      avatar: '',
-                      rating: 5,
-                      date: new Date().toLocaleDateString('vi-VN'),
-                      comment: '',
-                      verifiedStudent: false
-                    };
-                    setEditForm({ ...editForm, reviews: [...currentReviews, newRev] });
-                  }}
-                  className="px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Thêm Review Mới</span>
-                </button>
-              </div>
-
-              {/* Figures shown on the course card and page: managed here (results of TWings' own surveys). */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-amber-50/60 border border-amber-100 text-xs">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Điểm đánh giá hiển thị (0–5)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={5}
-                    step={0.01}
-                    value={editForm.rating ?? 0}
-                    onChange={(e) => setEditForm({ ...editForm, rating: Math.min(5, Math.max(0, Number(e.target.value) || 0)) })}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Số lượt đánh giá</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={editForm.reviewsCount ?? 0}
-                    onChange={(e) => setEditForm({ ...editForm, reviewsCount: Math.max(0, Math.round(Number(e.target.value) || 0)) })}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Số học viên hiển thị</label>
-                  <input
-                    type="text"
-                    value={editForm.enrolledCount || ''}
-                    placeholder="VD: 2,400+ học viên"
-                    onChange={(e) => setEditForm({ ...editForm, enrolledCount: e.target.value })}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-white"
-                  />
-                </div>
-                <p className="sm:col-span-3 text-slate-500">
-                  Số liệu lấy từ khảo sát của TWings, biên tập tại đây. Đánh giá học viên viết từ tài khoản (đã duyệt ở mục
-                  Đánh giá của học viên) tự hiện thêm trên trang khóa học với nhãn "Xác thực".
-                </p>
-              </div>
-
-              {/* Reviews list */}
-              <div className="space-y-4">
-                {(editForm.reviews || []).map((rev, rIdx) => (
-                  <div
-                    key={rev.id || rIdx}
-                    className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 shadow-2xs space-y-3 text-xs"
-                  >
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900">{rev.studentName}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">({rev.date})</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = (editForm.reviews || []).filter((_, i) => i !== rIdx);
-                          setEditForm({ ...editForm, reviews: updated });
-                        }}
-                        className="text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Xóa</span>
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Tên cựu học viên *</label>
-                        <input
-                          type="text"
-                          value={rev.studentName}
-                          onChange={(e) => {
-                            const updated = [...(editForm.reviews || [])];
-                            updated[rIdx].studentName = e.target.value;
-                            setEditForm({ ...editForm, reviews: updated });
-                          }}
-                          className="w-full p-2 border border-slate-300 rounded-xl font-bold"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Vị trí & Nơi công tác hiện tại *</label>
-                        <input
-                          type="text"
-                          value={rev.role}
-                          onChange={(e) => {
-                            const updated = [...(editForm.reviews || [])];
-                            updated[rIdx].role = e.target.value;
-                            setEditForm({ ...editForm, reviews: updated });
-                          }}
-                          placeholder="VD: Chuyên viên Tín dụng SME - MSB"
-                          className="w-full p-2 border border-slate-300 rounded-xl"
-                        />
-                      </div>
-
-                      <ImageUploadField
-                        label="Ảnh đại diện (tùy chọn)"
-                        value={rev.avatar || ''}
-                        onChange={(url) => {
-                          const updated = [...(editForm.reviews || [])];
-                          updated[rIdx] = { ...updated[rIdx], avatar: url };
-                          setEditForm({ ...editForm, reviews: updated });
-                        }}
-                        previewClassName="w-10 h-10 rounded-full object-cover"
-                      />
-
-                      <div className="flex items-center gap-4 pt-4">
-                        <div>
-                          <label className="font-bold text-slate-700 block mb-1">Số sao đánh giá (1-5)</label>
-                          <select
-                            value={rev.rating || 5}
-                            onChange={(e) => {
-                              const updated = [...(editForm.reviews || [])];
-                              updated[rIdx].rating = Number(e.target.value);
-                              setEditForm({ ...editForm, reviews: updated });
-                            }}
-                            className="p-2 border border-slate-300 rounded-xl font-bold"
-                          >
-                            <option value={5}>⭐⭐⭐⭐⭐ 5 Sao (Tuyệt vời)</option>
-                            <option value={4}>⭐⭐⭐⭐ 4 Sao (Rất tốt)</option>
-                            <option value={3}>⭐⭐⭐ 3 Sao (Khá)</option>
-                          </select>
-                        </div>
-
-                        <label className="flex items-center gap-1.5 cursor-pointer font-bold text-emerald-700 mt-4">
-                          <input
-                            type="checkbox"
-                            checked={!!rev.verifiedStudent}
-                            onChange={(e) => {
-                              const updated = [...(editForm.reviews || [])];
-                              updated[rIdx].verifiedStudent = e.target.checked;
-                              setEditForm({ ...editForm, reviews: updated });
-                            }}
-                            className="rounded text-emerald-600"
-                          />
-                          <span>Học viên đã tốt nghiệp / Xác thực</span>
-                        </label>
-                      </div>
-
-                      <div className="sm:col-span-2">
-                        <label className="font-bold text-slate-700 block mb-1">Nội dung review / chia sẻ trải nghiệm *</label>
-                        <textarea
-                          rows={2}
-                          value={rev.comment}
-                          onChange={(e) => {
-                            const updated = [...(editForm.reviews || [])];
-                            updated[rIdx].comment = e.target.value;
-                            setEditForm({ ...editForm, reviews: updated });
-                          }}
-                          className="w-full p-2 border border-slate-300 rounded-xl leading-relaxed text-xs italic"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-3 text-xs">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <Star className="w-4 h-4 text-amber-500 fill-current" />
+                <span>Đánh giá & số học viên trên trang khóa học</span>
+              </h3>
+              <p className="text-slate-600 leading-relaxed">
+                Điểm đánh giá, số lượt đánh giá và số học viên được hệ thống tự tính: chỉ đánh giá do học viên đã học viết
+                từ tài khoản và đã được duyệt, chỉ học viên đã được mở quyền học. Không nhập tay để trang khóa học luôn
+                đúng sự thật.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/content/reviews')}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold cursor-pointer"
+              >
+                Duyệt đánh giá của học viên
+              </button>
             </div>
           )}
 
@@ -1550,7 +1386,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                   </div>
                 </div>
 
-                {editForm.originalPrice > editForm.price && (
+                {editForm.originalPrice > editForm.price && !!editForm.saleEndsOn && (
                   <div className="text-right">
                     <span className="text-[11px] text-slate-400 line-through font-mono block">
                       {formatVND(editForm.originalPrice)}

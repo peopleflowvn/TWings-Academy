@@ -132,12 +132,16 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
 
           {/* Rating, Reviews and Level */}
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 pt-1">
-            <div className="flex items-center gap-1 text-amber-600 font-bold">
-              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-              <span>{course.rating.toFixed(1)}</span>
-            </div>
-            <span>({course.reviewsCount.toLocaleString()})</span>
-            <span>·</span>
+            {course.reviewsCount > 0 && (
+              <>
+                <div className="flex items-center gap-1 text-amber-600 font-bold">
+                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                  <span>{course.rating.toFixed(1)}</span>
+                </div>
+                <span>({course.reviewsCount.toLocaleString('vi-VN')} đánh giá)</span>
+                <span>·</span>
+              </>
+            )}
             <span className="font-medium text-slate-500">{course.level}</span>
           </div>
         </div>

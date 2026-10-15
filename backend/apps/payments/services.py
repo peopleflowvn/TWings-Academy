@@ -43,10 +43,16 @@ def _credit(order: Order, amount: int, *, source: str, txn=None, user=None, note
         order=order, amount=amount, source=source, bank_transaction=txn, confirmed_by=user, note=note
     )
     was_paid = order.status == "paid"
+    had_access = order.learning_access
     order.recompute_payment_totals()
     if order.status == "paid" and not was_paid:
         order.paid_at = timezone.now()
+    order.hold_expires_at = None  # money arrived: nothing to expire any more
     order.save()
+    if order.learning_access and not had_access:
+        from apps.crm.services import count_coupon_use
+
+        count_coupon_use(order)
     # Step 5: printable receipt e-mailed to the learner once the payment is committed.
     from .receipts import send_receipt
 

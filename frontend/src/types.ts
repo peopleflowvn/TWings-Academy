@@ -133,8 +133,6 @@ export interface Instructor {
   avatar: string;
   bio: string;
   credential?: string;
-  rating?: number;
-  studentsCount?: number;
   email?: string;
   phone?: string;
   expertiseCourses?: string[];
@@ -247,9 +245,11 @@ export interface Course {
   level: CourseLevel;
   deliveryFormat?: CourseDeliveryFormat; // offline | hybrid | online_external_lms
   locationText?: string; // e.g. "Tòa ROX Tower, 54A Nguyễn Chí Thanh, Hà Nội"
+  /** Public API: average of approved learner reviews (0 when none) and their number. */
   rating: number;
   reviewsCount: number;
-  enrolledCount?: string;
+  /** Public API: learners who were given access to the course. */
+  learnersCount?: number;
   duration: string;
   skills?: string[];
   instructors?: Instructor[];
@@ -260,7 +260,10 @@ export interface Course {
   badgeSection?: 'most_popular' | 'hot_new' | 'trending_ai' | 'python' | 'data_analytics' | 'project_management';
   badgeType?: 'bestseller' | 'recommended' | 'new' | 'useful';
   price: number;
+  /** Public API: the struck-through price, only during a dated promotion (else equals price). */
   originalPrice: number;
+  /** Staff: last day of the promotion; without it no struck-through price is shown. */
+  saleEndsOn?: string | null;
   /** Pay-in-installments plan offered at checkout (1 = pay in full only). */
   installmentCount?: number;
   installmentIntervalDays?: number;
@@ -280,7 +283,6 @@ export interface Course {
     price?: number;
     earlyBirdDeadline?: string | null;
   }[];
-  isFreeEnrollmentAvailable?: boolean;
   youtubeTrialUrl?: string; // e.g. "https://www.youtube.com/watch?v=sal78ACtGTc"
   youtubeVideoId?: string;  // e.g. "sal78ACtGTc"
   syllabus?: Module[];
@@ -293,7 +295,6 @@ export interface Course {
   reviews?: CourseReview[];
   guarantees?: string[];
   lessonsCount?: number;
-  studentsCount?: number;
 }
 
 export interface Coupon {

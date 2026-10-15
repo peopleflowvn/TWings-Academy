@@ -14,7 +14,9 @@ Routes (keep in step with frontend/src/lib/routes.ts):
 
 import json
 import re
+from contextvars import ContextVar
 from dataclasses import dataclass, field
+from functools import wraps
 from html import unescape
 
 from django.conf import settings
@@ -56,8 +58,40 @@ class Page:
 
 
 # ---------------------------------------------------------------- helpers
+_REQUEST_BASE: ContextVar[str] = ContextVar("seo_request_base", default="")
+
+
 def base_url() -> str:
-    return getattr(settings, "PUBLIC_SITE_URL", "").rstrip("/") or "https://tuyensinh.twings.edu.vn"
+    """
+    The site's address. In SEO responses (pages for crawlers, sitemap, robots, page meta) it is the
+    domain the visitor or crawler actually reached, so canonical links and the sitemap never point to
+    a domain that is not served; elsewhere (e-mails) the configured PUBLIC_SITE_URL.
+    """
+    return (
+        _REQUEST_BASE.get()
+        or getattr(settings, "PUBLIC_SITE_URL", "").rstrip("/")
+        or "https://tuyensinh.twings.edu.vn"
+    )
+
+
+_INTERNAL_HOSTS = {"backend", "localhost", "127.0.0.1", "testserver"}
+
+
+def on_request_domain(view):
+    """SEO views: base_url() is the requested domain while the view runs."""
+
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        host = request.get_host()
+        # Internal callers (container name, loopback, the test client) get the configured address.
+        public = host.split(":")[0] not in _INTERNAL_HOSTS
+        token = _REQUEST_BASE.set(f"{request.scheme}://{host}" if public else "")
+        try:
+            return view(request, *args, **kwargs)
+        finally:
+            _REQUEST_BASE.reset(token)
+
+    return wrapper
 
 
 def absolute(url: str) -> str:
@@ -447,6 +481,7 @@ def meta(page: Page) -> dict:
 
 # ---------------------------------------------------------------- views
 @require_GET
+@on_request_domain
 def prerender(request, path=""):
     """HTML for bots (sent here by Caddy based on the User-Agent)."""
     try:
@@ -482,6 +517,7 @@ def prerender(request, path=""):
 @authentication_classes([])
 @permission_classes([AllowAny])
 @throttle_classes([])
+@on_request_domain
 def page_meta(request):
     """Metadata of a site path for the SPA (title, description, canonical, share image, JSON-LD)."""
     try:
@@ -492,6 +528,7 @@ def page_meta(request):
 
 
 @require_GET
+@on_request_domain
 def sitemap(request):
     base = base_url()
     pages = ("/", "/khoa-hoc", "/ve-chung-toi", "/tin-tuc", "/chinh-sach-bao-mat", "/dieu-khoan")
@@ -519,6 +556,7 @@ ALWAYS_DISALLOWED = ("/app", "/api/", "/learn", "/tai-khoan", "/_seo/")
 
 
 @require_GET
+@on_request_domain
 def robots(request):
     """Staff's robots.txt (SEO settings) with the private areas always disallowed and the right sitemap."""
     custom = str(site_seo().get("robots_txt") or "")

@@ -20,10 +20,22 @@ from .models import Cohort, CohortSession
 logger = logging.getLogger(__name__)
 
 OPEN = ("opening",)
+# Intakes that take registrations: open, or announced ahead (upcoming).
+JOINABLE = ("opening", "upcoming")
 
 
 def seats_taken(cohort: Cohort) -> int:
-    return cohort.orders.filter(learning_access=True).count()
+    """Learners who may study, plus checkouts still holding a seat (unpaid, within their hold)."""
+    from django.db.models import Q
+
+    now = timezone.now()
+    return cohort.orders.filter(
+        Q(learning_access=True) | Q(status="pending", hold_expires_at__gt=now, total_paid_amount=0)
+    ).count()
+
+
+def has_seat(cohort: Cohort) -> bool:
+    return seats_taken(cohort) < cohort.capacity
 
 
 def refresh_statuses(today=None) -> dict:
@@ -39,10 +51,10 @@ def refresh_statuses(today=None) -> dict:
         new = cohort.status
         if cohort.start_date and cohort.start_date <= today:
             new = "in_progress"
-        elif cohort.status == "opening" and seats_taken(cohort) >= cohort.capacity:
+        elif cohort.status in JOINABLE and seats_taken(cohort) >= cohort.capacity:
             new = "full"
         elif (
-            cohort.status == "opening"
+            cohort.status in JOINABLE
             and cohort.registration_deadline
             and cohort.registration_deadline < today
         ):
@@ -64,7 +76,7 @@ def refresh_statuses(today=None) -> dict:
 
 def after_payment(cohort_id: str) -> None:
     """A seat was just taken: close the intake if it is now full."""
-    cohort = Cohort.objects.filter(pk=cohort_id, status="opening").first()
+    cohort = Cohort.objects.filter(pk=cohort_id, status__in=JOINABLE).first()
     if cohort and seats_taken(cohort) >= cohort.capacity:
         refresh_statuses()
 

@@ -276,6 +276,8 @@ VIETQR_BANK_NAME = env("VIETQR_BANK_NAME", default="MSB")
 VIETQR_ACCOUNT_NUMBER = env("VIETQR_ACCOUNT_NUMBER", default="")
 VIETQR_ACCOUNT_NAME = env("VIETQR_ACCOUNT_NAME", default="CONG TY CP TWINGS ACADEMY")
 VIETQR_TEMPLATE = env("VIETQR_TEMPLATE", default="compact2")
+# How long a checkout holds its price, coupon and seat before it is cancelled if unpaid.
+CHECKOUT_HOLD_HOURS = env.int("CHECKOUT_HOLD_HOURS", default=72)
 
 # ---------------------------------------------------------------------------
 # Moodle LMS: paid orders get a Moodle account + enrolment through Moodle's REST web services.

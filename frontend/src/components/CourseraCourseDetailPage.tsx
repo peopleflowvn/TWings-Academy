@@ -417,7 +417,6 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                       
                       <div className="flex items-center gap-4 text-[11px] text-slate-500 pt-1 font-mono">
                         {inst.yearsOfExperience ? <span>{inst.yearsOfExperience} năm kinh nghiệm</span> : null}
-                        {inst.studentsCount ? <span>{inst.studentsCount.toLocaleString('vi-VN')}+ học viên đã theo học</span> : null}
                       </div>
                     </div>
                   </div>
@@ -744,7 +743,8 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                       )}
                     </div>
                     <span className={`shrink-0 font-bold ${c.seatsLeft <= 5 ? 'text-red-600' : 'text-emerald-700'}`}>
-                      {c.status === 'opening' ? (c.seatsLeft > 0 ? `Còn ${c.seatsLeft} chỗ` : 'Hết chỗ') : 'Sắp mở'}
+                      {c.status === 'upcoming' ? 'Sắp mở · ' : ''}
+                      {c.seatsLeft > 0 ? `Còn ${c.seatsLeft} chỗ` : 'Hết chỗ'}
                     </span>
                   </div>
                 ))}
