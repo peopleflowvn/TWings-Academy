@@ -28,15 +28,17 @@ import {
   Eye,
   Sliders,
   Image as ImageIcon,
-  Briefcase
+  Briefcase,
+  ArrowLeft
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Course, Module, Lesson, Instructor } from '../../types';
 import { api, isBackendEnabled, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { CoursePublishingPanel } from './CoursePublishingPanel';
+import { CourseListView } from './CourseListView';
 import { ImageUploadField } from './ImageUploadField';
-import { navigate } from '../../admin/router';
+import { navigate, useAppSearch } from '../../admin/router';
 import { viDateToIso } from '../../lib/serverCollection';
 
 interface CMSCoursesTabProps {
@@ -57,10 +59,13 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
   onPreviewCourse,
   onReload,
 }) => {
+  const appSearch = useAppSearch();
+  const requestedCourseId = appSearch.get('id');
+  const isDetailView = !!requestedCourseId && courses.some((course) => course.id === requestedCourseId);
   const canPrice = useStaffCan('courses.pricing');
   // Currently selected course to edit
   const [selectedCourseId, setSelectedCourseId] = useState<string>(() => {
-    const p = new URLSearchParams(window.location.search).get('id');
+    const p = requestedCourseId;
     return p && courses.some((c) => c.id === p) ? p : (courses[0]?.id || '');
   });
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,7 +77,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
 
   // Keep URL query params synchronized with course selection and sub-tab
   useEffect(() => {
-    if (!selectedCourseId) return;
+    if (!isDetailView || !selectedCourseId || selectedCourseId !== requestedCourseId) return;
     const params = new URLSearchParams(window.location.search);
     let changed = false;
     if (params.get('id') !== selectedCourseId) {
@@ -86,7 +91,15 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
     if (changed) {
       window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
     }
-  }, [selectedCourseId, activeSubTab]);
+  }, [selectedCourseId, activeSubTab, isDetailView, requestedCourseId]);
+
+  // `navigate()` dispatches the app-router event rather than a browser popstate event.
+  // Keep the editor buffer pointed at the card/table row the staff member selected.
+  useEffect(() => {
+    if (requestedCourseId && courses.some((course) => course.id === requestedCourseId)) {
+      setSelectedCourseId(requestedCourseId);
+    }
+  }, [requestedCourseId, courses]);
 
   useEffect(() => {
     const sync = () => {
@@ -120,6 +133,18 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
       setEditForm(JSON.parse(JSON.stringify(currentCourse)));
     }
   }, [selectedCourseId, courses.length]);
+
+  if (!isDetailView) {
+    return (
+      <CourseListView
+        courses={courses}
+        onOpenCourse={(courseId) => {
+          setSelectedCourseId(courseId);
+          navigate(`/catalog/courses?id=${encodeURIComponent(courseId)}&subtab=info`);
+        }}
+      />
+    );
+  }
 
   if (!editForm) {
     return (
@@ -338,6 +363,15 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
 
             {/* Contextual actions for the selected course */}
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+              type="button"
+              onClick={() => navigate('/catalog/courses')}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
+              title="Quay lại danh sách khóa học"
+              aria-label="Quay lại danh sách khóa học"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
             {onPreviewCourse && (
               <button
                 type="button"
