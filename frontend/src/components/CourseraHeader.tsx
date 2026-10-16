@@ -13,8 +13,9 @@ import {
   MessageCircle,
   ChevronRight
 } from 'lucide-react';
-import { useSiteLogo, useSiteSeo, phoneDigits, zaloLink } from '../lib/siteSeo';
+import { useSiteSeo, phoneDigits, zaloLink } from '../lib/siteSeo';
 import { routePath } from '../lib/routes';
+import { BrandLogo } from './BrandLogo';
 
 interface CourseraHeaderProps {
   currentView: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about';
@@ -35,7 +36,6 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const logoUrl = useSiteLogo();
   const seo = useSiteSeo();
   const phone = phoneDigits(seo?.hotline);
   const zalo = zaloLink(seo?.zalo || seo?.hotline);
@@ -71,28 +71,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             className="flex items-center gap-2 sm:gap-2.5 cursor-pointer focus:outline-none group text-left shrink-0"
             title="Trang Chủ TWings Academy"
           >
-            {logoUrl ? (
-              <img src={logoUrl} alt="TWings Academy" className="h-8 sm:h-10 max-w-[140px] sm:max-w-[200px] object-contain" />
-            ) : (
-              <>
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-[#00388A] via-[#0050D8] to-[#0073C1] flex items-center justify-center text-white font-black text-xs sm:text-sm shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                  TW
-                </div>
-                <div className="truncate">
-                  <div className="flex items-center gap-1 sm:gap-1.5 leading-none">
-                    <span className="text-sm sm:text-lg font-black tracking-tight text-[#00388A] font-sans uppercase">
-                      TWINGS
-                    </span>
-                    <span className="text-sm sm:text-lg font-black tracking-tight text-[#0073C1] font-sans uppercase">
-                      ACADEMY
-                    </span>
-                  </div>
-                  <div className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1 hidden sm:block">
-                    Học Viện Thực Chiến
-                  </div>
-                </div>
-              </>
-            )}
+            <BrandLogo dark={false} subtitle="Học Viện Thực Chiến" />
           </a>
         </div>
 

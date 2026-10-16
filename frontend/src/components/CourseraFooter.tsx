@@ -3,6 +3,7 @@ import { Facebook, Linkedin, Mail, MapPin, Phone, Youtube } from 'lucide-react';
 import { Course } from '../types';
 import { routePath, View } from '../lib/routes';
 import { phoneDigits, safeUrl, useSiteSeo, zaloLink } from '../lib/siteSeo';
+import { BrandLogo } from './BrandLogo';
 
 interface CourseraFooterProps {
   onNavigate: (view: View) => void;
@@ -54,9 +55,7 @@ export const CourseraFooter: React.FC<CourseraFooterProps & { onSelectCourse?: (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand */}
           <div className="space-y-3 lg:col-span-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-black tracking-tight text-white font-sans uppercase">TWINGS ACADEMY</span>
-            </div>
+            <BrandLogo dark={true} size="md" />
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
               {seo?.siteSlogan ||
                 'Học viện đào tạo thực chiến ngành Tài chính - Ngân hàng, kết hợp công nghệ AI và định hướng nghề nghiệp.'}

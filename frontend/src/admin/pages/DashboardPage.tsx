@@ -44,8 +44,8 @@ const Stat: React.FC<{ label: string; value: string | number; icon: React.Elemen
         <Icon className="w-5 h-5" />
       </div>
       <div className="min-w-0">
-        <div className="text-[11px] font-semibold text-slate-500">{label}</div>
-        <div className="text-xl font-black text-slate-900 truncate">{value}</div>
+        <div className="text-xs font-semibold text-slate-500">{label}</div>
+        <div className="text-2xl font-black text-slate-900 truncate">{value}</div>
       </div>
     </div>
   );

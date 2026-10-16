@@ -35,7 +35,10 @@ import {
   Tag,
   Wrench,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
+import { BrandLogo } from '../components/BrandLogo';
 import { isBackendEnabled } from '../lib/api';
 import { openInMoodle, StaffUserContext } from '../lib/lms';
 import { useServerCollection } from '../lib/serverCollection';
@@ -51,6 +54,7 @@ import { CMSArticlesSEOTab } from '../components/cms/CMSArticlesSEOTab';
 import { CMSSiteSEOSettingsTab } from '../components/cms/CMSSiteSEOSettingsTab';
 import { CMSEmailTemplatesTab } from '../components/cms/CMSEmailTemplatesTab';
 import { CMSUsersTab } from '../components/cms/CMSUsersTab';
+import { TopLoadingBar, startPageLoading, donePageLoading } from '../components/TopLoadingBar';
 import { useAppPath, linkProps, navigate } from './router';
 import { useCourses, useHomepageSections, useOrders } from './data';
 import { OverviewReportsPage } from './pages/OverviewReportsPage';
@@ -181,9 +185,31 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
   // The former all-leads pipeline page is the pipeline of /sales/crm with every lead (old links keep working).
   useEffect(() => {
     if (path === '/sales/pipeline') navigate('/sales/crm?view=kanban&campaignId=all', { replace: true });
+    startPageLoading();
+    const timer = setTimeout(() => donePageLoading(), 150);
+    return () => clearTimeout(timer);
   }, [path]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('twings_admin_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleDesktopSidebar = () => {
+    setDesktopCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('twings_admin_sidebar_collapsed', String(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
   const can = useMemo(() => makeCan(user), [user]);
   const visible = (item: NavItem) => item.perms.length === 0 || item.perms.some(can);
   const current = ALL_ITEMS.find((i) => isItemActive(i, path));
@@ -303,22 +329,41 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
   })();
 
   const sidebar = (
-    <nav className="flex flex-col gap-5 p-4 text-sm">
+    <nav className={`flex flex-col gap-4 p-3 flex-1 ${desktopCollapsed ? 'items-center px-2' : ''}`}>
       {NAV.map((section) => {
         const items = section.items.filter(visible);
         if (!items.length) return null;
         return (
-          <div key={section.title || 'home'} className="space-y-1">
-            {section.title && <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">{section.title}</div>}
+          <div key={section.title || 'home'} className="space-y-1 w-full">
+            {section.title && (
+              desktopCollapsed ? (
+                <div className="h-px bg-slate-800 my-2 mx-2" title={section.title} />
+              ) : (
+                <div className="px-3 pt-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  {section.title}
+                </div>
+              )
+            )}
             {items.map((item) => {
               const active = isItemActive(item, path);
               return (
-                <a key={item.path} {...linkProps(item.path)} onClickCapture={() => setMenuOpen(false)}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl font-semibold transition-colors ${
-                    active ? 'bg-[#0073C1] text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}>
-                  <item.icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
+                <a
+                  key={item.path}
+                  {...linkProps(item.path)}
+                  onClickCapture={() => setMenuOpen(false)}
+                  title={desktopCollapsed ? item.label : undefined}
+                  className={`flex items-center gap-3 rounded-xl transition-all duration-150 ${
+                    desktopCollapsed
+                      ? 'justify-center p-3 w-12 h-12 mx-auto'
+                      : 'px-3.5 py-2.5 text-[14.5px] font-semibold'
+                  } ${
+                    active
+                      ? 'bg-[#0073C1] text-white shadow-xs'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5 shrink-0" />
+                  {!desktopCollapsed && <span className="truncate">{item.label}</span>}
                 </a>
               );
             })}
@@ -330,52 +375,143 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
 
   return (
     <StaffUserContext.Provider value={user}>
-      <div className="min-h-screen bg-slate-100 text-slate-800 font-sans lg:flex">
-        {/* Sidebar (drawer on mobile) */}
-        <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 overflow-y-auto transition-transform lg:static lg:translate-x-0 ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <a {...linkProps('/')} className="flex items-center gap-2.5 px-5 py-4 border-b border-slate-800">
-            <div className="w-8 h-8 rounded-xl bg-[#0073C1] text-white flex items-center justify-center font-black text-xs">TW</div>
-            <div>
-              <div className="text-sm font-black text-white">TWings Quản trị</div>
-              <div className="text-[10px] text-slate-400">Tuyển sinh · Đào tạo · Vận hành</div>
+      <div className="min-h-screen bg-slate-100 text-slate-800 font-sans text-[15px] lg:flex">
+        <TopLoadingBar />
+        {/* Sidebar (drawer on mobile, collapsible on desktop) */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-40 bg-slate-900 overflow-y-auto overflow-x-hidden transition-all duration-300 ease-in-out lg:static lg:translate-x-0 ${
+            menuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+          } ${desktopCollapsed ? 'lg:w-20' : 'lg:w-64'} w-64 flex flex-col justify-between`}
+        >
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Sidebar Brand Header */}
+            <div className={`flex items-center justify-between p-4 border-b border-slate-800 min-h-[64px] ${
+              desktopCollapsed ? 'lg:justify-center lg:px-2' : ''
+            }`}>
+              <a
+                {...linkProps('/')}
+                className="flex items-center min-w-0"
+                title="TWings Quản trị"
+              >
+                <BrandLogo
+                  dark={true}
+                  title="TWings Quản trị"
+                  subtitle={desktopCollapsed ? undefined : "Tuyển sinh · Đào tạo · Vận hành"}
+                  collapsed={desktopCollapsed}
+                  size="md"
+                />
+              </a>
+              {/* Close button on mobile drawer */}
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                aria-label="Đóng menu"
+                title="Đóng menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          </a>
-          {sidebar}
-        </aside>
-        {menuOpen && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setMenuOpen(false)} />}
+            {/* Sidebar Navigation Links */}
+            <div className="overflow-y-auto flex-1">
+              {sidebar}
+            </div>
+          </div>
 
-        <div className="flex-1 min-w-0">
-          <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-slate-200 px-4 lg:px-6 h-14 flex items-center justify-between gap-3">
+          {/* Desktop Sidebar Collapse Toggle Footer */}
+          <div className="p-3 border-t border-slate-800 hidden lg:block">
+            <button
+              type="button"
+              onClick={toggleDesktopSidebar}
+              className={`flex items-center gap-3 w-full p-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer ${
+                desktopCollapsed ? 'justify-center' : ''
+              }`}
+              title={desktopCollapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
+              aria-label={desktopCollapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
+            >
+              {desktopCollapsed ? (
+                <PanelLeftOpen className="w-5 h-5 text-slate-400 hover:text-white" />
+              ) : (
+                <>
+                  <PanelLeftClose className="w-5 h-5 shrink-0 text-slate-400" />
+                  <span className="truncate">Thu gọn menu</span>
+                </>
+              )}
+            </button>
+          </div>
+        </aside>
+
+        {/* Mobile Backdrop */}
+        {menuOpen && (
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-30 lg:hidden"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+          <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-slate-200 px-4 lg:px-6 h-14 flex items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-3 min-w-0">
-              <button type="button" className="lg:hidden p-2 -ml-2 cursor-pointer" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
+              {/* Mobile toggle button */}
+              <button
+                type="button"
+                className="lg:hidden p-2 -ml-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors"
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-label="Đóng/mở menu"
+                title="Menu điều hướng"
+              >
                 {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
-              <span className="font-bold text-sm text-slate-900 truncate">{pageTitle}</span>
+              {/* Desktop toggle button */}
+              <button
+                type="button"
+                className="hidden lg:flex p-2 -ml-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors items-center justify-center"
+                onClick={toggleDesktopSidebar}
+                aria-label={desktopCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+                title={desktopCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+              >
+                {desktopCollapsed ? (
+                  <PanelLeftOpen className="w-5 h-5 text-slate-700" />
+                ) : (
+                  <PanelLeftClose className="w-5 h-5 text-slate-700" />
+                )}
+              </button>
+              <span className="font-bold text-base text-slate-900 truncate">{pageTitle}</span>
             </div>
+
             <div className="flex items-center gap-2 text-xs">
               {can('lms.view') && (
-                <button type="button" onClick={() => openInMoodle()}
-                  className="hidden sm:flex px-3 py-1.5 rounded-xl border border-[#0073C1] text-[#0073C1] hover:bg-blue-50 font-bold items-center gap-1.5 cursor-pointer">
-                  <ExternalLink className="w-3.5 h-3.5" /> Mở Moodle
+                <button
+                  type="button"
+                  onClick={() => openInMoodle()}
+                  className="hidden sm:flex px-3.5 py-2 rounded-xl border border-[#0073C1] text-[#0073C1] hover:bg-blue-50 font-bold items-center gap-1.5 cursor-pointer text-xs sm:text-sm transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" /> Mở Moodle
                 </button>
               )}
-              <a href="/" target="_blank" rel="noopener" className="hidden sm:inline px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-slate-600">
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener"
+                className="hidden sm:inline px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 text-xs sm:text-sm transition-colors"
+              >
                 Xem website
               </a>
               <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
                 {user.avatar && (
-                  <img src={user.avatar} alt={user.name} className="w-7 h-7 rounded-lg border border-slate-200 object-cover" />
+                  <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-lg border border-slate-200 object-cover" />
                 )}
                 <div className="hidden md:block text-left">
-                  <div className="font-bold text-slate-800 leading-tight">{user.name}</div>
-                  <div className="text-[10px] text-slate-500 truncate max-w-[120px]">{user.email}</div>
+                  <div className="font-bold text-slate-800 text-sm leading-tight">{user.name}</div>
+                  <div className="text-xs text-slate-500 truncate max-w-[130px]">{user.email}</div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setChangingPassword(true)}
                   title="Đổi mật khẩu"
                   aria-label="Đổi mật khẩu"
-                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-blue-50 hover:text-[#0073C1] text-slate-600 cursor-pointer transition-colors"
+                  className="p-2 rounded-lg border border-slate-200 hover:bg-blue-50 hover:text-[#0073C1] text-slate-600 cursor-pointer transition-colors"
                 >
                   <KeyRound className="w-4 h-4" />
                 </button>
@@ -384,7 +520,7 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
                   onClick={logout}
                   title="Đăng xuất"
                   aria-label="Đăng xuất"
-                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-600 cursor-pointer transition-colors"
+                  className="p-2 rounded-lg border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-600 cursor-pointer transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>

@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Users
 } from 'lucide-react';
+import { BrandLogo } from '../../components/BrandLogo';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -42,20 +43,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, onBackToHome }
             <span>Về trang chủ TWings</span>
           </button>
 
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#00388A] via-[#0050D8] to-[#0099FF] text-white flex items-center justify-center font-black text-base shadow-lg shadow-blue-500/20 border border-white/20">
-              TW
-            </div>
-            <div>
-              <div className="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                <span>TWINGS</span>
-                <span className="text-[#38BDF8]">ACADEMY</span>
-              </div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-blue-200/80">
-                Hệ thống Quản trị & Vận hành Nội bộ
-              </div>
-            </div>
-          </div>
+          <BrandLogo dark={true} size="lg" subtitle="Hệ thống Quản trị & Vận hành Nội bộ" />
         </div>
 
         {/* Center Content: Platform Highlights */}
@@ -126,12 +114,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, onBackToHome }
       <div className="flex-1 flex flex-col justify-between p-6 sm:p-10 lg:p-12 xl:p-16 bg-slate-950 overflow-y-auto">
         {/* Mobile Header */}
         <div className="lg:hidden flex items-center justify-between pb-6 mb-4 border-b border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00388A] to-[#0073C1] text-white flex items-center justify-center font-black text-xs">
-              TW
-            </div>
-            <span className="font-extrabold text-sm text-white">TWINGS ACADEMY</span>
-          </div>
+          <BrandLogo dark={true} size="sm" />
           <button
             type="button"
             onClick={handleBack}

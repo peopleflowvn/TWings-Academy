@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { api, ApiError, resetCsrfToken } from '../../lib/api';
 import { AdminUser } from '../../types';
+import { BrandLogo } from '../../components/BrandLogo';
 import { toAdminUser } from './LoginPage';
 
 interface SessionLockscreenProps {
@@ -56,6 +57,9 @@ export const SessionLockscreen: React.FC<SessionLockscreenProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-7 sm:p-8 shadow-2xl text-slate-100 space-y-6">
+        <div className="flex justify-center pb-1">
+          <BrandLogo dark={true} size="sm" />
+        </div>
         {/* Avatar & User info */}
         <div className="text-center space-y-3">
           <div className="relative inline-block">

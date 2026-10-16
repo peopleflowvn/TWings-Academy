@@ -41,6 +41,8 @@ import { CampaignDetailPage, CampaignsPage, CampaignsStrip } from './components/
 import { YouTubeTrialModal } from './components/YouTubeTrialModal';
 import { FloatingContact } from './components/FloatingContact';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { TopLoadingBar, startPageLoading, donePageLoading } from './components/TopLoadingBar';
+import { PageLoader } from './components/PageLoader';
 
 const LIVE = isBackendEnabled();
 // Sections missing from the server config get their texts from the defaults, but never sample people,
@@ -140,19 +142,23 @@ export default function App() {
 
   // ---- Routing: state <-> URL ----
   const go = (view: View, slug?: string) => {
+    startPageLoading();
     const path = routePath(view, slug);
     if (path !== window.location.pathname) window.history.pushState(null, '', path);
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => donePageLoading(), 150);
   };
 
   // Browser back / forward.
   useEffect(() => {
     const onPopState = () => {
+      startPageLoading();
       const route = parseRoute(window.location.pathname) ?? { view: 'home' as View };
       setCurrentView(route.view);
       setPendingSlug(route.slug);
       if (route.view === 'campaign-detail') setCampaignSlug(route.slug);
+      setTimeout(() => donePageLoading(), 150);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -278,8 +284,13 @@ export default function App() {
     setOrders([newOrder, ...orders]);
   };
 
+  if (!contentLoaded) {
+    return <PageLoader message="Đang tải dữ liệu TWings Academy..." />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans text-slate-800">
+      <TopLoadingBar />
       {/* 1. Global Coursera Top Header */}
       <CourseraHeader
         currentView={currentView === 'campaigns' || currentView === 'campaign-detail' ? 'home' : currentView}

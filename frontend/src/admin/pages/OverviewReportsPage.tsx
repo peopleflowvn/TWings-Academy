@@ -29,7 +29,7 @@ export const OverviewReportsPage: React.FC<OverviewReportsPageProps> = ({
         <div className="inline-flex p-1 bg-slate-100/90 rounded-xl gap-1">
           <a
             {...linkProps('/')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
               !isReports
                 ? 'bg-white text-[#0073C1] shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -41,7 +41,7 @@ export const OverviewReportsPage: React.FC<OverviewReportsPageProps> = ({
           {canViewReports ? (
             <a
               {...linkProps('/reports')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
                 isReports
                   ? 'bg-white text-[#0073C1] shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'

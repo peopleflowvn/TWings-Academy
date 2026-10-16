@@ -16,6 +16,9 @@ import { FloatingContact } from '../components/FloatingContact';
 import { applyPageMeta } from '../lib/siteSeo';
 import { trackView } from '../lib/attribution';
 
+import { BrandLogo } from '../components/BrandLogo';
+import { TopLoadingBar } from '../components/TopLoadingBar';
+
 const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNode }> = ({ active, children }) => {
   const link = (href: string, label: string, on: boolean) => (
     <a href={href} className={`px-3 py-2 rounded-xl text-sm font-bold ${on ? 'text-[#0056D2] bg-blue-50' : 'text-slate-600 hover:text-slate-900'}`}>
@@ -24,15 +27,11 @@ const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNod
   );
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
+      <TopLoadingBar />
       <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
           <a href="/" className="flex items-center gap-2.5" title="Trang Chủ TWings Academy">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00388A] via-[#0050D8] to-[#0073C1] flex items-center justify-center text-white font-black text-sm">
-              TW
-            </div>
-            <span className="hidden sm:inline text-lg font-black tracking-tight text-[#00388A] uppercase">
-              TWings <span className="text-[#0073C1]">Academy</span>
-            </span>
+            <BrandLogo dark={false} size="sm" />
           </a>
           <nav className="flex items-center gap-1">
             {link('/khoa-hoc', 'Khóa học', active === 'programs')}
