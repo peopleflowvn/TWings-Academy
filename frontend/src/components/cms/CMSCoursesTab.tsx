@@ -138,6 +138,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
     return (
       <CourseListView
         courses={courses}
+        onCreateCourse={handleCreateNewCourse}
         onOpenCourse={(courseId) => {
           setSelectedCourseId(courseId);
           navigate(`/catalog/courses?id=${encodeURIComponent(courseId)}&subtab=info`);
@@ -204,7 +205,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
   };
 
   // Handle creating a new course
-  const handleCreateNewCourse = () => {
+  function handleCreateNewCourse() {
     const newId = `course-new-${Date.now()}`;
     const newCourse: Course = {
       id: newId,
@@ -268,9 +269,10 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
 
     onAddCourse(newCourse);
     setSelectedCourseId(newId);
+    navigate(`/catalog/courses?id=${encodeURIComponent(newId)}&subtab=info`);
     setSaveSuccessMsg(true);
     setTimeout(() => setSaveSuccessMsg(false), 3000);
-  };
+  }
 
   // Handle duplicating current course
   const handleDuplicateCourse = () => {
@@ -349,7 +351,11 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 min-w-0 xl:max-w-3xl xl:flex-1 xl:justify-end">
             <select
               value={selectedCourseId}
-              onChange={(e) => setSelectedCourseId(e.target.value)}
+              onChange={(e) => {
+                const courseId = e.target.value;
+                setSelectedCourseId(courseId);
+                navigate(`/catalog/courses?id=${encodeURIComponent(courseId)}&subtab=${activeSubTab}`);
+              }}
               className="min-w-0 w-full sm:max-w-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
               aria-label="Chọn khóa học đang chỉnh sửa"
             >
@@ -361,37 +367,34 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
               ))}
             </select>
 
-            {/* Contextual actions for the selected course */}
+            {/* Navigation / preview, secondary course actions, then one primary save action. */}
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            <button
-              type="button"
-              onClick={() => navigate('/catalog/courses')}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
-              title="Quay lại danh sách khóa học"
-              aria-label="Quay lại danh sách khóa học"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
+              <button
+                type="button"
+                onClick={() => navigate('/catalog/courses')}
+                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Danh sách</span>
+              </button>
             {onPreviewCourse && (
               <button
                 type="button"
                 onClick={() => onPreviewCourse(editForm)}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
-                title="Xem thử trang chi tiết với dữ liệu hiện tại"
-                aria-label="Xem trang khách xem"
+                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Eye className="w-4 h-4 text-blue-600" />
+                <span className="hidden 2xl:inline">Xem trước</span>
               </button>
             )}
 
             <button
               type="button"
               onClick={() => navigate(`/sales/crm?action=new_campaign&courseId=${currentCourse?.id || ''}`)}
-              className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer border border-emerald-200"
-              title="Tạo chiến dịch tuyển sinh có sẵn khóa học này"
-              aria-label="Mở chiến dịch cho khóa học này"
+              className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-emerald-200"
             >
               <Briefcase className="w-4 h-4 text-emerald-600" />
+              <span className="hidden 2xl:inline">Tạo chiến dịch</span>
             </button>
 
             <button
@@ -404,15 +407,15 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
               <Copy className="w-4 h-4" />
             </button>
 
-            <button
-              type="button"
-              onClick={handleDeleteCurrentCourse}
-              className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-all cursor-pointer"
-              title="Xóa khóa học này"
-              aria-label="Xóa khóa học"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+              <button
+                type="button"
+                onClick={handleDeleteCurrentCourse}
+                className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-all cursor-pointer"
+                title="Xóa khóa học này"
+                aria-label="Xóa khóa học"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
 
             <button
               type="button"
@@ -422,7 +425,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
               <Save className="w-4 h-4" />
               <span>Lưu thay đổi</span>
             </button>
-          </div>
+            </div>
           </div>
         </div>
 

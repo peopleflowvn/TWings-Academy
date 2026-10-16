@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { BookOpen, ChevronRight, Clock, LayoutGrid, Search, Table as TableIcon, Users } from 'lucide-react';
+import { BookOpen, ChevronRight, Clock, LayoutGrid, Plus, Search, Table as TableIcon, Users } from 'lucide-react';
 import { Course } from '../../types';
 
 interface CourseListViewProps {
   courses: Course[];
   onOpenCourse: (courseId: string) => void;
+  onCreateCourse: () => void;
 }
 
 const statusLabel: Record<string, string> = {
@@ -21,7 +22,7 @@ const statusClass: Record<string, string> = {
 const vnd = (value: number) => `${new Intl.NumberFormat('vi-VN').format(value || 0)} ₫`;
 
 /** Catalogue landing view. Editing is deliberately one click deeper, like CRM campaigns → pipeline. */
-export const CourseListView: React.FC<CourseListViewProps> = ({ courses, onOpenCourse }) => {
+export const CourseListView: React.FC<CourseListViewProps> = ({ courses, onOpenCourse, onCreateCourse }) => {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [category, setCategory] = useState('all');
@@ -51,12 +52,17 @@ export const CourseListView: React.FC<CourseListViewProps> = ({ courses, onOpenC
             </h2>
             <p className="text-xs text-slate-500">Tra cứu và chọn khóa học trước khi chỉnh sửa nội dung, giá bán hoặc cấu hình xuất bản.</p>
           </div>
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200 self-start md:self-auto">
-            <button type="button" onClick={() => setView('card')} className={`p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${view === 'card' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}>
-              <LayoutGrid className="w-4 h-4" /><span className="hidden sm:inline">Lưới thẻ</span>
-            </button>
-            <button type="button" onClick={() => setView('table')} className={`p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${view === 'table' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}>
-              <TableIcon className="w-4 h-4" /><span className="hidden sm:inline">Bảng</span>
+          <div className="flex items-center gap-3 self-start md:self-auto">
+            <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200">
+              <button type="button" onClick={() => setView('card')} className={`p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${view === 'card' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}>
+                <LayoutGrid className="w-4 h-4" /><span className="hidden sm:inline">Lưới thẻ</span>
+              </button>
+              <button type="button" onClick={() => setView('table')} className={`p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${view === 'table' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}>
+                <TableIcon className="w-4 h-4" /><span className="hidden sm:inline">Bảng</span>
+              </button>
+            </div>
+            <button type="button" onClick={onCreateCourse} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-2">
+              <Plus className="w-4 h-4" />Tạo khóa học mới
             </button>
           </div>
         </div>
