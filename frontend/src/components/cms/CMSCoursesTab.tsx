@@ -286,106 +286,47 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
 
   return (
     <div className="space-y-6 animate-fadeIn pb-24">
-      {/* 1. TOP HEADER & COURSE SELECTOR BAR */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-5">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-xl bg-blue-100 text-[#0073C1]">
-                <BookOpen className="w-5 h-5" />
-              </span>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                Chỉnh Sửa Khóa Học & Nhúng YouTube Chuyên Nghiệp
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
-              Quản lý toàn bộ thông tin hiển thị trên <strong>Trang Chi Tiết Khóa Học</strong>: Giới thiệu khóa học, nhúng video YouTube học thử, đội ngũ giảng viên MSB, lộ trình module bài học, thời lượng và review cựu học viên.
+      {/* 1. TOP BAR — shared visual language with the CRM campaign catalogue */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-indigo-600" />
+              <span>Danh mục khóa học</span>
+            </h2>
+            <p className="text-xs text-slate-500 max-w-3xl">
+              Chọn một khóa học để quản lý nội dung, học phí, giảng viên, lộ trình và thông tin hiển thị trên website.
             </p>
           </div>
 
-          {/* Quick Actions */}
-          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-            {onPreviewCourse && (
-              <button
-                type="button"
-                onClick={() => onPreviewCourse(editForm)}
-                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Xem thử trang chi tiết với dữ liệu hiện tại"
-              >
-                <Eye className="w-4 h-4 text-blue-600" />
-                <span>Xem Trang Khách Xem</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => navigate(`/sales/crm?action=new_campaign&courseId=${currentCourse?.id || ''}`)}
-              className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-emerald-300 shadow-2xs"
-              title="Tạo chiến dịch tuyển sinh có sẵn khóa học này"
-            >
-              <Briefcase className="w-4 h-4 text-emerald-600" />
-              <span>Mở chiến dịch cho khóa này</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleCreateNewCourse}
-              className="px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0073C1] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Thêm Khóa Học Mới</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDuplicateCourse}
-              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Nhân bản khóa học này"
-            >
-              <Copy className="w-4 h-4" />
-              <span>Nhân Bản</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDeleteCurrentCourse}
-              className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Xóa khóa học này"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Xóa</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSaveAll}
-              className="px-5 py-2 rounded-xl bg-[#0073C1] hover:bg-[#005fa3] text-white text-xs font-bold transition-all flex items-center gap-2 shadow-md cursor-pointer ml-auto"
-            >
-              <Save className="w-4 h-4" />
-              <span>Lưu Thay Đổi</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleCreateNewCourse}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Khóa học mới</span>
+          </button>
         </div>
 
-        {/* Course Switcher Row */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-          <div className="md:col-span-4 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+        <div className="pt-3 border-t border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-3 text-xs">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm khóa học cần chỉnh sửa..."
-              className="w-full pl-9 pr-4 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white"
+              placeholder="Tìm theo tên hoặc danh mục khóa học..."
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
-          <div className="md:col-span-8 flex items-center gap-2">
-            <label className="text-xs font-bold text-slate-600 shrink-0">Chọn khóa học đang sửa:</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 min-w-0 xl:max-w-3xl xl:flex-1 xl:justify-end">
             <select
               value={selectedCourseId}
               onChange={(e) => setSelectedCourseId(e.target.value)}
-              className="w-full p-2 border border-blue-300 rounded-xl bg-blue-50/50 text-xs font-bold text-slate-900 cursor-pointer focus:bg-white focus:border-[#0073C1]"
+              className="min-w-0 w-full sm:max-w-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              aria-label="Chọn khóa học đang chỉnh sửa"
             >
               {filteredCourses.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -394,6 +335,60 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                 </option>
               ))}
             </select>
+
+            {/* Contextual actions for the selected course */}
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {onPreviewCourse && (
+              <button
+                type="button"
+                onClick={() => onPreviewCourse(editForm)}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
+                title="Xem thử trang chi tiết với dữ liệu hiện tại"
+                aria-label="Xem trang khách xem"
+              >
+                <Eye className="w-4 h-4 text-blue-600" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => navigate(`/sales/crm?action=new_campaign&courseId=${currentCourse?.id || ''}`)}
+              className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer border border-emerald-200"
+              title="Tạo chiến dịch tuyển sinh có sẵn khóa học này"
+              aria-label="Mở chiến dịch cho khóa học này"
+            >
+              <Briefcase className="w-4 h-4 text-emerald-600" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDuplicateCourse}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
+              title="Nhân bản khóa học này"
+              aria-label="Nhân bản khóa học"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDeleteCurrentCourse}
+              className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-all cursor-pointer"
+              title="Xóa khóa học này"
+              aria-label="Xóa khóa học"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSaveAll}
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+            >
+              <Save className="w-4 h-4" />
+              <span>Lưu thay đổi</span>
+            </button>
+          </div>
           </div>
         </div>
 
