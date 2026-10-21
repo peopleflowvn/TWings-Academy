@@ -303,7 +303,7 @@ def revoke_access(order_id: str) -> None:
     """Refunded / cancelled order: leave the Moodle course, revoke the certificate, keep the history."""
     with transaction.atomic():
         enrollment = (
-            LmsEnrollment.objects.select_for_update()
+            LmsEnrollment.objects.select_for_update(of=("self",))  # the related rows sit on outer joins
             .select_related("order")
             .filter(order_id=order_id)
             .first()
@@ -369,7 +369,7 @@ def revoke_corporate(corporate_enrollment_id: str) -> None:
     """Cancelled or transferred out of a corporate class: leave its Moodle course, keep the history."""
     with transaction.atomic():
         enrollment = (
-            LmsEnrollment.objects.select_for_update()
+            LmsEnrollment.objects.select_for_update(of=("self",))
             .with_learning_data()
             .filter(corporate_enrollment_id=corporate_enrollment_id)
             .first()
