@@ -102,7 +102,10 @@ function scheduleText(weekdays: number[], start: string, end: string, online: bo
   return `${online ? 'Online' : 'Trực tiếp'} thứ ${days.join('-')}, ${start}–${end}`.replace('thứ CN', 'Chủ nhật');
 }
 
-const SessionsEditor: React.FC<{ intake: IntakeRow; onClose: () => void; onSaved: () => void }> = ({ intake, onClose, onSaved }) => {
+/** The class sessions of an intake; also used for corporate classes (/app/corporate/classes). */
+export type SessionTarget = Pick<IntakeRow, 'id' | 'courseTitle' | 'name' | 'startDate' | 'location' | 'scheduleText'>;
+
+export const SessionsEditor: React.FC<{ intake: SessionTarget; onClose: () => void; onSaved: () => void }> = ({ intake, onClose, onSaved }) => {
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [from, setFrom] = useState(intake.startDate || new Date().toISOString().slice(0, 10));
   const [weekdays, setWeekdays] = useState<number[]>([1, 3, 5]);

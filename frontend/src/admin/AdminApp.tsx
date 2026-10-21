@@ -6,6 +6,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
   Building2,
+  ClipboardList,
+  Handshake,
+  Users,
   ExternalLink,
   FileText,
   Gauge,
@@ -71,6 +74,7 @@ import { CampaignLinksPage, ReviewsPage } from './pages/MarketingPages';
 import { ConsultingPage, InvoicesPage } from './pages/JourneyPages';
 import { LearningSupportPage } from './pages/LearningPages';
 import { JobOutcomesPage, JobsPage } from './pages/PlacementPages';
+import { CorporateClassesPage, CorporateClientsPage, CorporatePlansPage } from './pages/CorporatePages';
 
 interface NavItem {
   path: string;
@@ -124,6 +128,15 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { path: '/learning/progress', label: 'Học viên & tiến độ', icon: GraduationCap, perms: ['lms.view'] },
       { path: '/learning/support', label: 'Học viên cần hỗ trợ', icon: LifeBuoy, perms: ['lms.view'] },
       { path: '/learning/moodle', label: 'Ngân hàng đề, khóa & báo cáo', icon: Wrench, perms: ['lms.view'] }
+    ]
+  },
+  {
+    // B2B: classes a client company sends its staff to (no orders, no tuition).
+    title: 'Đào tạo doanh nghiệp',
+    items: [
+      { path: '/corporate/classes', label: 'Lớp doanh nghiệp', icon: Users, perms: ['corporate.view'] },
+      { path: '/corporate/plans', label: 'Kế hoạch đào tạo', icon: ClipboardList, perms: ['corporate.view'] },
+      { path: '/corporate/clients', label: 'Khách hàng & hợp đồng', icon: Handshake, perms: ['corporate.view'] }
     ]
   },
   {
@@ -227,6 +240,7 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
   // E-mail previews read a few leads; the CRM pipeline loads (filtered, paginated) leads itself.
   const orders = useOrders(can('crm.view_leads') && path === '/content/email');
   const courses = useCourses(can('courses.view'));
+  const corporateCourses = useMemo(() => courses.courses.map((c) => ({ id: c.id, title: c.title })), [courses.courses]);
   const homepage = useHomepageSections(
     can('homepage.intro_about') || can('homepage.partners') || can('system.sections_toggle')
   );
@@ -293,6 +307,12 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <CMSLmsTab />;
       case '/learning/support':
         return <LearningSupportPage />;
+      case '/corporate/classes':
+        return <CorporateClassesPage courses={corporateCourses} />;
+      case '/corporate/plans':
+        return <CorporatePlansPage courses={corporateCourses} />;
+      case '/corporate/clients':
+        return <CorporateClientsPage courses={corporateCourses} />;
       case '/jobs/referrals':
         return <JobsPage />;
       case '/jobs/outcomes':
