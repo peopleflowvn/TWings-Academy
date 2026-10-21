@@ -314,23 +314,45 @@ class SessionsPayloadSerializer(serializers.Serializer):
 
 
 class CohortSessionsView(APIView):
-    """GET the intake's class sessions; PUT replaces them (and pushes them to the Moodle calendar)."""
+    """
+    GET the intake's class sessions; PUT replaces them (and pushes them to the Moodle calendar). A
+    corporate class's sessions are managed by corporate training staff, a public intake's by training.
+    """
 
     def get_permissions(self):
-        codes = ["courses.view", "crm.view_leads"] if self.request.method == "GET" else ["courses.edit_info"]
+        if self.request.method == "GET":
+            codes = ["courses.view", "crm.view_leads", "corporate.view"]
+        else:
+            codes = ["courses.edit_info", "corporate.classes"]
         return [require_perms(*codes)()]
+
+    def _cohort(self, request, pk, queryset=Cohort.objects):
+        cohort = get_object_or_404(queryset, pk=pk)
+        if cohort.audience == Cohort.AUDIENCE_CORPORATE:
+            from apps.corporate.permissions import in_scope
+
+            code = "corporate.view" if request.method == "GET" else "corporate.classes"
+            allowed = has_perm_code(request.user, code) and in_scope(
+                request.user, cohort.corporate_class.client
+            )
+        else:
+            codes = ("courses.view", "crm.view_leads") if request.method == "GET" else ("courses.edit_info",)
+            allowed = any(has_perm_code(request.user, c) for c in codes)
+        if not allowed:
+            raise PermissionDenied()
+        return cohort
 
     def get(self, request, pk):
         from .intakes import session_rows
 
-        return Response(session_rows(get_object_or_404(Cohort, pk=pk)))
+        return Response(session_rows(self._cohort(request, pk)))
 
     def put(self, request, pk):
         from apps.lms import moodle
 
         from .intakes import ScheduleError, replace_sessions, session_rows, sync_sessions
 
-        cohort = get_object_or_404(Cohort.objects.select_related("course"), pk=pk)
+        cohort = self._cohort(request, pk, Cohort.objects.select_related("course"))
         ser = SessionsPayloadSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         data = ser.validated_data

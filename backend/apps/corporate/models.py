@@ -88,6 +88,128 @@ class CorporateEmployee(BaseModel):
         return f"{self.client_id} {self.employee_code or self.learner_id}"
 
 
+class ServiceContract(BaseModel):
+    """
+    A training service contract with a client. An amendment (phụ lục) is a contract of its own that
+    points at the original (`amends`), so rates and values are never overwritten.
+    """
+
+    STATUS_CHOICES = [
+        ("draft", "Đang soạn"),
+        ("active", "Đang hiệu lực"),
+        ("ended", "Đã kết thúc"),
+        ("cancelled", "Đã hủy"),
+    ]
+
+    client = models.ForeignKey(CorporateClient, on_delete=models.PROTECT, related_name="contracts")
+    number = models.CharField(max_length=100)
+    title = models.CharField(max_length=300, blank=True)
+    amends = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="amendments"
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft", db_index=True)
+    signed_on = models.DateField(null=True, blank=True)
+    valid_from = models.DateField(null=True, blank=True)
+    valid_to = models.DateField(null=True, blank=True)
+    # Contract value before VAT, in đồng (management figure: acceptance decides what is billed).
+    value = models.PositiveBigIntegerField(null=True, blank=True)
+    vat_rate = models.PositiveSmallIntegerField(null=True, blank=True)  # %, e.g. 8 or 10
+    note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-valid_from", "number"]
+        constraints = [models.UniqueConstraint(fields=["client", "number"], name="uniq_contract_number")]
+
+    def __str__(self):
+        return self.number
+
+
+class ContractRate(BaseModel):
+    """A unit price of the contract: what one class / learner / session / hour / package is billed."""
+
+    KIND_CHOICES = [
+        ("per_class", "Theo lớp"),
+        ("per_learner", "Theo học viên"),
+        ("per_session", "Theo buổi"),
+        ("per_hour", "Theo giờ"),
+        ("lump_sum", "Trọn gói"),
+    ]
+
+    contract = models.ForeignKey(ServiceContract, on_delete=models.CASCADE, related_name="rates")
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    # Empty: the rate applies to every course of the contract.
+    course = models.ForeignKey("catalog.Course", null=True, blank=True, on_delete=models.PROTECT)
+    description = models.CharField(max_length=300, blank=True)
+    unit_price = models.PositiveBigIntegerField()  # đồng, before VAT
+    vat_rate = models.PositiveSmallIntegerField(null=True, blank=True)
+    valid_from = models.DateField(null=True, blank=True)
+    valid_to = models.DateField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["contract", "kind"]
+
+    def __str__(self):
+        return f"{self.contract_id} {self.kind} {self.unit_price}"
+
+
+class TrainingPlan(BaseModel):
+    """
+    A client's training plan for a period, as agreed. Once approved it is not edited: a change is a new
+    version (`previous` points at the one it replaces, which becomes superseded).
+    """
+
+    STATUS_CHOICES = [("draft", "Đang soạn"), ("approved", "Đã duyệt"), ("superseded", "Đã thay thế")]
+
+    client = models.ForeignKey(CorporateClient, on_delete=models.PROTECT, related_name="plans")
+    contract = models.ForeignKey(
+        ServiceContract, null=True, blank=True, on_delete=models.SET_NULL, related_name="plans"
+    )
+    name = models.CharField(max_length=300)
+    period = models.CharField(max_length=50, blank=True)  # e.g. "2026" or "Q4/2026"
+    version = models.PositiveSmallIntegerField(default=1)
+    previous = models.OneToOneField(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="next_version"
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft", db_index=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["client", "name", "version"], name="uniq_plan_version")
+        ]
+
+    def __str__(self):
+        return f"{self.name} v{self.version}"
+
+
+class PlanLine(BaseModel):
+    """One planned course of the plan: for which unit, when, how many classes / learners, budget, PIC."""
+
+    plan = models.ForeignKey(TrainingPlan, on_delete=models.CASCADE, related_name="lines")
+    course = models.ForeignKey("catalog.Course", null=True, blank=True, on_delete=models.PROTECT)
+    title = models.CharField(max_length=300)  # as written in the client's plan
+    unit = models.ForeignKey(ClientUnit, null=True, blank=True, on_delete=models.SET_NULL)
+    planned_start = models.DateField(null=True, blank=True)
+    planned_end = models.DateField(null=True, blank=True)
+    planned_classes = models.PositiveSmallIntegerField(default=1)
+    planned_learners = models.PositiveIntegerField(null=True, blank=True)
+    budget = models.PositiveBigIntegerField(null=True, blank=True)  # đồng
+    pic = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    note = models.TextField(blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["plan", "sort_order", "planned_start"]
+
+    def __str__(self):
+        return self.title
+
+
 class CorporateClass(BaseModel):
     """The B2B side of a class: the schedule, Moodle course and attendance stay on its Cohort."""
 
@@ -101,6 +223,12 @@ class CorporateClass(BaseModel):
 
     cohort = models.OneToOneField("catalog.Cohort", on_delete=models.PROTECT, related_name="corporate_class")
     client = models.ForeignKey(CorporateClient, on_delete=models.PROTECT, related_name="classes")
+    contract = models.ForeignKey(
+        ServiceContract, null=True, blank=True, on_delete=models.PROTECT, related_name="classes"
+    )
+    plan_line = models.ForeignKey(
+        PlanLine, null=True, blank=True, on_delete=models.SET_NULL, related_name="classes"
+    )
     pic = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="planned", db_index=True)
     # Whether completing learners get a TWings certificate (TWC-…): decided per contract.

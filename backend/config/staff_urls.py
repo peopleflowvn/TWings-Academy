@@ -86,6 +86,7 @@ urlpatterns = [
     path("consultants/", ConsultantsView.as_view(), name="staff-consultants"),
     path("cohorts/<str:pk>/rollover/", CohortRolloverView.as_view(), name="staff-cohort-rollover"),
     path("lms/", include("apps.lms.urls")),
+    path("corporate/", include("apps.corporate.urls")),
     path("placements/", PlacementListView.as_view(), name="staff-placements"),
     path("placements/candidates/", CandidatesView.as_view(), name="staff-placement-candidates"),
     path("placements/outcomes/", OutcomesView.as_view(), name="staff-placement-outcomes"),
