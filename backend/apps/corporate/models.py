@@ -783,3 +783,55 @@ class CostAllocation(BaseModel):
         constraints = [
             models.UniqueConstraint(fields=["expense", "corporate_class"], name="uniq_allocation_per_class")
         ]
+
+
+class TrainingRequest(BaseModel):
+    """
+    A request from a client (new class, schedule / list change, report, document...), with a deadline
+    from its priority counted in working hours (requests.py). Met = resolved by the deadline.
+    """
+
+    KIND_CHOICES = [
+        ("new_class", "Mở lớp mới"),
+        ("change", "Thay đổi lịch / học viên"),
+        ("report", "Báo cáo, số liệu"),
+        ("document", "Hồ sơ, chứng từ"),
+        ("other", "Khác"),
+    ]
+    PRIORITY_CHOICES = [("urgent", "Khẩn"), ("high", "Cao"), ("normal", "Thường"), ("low", "Thấp")]
+    STATUS_CHOICES = [
+        ("open", "Mới"),
+        ("in_progress", "Đang xử lý"),
+        ("done", "Đã xong"),
+        ("cancelled", "Đã hủy"),
+    ]
+    CHANNEL_CHOICES = [("email", "Email"), ("phone", "Điện thoại"), ("meeting", "Họp"), ("other", "Khác")]
+    OPEN = ("open", "in_progress")
+
+    client = models.ForeignKey(CorporateClient, on_delete=models.PROTECT, related_name="requests")
+    corporate_class = models.ForeignKey(
+        CorporateClass, null=True, blank=True, on_delete=models.SET_NULL, related_name="requests"
+    )
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default="other")
+    title = models.CharField(max_length=300)
+    detail = models.TextField(blank=True)
+    requested_by = models.CharField(max_length=200, blank=True)  # client contact, name / e-mail
+    channel = models.CharField(max_length=20, choices=CHANNEL_CHOICES, default="email")
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="normal")
+    received_at = models.DateTimeField()
+    due_at = models.DateTimeField()
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open", db_index=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolution = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["due_at"]
+
+    def __str__(self):
+        return self.title

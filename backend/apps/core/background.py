@@ -28,6 +28,7 @@ JOB_LABELS = {
     "expire_checkouts": "Nhắc và hủy đơn thanh toán quá hạn giữ chỗ",
     "remind_installments": "Nhắc trả góp",
     "run_journeys": "Email theo hành trình",
+    "remind_corporate_requests": "Nhắc hạn SLA yêu cầu doanh nghiệp",
     "remind_appointments": "Nhắc lịch hẹn tư vấn",
     "prune_db_task_results": "Dọn lịch sử tác vụ cũ",
 }

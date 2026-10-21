@@ -29,6 +29,7 @@ from .models import (
     ResultSnapshot,
     ServiceContract,
     TrainingPlan,
+    TrainingRequest,
 )
 from .serializers import (
     AcceptanceAdjustmentSerializer,
@@ -58,6 +59,7 @@ from .serializers import (
     SelfmarkSerializer,
     ServiceContractSerializer,
     TrainingPlanSerializer,
+    TrainingRequestSerializer,
     TransferSerializer,
 )
 
@@ -1105,3 +1107,51 @@ class ImportBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnlyMode
             batch.status = "cancelled"
             batch.save(update_fields=["status", "updated_at"])
         return Response(self.get_serializer(batch).data)
+
+
+class TrainingRequestViewSet(
+    _Scoped, mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.ReadOnlyModelViewSet
+):
+    """Client requests with an SLA deadline (working hours by priority); cancelled, never deleted."""
+
+    serializer_class = TrainingRequestSerializer
+    permission_classes = [ActionPermission]
+    permission_map = perm_map("corporate.classes", summary="corporate.view", owners="corporate.view")
+    filterset_fields = ["client", "status", "priority", "kind", "owner", "corporate_class"]
+    search_fields = ["title", "detail", "requested_by"]
+
+    def get_queryset(self):
+        queryset = self.scoped(
+            TrainingRequest.objects.select_related("client", "corporate_class__cohort", "owner")
+        )
+        if self.request.query_params.get("open"):  # ?open=1: new + in progress
+            queryset = queryset.filter(status__in=TrainingRequest.OPEN)
+        return queryset
+
+    def perform_create(self, serializer):
+        self.check_client(serializer.validated_data["client"])
+        audit(self.request, "corporate.request_create", serializer.save(created_by=self.request.user))
+
+    def perform_update(self, serializer):
+        self.check_client(serializer.validated_data.get("client", serializer.instance.client))
+        before = serializer.instance.status
+        req = serializer.save()
+        audit(self.request, "corporate.request_update", req, status=req.status, previous=before)
+
+    @action(detail=False, methods=["get"])
+    def summary(self, request):
+        """Open / overdue / on-time rate, for the whole scope or one client (?client=)."""
+        from .requests import summary
+
+        return Response(summary(self.filter_queryset(self.get_queryset())))
+
+    @action(detail=False, methods=["get"])
+    def owners(self, request):
+        """Staff who may handle requests (corporate.classes): the owner picker."""
+        from apps.accounts.models import User
+        from apps.accounts.rbac import has_perm_code
+
+        staff = User.objects.filter(is_staff=True, is_active=True).order_by("name")
+        return Response(
+            [{"id": u.pk, "name": u.name or u.email} for u in staff if has_perm_code(u, "corporate.classes")]
+        )

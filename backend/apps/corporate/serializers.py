@@ -25,6 +25,7 @@ from .models import (
     ResultSnapshot,
     ServiceContract,
     TrainingPlan,
+    TrainingRequest,
 )
 
 
@@ -599,3 +600,52 @@ class AllocateSerializer(serializers.Serializer):
     classes = serializers.PrimaryKeyRelatedField(
         queryset=CorporateClass.objects.all(), many=True, required=False
     )
+
+
+class TrainingRequestSerializer(serializers.ModelSerializer):
+    """due_at is computed from priority (working hours) unless set by hand, e.g. around a holiday."""
+
+    client_code = serializers.CharField(source="client.code", read_only=True)
+    class_name = serializers.CharField(source="corporate_class.cohort.name", read_only=True, default="")
+    owner_name = serializers.CharField(source="owner.name", read_only=True, default="")
+    kind_label = serializers.CharField(source="get_kind_display", read_only=True)
+    priority_label = serializers.CharField(source="get_priority_display", read_only=True)
+    status_label = serializers.CharField(source="get_status_display", read_only=True)
+    sla = serializers.SerializerMethodField()
+    received_at = serializers.DateTimeField(required=False)
+    due_at = serializers.DateTimeField(required=False)
+
+    class Meta:
+        model = TrainingRequest
+        exclude = ["updated_at"]
+        read_only_fields = ["resolved_at", "created_by"]
+
+    def get_sla(self, req) -> str:
+        from .requests import sla_state
+
+        return sla_state(req)
+
+    def validate(self, attrs):
+        from django.utils import timezone
+
+        from .requests import due_at
+
+        cls = attrs.get("corporate_class")
+        client = attrs.get("client") or getattr(self.instance, "client", None)
+        if cls and client and cls.client_id != client.pk:
+            raise serializers.ValidationError({"corporate_class": "Lớp không thuộc khách hàng này."})
+        received = attrs.setdefault(
+            "received_at", getattr(self.instance, "received_at", None) or timezone.now()
+        )
+        priority = attrs.get("priority") or getattr(self.instance, "priority", "normal")
+        timing_changed = self.instance is None or (
+            received != self.instance.received_at or priority != self.instance.priority
+        )
+        if "due_at" not in attrs and timing_changed:
+            attrs["due_at"] = due_at(received, priority)
+        status = attrs.get("status")
+        if status == "done" and not getattr(self.instance, "resolved_at", None):
+            attrs["resolved_at"] = timezone.now()
+        elif status in TrainingRequest.OPEN:
+            attrs["resolved_at"] = None
+        return attrs

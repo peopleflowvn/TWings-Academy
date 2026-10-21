@@ -19,6 +19,7 @@ from .models import (
     CorporateEnrollment,
     Expense,
     ServiceContract,
+    TrainingRequest,
 )
 
 # One definition per figure, shown next to it on the dashboard and in exports.
@@ -41,6 +42,10 @@ KPI_DICTIONARY = {
     ),
     "costs": "Chi phí: chi phí và quyết toán tạm ứng đã ghi nhận (tạm ứng chưa quyết toán không tính).",
     "margin": "Biên đóng góp: giá trị nghiệm thu − chi phí của lớp (số quản trị, không phải sổ kế toán).",
+    "request_on_time_rate": (
+        "Yêu cầu đúng hạn: yêu cầu xong trong 90 ngày qua có thời điểm xong ≤ hạn SLA / tổng số đã xong."
+        " Hạn = lúc nhận + số giờ làm việc theo mức ưu tiên (thứ 2–6)."
+    ),
 }
 
 STALE_APPROVED_DAYS = 14
@@ -165,6 +170,17 @@ def alerts(classes) -> list[dict]:
     return sorted(out, key=lambda a: order[a["level"]])
 
 
+def _request_alert(req, now) -> dict:
+    late = req.due_at < now
+    who = req.owner.name if req.owner_id else "chưa có người xử lý"
+    return {
+        "level": "error" if late else "warning",
+        "request": req.pk,
+        "text": f"Yêu cầu {req.client.code} “{req.title}”: {'quá hạn' if late else 'sắp đến hạn'} SLA"
+        f" ({timezone.localtime(req.due_at):%H:%M %d/%m}) · {who}",
+    }
+
+
 def overview(clients, *, client=None) -> dict:
     now = timezone.now()
     classes = (
@@ -209,6 +225,10 @@ def overview(clients, *, client=None) -> dict:
     unallocated = sum(
         e.amount - sum(a.amount for a in e.allocations.all()) for e in shared.prefetch_related("allocations")
     )
+    from . import requests as sla
+
+    client_requests = TrainingRequest.objects.filter(client__in=[client] if client else clients)
+    request_alerts = [_request_alert(r, now) for r in sla.attention(client_requests, now)]
     return {
         "activity": {
             "classes": len(classes),
@@ -233,8 +253,10 @@ def overview(clients, *, client=None) -> dict:
             "overdue": receivable["overdue"],
             "unallocated_costs": unallocated,
         },
+        "requests": sla.summary(client_requests),
         "classes": rows,
-        "alerts": alerts(classes)
+        "alerts": request_alerts
+        + alerts(classes)
         + (
             [
                 {

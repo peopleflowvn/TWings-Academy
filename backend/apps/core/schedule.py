@@ -62,6 +62,7 @@ SCHEDULE: dict[str, Every | Daily] = {
     "expire_checkouts": Every(minutes=30),  # unpaid checkouts past their hold: cancelled
     "remind_installments": Daily(hour=9, minute=0),
     "run_journeys": Daily(hour=9, minute=30),  # journey e-mails
+    "remind_corporate_requests": Daily(hour=8, minute=15),  # B2B requests near / past their SLA
     "remind_appointments": Daily(minute=5, hours=tuple(range(7, 22))),  # every hour 7:05-21:05
     "prune_db_task_results": Daily(hour=3, minute=30),  # finished task rows older than 14 days
 }

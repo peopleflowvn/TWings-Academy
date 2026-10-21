@@ -22,6 +22,7 @@ from .views import (
     ResultSnapshotViewSet,
     ServiceContractViewSet,
     TrainingPlanViewSet,
+    TrainingRequestViewSet,
 )
 
 router = SimpleRouter()
@@ -38,6 +39,7 @@ router.register("results", ResultSnapshotViewSet, basename="corporate-result")
 router.register("communications", CommunicationBatchViewSet, basename="corporate-communication")
 router.register("acceptances", AcceptanceBatchViewSet, basename="corporate-acceptance")
 router.register("documents", ClassDocumentViewSet, basename="corporate-document")
+router.register("requests", TrainingRequestViewSet, basename="corporate-request")
 router.register("expenses", ExpenseViewSet, basename="corporate-expense")
 router.register("shares", ClientShareViewSet, basename="corporate-share")
 router.register("payments", ClientPaymentViewSet, basename="corporate-payment")

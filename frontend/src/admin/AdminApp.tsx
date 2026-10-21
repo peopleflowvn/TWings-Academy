@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
   Layers,
   LifeBuoy,
+  Inbox,
   LayoutTemplate,
   KeyRound,
   LogOut,
@@ -81,7 +82,8 @@ import {
   CorporateClientsPage,
   CorporateOverviewPage,
   CorporatePlansPage,
-  CorporateReceivablesPage
+  CorporateReceivablesPage,
+  CorporateRequestsPage
 } from './pages/CorporatePages';
 
 interface NavItem {
@@ -145,6 +147,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { path: '/corporate/overview', label: 'Tổng quan B2B', icon: Gauge, perms: ['corporate.view'] },
       { path: '/corporate/classes', label: 'Lớp doanh nghiệp', icon: Users, perms: ['corporate.view'] },
       { path: '/corporate/plans', label: 'Kế hoạch đào tạo', icon: ClipboardList, perms: ['corporate.view'] },
+      { path: '/corporate/requests', label: 'Yêu cầu & SLA', icon: Inbox, perms: ['corporate.view'] },
       { path: '/corporate/acceptance', label: 'Nghiệm thu', icon: FileCheck2, perms: ['corporate.view'] },
       { path: '/corporate/receivables', label: 'Công nợ', icon: Receipt, perms: ['corporate.view'] },
       { path: '/corporate/clients', label: 'Khách hàng & hợp đồng', icon: Handshake, perms: ['corporate.view'] }
@@ -328,6 +331,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <CorporateAcceptancePage />;
       case '/corporate/receivables':
         return <CorporateReceivablesPage />;
+      case '/corporate/requests':
+        return <CorporateRequestsPage />;
       case '/corporate/clients':
         return <CorporateClientsPage courses={corporateCourses} />;
       case '/jobs/referrals':

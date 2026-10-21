@@ -324,6 +324,29 @@ def shared_cost_allocated(page: Page):
     page.locator("li", has_text="Hội trường cả đợt").locator("text=đã phân bổ 300.000").wait_for(timeout=20000)
 
 
+
+@step
+def client_request_with_sla(page: Page):
+    page.goto(f"{BASE}/app/corporate/requests")
+    page.wait_for_selector("text=Yêu cầu của khách hàng", timeout=20000)
+    page.locator("button:has-text('Ghi nhận yêu cầu')").click()
+    m = modal(page, "Người yêu cầu")
+    field(m, "Tiêu đề").fill("Bổ sung 2 học viên")
+    field(m, "Ưu tiên").select_option("urgent")
+    field(m, "Người xử lý").select_option(index=1)
+    m.locator("button:has-text('Lưu')").click()
+    row = page.locator("tr", has_text="Bổ sung 2 học viên")
+    row.locator("text=Khẩn").wait_for(timeout=20000)  # deadline computed by the API (4 working hours)
+
+    row.click()
+    m = modal(page, "Kết quả xử lý")
+    field(m, "Trạng thái").select_option("done")
+    field(m, "Kết quả xử lý").fill("Đã thêm vào danh sách lớp")
+    m.locator("button:has-text('Lưu')").click()
+    row.wait_for(state="detached", timeout=20000)  # only open requests are listed by default
+    page.locator("label:has-text('Chỉ đang mở') input").uncheck()
+    row.locator("text=Đã xong").wait_for(timeout=20000)
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:

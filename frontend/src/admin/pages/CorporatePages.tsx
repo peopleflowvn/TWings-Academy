@@ -7,6 +7,7 @@
  *   /corporate/clients        clients; ?id=<id> one client (details, legal entities / units, contracts + rates)
  *   /corporate/plans          training plans; ?id=<id> one plan (lines, approve, new version)
  *   /corporate/receivables    accepted batches: paid, outstanding, aging; record payments
+ *   /corporate/requests       client requests with their SLA deadline (working hours by priority)
  *   /corporate/acceptance     acceptance batches of contracts; ?id=<id> one batch (lines, approval, export)
  * Every list is limited by the API to the clients the user may see.
  */
@@ -2919,7 +2920,7 @@ interface Overview {
   quality: Record<string, number | null>;
   finance: Record<string, number>;
   classes: OverviewRow[];
-  alerts: { level: 'error' | 'warning' | 'info'; text: string; class?: string; acceptance?: string }[];
+  alerts: { level: 'error' | 'warning' | 'info'; text: string; class?: string; acceptance?: string; request?: string }[];
   kpiDictionary: Record<string, string>;
 }
 
@@ -2979,7 +2980,7 @@ export const CorporateOverviewPage: React.FC = () => {
             {data.alerts.map((a, i) => (
               <li key={i}>
                 <button type="button" className={`w-full text-left border rounded-lg px-3 py-1.5 cursor-pointer ${ALERT_TONE[a.level]}`}
-                  onClick={() => navigate(a.class ? `/corporate/classes?id=${a.class}` : `/corporate/acceptance?id=${a.acceptance}`)}>
+                  onClick={() => navigate(a.class ? `/corporate/classes?id=${a.class}` : a.request ? '/corporate/requests' : `/corporate/acceptance?id=${a.acceptance}`)}>
                   {a.text}
                 </button>
               </li>
@@ -3009,6 +3010,178 @@ export const CorporateOverviewPage: React.FC = () => {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+};
+
+// ================================================================ client requests (SLA)
+interface TrainingRequest {
+  id: string;
+  client: string;
+  clientCode: string;
+  kind: string;
+  kindLabel: string;
+  title: string;
+  detail: string;
+  requestedBy: string;
+  channel: string;
+  priority: 'urgent' | 'high' | 'normal' | 'low';
+  priorityLabel: string;
+  receivedAt: string;
+  dueAt: string;
+  owner: string | null;
+  ownerName: string;
+  status: 'open' | 'in_progress' | 'done' | 'cancelled';
+  statusLabel: string;
+  resolvedAt: string | null;
+  resolution: string;
+  sla: 'on_track' | 'due_soon' | 'overdue' | 'met' | 'missed' | 'cancelled';
+}
+
+interface RequestSummary {
+  open: number;
+  overdue: number;
+  resolved90d: number;
+  onTimeRate: number | null;
+}
+
+const REQUEST_KINDS: [string, string][] = [['new_class', 'Mở lớp mới'], ['change', 'Thay đổi lịch / học viên'], ['report', 'Báo cáo, số liệu'], ['document', 'Hồ sơ, chứng từ'], ['other', 'Khác']];
+const REQUEST_PRIORITIES: [string, string][] = [['urgent', 'Khẩn – 4 giờ làm việc'], ['high', 'Cao – 1 ngày làm việc'], ['normal', 'Thường – 3 ngày làm việc'], ['low', 'Thấp – 5 ngày làm việc']];
+const REQUEST_STATUSES: [string, string][] = [['open', 'Mới'], ['in_progress', 'Đang xử lý'], ['done', 'Đã xong'], ['cancelled', 'Đã hủy']];
+const REQUEST_CHANNELS: [string, string][] = [['email', 'Email'], ['phone', 'Điện thoại'], ['meeting', 'Họp'], ['other', 'Khác']];
+const SLA_BADGE: Record<TrainingRequest['sla'], [string, string]> = {
+  on_track: ['Trong hạn', 'bg-emerald-50 text-emerald-700'],
+  due_soon: ['Sắp đến hạn', 'bg-amber-50 text-amber-800'],
+  overdue: ['Quá hạn', 'bg-red-50 text-red-700'],
+  met: ['Xong đúng hạn', 'bg-emerald-50 text-emerald-700'],
+  missed: ['Xong trễ hạn', 'bg-red-50 text-red-700'],
+  cancelled: ['Đã hủy', 'bg-slate-100 text-slate-500']
+};
+const stamp = (iso: string | null) => (iso ? new Date(iso).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '–');
+// <input type="datetime-local"> holds local time without an offset; the API takes ISO with one.
+const toLocalInput = (iso: string) => {
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+const fromLocalInput = (value: string) => new Date(value).toISOString();
+
+type RequestForm = { client: string; kind: string; title: string; detail: string; requestedBy: string; channel: string; priority: string; receivedAt: string; dueAt: string; owner: string; status: string; resolution: string };
+const emptyRequest = (client: string): RequestForm => ({ client, kind: 'other', title: '', detail: '', requestedBy: '', channel: 'email', priority: 'normal', receivedAt: toLocalInput(new Date().toISOString()), dueAt: '', owner: '', status: 'open', resolution: '' });
+
+export const CorporateRequestsPage: React.FC = () => {
+  const canEdit = useStaffCan('corporate.classes');
+  const { clients } = useClients();
+  const [client, setClient] = useState('');
+  const [openOnly, setOpenOnly] = useState(true);
+  const [rows, setRows] = useState<TrainingRequest[] | null>(null);
+  const [summary, setSummary] = useState<RequestSummary | null>(null);
+  const [owners, setOwners] = useState<{ id: string; name: string }[]>([]);
+  const [editing, setEditing] = useState<TrainingRequest | 'new' | null>(null);
+  const [form, setForm] = useState<RequestForm>(emptyRequest(''));
+  const [error, setError] = useState('');
+  const load = useCallback(() => {
+    const params = new URLSearchParams({ pageSize: '200' });
+    if (client) params.set('client', client);
+    if (openOnly) params.set('open', '1');
+    api.get<Paginated<TrainingRequest>>(`/staff/corporate/requests/?${params}`).then((d) => setRows(d.results)).catch((e) => setError(errorText(e)));
+    api.get<RequestSummary>(`/staff/corporate/requests/summary/${client ? `?client=${client}` : ''}`).then(setSummary).catch(() => undefined);
+  }, [client, openOnly]);
+  useEffect(load, [load]);
+  useEffect(() => {
+    api.get<{ id: string; name: string }[]>('/staff/corporate/requests/owners/').then(setOwners).catch(() => undefined);
+  }, []);
+  const open = (r: TrainingRequest | 'new') => {
+    setError('');
+    setEditing(r);
+    setForm(r === 'new' ? emptyRequest(client || clients[0]?.id || '') : {
+      client: r.client, kind: r.kind, title: r.title, detail: r.detail, requestedBy: r.requestedBy, channel: r.channel, priority: r.priority,
+      receivedAt: toLocalInput(r.receivedAt), dueAt: toLocalInput(r.dueAt), owner: r.owner || '', status: r.status, resolution: r.resolution
+    });
+  };
+  const save = async () => {
+    if (!editing) return;
+    setError('');
+    const { dueAt, ...rest } = form;
+    const body: Record<string, unknown> = { ...rest, owner: form.owner || null, receivedAt: fromLocalInput(form.receivedAt) };
+    if (editing !== 'new' && dueAt !== toLocalInput(editing.dueAt)) body.dueAt = fromLocalInput(dueAt); // moved by hand (holiday)
+    try {
+      if (editing === 'new') await api.post('/staff/corporate/requests/', body);
+      else await api.patch(`/staff/corporate/requests/${editing.id}/`, body);
+      setEditing(null);
+      load();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  const set = (patch: Partial<RequestForm>) => setForm({ ...form, ...patch });
+  return (
+    <div className="space-y-4">
+      <div className={`${card} flex flex-wrap items-center justify-between gap-3`}>
+        <div>
+          <h2 className="font-bold text-slate-900">Yêu cầu của khách hàng</h2>
+          <p className="text-xs text-slate-500">Hạn xử lý (SLA) tính theo giờ làm việc thứ 2–6 từ lúc nhận: Khẩn 4 giờ, Cao 1 ngày, Thường 3 ngày, Thấp 5 ngày. Ngày lễ thì sửa hạn bằng tay. Người xử lý nhận email nhắc mỗi sáng.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select className={`${input} max-w-xs`} value={client} onChange={(e) => setClient(e.target.value)}>
+            <option value="">Mọi khách hàng</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{c.code} – {c.name}</option>)}
+          </select>
+          <label className="text-xs flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={openOnly} onChange={(e) => setOpenOnly(e.target.checked)} /> Chỉ đang mở</label>
+          {canEdit && <button type="button" className={primary} disabled={!clients.length} onClick={() => open('new')}><Plus className="w-4 h-4" /> Ghi nhận yêu cầu</button>}
+        </div>
+      </div>
+      {summary && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <Tile label="Đang mở" value={summary.open} />
+          <Tile label="Quá hạn SLA" value={<span className={summary.overdue ? 'text-red-600' : ''}>{summary.overdue}</span>} />
+          <Tile label="Đã xong (90 ngày)" value={summary.resolved90d} />
+          <Tile label="Đúng hạn (90 ngày)" value={pct(summary.onTimeRate)} hint="Yêu cầu xong trong 90 ngày qua có thời điểm xong ≤ hạn SLA / tổng số đã xong." />
+        </div>
+      )}
+      {error && !editing && <p className="text-xs text-red-600">{error}</p>}
+      <div className={`${card} p-0 overflow-x-auto`}>
+        {!rows ? <Loader2 className="w-5 h-5 m-5 animate-spin text-slate-400" /> : rows.length === 0 ? (
+          <p className="p-5 text-xs text-slate-500">Không có yêu cầu nào{openOnly ? ' đang mở' : ''}.</p>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 text-slate-600 text-left">
+              <tr><th className="p-2">Hạn</th><th className="p-2">KH</th><th className="p-2">Yêu cầu</th><th className="p-2">Ưu tiên</th><th className="p-2">Người xử lý</th><th className="p-2">Trạng thái</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((r) => (
+                <tr key={r.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => open(r)}>
+                  <td className="p-2 whitespace-nowrap"><div>{stamp(r.dueAt)}</div><span className={`inline-block mt-0.5 px-1.5 rounded font-bold ${SLA_BADGE[r.sla][1]}`}>{SLA_BADGE[r.sla][0]}</span></td>
+                  <td className="p-2">{r.clientCode}</td>
+                  <td className="p-2"><div className="font-bold">{r.title}</div><div className="text-slate-500">{r.kindLabel}{r.requestedBy ? ` · ${r.requestedBy}` : ''} · nhận {stamp(r.receivedAt)}</div></td>
+                  <td className="p-2">{r.priorityLabel}</td>
+                  <td className="p-2">{r.ownerName || <span className="text-amber-700">Chưa giao</span>}</td>
+                  <td className="p-2">{r.statusLabel}{r.resolvedAt ? ` · ${stamp(r.resolvedAt)}` : ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {editing && (
+        <Modal title={editing === 'new' ? 'Ghi nhận yêu cầu' : editing.title} onClose={() => setEditing(null)} wide>
+          <fieldset disabled={!canEdit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label>Khách hàng *<select className={input} value={form.client} onChange={(e) => set({ client: e.target.value })}>{clients.map((c) => <option key={c.id} value={c.id}>{c.code} – {c.name}</option>)}</select></label>
+            <label>Loại<select className={input} value={form.kind} onChange={(e) => set({ kind: e.target.value })}>{REQUEST_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+            <label className="md:col-span-2">Tiêu đề *<input className={input} value={form.title} onChange={(e) => set({ title: e.target.value })} /></label>
+            <label className="md:col-span-2">Nội dung<textarea className={input} rows={3} value={form.detail} onChange={(e) => set({ detail: e.target.value })} /></label>
+            <label>Người yêu cầu (bên khách hàng)<input className={input} value={form.requestedBy} onChange={(e) => set({ requestedBy: e.target.value })} /></label>
+            <label>Kênh<select className={input} value={form.channel} onChange={(e) => set({ channel: e.target.value })}>{REQUEST_CHANNELS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+            <label>Ưu tiên<select className={input} value={form.priority} onChange={(e) => set({ priority: e.target.value })}>{REQUEST_PRIORITIES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+            <label>Nhận lúc<input type="datetime-local" className={input} value={form.receivedAt} onChange={(e) => set({ receivedAt: e.target.value })} /></label>
+            {editing !== 'new' && <label>Hạn SLA (tự tính; sửa khi có ngày lễ)<input type="datetime-local" className={input} value={form.dueAt} onChange={(e) => set({ dueAt: e.target.value })} /></label>}
+            <label>Người xử lý<select className={input} value={form.owner} onChange={(e) => set({ owner: e.target.value })}><option value="">– Chưa giao –</option>{owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
+            {editing !== 'new' && <label>Trạng thái<select className={input} value={form.status} onChange={(e) => set({ status: e.target.value })}>{REQUEST_STATUSES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>}
+            {editing !== 'new' && <label className="md:col-span-2">Kết quả xử lý<textarea className={input} rows={2} value={form.resolution} onChange={(e) => set({ resolution: e.target.value })} /></label>}
+          </fieldset>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          {canEdit && <div className="flex justify-end"><button type="button" className={primary} disabled={!form.client || !form.title.trim() || !form.receivedAt} onClick={save}><Save className="w-4 h-4" /> Lưu</button></div>}
+        </Modal>
+      )}
     </div>
   );
 };
