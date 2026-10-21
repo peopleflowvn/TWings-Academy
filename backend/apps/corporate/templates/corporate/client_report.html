@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>{{ share.title }} – Báo cáo đào tạo</title>
+<title>{{ share.title }} – {{ brand.name }}</title>
 <style>
-:root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--brand:#0073C1}
+:root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--brand:{{ brand.color }}}
 *{box-sizing:border-box}
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:#f1f5f9;margin:0;padding:16px}
 .wrap{max-width:1080px;margin:0 auto}
+.bar{background:var(--brand);color:#fff;font-weight:800;border-radius:12px;padding:10px 16px;margin-bottom:12px}
 header{margin:8px 0 16px}h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:0}.muted{color:var(--muted);font-size:13px}
 .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:12px 0}
@@ -24,6 +25,7 @@ footer{font-size:12px;color:var(--muted);margin:20px 0}
 </head>
 <body>
 <div class="wrap">
+<div class="bar">{{ brand.name }}</div>
 <header>
   <div class="muted">Báo cáo đào tạo cho {{ share.client.name }}</div>
   <h1>{{ share.title }}</h1>

@@ -77,13 +77,15 @@ def send_access_email(order, *, sent_by=None):
 
 def send_corporate_access_email(enrollment, *, sent_by=None):
     """'Your class is open' for a learner listed by their company: no fees, no order, no admission file."""
+    from django.conf import settings
+
     url = learn_url()
     cohort = enrollment.target_cohort
     email = enrollment.learner_email
     html = f"""
 <p>Chào {escape(enrollment.learner_name)},</p>
 <p>Lớp <strong>{escape(enrollment.course_title)} – {escape(cohort.name)}</strong> mà đơn vị của bạn đăng ký
-đã được mở trên hệ thống học trực tuyến TWings LMS.</p>
+đã được mở trên hệ thống học trực tuyến.</p>
 <p><strong>Cách vào học:</strong></p>
 <ol>
   <li>Mở <a href="{url}">{url}</a></li>
@@ -93,7 +95,7 @@ def send_corporate_access_email(enrollment, *, sent_by=None):
 {_intake_block(cohort)}
 <p>Điểm danh tại lớp: quét mã QR do giảng viên chiếu ở mỗi buổi học (cần đăng nhập như trên).</p>
 <p>Cần hỗ trợ, vui lòng trả lời email này.</p>
-<p>TWings Academy</p>
+<p>{escape(settings.CORPORATE_BRAND_NAME)}</p>
 """
     return send_logged(
         to=email,
@@ -102,6 +104,7 @@ def send_corporate_access_email(enrollment, *, sent_by=None):
         sent_by=sent_by,
         template_code="corporate_lms_access",
         name=enrollment.learner_name,
+        brand="corporate",
     )
 
 

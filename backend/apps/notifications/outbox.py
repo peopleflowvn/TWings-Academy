@@ -20,6 +20,7 @@ def send_logged(
     reply_to: str = "",
     attachments: list[dict] | None = None,
     corporate_enrollment=None,
+    brand: str = "twings",
 ) -> EmailLog:
     log = EmailLog.objects.create(
         template_code=template_code,
@@ -45,6 +46,7 @@ def send_logged(
             bcc=bcc,
             reply_to=reply_to,
             attachments=attachments,
+            brand=brand,
         )
     except ResendError as exc:
         log.status, log.error_message = "failed", str(exc)[:500]

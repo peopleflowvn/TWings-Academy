@@ -9,6 +9,7 @@ import time
 import requests
 from django.conf import settings
 
+from .layout import brand as brand_of
 from .layout import wrap
 
 logger = logging.getLogger(__name__)
@@ -31,17 +32,19 @@ def send_email(
     bcc: list[str] | None = None,
     reply_to: str = "",
     attachments: list[dict] | None = None,
+    brand: str = "twings",
 ) -> str | None:
     """
     Send via Resend and return its message id, or None when no API key is configured (sandbox mode:
     the caller records the email as 'simulated'). One message: `to` is a single person, `cc` / `bcc`
     are who else receives that same message (Resend reports delivery per message, not per copy).
     `attachments`: [{"filename": "lich-hoc.ics", "content": <bytes>, "content_type": "text/calendar"}].
+    `brand`: "twings" (B2C) or "corporate" (B2B, TNTalent): sender name / address and e-mail frame.
     """
     api_key = settings.RESEND_API_KEY
     if not api_key:
         return None
-    payload = {"from": settings.RESEND_FROM_EMAIL, "to": [to], "subject": subject, "html": wrap(html)}
+    payload = {"from": brand_of(brand)["sender"], "to": [to], "subject": subject, "html": wrap(html, brand)}
     if cc:
         payload["cc"] = list(cc)
     if bcc:

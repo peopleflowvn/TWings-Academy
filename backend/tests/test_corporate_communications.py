@@ -173,3 +173,23 @@ def test_manager_digest_one_email_per_manager_with_own_staff(cls, staff_client, 
         call["to"] == ["ql@nhm.test"] and "Trần Thị Bình" in call["html"] and "Lê Văn Cường" in call["html"]
     )
     assert "Phạm Ngoài" not in call["html"]  # not this manager's staff
+
+
+def test_b2b_mail_is_tntalent_b2c_stays_twings(cls, resend_calls, settings):
+    from apps.notifications.resend import send_email
+
+    settings.RESEND_FROM_EMAIL = "TWings Academy <tuyensinh@twings.test>"
+    _listing(cls)
+    start = timezone.now() + timedelta(days=3)
+    CohortSession.objects.create(
+        cohort=cls.cohort, title="Buổi 1", starts_at=start, ends_at=start + timedelta(hours=2)
+    )
+    from apps.corporate.communications import send_invitations
+
+    send_invitations(cls, sent_by=None)
+    b2b = resend_calls[-1]
+    assert b2b["from"] == "TNTalent <tuyensinh@twings.test>" and ">TNTalent</td>" in b2b["html"]
+    assert "Học phí" not in b2b["html"]  # no B2C tuition links in a B2B e-mail
+    send_email(to="hv@example.com", subject="B2C", html="<p>x</p>", idempotency_key="k")
+    b2c = resend_calls[-1]
+    assert b2c["from"] == "TWings Academy <tuyensinh@twings.test>" and "TWings Academy</td>" in b2c["html"]

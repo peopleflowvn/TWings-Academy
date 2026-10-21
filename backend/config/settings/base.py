@@ -268,6 +268,19 @@ RESEND_API_KEY = env("RESEND_API_KEY", default="")
 RESEND_FROM_EMAIL = env("RESEND_FROM_EMAIL", default="TWings Academy <onboarding@resend.dev>")
 # Corporate training: e-mail domains of our own staff, always allowed in CC next to a client's domains.
 CORPORATE_INTERNAL_EMAIL_DOMAINS = env.list("CORPORATE_INTERNAL_EMAIL_DOMAINS", default=[])
+# Corporate training (B2B) is TNTalent's service: its e-mails, client pages and documents carry this
+# brand (B2C stays TWings). Empty legal details print as blanks to fill in on the documents.
+CORPORATE_BRAND_NAME = env("CORPORATE_BRAND_NAME", default="TNTalent")
+CORPORATE_BRAND_COLOR = env("CORPORATE_BRAND_COLOR", default="#C8102E")
+CORPORATE_FROM_EMAIL = env("CORPORATE_FROM_EMAIL", default="")  # empty: TNTalent <the Resend sender address>
+CORPORATE_CONTACT_EMAIL = env("CORPORATE_CONTACT_EMAIL", default="")
+CORPORATE_PROVIDER = {
+    "legal_name": env("CORPORATE_PROVIDER_LEGAL_NAME", default="TNTalent"),
+    "address": env("CORPORATE_PROVIDER_ADDRESS", default=""),
+    "tax_code": env("CORPORATE_PROVIDER_TAX_CODE", default=""),
+    "representative": env("CORPORATE_PROVIDER_REPRESENTATIVE", default=""),
+    "title": env("CORPORATE_PROVIDER_TITLE", default=""),
+}
 RESEND_WEBHOOK_SECRET = env("RESEND_WEBHOOK_SECRET", default="")
 
 # Bank transaction webhook (SePay-compatible: "Authorization: Apikey <key>")

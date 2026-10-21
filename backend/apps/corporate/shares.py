@@ -16,6 +16,7 @@ from django.views.decorators.http import require_GET
 
 from apps.core.models import audit
 from apps.crm.partner import _secure
+from apps.notifications.layout import brand
 
 from .models import ClientShare
 from .services import CorporateError
@@ -101,5 +102,9 @@ def client_report_page(request, token: str):
     )
     audit(None, "corporate.share_view", share, actor_label=f"client-link:{share.client.code}")
     return _secure(
-        render(request, "corporate/client_report.html", {"share": share, "classes": report(share)})
+        render(
+            request,
+            "corporate/client_report.html",
+            {"share": share, "classes": report(share), "brand": brand("corporate")},
+        )
     )

@@ -160,6 +160,7 @@ def send_invitations(corporate_class, *, sent_by, only_new: bool = True) -> dict
                 name=listing.learner.full_name,
                 sent_by=sent_by,
                 corporate_enrollment=listing,
+                brand="corporate",
             )
         except ResendError:
             counts["failed"] += 1
@@ -343,6 +344,7 @@ def send_batch(batch, *, user) -> dict:
                 name=recipient.name,
                 sent_by=user,
                 corporate_enrollment=recipient.enrollment,
+                brand="corporate",
             )
         except ResendError:
             counts["failed"] += 1
