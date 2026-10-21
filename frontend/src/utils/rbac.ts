@@ -322,6 +322,98 @@ export const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
     category: 'system',
     categoryLabel: '7. Hạ Tầng & Cấu Hình Hệ Thống',
     riskLevel: 'medium'
+  },
+
+  // Category 8: Đào tạo doanh nghiệp (B2B)
+  {
+    id: 'perm-corporate-1',
+    code: 'corporate.view',
+    name: 'Xem đào tạo doanh nghiệp',
+    description: 'Xem khách hàng, lớp, học viên và kết quả lớp doanh nghiệp',
+    category: 'corporate',
+    categoryLabel: '8. Đào Tạo Doanh Nghiệp',
+    riskLevel: 'low'
+  },
+  {
+    id: 'perm-corporate-2',
+    code: 'corporate.clients',
+    name: 'Quản lý khách hàng & hợp đồng',
+    description: 'Thêm / sửa khách hàng doanh nghiệp, hợp đồng, đơn giá',
+    category: 'corporate',
+    categoryLabel: '8. Đào Tạo Doanh Nghiệp',
+    riskLevel: 'medium'
+  },
+  {
+    id: 'perm-corporate-3',
+    code: 'corporate.classes',
+    name: 'Quản lý lớp doanh nghiệp',
+    description: 'Kế hoạch, lớp, buổi học, danh sách học viên và cán bộ quản lý',
+    category: 'corporate',
+    categoryLabel: '8. Đào Tạo Doanh Nghiệp',
+    riskLevel: 'medium'
+  },
+  {
+    id: 'perm-corporate-4',
+    code: 'corporate.import',
+    name: 'Nhập file Excel',
+    description: 'Nhập kế hoạch, danh sách học viên, khối lượng nghiệm thu từ file của khách hàng',
+    category: 'corporate',
+    categoryLabel: '8. Đào Tạo Doanh Nghiệp',
+    riskLevel: 'medium'
+  },
+  {
+    id: 'perm-corporate-5',
+    code: 'corporate.attendance_adjust',
+    name: 'Điều chỉnh điểm danh',
+    description: 'Sửa trạng thái điểm danh đã ghi nhận, kèm lý do và bằng chứng',
+    category: 'corporate',
+    categoryLabel: '8. Đào Tạo Doanh Nghiệp',
+    riskLevel: 'high'
+  },
+  {
+    id: 'perm-corporate-6',
+    code: 'corporate.results_publish',
+    name: 'Chốt & phát hành kết quả',
+    description: 'Chốt kết quả lớp; bản đã phát hành không tự thay đổi',
+    category: 'corporate',
+    categoryLabel: '8. Đào Tạo Doanh Nghiệp',
+    riskLevel: 'high'
+  },
+  {
+    id: 'perm-corporate-7',
+    code: 'corporate.communications_send',
+    name: 'Gửi email lớp doanh nghiệp',
+    description: 'Gửi kết quả / tài liệu cho học viên, CC cán bộ quản lý',
+    category: 'corporate',
+    categoryLabel: '8. Đào Tạo Doanh Nghiệp',
+    riskLevel: 'high'
+  },
+  {
+    id: 'perm-corporate-8',
+    code: 'corporate.acceptance',
+    name: 'Hồ sơ nghiệm thu',
+    description: 'Lập đợt nghiệm thu và xuất file theo mẫu của khách hàng',
+    category: 'corporate',
+    categoryLabel: '8. Đào Tạo Doanh Nghiệp',
+    riskLevel: 'high'
+  },
+  {
+    id: 'perm-corporate-9',
+    code: 'corporate.approve',
+    name: 'Duyệt (doanh nghiệp)',
+    description: 'Duyệt kết quả, điều chỉnh điểm danh, lô email, nghiệm thu',
+    category: 'corporate',
+    categoryLabel: '8. Đào Tạo Doanh Nghiệp',
+    riskLevel: 'high'
+  },
+  {
+    id: 'perm-corporate-10',
+    code: 'corporate.share',
+    name: 'Link cho khách hàng',
+    description: 'Tạo link có hạn để khách hàng xem báo cáo',
+    category: 'corporate',
+    categoryLabel: '8. Đào Tạo Doanh Nghiệp',
+    riskLevel: 'medium'
   }
 ];
 
@@ -359,7 +451,8 @@ export const DEFAULT_ROLE_CONFIGS: Record<UserRole, RolePermissionConfig> = {
       'lms.view',
       'lms.manage',
       'placement.view',
-      'placement.manage'
+      'placement.manage',
+      'corporate.view'
     ]
   },
   sales_crm: {
@@ -411,7 +504,31 @@ export const DEFAULT_ROLE_CONFIGS: Record<UserRole, RolePermissionConfig> = {
       'finance.referral_bonus',
       'finance.refund',
       'courses.pricing',
-      'courses.view'
+      'courses.view',
+      'corporate.view',
+      'corporate.acceptance'
+    ]
+  },
+  corporate_training: {
+    role: 'corporate_training',
+    roleName: 'Đào tạo doanh nghiệp',
+    department: 'Khối Đào Tạo Doanh Nghiệp (B2B)',
+    description: 'Khách hàng doanh nghiệp, lớp, danh sách học viên, điểm danh, kết quả, email CC cán bộ quản lý, nghiệm thu',
+    color: 'text-rose-700 bg-rose-50 border-rose-200',
+    badgeBg: 'bg-rose-600 text-white',
+    allowedPermissionCodes: [
+      'corporate.view',
+      'corporate.clients',
+      'corporate.classes',
+      'corporate.import',
+      'corporate.attendance_adjust',
+      'corporate.results_publish',
+      'corporate.communications_send',
+      'corporate.acceptance',
+      'corporate.approve',
+      'corporate.share',
+      'courses.view',
+      'lms.view'
     ]
   }
 };

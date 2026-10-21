@@ -111,7 +111,8 @@ def upcoming_cohorts(course) -> list[dict]:
 
     today = timezone.localdate()
     rows = (
-        course.cohorts.filter(status__in=JOINABLE)
+        course.cohorts.public()
+        .filter(status__in=JOINABLE)
         .filter(Q(start_date__isnull=True) | Q(start_date__gte=today))
         .order_by("start_date")[:4]
     )

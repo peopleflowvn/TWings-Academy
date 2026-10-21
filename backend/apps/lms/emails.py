@@ -23,11 +23,10 @@ def account_url() -> str:
     return f"{site_url()}{ACCOUNT_PATH}"
 
 
-def _intake_block(order) -> str:
+def _intake_block(cohort) -> str:
     """Start date, schedule and first sessions of the learner's intake (empty for self-paced courses)."""
     from django.utils import timezone
 
-    cohort = order.cohort
     if cohort is None:
         return ""
     lines = []
@@ -59,7 +58,7 @@ def send_access_email(order, *, sent_by=None):
   <li>Nhập email <strong>{escape(order.customer_email)}</strong> và mã 6 chữ số được gửi tới email này</li>
 </ol>
 <p>Bạn cũng có thể đăng nhập bằng mật khẩu trong email “Tài khoản thành viên mới” của hệ thống học.</p>
-{_intake_block(order)}
+{_intake_block(order.cohort)}
 <p><strong>Hoàn thiện hồ sơ nhập học</strong> (CCCD, học vấn, CV) và xem lịch học phí tại
 <a href="{account_url()}">Học phí & hồ sơ</a> trong cổng học viên.</p>
 <p>Mã đơn hàng: {escape(order.order_code)}. Cần hỗ trợ, vui lòng trả lời email này.</p>
@@ -76,12 +75,42 @@ def send_access_email(order, *, sent_by=None):
     )
 
 
-def send_certificate_email(order, certificate):
+def send_corporate_access_email(enrollment, *, sent_by=None):
+    """'Your class is open' for a learner listed by their company: no fees, no order, no admission file."""
+    url = learn_url()
+    cohort = enrollment.target_cohort
+    email = enrollment.learner_email
+    html = f"""
+<p>Chào {escape(enrollment.learner_name)},</p>
+<p>Lớp <strong>{escape(enrollment.course_title)} – {escape(cohort.name)}</strong> mà đơn vị của bạn đăng ký
+đã được mở trên hệ thống học trực tuyến TWings LMS.</p>
+<p><strong>Cách vào học:</strong></p>
+<ol>
+  <li>Mở <a href="{url}">{url}</a></li>
+  <li>Bấm nút <strong>“Đăng nhập bằng TWings”</strong></li>
+  <li>Nhập email <strong>{escape(email)}</strong> và mã 6 chữ số được gửi tới email này</li>
+</ol>
+{_intake_block(cohort)}
+<p>Điểm danh tại lớp: quét mã QR do giảng viên chiếu ở mỗi buổi học (cần đăng nhập như trên).</p>
+<p>Cần hỗ trợ, vui lòng trả lời email này.</p>
+<p>TWings Academy</p>
+"""
+    return send_logged(
+        to=email,
+        subject=f"Lớp {enrollment.course_title} đã mở – hướng dẫn vào học",
+        html=html,
+        sent_by=sent_by,
+        template_code="corporate_lms_access",
+        name=enrollment.learner_name,
+    )
+
+
+def send_certificate_email(enrollment, certificate):
     from .completion import certificate_url
 
     url = certificate_url(certificate.code)
     html = f"""
-<p>Chúc mừng {escape(order.customer_name)}!</p>
+<p>Chúc mừng {escape(enrollment.learner_name)}!</p>
 <p>Bạn đã hoàn thành khóa học <strong>{escape(certificate.course_title)}</strong>
 {f"({escape(certificate.cohort_name)})" if certificate.cohort_name else ""}.</p>
 <p>Chứng chỉ của bạn: mã <strong>{escape(certificate.code)}</strong>.<br>
@@ -90,10 +119,10 @@ Trang xác minh (có thể gửi cho nhà tuyển dụng): <a href="{url}">{url}
 <p>TWings Academy</p>
 """
     return send_logged(
-        to=order.customer_email,
+        to=enrollment.learner_email,
         subject=f"Chúc mừng bạn hoàn thành khóa học – chứng chỉ {certificate.code} | TWings Academy",
         html=html,
-        order=order,
+        order=enrollment.order,
         template_code="lms_certificate",
-        name=order.customer_name,
+        name=enrollment.learner_name,
     )

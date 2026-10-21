@@ -20,7 +20,7 @@ from .services import split_vietnamese_name
 
 LEARN_PATH = "/learn"
 INACTIVE_DAYS = 7
-STAFF_MANAGER_ROLES = {"super_admin", "academic_management"}
+STAFF_MANAGER_ROLES = {"super_admin", "academic_management", "corporate_training"}
 
 
 def links(*, course_id: int | None = None, user_id: int | None = None) -> dict:

@@ -80,9 +80,11 @@ class DashboardView(APIView):
             }
 
         if has_perm_code(user, "courses.view") or has_perm_code(user, "lms.view"):
-            soon = Cohort.objects.filter(
-                start_date__gte=today, start_date__lte=today + timedelta(days=45)
-            ).annotate(paid=Count("orders", filter=Q(orders__learning_access=True)))
+            soon = (
+                Cohort.objects.public()
+                .filter(start_date__gte=today, start_date__lte=today + timedelta(days=45))
+                .annotate(paid=Count("orders", filter=Q(orders__learning_access=True)))
+            )
             data["training"] = {
                 "atRisk": LmsEnrollment.objects.filter(
                     status="done", completed_at__isnull=True, risk_level="risk", order__learning_access=True

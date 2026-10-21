@@ -4,7 +4,8 @@ Contract check against a real Moodle (CI: the freshly built lms image, installed
 Runs the integration exactly as production does, through the same service functions: web service
 functions available to the token, template course + paid order -> account + enrolment, intake course
 copied from the template with its calendar and attendance sessions, announcements forum link, the
-learner overview, refund -> unenrol + suspended account. Creates test data: never run it in production.
+learner overview, a corporate (B2B) listing -> enrolment without an order, then cancelled -> unenrol,
+refund -> unenrol + suspended account. Creates test data: never run it in production.
 """
 
 import time
@@ -18,7 +19,13 @@ from apps.crm.models import Order
 from apps.lms import moodle, overview
 from apps.lms.learning import announcements_link
 from apps.lms.models import LmsEnrollment
-from apps.lms.services import enroll_paid_order, ensure_cohort_course, revoke_access
+from apps.lms.services import (
+    enroll_corporate,
+    enroll_paid_order,
+    ensure_cohort_course,
+    revoke_access,
+    revoke_corporate,
+)
 
 
 class Command(BaseCommand):
@@ -94,6 +101,8 @@ class Command(BaseCommand):
             "learner overview", any(c.get("id") == enrollment.moodle_course_id for c in learner["courses"])
         )
 
+        self.check_corporate()
+
         order.status = "refunded"
         order.save()
         revoke_access(order.pk)
@@ -103,3 +112,49 @@ class Command(BaseCommand):
             "refund -> unenrolled and account suspended", enrollment.status == "removed" and user["suspended"]
         )
         self.stdout.write(self.style.SUCCESS("Moodle contract check passed"))
+
+    def check_corporate(self) -> None:
+        """B2B: a learner listed by a company for a class on a course not on sale, no order at all."""
+        from apps.corporate.models import (
+            ClientUnit,
+            CorporateClass,
+            CorporateClient,
+            CorporateEmployee,
+            CorporateEnrollment,
+        )
+        from apps.crm.models import Learner
+        from apps.sso.services import identity_for_email
+
+        stamp = int(time.time())
+        course = Course.objects.create(
+            slug=f"contract-b2b-{stamp}", title="Kiểm thử lớp doanh nghiệp", price=1
+        )
+        client = CorporateClient.objects.create(name="Khách hàng kiểm thử", code=f"KT{stamp}")
+        entity = ClientUnit.objects.create(client=client, kind="legal_entity", name=client.name)
+        cohort = Cohort.objects.create(course=course, name="Lớp DN", audience=Cohort.AUDIENCE_CORPORATE)
+        corporate_class = CorporateClass.objects.create(cohort=cohort, client=client)
+        learner = Learner.objects.create(full_name="Trần Thị Doanh", email="contract-b2b@example.invalid")
+        employee = CorporateEmployee.objects.create(
+            learner=learner, client=client, legal_entity=entity, valid_from=timezone.localdate()
+        )
+        listing = CorporateEnrollment.objects.create(
+            corporate_class=corporate_class, learner=learner, employee=employee
+        )
+        enroll_corporate(listing.pk)
+        enrollment = LmsEnrollment.objects.get(corporate_enrollment=listing)
+        self.expect(
+            "corporate listing -> Moodle account + enrolment in the class course (draft course, no order)",
+            enrollment.status == "done" and enrollment.order_id is None and enrollment.cohort_id == cohort.pk,
+            enrollment.last_error,
+        )
+        self.expect("corporate learner can sign in (SSO)", identity_for_email(learner.email) is not None)
+
+        listing.status = "cancelled"
+        listing.save()
+        revoke_corporate(listing.pk)
+        enrollment.refresh_from_db()
+        user = overview.find_user(learner.email)
+        self.expect(
+            "corporate cancellation -> unenrolled and account suspended",
+            enrollment.status == "removed" and user["suspended"],
+        )

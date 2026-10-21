@@ -44,8 +44,10 @@ def readiness(course, *, moodle_template: bool | None = None) -> list[dict]:
     from django.db.models import Q
 
     today = timezone.localdate()
-    upcoming = course.cohorts.filter(status__in=("opening", "upcoming")).filter(
-        Q(start_date__isnull=True) | Q(start_date__gte=today)
+    upcoming = (
+        course.cohorts.public()
+        .filter(status__in=("opening", "upcoming"))
+        .filter(Q(start_date__isnull=True) | Q(start_date__gte=today))
     )
     needs_intake = course.delivery_format in ("offline", "hybrid")
     description = _text(course.description or course.overview)

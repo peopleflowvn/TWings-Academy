@@ -30,8 +30,12 @@ class Command(BaseCommand):
         for course in Course.objects.all():
             missing = [i["key"] for i in readiness(course) if i["required"] and not i["ok"]]
             courses[course.slug] = {"status": course.status, "missing_required": missing}
-        intakes = Cohort.objects.exclude(status="completed").annotate(
-            n_sessions=Count("sessions"), seats=Count("orders", filter=Q(orders__learning_access=True))
+        intakes = (
+            Cohort.objects.public()
+            .exclude(status="completed")
+            .annotate(
+                n_sessions=Count("sessions"), seats=Count("orders", filter=Q(orders__learning_access=True))
+            )
         )
         report = {
             "step1_courses": courses,

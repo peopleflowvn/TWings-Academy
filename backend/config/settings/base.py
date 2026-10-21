@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "apps.crm",
     "apps.payments",
     "apps.notifications",
+    "apps.corporate",
     "apps.lms",
     "apps.sso",
 ]

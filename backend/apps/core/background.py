@@ -14,6 +14,8 @@ from .schedule import SCHEDULE, run_periodic
 LABELS = {
     "apps.lms.tasks.enroll_order": "Ghi danh Moodle cho đơn",
     "apps.lms.tasks.revoke_order": "Hủy ghi danh Moodle (hoàn/hủy đơn)",
+    "apps.lms.tasks.enroll_corporate": "Ghi danh Moodle cho học viên doanh nghiệp",
+    "apps.lms.tasks.revoke_corporate": "Hủy ghi danh Moodle (hủy / chuyển lớp doanh nghiệp)",
     "apps.lms.tasks.provision_cohort": "Tạo / cập nhật khóa Moodle của đợt",
     "apps.lms.tasks.sync_account": "Đồng bộ tài khoản Moodle",
     "apps.lms.tasks.moodle_event": "Sự kiện học tập từ Moodle",

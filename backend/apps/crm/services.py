@@ -24,7 +24,7 @@ def resolve_cohort(course: Course, preferred_label: str = "") -> tuple[Cohort | 
     from apps.catalog.intakes import JOINABLE, has_seat
 
     today = timezone.localdate()
-    cohorts = Cohort.objects.filter(course=course)
+    cohorts = Cohort.objects.public().filter(course=course)
 
     def joinable(c: Cohort) -> bool:
         return c.status in JOINABLE and (c.start_date is None or c.start_date >= today) and has_seat(c)
@@ -122,7 +122,7 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
         raise CheckoutError("Vui lòng chọn khóa học hoặc chương trình.")
 
     cohort, rerouted = resolve_cohort(course, preferred_cohort) if course else (None, False)
-    if with_payment and course is not None and cohort is None and course.cohorts.exists():
+    if with_payment and course is not None and cohort is None and course.cohorts.public().exists():
         raise CheckoutError(
             "Các đợt khai giảng của khóa này đã đủ chỗ hoặc đã đóng. "
             "Vui lòng để lại thông tin để được tư vấn đợt sau."

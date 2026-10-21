@@ -569,14 +569,15 @@ export type UserRole =
   | 'content_seo'         // Quản lý Nội dung, Bài viết & SEO
   | 'sales_crm'           // Chuyên viên Tư vấn & CRM Khách hàng
   | 'academic_management' // Quản lý Đào tạo, Chứng chỉ & Việc làm
-  | 'finance_accountant'; // Kế toán, Đối soát VietQR & Hoa hồng
+  | 'finance_accountant'  // Kế toán, Đối soát VietQR & Hoa hồng
+  | 'corporate_training'; // Đào tạo doanh nghiệp (B2B): khách hàng, lớp, kết quả, nghiệm thu
 
 export interface PermissionDefinition {
   id: string;
   code: string;
   name: string;
   description: string;
-  category: 'crm' | 'courses' | 'homepage' | 'articles_seo' | 'finance' | 'rbac' | 'system';
+  category: 'crm' | 'courses' | 'homepage' | 'articles_seo' | 'finance' | 'rbac' | 'system' | 'corporate';
   categoryLabel: string;
   riskLevel?: 'high' | 'medium' | 'low';
 }

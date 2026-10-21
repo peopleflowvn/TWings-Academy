@@ -36,7 +36,7 @@ class OrderSerializer(serializers.ModelSerializer):
         source="course", queryset=Course.objects.all(), required=False, allow_null=True
     )
     cohort_id = serializers.PrimaryKeyRelatedField(
-        source="cohort", queryset=Cohort.objects.all(), required=False, allow_null=True
+        source="cohort", queryset=Cohort.objects.public(), required=False, allow_null=True
     )
     program_id = serializers.PrimaryKeyRelatedField(
         source="program", queryset=Program.objects.all(), required=False, allow_null=True

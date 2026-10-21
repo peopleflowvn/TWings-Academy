@@ -766,6 +766,7 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
                   <option value="sales_crm">Tư vấn Tuyển sinh & CRM</option>
                   <option value="content_seo">Nội dung & SEO</option>
                   <option value="finance_accountant">Kế toán & Tài chính</option>
+                  <option value="corporate_training">Đào tạo doanh nghiệp</option>
                 </select>
               </div>
             </div>
@@ -834,6 +835,7 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
                             <option value="sales_crm">Tư vấn Tuyển sinh & CRM</option>
                             <option value="content_seo">Nội dung & SEO</option>
                             <option value="finance_accountant">Kế toán & Tài chính</option>
+                            <option value="corporate_training">Đào tạo doanh nghiệp</option>
                           </select>
                         </td>
 
@@ -984,7 +986,8 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
                   { id: 'articles_seo', label: '4. Bài viết & SEO' },
                   { id: 'finance', label: '5. Kế toán VietQR' },
                   { id: 'rbac', label: '6. Quản trị RBAC' },
-                  { id: 'system', label: '7. Hệ thống & Kiến trúc' }
+                  { id: 'system', label: '7. Hệ thống & Kiến trúc' },
+                  { id: 'corporate', label: '8. Đào tạo doanh nghiệp' }
                 ].map((cat) => (
                   <button
                     key={cat.id}
@@ -1046,6 +1049,12 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
                       Kế Toán & Thu Phí
                       <span className="block text-[9px] font-normal text-amber-300">
                         {roleConfigs.finance_accountant.allowedPermissionCodes.length} quyền kích hoạt
+                      </span>
+                    </th>
+                    <th className="p-3.5 text-center min-w-[130px] bg-rose-950/80 border-l border-slate-800">
+                      Đào Tạo Doanh Nghiệp
+                      <span className="block text-[9px] font-normal text-rose-300">
+                        {roleConfigs.corporate_training.allowedPermissionCodes.length} quyền kích hoạt
                       </span>
                     </th>
                   </tr>
@@ -1129,6 +1138,18 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
                             checked={roleConfigs.finance_accountant.allowedPermissionCodes.includes(perm.code)}
                             onChange={() => handleToggleMatrixPermission('finance_accountant', perm.code)}
                             className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500 cursor-pointer"
+                          />
+                        </label>
+                      </td>
+
+                      {/* Corporate Training */}
+                      <td className="p-3.5 text-center bg-rose-50/20 border-l border-slate-100">
+                        <label className="inline-flex items-center justify-center p-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={roleConfigs.corporate_training.allowedPermissionCodes.includes(perm.code)}
+                            onChange={() => handleToggleMatrixPermission('corporate_training', perm.code)}
+                            className="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500 cursor-pointer"
                           />
                         </label>
                       </td>
@@ -1651,6 +1672,7 @@ export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
                   <option value="academic_management">Vận hành Đào tạo & LMS</option>
                   <option value="content_seo">Biên tập Nội dung & SEO</option>
                   <option value="finance_accountant">Kế toán & Đối soát VietQR</option>
+                  <option value="corporate_training">Đào tạo doanh nghiệp</option>
                   <option value="super_admin">Quản trị tối cao (Super Admin)</option>
                 </select>
                 <p className="text-[11px] text-slate-500 mt-1">

@@ -191,7 +191,7 @@ def refresh_course(moodle_course_id: int, enrollments: list[LmsEnrollment]) -> i
         taken, attended = attendance.get(uid, (0, 0))
         e.attendance_taken, e.attendance_attended = taken, attended
         e.attendance_rate = round(100 * attended / taken) if taken else None
-        min_att = e.order.course.min_attendance_rate if e.order.course_id else 0
+        min_att = e.course.min_attendance_rate if e.course else 0
         e.risk_flags = [] if e.completed_at else assess(e, expected, min_att)
         e.risk_level = "risk" if len(e.risk_flags) >= 2 else "watch" if e.risk_flags else "ok"
         e.save(
@@ -230,7 +230,7 @@ def refresh_learning() -> dict:
     rows = LmsEnrollment.objects.filter(
         status="done", moodle_course_id__isnull=False, moodle_user_id__isnull=False
     )
-    for e in rows.select_related("order", "order__course", "cohort"):
+    for e in rows.with_learning_data():
         groups[e.moodle_course_id].append(e)
     refreshed = 0
     for course_id, enrollments in groups.items():
@@ -248,11 +248,8 @@ def cohort_gradebook(cohort) -> dict:
     from . import overview
     from .services import _find_course
 
-    enrollments = list(
-        LmsEnrollment.objects.filter(cohort=cohort, status="done")
-        .select_related("order")
-        .order_by("order__customer_name")
-    )
+    enrollments = list(LmsEnrollment.objects.filter(cohort=cohort, status="done").with_learning_data())
+    enrollments.sort(key=lambda e: e.learner_name)
     course_id = next((e.moodle_course_id for e in enrollments if e.moodle_course_id), None)
     if course_id is None:
         found = _find_course("idnumber", f"cohort:{cohort.id}")
@@ -262,9 +259,9 @@ def cohort_gradebook(cohort) -> dict:
         links["announcements"] = announcements_link(course_id)
     rows = [
         {
-            "order_id": e.order_id,
-            "name": e.order.customer_name,
-            "email": e.order.customer_email,
+            "order_id": e.order_id,  # None for a corporate learner
+            "name": e.learner_name,
+            "email": e.learner_email,
             "progress": e.progress,
             "attendance_rate": e.attendance_rate,
             "attendance": f"{e.attendance_attended}/{e.attendance_taken}" if e.attendance_taken else "",

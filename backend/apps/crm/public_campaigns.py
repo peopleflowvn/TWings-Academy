@@ -79,7 +79,8 @@ class PublicCampaignDetailView(APIView):
             if not course.sellable:
                 continue
             intake = (
-                Cohort.objects.filter(course=course, status="opening")
+                Cohort.objects.public()
+                .filter(course=course, status="opening")
                 .order_by(F("start_date").asc(nulls_last=True))
                 .first()
             )

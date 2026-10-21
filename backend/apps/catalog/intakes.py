@@ -44,8 +44,10 @@ def refresh_statuses(today=None) -> dict:
 
     today = today or timezone.localdate()
     changes = {"full": 0, "closed": 0, "in_progress": 0, "rolled_over": 0}
-    candidates = Cohort.objects.filter(status__in=("opening", "upcoming", "full", "closed")).select_related(
-        "next_cohort"
+    candidates = (
+        Cohort.objects.public()
+        .filter(status__in=("opening", "upcoming", "full", "closed"))
+        .select_related("next_cohort")
     )
     for cohort in candidates:
         new = cohort.status
@@ -76,7 +78,7 @@ def refresh_statuses(today=None) -> dict:
 
 def after_payment(cohort_id: str) -> None:
     """A seat was just taken: close the intake if it is now full."""
-    cohort = Cohort.objects.filter(pk=cohort_id, status__in=JOINABLE).first()
+    cohort = Cohort.objects.public().filter(pk=cohort_id, status__in=JOINABLE).first()
     if cohort and seats_taken(cohort) >= cohort.capacity:
         refresh_statuses()
 
@@ -138,7 +140,8 @@ def overview() -> dict:
     today = timezone.localdate()
     now = timezone.now()
     cohorts = (
-        Cohort.objects.exclude(status="completed")
+        Cohort.objects.public()
+        .exclude(status="completed")
         .select_related("course", "lead_instructor", "next_cohort")
         .annotate(
             paid=Count("orders", filter=Q(orders__learning_access=True), distinct=True),

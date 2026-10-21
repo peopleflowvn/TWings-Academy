@@ -26,11 +26,10 @@ def issue_certificate(enrollment: LmsEnrollment) -> Certificate:
     existing = Certificate.objects.filter(enrollment=enrollment).first()
     if existing:
         return existing
-    order = enrollment.order
     return Certificate.objects.create(
         enrollment=enrollment,
-        learner_name=order.customer_name,
-        course_title=order.course.title if order.course else order.course_title,
+        learner_name=enrollment.learner_name,
+        course_title=enrollment.course_title,
         cohort_name=enrollment.cohort.name if enrollment.cohort else "",
         issued_at=enrollment.completed_at or timezone.now(),
     )
@@ -57,7 +56,7 @@ def sync_enrollment(enrollment: LmsEnrollment, courses: list[dict]) -> bool:
 
 def certificate_hold_reason(enrollment: LmsEnrollment) -> str:
     """Why a learner who completed on Moodle cannot get the certificate yet ('' = eligible)."""
-    course = enrollment.order.course
+    course = enrollment.course
     required = course.min_attendance_rate if course else 0
     if required and enrollment.attendance_taken and (enrollment.attendance_rate or 0) < required:
         return f"Chuyên cần {enrollment.attendance_rate}% chưa đạt mức {required}% của khóa"
@@ -69,11 +68,13 @@ def _on_completed(enrollment: LmsEnrollment, *, override_by=None, note: str = ""
 
     from .emails import send_certificate_email
 
-    order = enrollment.order
+    order = enrollment.order  # None for a corporate learner: no CRM timeline
     hold = "" if override_by else certificate_hold_reason(enrollment)
     if hold:
         enrollment.certificate_hold = hold
         enrollment.save(update_fields=["certificate_hold", "updated_at"])
+        if order is None:
+            return
         order.training_status = "Chờ xét tốt nghiệp"
         order.save(update_fields=["training_status", "updated_at"])
         Activity.objects.create(
@@ -87,22 +88,25 @@ def _on_completed(enrollment: LmsEnrollment, *, override_by=None, note: str = ""
     if enrollment.certificate_hold:
         enrollment.certificate_hold = ""
         enrollment.save(update_fields=["certificate_hold", "updated_at"])
+    if enrollment.is_corporate and not enrollment.corporate_enrollment.corporate_class.issue_certificate:
+        return  # the contract has no TWings certificate: the class result decides pass / fail
     certificate = issue_certificate(enrollment)
-    order.training_status = "Hoàn thành"
-    order.save(update_fields=["training_status", "updated_at"])
-    Activity.objects.create(
-        order=order,
-        type="note",
-        title="Hoàn thành khóa học – đã cấp chứng chỉ" + (" (ngoại lệ)" if override_by else ""),
-        content=f"Mã chứng chỉ {certificate.code}: {certificate_url(certificate.code)}"
-        + (f". Lý do: {note}" if note else ""),
-        actor=(override_by.name or override_by.email) if override_by else "Hệ thống LMS",
-        actor_user=override_by,
-    )
+    if order is not None:
+        order.training_status = "Hoàn thành"
+        order.save(update_fields=["training_status", "updated_at"])
+        Activity.objects.create(
+            order=order,
+            type="note",
+            title="Hoàn thành khóa học – đã cấp chứng chỉ" + (" (ngoại lệ)" if override_by else ""),
+            content=f"Mã chứng chỉ {certificate.code}: {certificate_url(certificate.code)}"
+            + (f". Lý do: {note}" if note else ""),
+            actor=(override_by.name or override_by.email) if override_by else "Hệ thống LMS",
+            actor_user=override_by,
+        )
     try:
-        send_certificate_email(order, certificate)
+        send_certificate_email(enrollment, certificate)
     except ResendError:
-        logger.warning("Certificate e-mail for order %s could not be sent", order.order_code)
+        logger.warning("Certificate e-mail for enrolment %s could not be sent", enrollment.pk)
 
 
 def sync_all(limit: int = 500) -> dict:
@@ -110,7 +114,7 @@ def sync_all(limit: int = 500) -> dict:
     counts = {"synced": 0, "completed": 0}
     pending = (
         LmsEnrollment.objects.filter(status="done", completed_at__isnull=True, moodle_user_id__isnull=False)
-        .select_related("order", "order__course", "cohort")
+        .with_learning_data()
         .order_by("last_synced_at")[:limit]
     )
     by_user: dict[int, list[LmsEnrollment]] = {}
@@ -131,10 +135,12 @@ def sync_all(limit: int = 500) -> dict:
 def release_holds() -> int:
     """Certificates held for attendance are issued once the (updated) attendance reaches the minimum."""
     released = 0
-    held = LmsEnrollment.objects.filter(
-        status="done", order__learning_access=True, completed_at__isnull=False, certificate__isnull=True
-    ).exclude(certificate_hold="")
-    for enrollment in held.select_related("order", "order__course", "cohort"):
+    held = (
+        LmsEnrollment.objects.may_study()
+        .filter(status="done", completed_at__isnull=False, certificate__isnull=True)
+        .exclude(certificate_hold="")
+    )
+    for enrollment in held.with_learning_data():
         if not certificate_hold_reason(enrollment):
             _on_completed(enrollment)
             released += 1

@@ -1,7 +1,7 @@
 """
 Short-lived secrets for the SSO flow, kept in the cache and only as SHA-256 hashes:
 
-- one-time e-mail codes (learners prove they own the e-mail of a paid order),
+- one-time e-mail codes (learners prove they own the e-mail of a paid order or corporate listing),
 - authorization codes (single use, 60 s, bound to client + redirect URI),
 - access tokens (5 min, only usable on the userinfo endpoint).
 """
@@ -34,7 +34,10 @@ def normalize_email(email: str) -> str:
 
 # ---------------------------------------------------------------- who may sign in
 def identity_for_email(email: str) -> dict | None:
-    """A learner who may study (paid / installment started), staff, or an instructor; None otherwise."""
+    """
+    A learner who may study (paid / installment started, or listed by their company for a corporate
+    class), staff, or an instructor; None otherwise.
+    """
     email = normalize_email(email)
     if not email:
         return None
@@ -46,16 +49,38 @@ def identity_for_email(email: str) -> dict | None:
         .order_by("-created_at")
         .first()
     )
-    if order is None:
-        return _instructor_identity(email)
-    given, family = split_vietnamese_name(order.customer_name)
+    if order is not None:
+        return _learner_identity(email, order.customer_name)
+    name = _corporate_learner_name(email)
+    if name is not None:
+        return _learner_identity(email, name)
+    return _instructor_identity(email)
+
+
+def _learner_identity(email: str, name: str) -> dict:
+    # The same subject for B2C and B2B: one person, one Moodle account.
+    given, family = split_vietnamese_name(name)
     return {
         "sub": f"learner:{_h(email)[:32]}",
         "email": email,
-        "name": order.customer_name,
+        "name": name,
         "given_name": given,
         "family_name": family,
     }
+
+
+def _corporate_learner_name(email: str) -> str | None:
+    from apps.corporate.models import CorporateEnrollment
+
+    listing = (
+        CorporateEnrollment.objects.filter(
+            learner__email__iexact=email, status__in=CorporateEnrollment.STUDYING
+        )
+        .select_related("learner")
+        .order_by("-created_at")
+        .first()
+    )
+    return listing.learner.full_name if listing else None
 
 
 def _instructor_identity(email: str) -> dict | None:

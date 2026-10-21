@@ -459,7 +459,7 @@ class CohortRolloverView(APIView):
     permission_classes = [require_perms("courses.edit_info", "crm.edit_status")]
 
     def post(self, request, pk):
-        cohort = get_object_or_404(Cohort, pk=pk)
+        cohort = get_object_or_404(Cohort.objects.public(), pk=pk)
         try:
             moved = rollover_cohort(request, cohort)
         except CheckoutError as exc:

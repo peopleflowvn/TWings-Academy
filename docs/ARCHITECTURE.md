@@ -90,7 +90,7 @@ cookie luôn là first-party):
 
 | Thư mục | Ngôn ngữ | Nội dung |
 |---|---|---|
-| `backend/` | Python | 9 app Django (mục 4), lệnh định kỳ, test (pytest) |
+| `backend/` | Python | 10 app Django (mục 4), lệnh định kỳ, test (pytest) |
 | `frontend/` | TypeScript | `storefront/` (website), `admin/` (CMS/CRM `/app`), `components/`, `lib/` |
 | `lms/` | PHP | Moodle 5.2.4 + plugin bên thứ ba (git subtree) + `public/local/twings` (plugin TWings) |
 | `infra/` | Shell, Caddyfile, PHP config | `caddy/`, `lms/` (Dockerfile, config, `vendor.py`, `patches.txt`), `vps/` (deploy, backup), `ops/`, `env/*.example` |
@@ -104,13 +104,14 @@ của Django, Web Service của Moodle, OAuth2. Nhờ vậy mỗi phần build, 
 | App | Trách nhiệm | Model chính |
 |---|---|---|
 | `core` | Middleware bảo mật, mã hóa trường, audit log, upload, health | `SiteConfig`, `AuditLog` |
-| `accounts` | Nhân sự, 5 vai trò, ma trận quyền | `User` |
+| `accounts` | Nhân sự, 6 vai trò, ma trận quyền | `User` |
 | `catalog` | Khóa học, chương trình, đợt khai giảng, lịch học, giảng viên, đối tác, trả góp, mã giảm giá, đánh giá | `Course`, `Cohort`, `CohortSession`, `ProgramCourse`, `InstallmentPlan`, `Coupon`, `CourseReview` |
 | `cms` | Bài viết, banner, SEO, trang pháp lý, đo lượt xem không cookie | `Article`, `HeroBanner`, `PageViewDaily` |
 | `crm` | Lead và đơn, chiến dịch, hoạt động, việc cần làm, lịch hẹn, hóa đơn VAT, trả góp, giới thiệu việc làm, link đối tác | `Order`, `AdmissionCampaign`, `Activity`, `FollowupTask`, `Appointment`, `Installment`, `Placement`, `PartnerShare` |
 | `payments` | VietQR, webhook ngân hàng, xác nhận thủ công, hoàn tiền, biên nhận | `BankTransaction`, `Payment`, `Refund` |
 | `notifications` | Mẫu email, gửi qua Resend, trạng thái giao nhận, email theo hành trình | `EmailTemplate`, `EmailLog`, `EmailEvent` |
-| `lms` | Ghi danh Moodle, đợt học thành khóa Moodle, đồng bộ tiến độ/chuyên cần/điểm, rủi ro, chứng chỉ | `LmsEnrollment`, `Certificate` |
+| `corporate` | Đào tạo doanh nghiệp (B2B): khách hàng, pháp nhân/đơn vị, nhân sự + CBQL theo hiệu lực, lớp doanh nghiệp (1–1 `Cohort` có `audience=corporate`), học viên được công ty cử đi học (không qua `Order`). Kế hoạch: `docs/KE_HOACH_TICH_HOP_TMS_VAO_TWINGS_ACADEMY_V6.md` | `CorporateClient`, `ClientUnit`, `CorporateEmployee`, `CorporateClass`, `CorporateEnrollment` |
+| `lms` | Ghi danh Moodle, đợt học thành khóa Moodle, đồng bộ tiến độ/chuyên cần/điểm, rủi ro, chứng chỉ. `LmsEnrollment` có đúng một nguồn: `order` (B2C) hoặc `corporate_enrollment` (B2B) | `LmsEnrollment`, `Certificate` |
 | `sso` | Nhà cung cấp OAuth2 cho Moodle, đăng nhập bằng mã email, tài khoản học viên | – (cache) |
 
 API: tiền tố `/api/v1/` với các nhóm `health/`, `auth/` (cookie phiên + CSRF), `public/` (chỉ đọc, form có giới hạn
@@ -124,7 +125,7 @@ tần suất và honeypot), `staff/` (cookie phiên + CSRF + mã quyền RBAC), 
 | Danh tính (học viên, nhân sự, giảng viên) | TWings | TWings → Moodle | Tạo tài khoản qua WS. Đăng nhập SSO OAuth2 (TWings là nhà cung cấp) |
 | Khóa học bán, giá, đơn, thanh toán | TWings | – | – |
 | Đợt khai giảng, lịch học | TWings | TWings → Moodle | Sao chép khóa mẫu (`core_course_duplicate_course`), sự kiện lịch, phiên điểm danh |
-| Ghi danh | TWings (đơn có quyền học) | TWings → Moodle | `enrol_manual_*` sau khi giao dịch DB commit. Lỗi thì cron thử lại mỗi 10 phút |
+| Ghi danh | TWings (đơn có quyền học, hoặc học viên doanh nghiệp còn trong danh sách lớp) | TWings → Moodle | `enrol_manual_*` sau khi giao dịch DB commit. Lỗi thì cron thử lại mỗi 10 phút |
 | Nội dung, bài kiểm tra, ngân hàng đề | Moodle | Moodle → web (chỉ tên chương) | Đề cương công khai qua `core_course_get_contents` |
 | Điểm danh, điểm, hoàn thành | Moodle | Moodle → TWings | Đọc định kỳ mỗi 30 phút (`sync_lms_completion`) |
 | Chứng chỉ, rủi ro học tập, việc làm | TWings | – | Tính từ dữ liệu đã đồng bộ |
@@ -174,8 +175,10 @@ Trình duyệt không bao giờ gửi số tiền. Mọi giá trị tiền đề
 
 - Ma trận quyền ở `backend/apps/accounts/rbac.py`, dùng chung mã quyền với frontend (`frontend/src/utils/rbac.ts`).
   Frontend chỉ ẩn hoặc hiện giao diện; **server quyết định**.
-- 5 vai trò: Quản trị tối cao, Biên tập nội dung & SEO, Tư vấn tuyển sinh & CRM, Vận hành đào tạo & LMS,
-  Kế toán & tài chính.
+- 6 vai trò: Quản trị tối cao, Biên tập nội dung & SEO, Tư vấn tuyển sinh & CRM, Vận hành đào tạo & LMS,
+  Kế toán & tài chính, Đào tạo doanh nghiệp (quyền `corporate.*`).
+- Lớp doanh nghiệp (`Cohort.audience=corporate`) không bao giờ hiện ở website, tuyển sinh, checkout hay trang đợt
+  khai giảng: mọi truy vấn bán hàng đi qua `Cohort.objects.public()`.
 - Mỗi viewset khai báo `permission_map` theo action. Action không có trong map bị từ chối. Sửa đơn được kiểm tra theo
   nhóm trường (thanh toán, thưởng giới thiệu, phân công PIC).
 - Moodle: nhân sự Đào tạo được gán vai trò *manager*, giảng viên là *editing teacher* của khóa đợt, học viên là

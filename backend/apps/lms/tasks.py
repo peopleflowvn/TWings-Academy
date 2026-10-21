@@ -22,6 +22,20 @@ def revoke_order(order_id: str) -> None:
 
 
 @task
+def enroll_corporate(corporate_enrollment_id: str) -> None:
+    from .services import enroll_corporate as enroll
+
+    enroll(corporate_enrollment_id)
+
+
+@task
+def revoke_corporate(corporate_enrollment_id: str) -> None:
+    from .services import revoke_corporate as revoke
+
+    revoke(corporate_enrollment_id)
+
+
+@task
 def provision_cohort(cohort_id: str) -> None:
     from apps.catalog.models import Cohort
 
@@ -52,7 +66,7 @@ def moodle_event(moodle_course_id: int, moodle_user_id: int) -> dict:
     enrollments = list(
         LmsEnrollment.objects.filter(status="done", moodle_course_id=moodle_course_id)
         .exclude(moodle_user_id__isnull=True)
-        .select_related("order", "order__course", "cohort")
+        .with_learning_data()
     )
     if not enrollments:
         return {"learners": 0}

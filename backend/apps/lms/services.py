@@ -1,5 +1,6 @@
 """
-Paid order -> Moodle access, using only Moodle's built-in web services.
+Paid order (B2C) or corporate enrolment (B2B) -> Moodle access, using only Moodle's built-in web
+services.
 
 Courses: every TWings course has a *template* Moodle course (idnumber = course id, or shortname =
 course slug, so staff can build it in Moodle first). Each intake (Cohort: "Khóa 9", "Khóa 10"...) gets
@@ -13,6 +14,9 @@ staff assign one; moving a learner to another intake moves the Moodle enrolment.
 
 Teachers: the course's instructors and the intake's lead instructor are enrolled as editing teachers.
 
+Corporate learners are listed by their company for a class (a corporate intake): same Moodle course,
+same retries and learning signals, but no order, no payment and no B2C journey e-mails.
+
 Every step is idempotent, so failures are simply retried (sync_lms_enrollments).
 """
 
@@ -21,6 +25,7 @@ from datetime import datetime, time
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -38,6 +43,13 @@ MAX_ATTEMPTS = 20
 
 class WaitingForIntake(Exception):
     """The course is taught in intakes and the order has none yet."""
+
+
+def _label(enrollment: LmsEnrollment) -> str:
+    """How logs name the enrolment's source."""
+    if enrollment.is_corporate:
+        return f"corporate enrolment {enrollment.corporate_enrollment_id}"
+    return f"order {enrollment.order.order_code}"
 
 
 def split_vietnamese_name(full_name: str) -> tuple[str, str]:
@@ -156,8 +168,8 @@ def _ensure_moodle_user(email: str, full_name: str) -> tuple[int, bool]:
     return created[0]["id"], True
 
 
-def ensure_user(order: Order) -> tuple[int, bool]:
-    return _ensure_moodle_user(order.customer_email, order.customer_name)
+def ensure_user(enrollment: LmsEnrollment) -> tuple[int, bool]:
+    return _ensure_moodle_user(enrollment.learner_email, enrollment.learner_name)
 
 
 def sync_teachers(course, moodle_course_id: int, lead=None) -> int:
@@ -178,13 +190,15 @@ def sync_teachers(course, moodle_course_id: int, lead=None) -> int:
     return len(enrolments)
 
 
-def target_course(order: Order) -> tuple[int, object]:
-    """(Moodle course id, intake) the order's learner belongs in."""
-    if order.cohort_id:
-        return ensure_cohort_course(order.cohort), order.cohort
-    if order.course.cohorts.exists():
+def target_course(enrollment: LmsEnrollment) -> tuple[int, object]:
+    """(Moodle course id, intake) the learner belongs in."""
+    cohort = enrollment.target_cohort
+    if cohort is not None:
+        return ensure_cohort_course(cohort), cohort
+    course = enrollment.course
+    if course.cohorts.public().exists():
         raise WaitingForIntake
-    return ensure_course(order.course), None
+    return ensure_course(course), None
 
 
 def _enrol(user_id: int, course_id: int) -> None:
@@ -195,22 +209,23 @@ def _enrol(user_id: int, course_id: int) -> None:
 
 
 def process(enrollment: LmsEnrollment) -> LmsEnrollment:
-    order = enrollment.order
-    if not order.learning_access:
-        enrollment.status, enrollment.last_error = "skipped", "Đơn chưa thanh toán"
+    order = enrollment.order  # None for a corporate learner
+    if not enrollment.may_study:
+        enrollment.status = "skipped"
+        enrollment.last_error = "Đơn chưa thanh toán" if order else "Học viên không còn trong danh sách lớp"
         enrollment.save()
         return enrollment
-    if not order.customer_email or order.course_id is None:
+    if not enrollment.learner_email or enrollment.course is None:
         enrollment.status = "skipped"
-        enrollment.last_error = "Đơn thiếu email học viên hoặc khóa học"
+        enrollment.last_error = "Thiếu email học viên hoặc khóa học"
         enrollment.save()
         return enrollment
 
     previous_course = enrollment.moodle_course_id if enrollment.status == "done" else None
     enrollment.attempts += 1
     try:
-        course_id, cohort = target_course(order)
-        user_id, created = ensure_user(order)
+        course_id, cohort = target_course(enrollment)
+        user_id, created = ensure_user(enrollment)
         if previous_course and previous_course != course_id:
             moodle.call(
                 "enrol_manual_unenrol_users", enrolments=[{"userid": user_id, "courseid": previous_course}]
@@ -224,7 +239,7 @@ def process(enrollment: LmsEnrollment) -> LmsEnrollment:
     except moodle.MoodleError as exc:
         enrollment.status, enrollment.last_error = "failed", str(exc)[:2000]
         enrollment.save()
-        logger.warning("LMS enrollment for order %s failed: %s", order.order_code, exc)
+        logger.warning("LMS enrollment for %s failed: %s", _label(enrollment), exc)
         return enrollment
 
     moved = bool(previous_course and previous_course != course_id)
@@ -235,6 +250,8 @@ def process(enrollment: LmsEnrollment) -> LmsEnrollment:
     enrollment.save()
     if enrollment.access_emailed_at is None:
         _email_access(enrollment)
+    if order is None:
+        return enrollment
     where = f" – {cohort.name}" if cohort else ""
     Activity.objects.create(
         order=order,
@@ -254,12 +271,15 @@ def _email_access(enrollment: LmsEnrollment) -> None:
     """TWings 'your course is open' e-mail (link + SSO steps); never blocks the enrolment."""
     from apps.notifications.resend import ResendError
 
-    from .emails import send_access_email
+    from .emails import send_access_email, send_corporate_access_email
 
     try:
-        send_access_email(enrollment.order)
+        if enrollment.is_corporate:
+            send_corporate_access_email(enrollment)
+        else:
+            send_access_email(enrollment.order)
     except ResendError:
-        logger.warning("Access e-mail for order %s could not be sent", enrollment.order.order_code)
+        logger.warning("Access e-mail for %s could not be sent", _label(enrollment))
         return
     enrollment.access_emailed_at = timezone.now()
     enrollment.save(update_fields=["access_emailed_at", "updated_at"])
@@ -291,18 +311,8 @@ def revoke_access(order_id: str) -> None:
         if enrollment is None or enrollment.status == "removed" or enrollment.order.learning_access:
             return
         order = enrollment.order
-        if enrollment.status == "done" and enrollment.moodle_user_id and enrollment.moodle_course_id:
-            moodle.call(
-                "enrol_manual_unenrol_users",
-                enrolments=[{"userid": enrollment.moodle_user_id, "courseid": enrollment.moodle_course_id}],
-            )
         reason = order.get_status_display()
-        enrollment.status, enrollment.last_error = "removed", f"Đơn {reason.lower()}"
-        enrollment.save(update_fields=["status", "last_error", "updated_at"])
-        certificate = getattr(enrollment, "certificate", None)
-        if certificate is not None and not certificate.revoked:
-            certificate.revoked, certificate.revoked_reason = True, f"Đơn {reason.lower()}"
-            certificate.save(update_fields=["revoked", "revoked_reason", "updated_at"])
+        certificate = _remove(enrollment, f"Đơn {reason.lower()}")
         Activity.objects.create(
             order=order,
             type="note",
@@ -310,21 +320,76 @@ def revoke_access(order_id: str) -> None:
             content=f"Lý do: đơn {reason.lower()}.",
             actor="Hệ thống LMS",
         )
-    # No other order left that lets this person study: suspend the Moodle account (no sign-in at all).
+    _sync_account_after_removal(order.customer_email, f"order {order.order_code}")
+
+
+def _remove(enrollment: LmsEnrollment, reason: str):
+    """Leave the Moodle course and revoke the certificate (history kept); returns the certificate, if any."""
+    if enrollment.status == "done" and enrollment.moodle_user_id and enrollment.moodle_course_id:
+        moodle.call(
+            "enrol_manual_unenrol_users",
+            enrolments=[{"userid": enrollment.moodle_user_id, "courseid": enrollment.moodle_course_id}],
+        )
+    enrollment.status, enrollment.last_error = "removed", reason
+    enrollment.save(update_fields=["status", "last_error", "updated_at"])
+    certificate = getattr(enrollment, "certificate", None)
+    if certificate is not None and not certificate.revoked:
+        certificate.revoked, certificate.revoked_reason = True, reason
+        certificate.save(update_fields=["revoked", "revoked_reason", "updated_at"])
+    return certificate
+
+
+def _sync_account_after_removal(email: str, label: str) -> None:
+    """Nothing else lets this person study: suspend the Moodle account (no sign-in at all)."""
     from .overview import sync_account
 
     try:
-        sync_account(order.customer_email)
+        sync_account(email)
     except moodle.MoodleError as exc:
-        logger.warning("LMS account sync after revoking order %s failed: %s", order.order_code, exc)
+        logger.warning("LMS account sync after removing %s failed: %s", label, exc)
+
+
+def enroll_corporate(corporate_enrollment_id: str) -> None:
+    """A learner listed for a corporate class (or listed again): enrol; failures are retried."""
+    from apps.corporate.models import CorporateEnrollment
+
+    if not moodle.is_configured():
+        return
+    with transaction.atomic():
+        listing = CorporateEnrollment.objects.select_for_update().get(pk=corporate_enrollment_id)
+        if not listing.may_study:
+            return
+        enrollment, _ = LmsEnrollment.objects.get_or_create(corporate_enrollment=listing)
+        if enrollment.status == "done":
+            return
+        process(enrollment)
+
+
+def revoke_corporate(corporate_enrollment_id: str) -> None:
+    """Cancelled or transferred out of a corporate class: leave its Moodle course, keep the history."""
+    with transaction.atomic():
+        enrollment = (
+            LmsEnrollment.objects.select_for_update()
+            .with_learning_data()
+            .filter(corporate_enrollment_id=corporate_enrollment_id)
+            .first()
+        )
+        if enrollment is None or enrollment.status == "removed" or enrollment.may_study:
+            return
+        _remove(enrollment, enrollment.corporate_enrollment.get_status_display())
+        email = enrollment.learner_email
+    _sync_account_after_removal(email, f"corporate enrolment {corporate_enrollment_id}")
 
 
 def provision_cohort(cohort) -> dict:
     """Create (or refresh) the intake's Moodle course and teachers, then enrol its waiting learners."""
     course_id = ensure_cohort_course(cohort)
     teachers = sync_teachers(cohort.course, course_id, lead=cohort.lead_instructor)
-    waiting = LmsEnrollment.objects.filter(order__cohort=cohort, status__in=("waiting", "pending", "failed"))
-    enrolled = sum(1 for e in waiting.select_related("order") if process(e).status == "done")
+    waiting = LmsEnrollment.objects.filter(
+        Q(order__cohort=cohort) | Q(corporate_enrollment__corporate_class__cohort=cohort),
+        status__in=("waiting", "pending", "failed"),
+    )
+    enrolled = sum(1 for e in waiting.with_learning_data() if process(e).status == "done")
     return {"moodleCourseId": course_id, "teachers": teachers, "enrolled": enrolled}
 
 
@@ -332,7 +397,7 @@ def retry_pending(limit: int = 50) -> dict:
     counts = {"done": 0, "failed": 0, "skipped": 0, "waiting": 0}
     queryset = LmsEnrollment.objects.filter(
         status__in=("pending", "failed"), attempts__lt=MAX_ATTEMPTS
-    ).select_related("order", "order__course", "order__cohort")[:limit]
+    ).with_learning_data()[:limit]
     for enrollment in queryset:
         result = process(enrollment)
         counts[result.status] = counts.get(result.status, 0) + 1

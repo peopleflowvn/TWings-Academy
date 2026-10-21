@@ -38,6 +38,17 @@ PERMISSIONS: dict[str, str] = {
     "lms.manage": "Quản lý học viên trên LMS (ghi danh, khóa, gửi email vào học)",
     "placement.view": "Xem giới thiệu việc làm & kết quả việc làm",
     "placement.manage": "Giới thiệu việc làm: đề cử, gửi đối tác, cập nhật phỏng vấn / nhận việc / thử việc",
+    # Corporate training (B2B): see docs/KE_HOACH_TICH_HOP_TMS_VAO_TWINGS_ACADEMY_V6.md, section 8.
+    "corporate.view": "Xem đào tạo doanh nghiệp (khách hàng, lớp, học viên, kết quả)",
+    "corporate.clients": "Quản lý khách hàng doanh nghiệp, hợp đồng, đơn giá",
+    "corporate.classes": "Quản lý kế hoạch, lớp doanh nghiệp, danh sách học viên",
+    "corporate.import": "Nhập file kế hoạch / danh sách học viên / nghiệm thu",
+    "corporate.attendance_adjust": "Điều chỉnh điểm danh lớp doanh nghiệp (có lý do, bằng chứng)",
+    "corporate.results_publish": "Chốt và phát hành kết quả lớp doanh nghiệp",
+    "corporate.communications_send": "Gửi email lớp doanh nghiệp (học viên, CC cán bộ quản lý)",
+    "corporate.acceptance": "Lập và xuất hồ sơ nghiệm thu",
+    "corporate.approve": "Duyệt kết quả, điều chỉnh, lô email, nghiệm thu",
+    "corporate.share": "Tạo link xem báo cáo cho khách hàng",
 }
 
 
@@ -47,6 +58,7 @@ class Role:
     SALES_CRM = "sales_crm"
     ACADEMIC_MANAGEMENT = "academic_management"
     FINANCE_ACCOUNTANT = "finance_accountant"
+    CORPORATE_TRAINING = "corporate_training"
 
     CHOICES = [
         (SUPER_ADMIN, "Quản trị tối cao"),
@@ -54,11 +66,28 @@ class Role:
         (SALES_CRM, "Tư vấn Tuyển sinh & CRM"),
         (ACADEMIC_MANAGEMENT, "Vận hành Đào tạo & LMS"),
         (FINANCE_ACCOUNTANT, "Kế toán & Tài chính"),
+        (CORPORATE_TRAINING, "Đào tạo doanh nghiệp"),
     ]
 
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     Role.SUPER_ADMIN: frozenset(PERMISSIONS),
+    Role.CORPORATE_TRAINING: frozenset(
+        {
+            "corporate.view",
+            "corporate.clients",
+            "corporate.classes",
+            "corporate.import",
+            "corporate.attendance_adjust",
+            "corporate.results_publish",
+            "corporate.communications_send",
+            "corporate.acceptance",
+            "corporate.approve",
+            "corporate.share",
+            "courses.view",
+            "lms.view",
+        }
+    ),
     Role.ACADEMIC_MANAGEMENT: frozenset(
         {
             "courses.view",
@@ -75,6 +104,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             "lms.manage",
             "placement.view",
             "placement.manage",
+            "corporate.view",
         }
     ),
     Role.SALES_CRM: frozenset(
@@ -109,6 +139,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             "finance.refund",
             "courses.pricing",
             "courses.view",
+            "corporate.view",
+            "corporate.acceptance",
         }
     ),
 }

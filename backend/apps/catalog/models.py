@@ -185,7 +185,18 @@ class Course(InstallmentPlan, BaseModel):
         return self.price
 
 
+class CohortQuerySet(models.QuerySet):
+    def public(self):
+        """Intakes sold to individuals: the website, admissions, checkout and intake planning use these."""
+        return self.filter(audience=Cohort.AUDIENCE_PUBLIC)
+
+
 class Cohort(BaseModel):
+    AUDIENCE_PUBLIC = "public"
+    AUDIENCE_CORPORATE = "corporate"
+    # A corporate class (apps.corporate.CorporateClass) is a private intake of one client company: same
+    # sessions, Moodle course and attendance, but never on sale and its learners have no orders.
+    AUDIENCE_CHOICES = [(AUDIENCE_PUBLIC, "Tuyển sinh công khai"), (AUDIENCE_CORPORATE, "Lớp doanh nghiệp")]
     STATUS_CHOICES = [
         ("opening", "Đang tuyển sinh"),
         ("full", "Đã đủ sĩ số"),
@@ -197,6 +208,9 @@ class Cohort(BaseModel):
 
     course = models.ForeignKey(Course, on_delete=models.PROTECT, related_name="cohorts")
     name = models.CharField(max_length=200)
+    audience = models.CharField(
+        max_length=20, choices=AUDIENCE_CHOICES, default=AUDIENCE_PUBLIC, db_index=True
+    )
     start_date = models.DateField(null=True, blank=True)
     registration_deadline = models.DateField(null=True, blank=True)
     capacity = models.PositiveIntegerField(default=25)
@@ -218,6 +232,8 @@ class Cohort(BaseModel):
     # Step 7 – the intake's "Điểm danh" activity (mod_attendance instance) and sessions to remove.
     moodle_attendance_id = models.PositiveIntegerField(null=True, blank=True)
     attendance_cleanup = models.JSONField(default=list, blank=True)
+
+    objects = CohortQuerySet.as_manager()
 
     class Meta:
         ordering = ["start_date", "name"]

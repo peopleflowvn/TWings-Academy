@@ -267,8 +267,11 @@ class CohortViewSet(viewsets.ModelViewSet):
     filterset_fields = ["course", "status"]
 
     def get_queryset(self):
-        return Cohort.objects.select_related("course", "lead_instructor", "next_cohort").annotate(
-            enrolled_count=Count("orders", filter=Q(orders__learning_access=True))
+        # Corporate classes are managed with their client (apps.corporate), never as intakes for sale.
+        return (
+            Cohort.objects.public()
+            .select_related("course", "lead_instructor", "next_cohort")
+            .annotate(enrolled_count=Count("orders", filter=Q(orders__learning_access=True)))
         )
 
 

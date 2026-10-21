@@ -6,9 +6,11 @@ from django.dispatch import receiver
 
 from apps.accounts.models import User
 from apps.catalog.models import Cohort
+from apps.corporate.models import CorporateEnrollment
 from apps.crm.models import Order
 
 from . import moodle, tasks
+from .models import LmsEnrollment
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,22 @@ def enroll_when_paid(sender, instance: Order, **kwargs):
     # Queued after commit: the payment never waits for Moodle nor rolls back because of it (the worker
     # enrols; failures stay in LmsEnrollment and are retried).
     _later(tasks.enroll_order, instance.pk)
+
+
+@receiver(post_save, sender=CorporateEnrollment, dispatch_uid="lms_enroll_corporate")
+def enroll_when_listed(sender, instance: CorporateEnrollment, **kwargs):
+    """A learner listed for a corporate class studies at once; cancelled / transferred out leaves it."""
+    if not moodle.is_configured():
+        return
+    # Read from the DB: the reverse relation cached on this instance may predate the enrolment.
+    status = (
+        LmsEnrollment.objects.filter(corporate_enrollment=instance).values_list("status", flat=True).first()
+    )
+    if instance.may_study:
+        if status != "done":
+            _later(tasks.enroll_corporate, instance.pk)
+    elif status not in (None, "removed"):
+        _later(tasks.revoke_corporate, instance.pk)
 
 
 @receiver(post_save, sender=Cohort, dispatch_uid="lms_provision_cohort")

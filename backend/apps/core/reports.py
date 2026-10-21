@@ -104,7 +104,8 @@ def learning_report() -> dict:
     from apps.lms.models import Certificate, LmsEnrollment
 
     rows = (
-        LmsEnrollment.objects.values(title=F("order__course_title"))
+        LmsEnrollment.objects.b2c()  # corporate classes are reported with their client
+        .values(title=F("order__course_title"))
         .annotate(
             enrolled=Count("id", filter=Q(status="done")),
             waiting=Count("id", filter=Q(status__in=("waiting", "pending", "failed"))),
