@@ -19,6 +19,7 @@ from .models import (
     CorporateEnrollment,
     ImportBatch,
     ImportTemplate,
+    ResultSnapshot,
     ServiceContract,
     TrainingPlan,
 )
@@ -35,6 +36,7 @@ from .serializers import (
     ImportTemplateSerializer,
     ImportUploadSerializer,
     ListLearnerSerializer,
+    ResultSnapshotSerializer,
     SelfmarkSerializer,
     ServiceContractSerializer,
     TrainingPlanSerializer,
@@ -198,6 +200,8 @@ class CorporateClassViewSet(
         attendance="corporate.view",
         surveys="corporate.view",
         refresh_surveys="corporate.classes",
+        compute_results="corporate.classes",
+        reopen="corporate.results_publish",
         adjust_attendance="corporate.attendance_adjust",
         selfmark="corporate.classes",
     )
@@ -376,6 +380,67 @@ class CorporateClassViewSet(
             raise serializers.ValidationError({"detail": "LMS chưa cấu hình."})
         sync_surveys(corporate_class)
         return Response(summary(corporate_class))
+
+    @action(detail=True, methods=["post"], url_path="results")
+    def compute_results(self, request, pk=None):
+        """Recompute the draft results from the verified attendance, grades and surveys."""
+        from .results import draft
+
+        snapshot = _rule(lambda: draft(self.get_object(), request.user))
+        return Response(ResultSnapshotSerializer(snapshot).data)
+
+    @action(detail=True, methods=["post"])
+    def reopen(self, request, pk=None):
+        """Unlock published results for corrections: the next publish is a new version."""
+        from .results import reopen
+
+        snapshot = _rule(lambda: reopen(self.get_object(), request.user))
+        audit(request, "corporate.results_reopen", snapshot.corporate_class, version=snapshot.version)
+        return Response(ResultSnapshotSerializer(snapshot).data)
+
+
+class ResultSnapshotViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):
+    serializer_class = ResultSnapshotSerializer
+    permission_classes = [ActionPermission]
+    permission_map = {
+        "list": ["corporate.view"],
+        "retrieve": ["corporate.view"],
+        "publish": ["corporate.results_publish"],
+        "export": ["corporate.view"],
+    }
+    client_path = "corporate_class__client"
+    filterset_fields = ["corporate_class", "status"]
+
+    def get_queryset(self):
+        return self.scoped(
+            ResultSnapshot.objects.select_related(
+                "corporate_class__cohort__course", "created_by", "published_by"
+            )
+        )
+
+    @action(detail=True, methods=["post"])
+    def publish(self, request, pk=None):
+        from .results import publish
+
+        snapshot = _rule(lambda: publish(self.get_object(), request.user))
+        audit(request, "corporate.results_publish", snapshot, version=snapshot.version, kpis=snapshot.kpis)
+        return Response(self.get_serializer(snapshot).data)
+
+    @action(detail=True, methods=["get"])
+    def export(self, request, pk=None):
+        from django.http import HttpResponse
+
+        from .results import export_xlsx
+
+        snapshot = self.get_object()
+        response = HttpResponse(
+            export_xlsx(snapshot),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        name = f"ket-qua-{snapshot.corporate_class.client.code}-v{snapshot.version}.xlsx"
+        response["Content-Disposition"] = f'attachment; filename="{name}"'
+        audit(request, "corporate.results_export", snapshot)
+        return response
 
 
 class AttendanceAdjustmentViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):

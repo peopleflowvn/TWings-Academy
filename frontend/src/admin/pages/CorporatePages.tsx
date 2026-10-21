@@ -8,8 +8,8 @@
  * Every list is limited by the API to the clients the user may see.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, FileSpreadsheet, Loader2, Mail, Plus, QrCode, RefreshCw, Save, UserMinus, X, XCircle } from 'lucide-react';
-import { api, apiFetch, ApiError, Paginated } from '../../lib/api';
+import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, Download, FileSpreadsheet, Loader2, Mail, Plus, QrCode, RefreshCw, Save, UserMinus, X, XCircle } from 'lucide-react';
+import { api, apiFetch, ApiError, API_ROOT, Paginated } from '../../lib/api';
 import { openInMoodle, useStaffCan } from '../../lib/lms';
 import { viDateToIso } from '../../lib/serverCollection';
 import { navigate, useAppSearch } from '../router';
@@ -117,6 +117,7 @@ interface CorpClass {
   planLine: string | null;
   status: string;
   issueCertificate: boolean;
+  completionPolicy: CompletionPolicy;
   lockedAt: string | null;
   note: string;
   learners: number;
@@ -144,6 +145,13 @@ interface Listing {
 }
 
 type CourseOption = { id: string; title: string };
+
+interface CompletionPolicy {
+  minAttendance?: number;
+  minGrade?: number;
+  surveyRequired?: boolean;
+  moodleCompletion?: boolean;
+}
 
 // ---------------------------------------------------------------- shared
 const input = 'w-full p-2 border border-slate-300 rounded-lg text-xs';
@@ -938,6 +946,192 @@ const SurveysTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
   );
 };
 
+// ---------------------------------------------------------------- results
+interface ResultRow {
+  enrollment: string;
+  name: string;
+  email: string;
+  employeeCode: string;
+  unit: string;
+  sessionsTaken: number;
+  sessionsAttended: number;
+  attendanceRate: number | null;
+  gradePercent: number | null;
+  surveyAnswered: boolean | null;
+  result: 'passed' | 'not_passed' | 'pending';
+  reasons: string[];
+}
+
+interface Snapshot {
+  id: string;
+  version: number;
+  status: 'draft' | 'published' | 'superseded';
+  policy: CompletionPolicy;
+  learners: ResultRow[];
+  kpis: Record<string, number | null>;
+  createdAt: string;
+  publishedAt: string | null;
+  publishedByName: string;
+}
+
+const RESULT: Record<ResultRow['result'], [string, string]> = {
+  passed: ['Đạt', 'text-emerald-700'],
+  not_passed: ['Không đạt', 'text-red-600'],
+  pending: ['Chờ xác minh', 'text-amber-700']
+};
+const SNAPSHOT_STATUS: Record<Snapshot['status'], string> = { draft: 'Bản nháp', published: 'Đã phát hành', superseded: 'Đã thay thế' };
+const KPI_LABELS: [string, string, string][] = [
+  ['learners', 'Học viên', ''],
+  ['passed', 'Đạt', ''],
+  ['completionRate', 'Tỷ lệ hoàn thành', '%'],
+  ['attendanceRate', 'Chuyên cần TB', '%'],
+  ['learnerSessions', 'Lượt có mặt', ''],
+  ['surveyResponseRate', 'Phản hồi khảo sát', '%'],
+  ['satisfaction', 'Hài lòng', '%']
+];
+
+const ResultsTab: React.FC<{ cls: CorpClass; onChanged: () => void }> = ({ cls, onChanged }) => {
+  const canEdit = useStaffCan('corporate.classes');
+  const canPublish = useStaffCan('corporate.results_publish');
+  const [versions, setVersions] = useState<Snapshot[] | null>(null);
+  const [shown, setShown] = useState<Snapshot | null>(null);
+  const [policy, setPolicy] = useState<CompletionPolicy>(cls.completionPolicy || {});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = useCallback(() => {
+    api
+      .get<Paginated<Snapshot>>(`/staff/corporate/results/?corporate_class=${cls.id}&pageSize=50`)
+      .then((res) => {
+        setVersions(res.results);
+        setShown((cur) => res.results.find((v) => v.id === cur?.id) || res.results[0] || null);
+      })
+      .catch((e) => setError(errorText(e)));
+  }, [cls.id]);
+  useEffect(load, [load]);
+
+  const run = async (call: () => Promise<Snapshot>) => {
+    setBusy(true);
+    setError('');
+    try {
+      const snap = await call();
+      setShown(snap);
+      load();
+      onChanged();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const savePolicyAndCompute = () =>
+    run(async () => {
+      await api.patch(`/staff/corporate/classes/${cls.id}/`, { completionPolicy: policy });
+      return api.post<Snapshot>(`/staff/corporate/classes/${cls.id}/results/`);
+    });
+  const numberField = (key: 'minAttendance' | 'minGrade', label: string) => (
+    <label>{label}
+      <input type="number" min={0} max={100} className={input} disabled={!canEdit || Boolean(cls.lockedAt)} value={policy[key] ?? ''}
+        onChange={(e) => setPolicy({ ...policy, [key]: e.target.value === '' ? undefined : Number(e.target.value) })} />
+    </label>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className={`${card} space-y-3`}>
+        <div className="font-bold text-sm text-slate-800">Điều kiện hoàn thành</div>
+        <p className="text-xs text-slate-500">
+          Kết quả tính từ chuyên cần đã xác minh (Moodle + điều chỉnh đã duyệt), điểm trên Moodle và khảo sát. Thiếu dữ liệu thì là “Chờ xác minh”, không tự coi là đạt.
+          Phát hành sẽ chốt lớp (không điều chỉnh điểm danh nữa); sửa sau đó là một phiên bản mới, bản cũ được giữ.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs items-end">
+          {numberField('minAttendance', 'Chuyên cần tối thiểu (%)')}
+          {numberField('minGrade', 'Điểm tối thiểu (%)')}
+          <label className="flex items-center gap-2"><input type="checkbox" disabled={!canEdit || Boolean(cls.lockedAt)} checked={Boolean(policy.surveyRequired)} onChange={(e) => setPolicy({ ...policy, surveyRequired: e.target.checked })} /> Bắt buộc làm khảo sát</label>
+          <label className="flex items-center gap-2"><input type="checkbox" disabled={!canEdit || Boolean(cls.lockedAt)} checked={Boolean(policy.moodleCompletion)} onChange={(e) => setPolicy({ ...policy, moodleCompletion: e.target.checked })} /> Hoàn thành khóa trên Moodle</label>
+        </div>
+        <div className="flex flex-wrap gap-2 justify-end">
+          {canEdit && !cls.lockedAt && (
+            <button type="button" className={primary} disabled={busy} onClick={savePolicyAndCompute}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Tính kết quả (bản nháp)
+            </button>
+          )}
+          {canPublish && cls.lockedAt && (
+            <button type="button" className={secondary} disabled={busy}
+              onClick={() => window.confirm('Mở lại để sửa? Lần phát hành sau sẽ là phiên bản mới.') && run(() => api.post<Snapshot>(`/staff/corporate/classes/${cls.id}/reopen/`))}>
+              Mở lại để sửa
+            </button>
+          )}
+        </div>
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      {versions && versions.length > 1 && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {versions.map((v) => (
+            <button key={v.id} type="button" onClick={() => setShown(v)}
+              className={`px-3 py-1 rounded-full border cursor-pointer ${shown?.id === v.id ? 'border-[#0073C1] text-[#0073C1] font-bold' : 'border-slate-300'}`}>
+              v{v.version} · {SNAPSHOT_STATUS[v.status]}
+            </button>
+          ))}
+        </div>
+      )}
+      {!versions ? (
+        <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+      ) : !shown ? (
+        <p className={`${card} text-xs text-slate-500`}>Chưa tính kết quả.</p>
+      ) : (
+        <div className={`${card} space-y-3`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-bold text-sm text-slate-800">
+              Phiên bản {shown.version} · {SNAPSHOT_STATUS[shown.status]}
+              {shown.publishedAt && <span className="font-normal text-slate-500"> · {new Date(shown.publishedAt).toLocaleString('vi-VN')}{shown.publishedByName ? ` bởi ${shown.publishedByName}` : ''}</span>}
+            </div>
+            <div className="flex gap-2">
+              <a className={secondary} href={`${API_ROOT}/staff/corporate/results/${shown.id}/export/`}><Download className="w-4 h-4" /> Xuất Excel</a>
+              {canPublish && shown.status === 'draft' && (
+                <button type="button" className={primary} disabled={busy}
+                  onClick={() => window.confirm('Phát hành kết quả? Lớp sẽ được chốt; bản phát hành không thay đổi.') && run(() => api.post<Snapshot>(`/staff/corporate/results/${shown.id}/publish/`))}>
+                  <CheckCircle2 className="w-4 h-4" /> Phát hành
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-7 gap-2">
+            {KPI_LABELS.map(([key, label, unit]) => (
+              <div key={key} className="border border-slate-200 rounded-xl p-2 text-center">
+                <div className="text-lg font-bold text-slate-900">{shown.kpis[key] ?? '–'}{shown.kpis[key] != null ? unit : ''}</div>
+                <div className="text-[11px] text-slate-500">{label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 text-slate-600 text-left">
+                <tr><th className="p-2">Học viên</th><th className="p-2">Mã NV · đơn vị</th><th className="p-2 text-right">Chuyên cần</th><th className="p-2 text-right">Điểm</th><th className="p-2">Khảo sát</th><th className="p-2">Kết quả</th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {shown.learners.map((r) => {
+                  const [label, tone] = RESULT[r.result];
+                  return (
+                    <tr key={r.enrollment}>
+                      <td className="p-2"><div className="font-bold">{r.name}</div><div className="text-slate-500">{r.email}</div></td>
+                      <td className="p-2">{r.employeeCode || '–'}{r.unit ? ` · ${r.unit}` : ''}</td>
+                      <td className="p-2 text-right">{r.attendanceRate != null ? `${r.attendanceRate}%` : '–'} <span className="text-slate-500">({r.sessionsAttended}/{r.sessionsTaken})</span></td>
+                      <td className="p-2 text-right">{r.gradePercent != null ? `${r.gradePercent}%` : '–'}</td>
+                      <td className="p-2">{r.surveyAnswered == null ? '–' : r.surveyAnswered ? 'Đã làm' : 'Chưa làm'}</td>
+                      <td className="p-2"><span className={`font-bold ${tone}`}>{label}</span>{r.reasons.map((t) => <div key={t} className="text-slate-500">{t}</div>)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, courses }) => {
   const canEdit = useStaffCan('corporate.classes');
   const canSend = useStaffCan('corporate.communications_send');
@@ -946,7 +1140,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
   const { clients } = useClients();
   const [cls, setCls] = useState<CorpClass | null>(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'learners' | 'attendance' | 'surveys' | 'overview'>('learners');
+  const [tab, setTab] = useState<'learners' | 'attendance' | 'surveys' | 'results' | 'overview'>('learners');
   const [editing, setEditing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
 
@@ -989,7 +1183,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         )}
       </div>
       <div className="flex gap-1 border-b border-slate-200">
-        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['surveys', 'Khảo sát'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
+        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['surveys', 'Khảo sát'], ['results', 'Kết quả'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
           <button key={key} type="button" onClick={() => setTab(key)}
             className={`px-4 py-2 text-xs font-bold cursor-pointer border-b-2 ${tab === key ? 'border-[#0073C1] text-[#0073C1]' : 'border-transparent text-slate-500'}`}>
             {label}
@@ -1002,13 +1196,15 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         <AttendanceTab cls={cls} />
       ) : tab === 'surveys' ? (
         <SurveysTab cls={cls} />
+      ) : tab === 'results' ? (
+        <ResultsTab cls={cls} onChanged={load} />
       ) : (
         <div className={`${card} text-xs space-y-2`}>
           <p><strong>Chứng chỉ TWings:</strong> {cls.issueCertificate ? 'Có cấp khi hoàn thành' : 'Không cấp (theo hợp đồng)'}</p>
           <p><strong>Lịch:</strong> {cls.scheduleText || 'Chưa có mô tả lịch'} · {cls.sessions} buổi (điểm danh trên Moodle, mỗi buổi một phiên)</p>
           <p><strong>Giảng viên chính:</strong> {cls.leadInstructorName || '–'}</p>
           {cls.note && <p><strong>Ghi chú:</strong> {cls.note}</p>}
-          <p className="text-slate-500">Chốt kết quả và báo cáo sẽ có ở bước tiếp theo của kế hoạch tích hợp.</p>
+          <p className="text-slate-500">{cls.lockedAt ? `Kết quả đã chốt lúc ${new Date(cls.lockedAt).toLocaleString('vi-VN')}.` : 'Kết quả chưa chốt.'}</p>
         </div>
       )}
       {inviting && <InvitationDialog cls={cls} onClose={() => setInviting(false)} onSent={() => { load(); setListVersion((v) => v + 1); }} />}

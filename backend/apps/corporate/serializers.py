@@ -13,6 +13,7 @@ from .models import (
     ImportBatch,
     ImportTemplate,
     PlanLine,
+    ResultSnapshot,
     ServiceContract,
     TrainingPlan,
 )
@@ -191,6 +192,15 @@ class CorporateClassSerializer(serializers.ModelSerializer):
         exclude = ["updated_at"]
         read_only_fields = ["cohort", "locked_at"]
 
+    def validate_completion_policy(self, value):
+        from .results import clean_policy
+        from .services import CorporateError
+
+        try:
+            return clean_policy(value)
+        except (CorporateError, TypeError, ValueError) as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
     def validate(self, attrs):
         if self.instance is None and not attrs.get("course_id"):
             raise serializers.ValidationError({"course_id": "Chọn khóa học."})
@@ -338,3 +348,14 @@ class AttendanceAdjustmentSerializer(serializers.ModelSerializer):
 class SelfmarkSerializer(serializers.Serializer):
     session = serializers.CharField()
     enabled = serializers.BooleanField()
+
+
+class ResultSnapshotSerializer(serializers.ModelSerializer):
+    class_name = serializers.CharField(source="corporate_class.cohort.name", read_only=True)
+    created_by_name = serializers.CharField(source="created_by.name", read_only=True, default="")
+    published_by_name = serializers.CharField(source="published_by.name", read_only=True, default="")
+
+    class Meta:
+        model = ResultSnapshot
+        exclude = ["updated_at"]
+        read_only_fields = [f.name for f in ResultSnapshot._meta.fields]

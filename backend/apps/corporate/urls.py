@@ -10,6 +10,7 @@ from .views import (
     CorporateEnrollmentViewSet,
     ImportBatchViewSet,
     ImportTemplateViewSet,
+    ResultSnapshotViewSet,
     ServiceContractViewSet,
     TrainingPlanViewSet,
 )
@@ -24,5 +25,6 @@ router.register("enrollments", CorporateEnrollmentViewSet, basename="corporate-e
 router.register("import-templates", ImportTemplateViewSet, basename="corporate-import-template")
 router.register("imports", ImportBatchViewSet, basename="corporate-import")
 router.register("attendance-adjustments", AttendanceAdjustmentViewSet, basename="corporate-adjustment")
+router.register("results", ResultSnapshotViewSet, basename="corporate-result")
 
 urlpatterns = router.urls

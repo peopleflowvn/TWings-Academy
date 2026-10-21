@@ -167,3 +167,54 @@ def test_survey_results_and_response_rate(corp_class, staff_client):
         corp.get(f"/api/v1/staff/corporate/classes/{cls.pk}/surveys/").json()["surveys"][0]["responseRate"]
         == 100
     )
+
+
+def test_results_are_computed_published_and_versioned(corp_class, staff_client):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    from apps.corporate.models import CorporateEnrollment, ResultSnapshot
+
+    cls, sessions, (an, binh) = corp_class
+    refresh_learning()
+    corp = staff_client(Role.CORPORATE_TRAINING)
+    base = f"/api/v1/staff/corporate/classes/{cls.pk}/"
+    bad = corp.patch(base, {"completionPolicy": {"salary": 1}}, format="json")
+    assert bad.status_code == 400
+    policy = {"minAttendance": 60, "surveyRequired": True}
+    assert corp.patch(base, {"completionPolicy": policy}, format="json").status_code == 200
+
+    v1 = corp.post(f"{base}results/").json()
+    assert (v1["version"], v1["status"]) == (1, "draft")
+    rows = {r["name"]: r for r in v1["learners"]}
+    assert rows["An"]["result"] == "passed" and rows["An"]["attendanceRate"] == 100
+    assert rows["Bình"]["result"] == "not_passed" and rows["Bình"]["reasons"] == ["Chuyên cần 33% < 60%"]
+    assert (
+        v1["kpis"]["learners"] == 2
+        and v1["kpis"]["completionRate"] == 50.0
+        and v1["kpis"]["satisfaction"] == 90.0
+    )
+
+    publish = f"/api/v1/staff/corporate/results/{v1['id']}/publish/"
+    assert staff_client(Role.ACADEMIC_MANAGEMENT).post(publish).status_code == 403
+    assert corp.post(publish).json()["status"] == "published"
+    cls.refresh_from_db()
+    assert cls.locked_at is not None
+    assert CorporateEnrollment.objects.get(pk=an.pk).status == "completed"
+    assert CorporateEnrollment.objects.get(pk=binh.pk).status == "not_passed"
+    assert corp.post(f"{base}results/").status_code == 400  # locked: reopen first
+
+    xlsx = corp.get(f"/api/v1/staff/corporate/results/{v1['id']}/export/")
+    assert xlsx.status_code == 200 and "spreadsheetml" in xlsx["Content-Type"]
+    values = [
+        c for row in load_workbook(BytesIO(xlsx.content)).active.iter_rows(values_only=True) for c in row
+    ]
+    assert "Không đạt" in values and "Đạt" in values
+
+    v2 = corp.post(f"{base}reopen/").json()
+    assert (v2["version"], v2["status"]) == (2, "draft")
+    corp.post(f"/api/v1/staff/corporate/results/{v2['id']}/publish/")
+    assert ResultSnapshot.objects.get(pk=v1["id"]).status == "superseded"
+    frozen = {r["name"]: r["result"] for r in ResultSnapshot.objects.get(pk=v1["id"]).learners}
+    assert frozen == {"An": "passed", "Bình": "not_passed"}  # the published version is kept as it was

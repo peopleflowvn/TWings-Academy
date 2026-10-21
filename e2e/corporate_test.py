@@ -202,6 +202,20 @@ def transfer_to_another_class(page: Page):
     page.wait_for_selector("td:has-text('Đã chuyển lớp')", timeout=20000)
 
 
+@step
+def results_published_and_locked(page: Page):
+    # Class 2 now has the transferred learner; no completion condition set: everyone passes.
+    page.goto(f"{BASE}/app/corporate/classes")
+    page.locator("td:has-text('NHE2E – Bán hàng – Lớp 2')").click()
+    page.locator("button:has-text('Kết quả')").first.click()
+    page.locator("button:has-text('Tính kết quả')").click()
+    page.wait_for_selector("text=Phiên bản 1 · Bản nháp", timeout=20000)
+    assert page.locator("td:has-text('Trần Thị E2E')").count() == 1
+    page.locator("button:has-text('Phát hành')").click()  # confirm accepted by the harness
+    page.wait_for_selector("text=Phiên bản 1 · Đã phát hành", timeout=20000)
+    assert page.locator("button:has-text('Mở lại để sửa')").count() == 1, "class locked after publishing"
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:

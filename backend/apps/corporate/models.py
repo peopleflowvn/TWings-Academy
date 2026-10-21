@@ -435,3 +435,38 @@ class ClassSurvey(BaseModel):
                 fields=["corporate_class", "moodle_feedback_id"], name="uniq_class_survey"
             )
         ]
+
+
+class ResultSnapshot(BaseModel):
+    """
+    The results of a corporate class frozen at a point in time: per learner (verified attendance,
+    grade, Moodle completion, survey answered, passed or not and why) and the class KPIs, with the
+    completion policy used. A draft can be recomputed; a published version never changes, a correction
+    is a new version (the previous one stays, superseded). Reports, e-mails and acceptance read these.
+    """
+
+    STATUS_CHOICES = [("draft", "Bản nháp"), ("published", "Đã phát hành"), ("superseded", "Đã thay thế")]
+
+    corporate_class = models.ForeignKey(CorporateClass, on_delete=models.PROTECT, related_name="results")
+    version = models.PositiveSmallIntegerField(default=1)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft", db_index=True)
+    policy = models.JSONField(default=dict)
+    learners = models.JSONField(default=list)
+    kpis = models.JSONField(default=dict)
+    note = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["corporate_class", "-version"]
+        constraints = [
+            models.UniqueConstraint(fields=["corporate_class", "version"], name="uniq_result_version")
+        ]
+
+    def __str__(self):
+        return f"{self.corporate_class_id} v{self.version} {self.status}"
