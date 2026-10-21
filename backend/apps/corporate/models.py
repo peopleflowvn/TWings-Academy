@@ -283,3 +283,74 @@ class CorporateEnrollment(BaseModel):
     @property
     def may_study(self) -> bool:
         return self.status in self.STUDYING
+
+
+class ImportTemplate(BaseModel):
+    """
+    How one client's Excel file of one kind is read: which column holds which field. Without a template
+    the columns are recognised by their Vietnamese headers (apps.corporate.imports). A changed file
+    layout is a new version, so earlier imports keep the mapping they used.
+    """
+
+    KIND_CHOICES = [("roster", "Danh sách học viên"), ("plan", "Kế hoạch đào tạo")]
+
+    client = models.ForeignKey(CorporateClient, on_delete=models.CASCADE, related_name="import_templates")
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    name = models.CharField(max_length=200)
+    version = models.PositiveSmallIntegerField(default=1)
+    sheet = models.CharField(max_length=100, blank=True)  # empty: the first sheet
+    header_row = models.PositiveSmallIntegerField(default=1)
+    # {field: header text as written in the file}, e.g. {"employee_code": "Mã CBNV"}.
+    mapping = models.JSONField(default=dict)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["client", "kind", "-version"]
+        constraints = [
+            models.UniqueConstraint(fields=["client", "kind", "name", "version"], name="uniq_import_template")
+        ]
+
+    def __str__(self):
+        return f"{self.name} v{self.version}"
+
+
+class ImportBatch(BaseModel):
+    """
+    One uploaded file: kept as received (private storage), read into rows, checked and previewed
+    (add / update / unchanged / error per row), then imported on confirmation. The same file cannot be
+    imported twice into the same target.
+    """
+
+    STATUS_CHOICES = [
+        ("previewed", "Đã kiểm tra – chờ xác nhận"),
+        ("imported", "Đã nhập"),
+        ("cancelled", "Đã hủy"),
+    ]
+
+    client = models.ForeignKey(CorporateClient, on_delete=models.PROTECT, related_name="imports")
+    kind = models.CharField(max_length=20, choices=ImportTemplate.KIND_CHOICES)
+    template = models.ForeignKey(ImportTemplate, null=True, blank=True, on_delete=models.SET_NULL)
+    corporate_class = models.ForeignKey(
+        CorporateClass, null=True, blank=True, on_delete=models.PROTECT, related_name="imports"
+    )
+    plan = models.ForeignKey(
+        TrainingPlan, null=True, blank=True, on_delete=models.PROTECT, related_name="imports"
+    )
+    file_name = models.CharField(max_length=255)
+    file_key = models.CharField(max_length=500)  # in the "private" storage
+    fingerprint = models.CharField(max_length=64, db_index=True)  # SHA-256 of the file
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="previewed", db_index=True)
+    # The columns found and every row: {"row": 5, "values": {...}, "action": "add", "errors": [...]}.
+    columns = models.JSONField(default=dict)
+    rows = models.JSONField(default=list)
+    summary = models.JSONField(default=dict)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    imported_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.kind} {self.file_name}"

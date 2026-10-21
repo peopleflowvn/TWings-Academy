@@ -9,6 +9,8 @@ from .models import (
     CorporateClass,
     CorporateClient,
     CorporateEnrollment,
+    ImportBatch,
+    ImportTemplate,
     PlanLine,
     ServiceContract,
     TrainingPlan,
@@ -266,3 +268,43 @@ class TransferSerializer(serializers.Serializer):
 
 class CancelSerializer(serializers.Serializer):
     note = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
+
+
+class ImportTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ImportTemplate
+        exclude = ["updated_at"]
+
+    def validate_mapping(self, value):
+        from .imports import FIELDS
+
+        kind = self.initial_data.get("kind") or getattr(self.instance, "kind", "")
+        if not isinstance(value, dict) or not all(isinstance(v, str) and v.strip() for v in value.values()):
+            raise serializers.ValidationError("Dạng {trường: tiêu đề cột}.")
+        unknown = set(value) - set(FIELDS.get(kind, {}))
+        if unknown:
+            raise serializers.ValidationError(f"Trường không có: {', '.join(sorted(unknown))}.")
+        return value
+
+
+class ImportBatchSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source="created_by.name", read_only=True, default="")
+
+    class Meta:
+        model = ImportBatch
+        exclude = ["file_key", "fingerprint", "updated_at"]
+        read_only_fields = [f.name for f in ImportBatch._meta.fields]
+
+
+class ImportUploadSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=ImportTemplate.KIND_CHOICES)
+    corporate_class = serializers.PrimaryKeyRelatedField(
+        queryset=CorporateClass.objects.all(), required=False, allow_null=True
+    )
+    plan = serializers.PrimaryKeyRelatedField(
+        queryset=TrainingPlan.objects.all(), required=False, allow_null=True
+    )
+    template = serializers.PrimaryKeyRelatedField(
+        queryset=ImportTemplate.objects.all(), required=False, allow_null=True
+    )
+    file = serializers.FileField()

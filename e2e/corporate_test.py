@@ -107,6 +107,32 @@ def learner_listed_with_manager(page: Page):
 
 
 @step
+def roster_imported_from_excel(page: Page):
+    from openpyxl import Workbook
+
+    book = Workbook()
+    for row in (
+        ["DANH SÁCH CỬ ĐI HỌC"],
+        [],
+        ["STT", "Họ và tên", "Mã CBNV", "Email", "Phòng ban", "Email CBQL"],
+        [1, "Lê Văn Nhập", "NV002", "nhap@nhe2e.test", "Khối Bán lẻ", "quanly@nhe2e.test"],
+        [2, "Không Có Email", "NV003", "", "", ""],
+    ):
+        book.active.append(row)
+    path = OUT / "dshv_e2e.xlsx"
+    book.save(path)
+    page.locator("button:has-text('Nhập từ Excel')").click()
+    m = modal(page)
+    m.locator("input[type=file]").set_input_files(str(path))
+    page.wait_for_selector("text=1 thêm", timeout=20000)
+    assert m.locator("text=Thiếu email").count() == 1, "row without e-mail flagged"
+    m.locator("button:has-text('Nhập 1 dòng')").click()
+    page.wait_for_selector("text=Đã nhập 1 dòng", timeout=20000)
+    m.locator("button").first.click()  # close
+    page.wait_for_selector("td:has-text('Lê Văn Nhập')", timeout=20000)
+
+
+@step
 def class_schedule(page: Page):
     page.locator("button:has-text('Lịch học')").click()
     page.wait_for_selector("text=Tạo nhanh theo mẫu", timeout=20000)
@@ -141,7 +167,7 @@ def transfer_to_another_class(page: Page):
     page.goto(f"{BASE}/app/corporate/classes")
     page.locator("td:has-text('NHE2E – Bán hàng – Lớp 1')").click()
     page.wait_for_selector("td:has-text('Trần Thị E2E')", timeout=20000)
-    page.locator("button[title='Chuyển lớp']").click()
+    page.locator("tr", has_text="Trần Thị E2E").locator("button[title='Chuyển lớp']").click()
     m = modal(page)
     m.locator("select").select_option(label="NHE2E – Bán hàng – Lớp 2 · E2E RM Doanh nghiệp")
     m.locator("button:has-text('Chuyển')").click()

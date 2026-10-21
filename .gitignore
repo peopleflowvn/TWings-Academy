@@ -33,6 +33,7 @@ htmlcov/
 *.sqlite3
 backend/staticfiles/
 backend/media/
+backend/media_private/
 
 # ---- OS / editors ----
 .DS_Store

@@ -16,6 +16,8 @@ from .models import (
     ClientUnit,
     CorporateClass,
     CorporateEnrollment,
+    ImportBatch,
+    ImportTemplate,
     ServiceContract,
     TrainingPlan,
 )
@@ -26,6 +28,9 @@ from .serializers import (
     CorporateClassSerializer,
     CorporateClientSerializer,
     CorporateEnrollmentSerializer,
+    ImportBatchSerializer,
+    ImportTemplateSerializer,
+    ImportUploadSerializer,
     ListLearnerSerializer,
     ServiceContractSerializer,
     TrainingPlanSerializer,
@@ -291,3 +296,82 @@ class CorporateEnrollmentViewSet(_Scoped, viewsets.GenericViewSet):
 
     def scoped_classes(self):
         return CorporateClass.objects.filter(client__in=scoped_clients(self.request.user))
+
+
+class ImportTemplateViewSet(
+    _Scoped, mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.ReadOnlyModelViewSet
+):
+    serializer_class = ImportTemplateSerializer
+    permission_classes = [ActionPermission]
+    permission_map = perm_map("corporate.import")
+    filterset_fields = ["client", "kind", "is_active"]
+    pagination_class = None
+
+    def get_queryset(self):
+        return self.scoped(ImportTemplate.objects.all())
+
+    def perform_create(self, serializer):
+        self.check_client(serializer.validated_data["client"])
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self.check_client(serializer.validated_data.get("client", serializer.instance.client))
+        serializer.save()
+
+
+class ImportBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnlyModelViewSet):
+    """Upload an Excel file (preview), then confirm or cancel it."""
+
+    serializer_class = ImportBatchSerializer
+    permission_classes = [ActionPermission]
+    permission_map = {
+        "list": ["corporate.view"],
+        "retrieve": ["corporate.view"],
+        "create": ["corporate.import"],
+        "confirm": ["corporate.import"],
+        "cancel": ["corporate.import"],
+    }
+    filterset_fields = ["client", "kind", "status", "corporate_class", "plan"]
+
+    def get_queryset(self):
+        return self.scoped(ImportBatch.objects.select_related("created_by"))
+
+    def create(self, request, *args, **kwargs):
+        from . import imports
+
+        ser = ImportUploadSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        target = data.get("corporate_class") or data.get("plan")
+        if target is None:
+            raise serializers.ValidationError({"detail": "Chọn lớp hoặc kế hoạch để nhập vào."})
+        self.check_client(target.client)
+        batch = _rule(
+            lambda: imports.create_batch(
+                client=target.client,
+                kind=data["kind"],
+                upload=data["file"],
+                user=request.user,
+                corporate_class=data.get("corporate_class"),
+                plan=data.get("plan"),
+                template=data.get("template"),
+            )
+        )
+        audit(request, "corporate.import_preview", batch, kind=batch.kind, summary=batch.summary)
+        return Response(self.get_serializer(batch).data, status=201)
+
+    @action(detail=True, methods=["post"])
+    def confirm(self, request, pk=None):
+        from . import imports
+
+        batch = _rule(lambda: imports.confirm(self.get_object()))
+        audit(request, "corporate.import_confirm", batch, applied=batch.summary.get("applied"))
+        return Response(self.get_serializer(batch).data)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        batch = self.get_object()
+        if batch.status == "previewed":
+            batch.status = "cancelled"
+            batch.save(update_fields=["status", "updated_at"])
+        return Response(self.get_serializer(batch).data)

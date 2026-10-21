@@ -8,8 +8,8 @@
  * Every list is limited by the API to the clients the user may see.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, Loader2, Plus, Save, UserMinus, X } from 'lucide-react';
-import { api, ApiError, Paginated } from '../../lib/api';
+import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, FileSpreadsheet, Loader2, Plus, Save, UserMinus, X } from 'lucide-react';
+import { api, apiFetch, ApiError, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { viDateToIso } from '../../lib/serverCollection';
 import { navigate, useAppSearch } from '../router';
@@ -236,6 +236,142 @@ function useContracts(clientId: string) {
   useEffect(reload, [reload]);
   return { contracts, reload };
 }
+
+// ================================================================ Excel import
+interface ImportRow {
+  row: number;
+  values: Record<string, string | number | null>;
+  action: 'add' | 'update' | 'unchanged' | 'error';
+  errors: string[];
+  notes: string[];
+}
+
+interface ImportBatch {
+  id: string;
+  kind: 'roster' | 'plan';
+  fileName: string;
+  status: 'previewed' | 'imported' | 'cancelled';
+  columns: Record<string, string>;
+  rows: ImportRow[];
+  summary: { add: number; update: number; unchanged: number; error: number; applied?: number };
+}
+
+const IMPORT_ACTION: Record<ImportRow['action'], [string, string]> = {
+  add: ['Thêm', 'bg-emerald-50 text-emerald-700 border-emerald-200'],
+  update: ['Cập nhật', 'bg-blue-50 text-blue-700 border-blue-200'],
+  unchanged: ['Không đổi', 'bg-slate-50 text-slate-500 border-slate-200'],
+  error: ['Lỗi', 'bg-red-50 text-red-700 border-red-200']
+};
+const IMPORT_COLUMNS: Record<ImportBatch['kind'], [string, string][]> = {
+  roster: [['fullName', 'Họ tên'], ['email', 'Email'], ['employeeCode', 'Mã NV'], ['unit', 'Đơn vị'], ['managerEmail', 'CBQL']],
+  plan: [['title', 'Nội dung'], ['unit', 'Đơn vị'], ['plannedStart', 'Từ'], ['plannedEnd', 'Đến'], ['plannedClasses', 'Số lớp'], ['plannedLearners', 'HV'], ['budget', 'Ngân sách']]
+};
+const IMPORT_HINT: Record<ImportBatch['kind'], string> = {
+  roster: 'Họ tên, Email, Điện thoại, Mã NV / CBNV, Chức danh, Đơn vị / Phòng ban, Họ tên CBQL, Email CBQL',
+  plan: 'Nội dung / Tên khóa, Đơn vị, Từ ngày, Đến ngày, Số lớp, Số học viên, Ngân sách, Ghi chú'
+};
+
+/** Upload a client's Excel file, see what each row will do, then confirm (nothing is written before). */
+const ImportDialog: React.FC<{ kind: ImportBatch['kind']; target: { corporateClass?: string; plan?: string }; onClose: () => void; onDone: () => void }> = ({ kind, target, onClose, onDone }) => {
+  const [batch, setBatch] = useState<ImportBatch | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const upload = async (file: File) => {
+    const form = new FormData();
+    form.append('kind', kind);
+    if (target.corporateClass) form.append('corporateClass', target.corporateClass);
+    if (target.plan) form.append('plan', target.plan);
+    form.append('file', file);
+    setBusy(true);
+    setError('');
+    try {
+      setBatch(await apiFetch<ImportBatch>('/staff/corporate/imports/', { method: 'POST', body: form }));
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const confirm = async () => {
+    if (!batch) return;
+    setBusy(true);
+    setError('');
+    try {
+      setBatch(await api.post<ImportBatch>(`/staff/corporate/imports/${batch.id}/confirm/`));
+      onDone();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const close = () => {
+    if (batch?.status === 'previewed') api.post(`/staff/corporate/imports/${batch.id}/cancel/`).catch(() => undefined);
+    onClose();
+  };
+  const toApply = batch ? batch.summary.add + batch.summary.update : 0;
+
+  return (
+    <Modal title={kind === 'roster' ? 'Nhập danh sách học viên từ Excel' : 'Nhập kế hoạch từ Excel'} onClose={close} wide>
+      {!batch ? (
+        <div className="space-y-3">
+          <p className="text-slate-600">
+            File .xlsx của khách hàng, tối đa 5 MB. Cột được nhận theo tiêu đề ({IMPORT_HINT[kind]}); dòng tiêu đề có thể nằm dưới vài
+            dòng tiêu đề văn bản. Hệ thống kiểm tra và cho xem trước, chưa ghi gì cho tới khi bạn xác nhận.
+          </p>
+          <input type="file" accept=".xlsx" disabled={busy} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+          {busy && <Loader2 className="w-5 h-5 animate-spin text-slate-400" />}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-slate-700">
+            <strong>{batch.fileName}</strong> · {batch.rows.length} dòng: {batch.summary.add} thêm, {batch.summary.update} cập nhật,{' '}
+            {batch.summary.unchanged} không đổi, <span className={batch.summary.error ? 'text-red-600 font-bold' : ''}>{batch.summary.error} lỗi</span>
+            {batch.status === 'imported' && <span className="text-emerald-700 font-bold"> · Đã nhập {batch.summary.applied ?? 0} dòng</span>}
+          </p>
+          <p className="text-slate-500">Cột đã nhận: {Object.values(batch.columns).join(' · ')}</p>
+          <div className="max-h-96 overflow-y-auto border border-slate-200 rounded-xl">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 text-slate-600 text-left sticky top-0">
+                <tr>
+                  <th className="p-2">Dòng</th>
+                  {IMPORT_COLUMNS[kind].map(([, label]) => <th key={label} className="p-2">{label}</th>)}
+                  <th className="p-2">Kết quả</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {batch.rows.map((r) => {
+                  const [label, tone] = IMPORT_ACTION[r.action];
+                  return (
+                    <tr key={r.row}>
+                      <td className="p-2 text-slate-500">{r.row}</td>
+                      {IMPORT_COLUMNS[kind].map(([key]) => <td key={key} className="p-2">{r.values[key] ?? ''}</td>)}
+                      <td className="p-2">
+                        <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${tone}`}>{label}</span>
+                        {r.errors.map((t) => <div key={t} className="text-red-600">{t}</div>)}
+                        {r.notes.map((t) => <div key={t} className="text-slate-500">{t}</div>)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {batch.status === 'previewed' && (
+            <div className="flex justify-end gap-2">
+              <button type="button" className={secondary} disabled={busy} onClick={close}>Hủy</button>
+              <button type="button" className={primary} disabled={busy || toApply === 0} onClick={confirm}>
+                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Nhập {toApply} dòng
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {error && <p className="text-red-600">{error}</p>}
+    </Modal>
+  );
+};
 
 // ================================================================ classes
 export const CorporateClassesPage: React.FC<{ courses: CourseOption[] }> = ({ courses }) => {
@@ -528,6 +664,7 @@ const LearnersTab: React.FC<{ cls: CorpClass; canEdit: boolean; onChanged: () =>
   const [form, setForm] = useState(EMPTY_LEARNER);
   const [busy, setBusy] = useState(false);
   const [moving, setMoving] = useState<Listing | null>(null);
+  const [importing, setImporting] = useState(false);
   const { units } = useUnits(cls.client);
 
   const load = useCallback(() => {
@@ -565,10 +702,14 @@ const LearnersTab: React.FC<{ cls: CorpClass; canEdit: boolean; onChanged: () =>
     <div className="space-y-4">
       {canEdit && !['closed', 'cancelled'].includes(cls.status) && (
         <div className={`${card} space-y-3`}>
-          <div className="font-bold text-slate-800 text-sm">Thêm học viên</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-bold text-slate-800 text-sm">Thêm học viên</div>
+            <button type="button" className={secondary} onClick={() => setImporting(true)}>
+              <FileSpreadsheet className="w-4 h-4" /> Nhập từ Excel
+            </button>
+          </div>
           <p className="text-xs text-slate-500">
             Trùng email / số điện thoại với học viên đã có thì dùng chung hồ sơ. Cán bộ quản lý (CBQL) được lưu theo ngày để CC đúng người khi gửi kết quả.
-            Nhập cả danh sách từ file Excel sẽ có ở bước tiếp theo.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
             <label>Họ tên *<input className={input} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
@@ -642,6 +783,9 @@ const LearnersTab: React.FC<{ cls: CorpClass; canEdit: boolean; onChanged: () =>
           </table>
         )}
       </div>
+      {importing && (
+        <ImportDialog kind="roster" target={{ corporateClass: cls.id }} onClose={() => setImporting(false)} onDone={() => { load(); onChanged(); }} />
+      )}
       {moving && (
         <TransferDialog listing={moving} cls={cls} onClose={() => setMoving(null)} onDone={() => { setMoving(null); load(); onChanged(); }} />
       )}
@@ -1066,6 +1210,7 @@ const PlanDetail: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, cou
   const [lines, setLines] = useState<PlanLine[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
   const { units } = useUnits(plan?.client || '');
 
   const show = (p: Plan) => {
@@ -1108,6 +1253,11 @@ const PlanDetail: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, cou
           {plan.previous && <button type="button" className="text-[#0073C1] font-bold cursor-pointer" onClick={() => navigate(`/corporate/plans?id=${plan.previous}`)}>Xem phiên bản trước</button>}
         </div>
         <div className="flex gap-2">
+          {editable && (
+            <button type="button" className={secondary} disabled={busy} onClick={() => setImporting(true)}>
+              <FileSpreadsheet className="w-4 h-4" /> Nhập từ Excel
+            </button>
+          )}
           {editable && <button type="button" className={secondary} disabled={busy} onClick={saveLines}><Save className="w-4 h-4" /> Lưu các dòng</button>}
           {canApprove && plan.status === 'draft' && (
             <button type="button" className={primary} disabled={busy} onClick={() => window.confirm('Duyệt kế hoạch? Sau khi duyệt không sửa được, chỉ tạo phiên bản mới.') && run(() => api.post<Plan>(`/staff/corporate/plans/${id}/approve/`))}>
@@ -1138,7 +1288,7 @@ const PlanDetail: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, cou
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {lines.length === 0 && <tr><td colSpan={9} className="p-3 text-slate-500">Chưa có dòng nào.{editable ? ' Thêm dòng bên dưới (nhập từ file Excel sẽ có ở bước tiếp theo).' : ''}</td></tr>}
+            {lines.length === 0 && <tr><td colSpan={9} className="p-3 text-slate-500">Chưa có dòng nào.{editable ? ' Thêm dòng bên dưới hoặc nhập từ file Excel của khách hàng.' : ''}</td></tr>}
             {lines.map((l, i) =>
               editable ? (
                 <tr key={i}>
@@ -1189,6 +1339,14 @@ const PlanDetail: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, cou
           <div className="p-3"><button type="button" className={secondary} onClick={() => setLines((list) => [...list, { ...EMPTY_LINE }])}><Plus className="w-4 h-4" /> Thêm dòng</button></div>
         )}
       </div>
+      {importing && (
+        <ImportDialog
+          kind="plan"
+          target={{ plan: plan.id }}
+          onClose={() => setImporting(false)}
+          onDone={() => api.get<Plan>(`/staff/corporate/plans/${id}/`).then(show).catch((e) => setError(errorText(e)))}
+        />
+      )}
     </div>
   );
 };
