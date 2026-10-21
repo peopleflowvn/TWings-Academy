@@ -7,6 +7,7 @@ from .models import (
     AcceptanceBatch,
     AcceptanceLine,
     AttendanceAdjustment,
+    ClassDocument,
     ClientUnit,
     CommunicationBatch,
     CommunicationRecipient,
@@ -462,3 +463,19 @@ class AcceptanceAdjustmentSerializer(serializers.Serializer):
 class AcceptInvoiceSerializer(serializers.Serializer):
     invoice_number = serializers.CharField(max_length=50, required=False, allow_blank=True, default="")
     invoice_date = serializers.DateField(required=False, allow_null=True)
+
+
+class ClassDocumentSerializer(serializers.ModelSerializer):
+    kind_label = serializers.CharField(source="get_kind_display", read_only=True)
+    uploaded_by_name = serializers.CharField(source="uploaded_by.name", read_only=True, default="")
+
+    class Meta:
+        model = ClassDocument
+        exclude = ["file_key", "updated_at"]
+
+
+class DocumentUploadSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=ClassDocument.KIND_CHOICES)
+    title = serializers.CharField(max_length=300, required=False, allow_blank=True, default="")
+    note = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
+    file = serializers.FileField()

@@ -604,3 +604,36 @@ class AcceptanceLine(BaseModel):
 
     class Meta:
         ordering = ["batch", "sort_order"]
+
+
+class ClassDocument(BaseModel):
+    """
+    A document of a corporate class (signed attendance sheet, acceptance record, invoice copy...), kept
+    in private storage. Uploading the same kind and title again adds a version; earlier ones stay.
+    """
+
+    KIND_CHOICES = [
+        ("roster", "Danh sách học viên"),
+        ("attendance", "Danh sách điểm danh có ký"),
+        ("results", "Kết quả / báo cáo"),
+        ("survey", "Khảo sát"),
+        ("acceptance_record", "Biên bản nghiệm thu"),
+        ("invoice", "Hóa đơn"),
+        ("contract", "Hợp đồng / phụ lục"),
+        ("other", "Khác"),
+    ]
+
+    corporate_class = models.ForeignKey(CorporateClass, on_delete=models.CASCADE, related_name="documents")
+    kind = models.CharField(max_length=30, choices=KIND_CHOICES)
+    title = models.CharField(max_length=300)
+    version = models.PositiveSmallIntegerField(default=1)
+    file_key = models.CharField(max_length=500)  # in the "private" storage
+    file_name = models.CharField(max_length=255)
+    size = models.PositiveIntegerField(default=0)
+    note = models.CharField(max_length=500, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["corporate_class", "kind", "title", "-version"]

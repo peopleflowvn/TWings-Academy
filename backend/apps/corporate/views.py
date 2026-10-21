@@ -15,6 +15,7 @@ from . import services
 from .models import (
     AcceptanceBatch,
     AttendanceAdjustment,
+    ClassDocument,
     ClientUnit,
     CommunicationBatch,
     CorporateClass,
@@ -33,6 +34,7 @@ from .serializers import (
     AdjustmentRequestSerializer,
     AttendanceAdjustmentSerializer,
     CancelSerializer,
+    ClassDocumentSerializer,
     ClientUnitSerializer,
     CommunicationBatchSerializer,
     CorporateClassSerializer,
@@ -40,6 +42,7 @@ from .serializers import (
     CorporateEnrollmentSerializer,
     CreateAcceptanceSerializer,
     CreateBatchSerializer,
+    DocumentUploadSerializer,
     ImportBatchSerializer,
     ImportTemplateSerializer,
     ImportUploadSerializer,
@@ -209,6 +212,8 @@ class CorporateClassViewSet(
         surveys="corporate.view",
         refresh_surveys="corporate.classes",
         compute_results="corporate.classes",
+        documents="corporate.view",
+        upload_document="corporate.classes",
         reopen="corporate.results_publish",
         adjust_attendance="corporate.attendance_adjust",
         selfmark="corporate.classes",
@@ -405,6 +410,62 @@ class CorporateClassViewSet(
         snapshot = _rule(lambda: reopen(self.get_object(), request.user))
         audit(request, "corporate.results_reopen", snapshot.corporate_class, version=snapshot.version)
         return Response(ResultSnapshotSerializer(snapshot).data)
+
+    @action(detail=True, methods=["get"])
+    def documents(self, request, pk=None):
+        from .documents import checklist
+
+        corporate_class = self.get_object()
+        docs = corporate_class.documents.select_related("uploaded_by")
+        return Response(
+            {
+                "documents": ClassDocumentSerializer(docs, many=True).data,
+                "checklist": checklist(corporate_class),
+            }
+        )
+
+    @documents.mapping.post
+    def upload_document(self, request, pk=None):
+        from .documents import upload
+
+        corporate_class = self.get_object()
+        ser = DocumentUploadSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        doc = _rule(
+            lambda: upload(
+                corporate_class,
+                kind=data["kind"],
+                title=data["title"],
+                file=data["file"],
+                note=data["note"],
+                user=request.user,
+            )
+        )
+        audit(request, "corporate.document_upload", doc, kind=doc.kind, version=doc.version)
+        return Response(ClassDocumentSerializer(doc).data, status=201)
+
+
+class ClassDocumentViewSet(_Scoped, viewsets.GenericViewSet):
+    """Download a class document (private storage, audited)."""
+
+    permission_classes = [ActionPermission]
+    permission_map = {"download": ["corporate.view"]}
+    client_path = "corporate_class__client"
+
+    def get_queryset(self):
+        return self.scoped(ClassDocument.objects.all())
+
+    @action(detail=True, methods=["get"])
+    def download(self, request, pk=None):
+        from django.core.files.storage import storages
+        from django.http import FileResponse
+
+        doc = self.get_object()
+        audit(request, "corporate.document_download", doc)
+        return FileResponse(
+            storages["private"].open(doc.file_key, "rb"), as_attachment=True, filename=doc.file_name
+        )
 
 
 class ResultSnapshotViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):

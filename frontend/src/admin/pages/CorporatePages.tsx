@@ -1284,6 +1284,119 @@ const CommunicationsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
   );
 };
 
+// ---------------------------------------------------------------- documents & checklist
+interface ClassDocument {
+  id: string;
+  kind: string;
+  kindLabel: string;
+  title: string;
+  version: number;
+  fileName: string;
+  size: number;
+  note: string;
+  uploadedByName: string;
+  createdAt: string;
+}
+
+const DOCUMENT_KINDS: [string, string][] = [
+  ['attendance', 'Danh sách điểm danh có ký'],
+  ['acceptance_record', 'Biên bản nghiệm thu'],
+  ['invoice', 'Hóa đơn'],
+  ['results', 'Kết quả / báo cáo'],
+  ['survey', 'Khảo sát'],
+  ['roster', 'Danh sách học viên'],
+  ['contract', 'Hợp đồng / phụ lục'],
+  ['other', 'Khác']
+];
+
+const DocumentsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
+  const canUpload = useStaffCan('corporate.classes');
+  const [data, setData] = useState<{ documents: ClassDocument[]; checklist: { kind: string; label: string; done: boolean; source: string }[] } | null>(null);
+  const [form, setForm] = useState({ kind: 'attendance', title: '', note: '' });
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const load = useCallback(() => {
+    api.get<NonNullable<typeof data>>(`/staff/corporate/classes/${cls.id}/documents/`).then(setData).catch((e) => setError(errorText(e)));
+  }, [cls.id]);
+  useEffect(load, [load]);
+  const upload = async () => {
+    if (!file) return;
+    const body = new FormData();
+    body.append('kind', form.kind);
+    body.append('title', form.title);
+    body.append('note', form.note);
+    body.append('file', file);
+    setBusy(true);
+    setError('');
+    try {
+      await apiFetch(`/staff/corporate/classes/${cls.id}/documents/`, { method: 'POST', body });
+      setForm({ ...form, title: '', note: '' });
+      setFile(null);
+      load();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!data) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
+  return (
+    <div className="space-y-4">
+      <div className={`${card} space-y-2`}>
+        <div className="font-bold text-sm text-slate-800">Checklist hồ sơ nghiệm thu</div>
+        <ul className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+          {data.checklist.map((c) => (
+            <li key={c.kind} className={`border rounded-xl px-3 py-2 flex items-center gap-2 ${c.done ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/40'}`}>
+              {c.done ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <XCircle className="w-4 h-4 text-amber-600" />}
+              <span><strong>{c.label}</strong>{c.source === 'system' ? ' · có trên hệ thống' : c.source === 'upload' ? ' · đã tải lên' : ' · còn thiếu'}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      {canUpload && (
+        <div className={`${card} space-y-3 text-xs`}>
+          <div className="font-bold text-sm text-slate-800">Tải lên tài liệu</div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+            <label>Loại
+              <select className={input} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
+                {DOCUMENT_KINDS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+              </select>
+            </label>
+            <label>Tiêu đề (trùng tiêu đề = phiên bản mới)<input className={input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Để trống: tên tệp" /></label>
+            <label>Ghi chú<input className={input} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+            <label>Tệp (PDF, Word, Excel, ảnh, ZIP; ≤ 15 MB)<input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
+          </div>
+          <div className="flex justify-end">
+            <button type="button" className={primary} disabled={busy || !file} onClick={upload}>{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Tải lên</button>
+          </div>
+          {error && <p className="text-red-600">{error}</p>}
+        </div>
+      )}
+      <div className={`${card} p-0 overflow-x-auto`}>
+        {data.documents.length === 0 ? (
+          <p className="p-5 text-xs text-slate-500">Chưa có tài liệu tải lên.</p>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 text-slate-600 text-left"><tr><th className="p-2">Tài liệu</th><th className="p-2">Loại</th><th className="p-2">Phiên bản</th><th className="p-2">Người tải · lúc</th><th className="p-2" /></tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.documents.map((d) => (
+                <tr key={d.id}>
+                  <td className="p-2"><div className="font-bold">{d.title}</div><div className="text-slate-500">{d.fileName} · {Math.ceil(d.size / 1024)} KB{d.note ? ` · ${d.note}` : ''}</div></td>
+                  <td className="p-2">{d.kindLabel}</td>
+                  <td className="p-2">v{d.version}</td>
+                  <td className="p-2">{d.uploadedByName || '–'} · {new Date(d.createdAt).toLocaleString('vi-VN')}</td>
+                  <td className="p-2"><a className="text-[#0073C1] font-bold flex items-center gap-1" href={`${API_ROOT}/staff/corporate/documents/${d.id}/download/`}><Download className="w-4 h-4" /> Tải</a></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, courses }) => {
   const canEdit = useStaffCan('corporate.classes');
   const canSend = useStaffCan('corporate.communications_send');
@@ -1292,7 +1405,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
   const { clients } = useClients();
   const [cls, setCls] = useState<CorpClass | null>(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'learners' | 'attendance' | 'surveys' | 'results' | 'communications' | 'overview'>('learners');
+  const [tab, setTab] = useState<'learners' | 'attendance' | 'surveys' | 'results' | 'communications' | 'documents' | 'overview'>('learners');
   const [editing, setEditing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
 
@@ -1335,7 +1448,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         )}
       </div>
       <div className="flex gap-1 border-b border-slate-200">
-        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['surveys', 'Khảo sát'], ['results', 'Kết quả'], ['communications', 'Truyền thông'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
+        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['surveys', 'Khảo sát'], ['results', 'Kết quả'], ['communications', 'Truyền thông'], ['documents', 'Hồ sơ'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
           <button key={key} type="button" onClick={() => setTab(key)}
             className={`px-4 py-2 text-xs font-bold cursor-pointer border-b-2 ${tab === key ? 'border-[#0073C1] text-[#0073C1]' : 'border-transparent text-slate-500'}`}>
             {label}
@@ -1352,6 +1465,8 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         <ResultsTab cls={cls} onChanged={load} />
       ) : tab === 'communications' ? (
         <CommunicationsTab cls={cls} />
+      ) : tab === 'documents' ? (
+        <DocumentsTab cls={cls} />
       ) : (
         <div className={`${card} text-xs space-y-2`}>
           <p><strong>Chứng chỉ TWings:</strong> {cls.issueCertificate ? 'Có cấp khi hoàn thành' : 'Không cấp (theo hợp đồng)'}</p>

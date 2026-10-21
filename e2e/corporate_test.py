@@ -267,6 +267,20 @@ def acceptance_from_published_results(page: Page):
     page.wait_for_selector("text=hóa đơn 0000123", timeout=20000)
 
 
+@step
+def documents_checklist(page: Page):
+    page.goto(f"{BASE}/app/corporate/classes")
+    page.locator("td:has-text('NHE2E – Bán hàng – Lớp 1')").click()
+    page.locator("button:has-text('Hồ sơ')").first.click()
+    page.wait_for_selector("text=Checklist hồ sơ nghiệm thu", timeout=20000)
+    path = OUT / "diem-danh-co-ky.pdf"
+    path.write_bytes(b"%PDF-1.4 e2e")
+    page.locator("input[type=file]").set_input_files(str(path))
+    page.locator("button:has-text('Tải lên')").click()
+    page.locator("td:has-text('diem-danh-co-ky.pdf')").wait_for(timeout=20000)
+    page.locator("li", has_text="Danh sách điểm danh có ký").locator("text=đã tải lên").wait_for(timeout=20000)
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
