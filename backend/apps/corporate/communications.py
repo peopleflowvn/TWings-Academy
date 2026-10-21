@@ -168,3 +168,125 @@ def send_invitations(corporate_class, *, sent_by, only_new: bool = True) -> dict
         listing.save(update_fields=["invited_at", "updated_at"])
         counts["sent"] += 1
     return counts
+
+
+# ---------------------------------------------------------------- result e-mails (batches)
+RESULT_LABEL = {"passed": "Đạt", "not_passed": "Chưa đạt", "pending": "Đang chờ xác minh"}
+
+
+def create_results_batch(corporate_class, *, user, subject: str = "", message: str = "", corrects=None):
+    """A batch for the class's published results: recipients frozen now, sent once approved."""
+    from django.db import transaction
+
+    from .models import CommunicationBatch, CommunicationRecipient
+    from .services import CorporateError
+
+    snapshot = corporate_class.results.filter(status="published").first()
+    if snapshot is None:
+        raise CorporateError("Chưa có kết quả đã phát hành để gửi.")
+    if corrects is not None and corrects.corporate_class_id != corporate_class.pk:
+        raise CorporateError("Lô cần đính chính thuộc lớp khác.")
+    cohort = corporate_class.cohort
+    default = f"Kết quả khóa học {cohort.course.title} – {cohort.name}"
+    listings = {
+        listing.pk: listing
+        for listing in corporate_class.enrollments.select_related(
+            "learner", "employee", "corporate_class__client"
+        )
+    }
+    with transaction.atomic():
+        batch = CommunicationBatch.objects.create(
+            corporate_class=corporate_class,
+            snapshot=snapshot,
+            subject=(f"[Đính chính] {subject or default}" if corrects else subject or default)[:300],
+            message=message,
+            corrects=corrects,
+            created_by=user,
+        )
+        for row in snapshot.learners:
+            listing = listings.get(row["enrollment"])
+            if listing is None:
+                continue
+            who = recipients(listing)
+            CommunicationRecipient.objects.create(
+                batch=batch, enrollment=listing, to=who["to"], cc=who["cc"], rejected=who["rejected"]
+            )
+    return batch
+
+
+def result_html(batch, row: dict, name: str) -> str:
+    cohort = batch.corporate_class.cohort
+    lines = [f"Kết quả: <strong>{RESULT_LABEL.get(row['result'], row['result'])}</strong>"]
+    if row.get("sessions_taken"):
+        rate = f" ({row['attendance_rate']}%)" if row.get("attendance_rate") is not None else ""
+        lines.append(f"Chuyên cần: {row['sessions_attended']}/{row['sessions_taken']} buổi{rate}")
+    if row.get("grade_percent") is not None:
+        lines.append(f"Điểm tổng kết: {row['grade_percent']}%")
+    if row.get("reasons"):
+        lines.append("Ghi chú: " + escape("; ".join(row["reasons"])))
+    message = "".join(f"<p>{escape(p)}</p>" for p in batch.message.split("\n\n") if p.strip())
+    correction = (
+        "<p><em>Thư này đính chính thư kết quả gửi trước đó; vui lòng dùng thông tin trong thư này.</em></p>"
+        if batch.corrects_id
+        else ""
+    )
+    return f"""
+<p>Chào {escape(name)},</p>
+{correction}
+<p>Lớp <strong>{escape(cohort.course.title)} – {escape(cohort.name)}</strong> đã kết thúc.
+Kết quả của bạn:</p>
+<p>{"<br>".join(line for line in lines if line)}</p>
+{message}
+<p>Tài liệu và nội dung khóa học vẫn xem được tại <a href="{learn_url()}">{learn_url()}</a>.</p>
+<p>Cần hỗ trợ, vui lòng trả lời email này.</p>
+"""
+
+
+def send_batch(batch, *, user) -> dict:
+    """Send every not-yet-sent e-mail of an approved batch (safe to run again after a failure)."""
+    from .services import CorporateError
+
+    if batch.status not in ("approved", "sent"):
+        raise CorporateError("Lô email cần được duyệt trước khi gửi.")
+    rows = {row["enrollment"]: row for row in batch.snapshot.learners}
+    counts = {"sent": 0, "failed": 0, "skipped": 0}
+    for recipient in batch.recipients.select_related("enrollment__learner", "email_log"):
+        if recipient.email_log and recipient.email_log.status not in ("failed",):
+            counts["skipped"] += 1
+            continue
+        row = rows.get(recipient.enrollment_id)
+        if row is None:
+            counts["skipped"] += 1
+            continue
+        name = recipient.enrollment.learner.full_name
+        try:
+            log = send_logged(
+                to=recipient.to,
+                cc=recipient.cc,
+                subject=batch.subject,
+                html=result_html(batch, row, name),
+                template_code="corporate_results",
+                name=name,
+                sent_by=user,
+                corporate_enrollment=recipient.enrollment,
+            )
+        except ResendError:
+            counts["failed"] += 1
+            from apps.notifications.models import EmailLog
+
+            recipient.email_log = (
+                EmailLog.objects.filter(
+                    corporate_enrollment=recipient.enrollment, template_code="corporate_results"
+                )
+                .order_by("-created_at")
+                .first()
+            )
+            recipient.save(update_fields=["email_log", "updated_at"])
+            continue
+        recipient.email_log = log
+        recipient.save(update_fields=["email_log", "updated_at"])
+        counts["sent"] += 1
+    if batch.status != "sent" and counts["failed"] == 0:
+        batch.status, batch.sent_at = "sent", timezone.now()
+        batch.save(update_fields=["status", "sent_at", "updated_at"])
+    return counts

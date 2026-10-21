@@ -5,6 +5,7 @@ from rest_framework.routers import SimpleRouter
 from .views import (
     AttendanceAdjustmentViewSet,
     ClientUnitViewSet,
+    CommunicationBatchViewSet,
     CorporateClassViewSet,
     CorporateClientViewSet,
     CorporateEnrollmentViewSet,
@@ -26,5 +27,6 @@ router.register("import-templates", ImportTemplateViewSet, basename="corporate-i
 router.register("imports", ImportBatchViewSet, basename="corporate-import")
 router.register("attendance-adjustments", AttendanceAdjustmentViewSet, basename="corporate-adjustment")
 router.register("results", ResultSnapshotViewSet, basename="corporate-result")
+router.register("communications", CommunicationBatchViewSet, basename="corporate-communication")
 
 urlpatterns = router.urls

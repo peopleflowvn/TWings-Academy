@@ -470,3 +470,59 @@ class ResultSnapshot(BaseModel):
 
     def __str__(self):
         return f"{self.corporate_class_id} v{self.version} {self.status}"
+
+
+class CommunicationBatch(BaseModel):
+    """
+    A batch of e-mails of a class (results now), one per learner, built from a published result
+    snapshot. Recipients (To / CC under the policy) are frozen when the batch is created; it is sent
+    only once approved. A correction is a new batch pointing at the one it corrects.
+    """
+
+    KIND_CHOICES = [("results", "Kết quả cuối khóa")]
+    STATUS_CHOICES = [
+        ("draft", "Chờ duyệt"),
+        ("approved", "Đã duyệt"),
+        ("sent", "Đã gửi"),
+        ("cancelled", "Đã hủy"),
+    ]
+
+    corporate_class = models.ForeignKey(
+        CorporateClass, on_delete=models.PROTECT, related_name="communications"
+    )
+    snapshot = models.ForeignKey(ResultSnapshot, on_delete=models.PROTECT, related_name="communications")
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default="results")
+    subject = models.CharField(max_length=300)
+    message = models.TextField(blank=True)  # staff's own words above each learner's results
+    corrects = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="corrections"
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft", db_index=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class CommunicationRecipient(BaseModel):
+    """One e-mail of a batch: the learner, To / CC frozen at creation, the EmailLog once sent."""
+
+    batch = models.ForeignKey(CommunicationBatch, on_delete=models.CASCADE, related_name="recipients")
+    enrollment = models.ForeignKey(CorporateEnrollment, on_delete=models.PROTECT, related_name="+")
+    to = models.EmailField()
+    cc = models.JSONField(default=list, blank=True)
+    rejected = models.JSONField(default=list, blank=True)  # CC refused by the recipient policy
+    email_log = models.ForeignKey(
+        "notifications.EmailLog", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["batch", "to"]
+        constraints = [models.UniqueConstraint(fields=["batch", "enrollment"], name="uniq_batch_recipient")]

@@ -15,6 +15,7 @@ from . import services
 from .models import (
     AttendanceAdjustment,
     ClientUnit,
+    CommunicationBatch,
     CorporateClass,
     CorporateEnrollment,
     ImportBatch,
@@ -29,9 +30,11 @@ from .serializers import (
     AttendanceAdjustmentSerializer,
     CancelSerializer,
     ClientUnitSerializer,
+    CommunicationBatchSerializer,
     CorporateClassSerializer,
     CorporateClientSerializer,
     CorporateEnrollmentSerializer,
+    CreateBatchSerializer,
     ImportBatchSerializer,
     ImportTemplateSerializer,
     ImportUploadSerializer,
@@ -441,6 +444,81 @@ class ResultSnapshotViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):
         response["Content-Disposition"] = f'attachment; filename="{name}"'
         audit(request, "corporate.results_export", snapshot)
         return response
+
+
+class CommunicationBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnlyModelViewSet):
+    """Result e-mails of a class: create (recipients frozen) -> approve -> send; corrections = new batches."""
+
+    serializer_class = CommunicationBatchSerializer
+    permission_classes = [ActionPermission]
+    permission_map = {
+        "list": ["corporate.view"],
+        "retrieve": ["corporate.view"],
+        "create": ["corporate.communications_send"],
+        "approve": ["corporate.approve"],
+        "send": ["corporate.communications_send"],
+        "cancel": ["corporate.communications_send"],
+    }
+    client_path = "corporate_class__client"
+    filterset_fields = ["corporate_class", "status"]
+
+    def get_queryset(self):
+        return self.scoped(
+            CommunicationBatch.objects.select_related(
+                "snapshot", "created_by", "approved_by"
+            ).prefetch_related("recipients__enrollment__learner", "recipients__email_log")
+        )
+
+    def create(self, request, *args, **kwargs):
+        from .communications import create_results_batch
+
+        ser = CreateBatchSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        self.check_client(data["corporate_class"].client)
+        batch = _rule(
+            lambda: create_results_batch(
+                data["corporate_class"],
+                user=request.user,
+                subject=data["subject"],
+                message=data["message"],
+                corrects=data.get("corrects"),
+            )
+        )
+        audit(request, "corporate.batch_create", batch, recipients=batch.recipients.count())
+        return Response(self.get_serializer(self.get_queryset().get(pk=batch.pk)).data, status=201)
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        from django.utils import timezone
+
+        batch = self.get_object()
+        if batch.status != "draft":
+            raise serializers.ValidationError({"detail": "Chỉ duyệt lô đang chờ duyệt."})
+        batch.status, batch.approved_by, batch.approved_at = "approved", request.user, timezone.now()
+        batch.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+        audit(request, "corporate.batch_approve", batch)
+        return Response(self.get_serializer(batch).data)
+
+    @action(detail=True, methods=["post"])
+    def send(self, request, pk=None):
+        from .communications import send_batch
+
+        result = _rule(lambda: send_batch(self.get_object(), user=request.user))
+        batch = self.get_queryset().get(pk=pk)
+        audit(request, "corporate.batch_send", batch, **result)
+        return Response({**result, "batch": self.get_serializer(batch).data})
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        batch = self.get_object()
+        if batch.status not in ("draft", "approved"):
+            raise serializers.ValidationError(
+                {"detail": "Lô đã gửi không hủy được (gửi đính chính nếu cần)."}
+            )
+        batch.status = "cancelled"
+        batch.save(update_fields=["status", "updated_at"])
+        return Response(self.get_serializer(batch).data)
 
 
 class AttendanceAdjustmentViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):

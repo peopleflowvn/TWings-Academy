@@ -1132,6 +1132,157 @@ const ResultsTab: React.FC<{ cls: CorpClass; onChanged: () => void }> = ({ cls, 
   );
 };
 
+// ---------------------------------------------------------------- communications (result e-mails)
+interface BatchRecipient {
+  id: string;
+  name: string;
+  to: string;
+  cc: string[];
+  rejected: string[];
+  emailStatus: string;
+  emailStatusLabel: string;
+  error: string;
+}
+
+interface Batch {
+  id: string;
+  subject: string;
+  message: string;
+  status: 'draft' | 'approved' | 'sent' | 'cancelled';
+  snapshotVersion: number;
+  corrects: string | null;
+  createdAt: string;
+  createdByName: string;
+  approvedByName: string;
+  sentAt: string | null;
+  recipients: BatchRecipient[];
+}
+
+const BATCH_STATUS: Record<Batch['status'], [string, string]> = {
+  draft: ['Chờ duyệt', 'text-amber-700'],
+  approved: ['Đã duyệt', 'text-blue-700'],
+  sent: ['Đã gửi', 'text-emerald-700'],
+  cancelled: ['Đã hủy', 'text-slate-500']
+};
+
+const CommunicationsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
+  const canSend = useStaffCan('corporate.communications_send');
+  const canApprove = useStaffCan('corporate.approve');
+  const [batches, setBatches] = useState<Batch[] | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [draft, setDraft] = useState<{ subject: string; message: string; corrects: string | null } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+
+  const load = useCallback(() => {
+    api
+      .get<Paginated<Batch>>(`/staff/corporate/communications/?corporate_class=${cls.id}&pageSize=50`)
+      .then((res) => setBatches(res.results))
+      .catch((e) => setError(errorText(e)));
+  }, [cls.id]);
+  useEffect(load, [load]);
+
+  const act = async (call: () => Promise<unknown>, done?: string) => {
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await call();
+      if (done) setNotice(done);
+      load();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const create = () =>
+    draft &&
+    act(async () => {
+      const b = await api.post<Batch>('/staff/corporate/communications/', { corporateClass: cls.id, ...draft });
+      setDraft(null);
+      setOpen(b.id);
+    });
+  const send = (b: Batch) =>
+    act(async () => {
+      const res = await api.post<{ sent: number; failed: number; skipped: number }>(`/staff/corporate/communications/${b.id}/send/`);
+      setNotice(`Đã gửi ${res.sent} thư${res.failed ? `, ${res.failed} thư lỗi (bấm Gửi lại để thử lại các thư lỗi)` : ''}.`);
+    });
+
+  if (!batches) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
+  return (
+    <div className="space-y-4">
+      <div className={`${card} flex flex-wrap items-start justify-between gap-3`}>
+        <p className="text-xs text-slate-500 max-w-3xl">
+          Thư kết quả cuối khóa: mỗi học viên một thư với kết quả của riêng mình (từ bản kết quả đã phát hành), CC cán bộ quản lý và CC mặc định của khách hàng theo
+          chính sách tên miền. Người nhận được chốt khi tạo lô; lô chỉ gửi sau khi được duyệt. Gửi nhầm thì tạo lô đính chính, không sửa thư đã gửi.
+        </p>
+        {canSend && (
+          <button type="button" className={primary} disabled={!cls.lockedAt} title={cls.lockedAt ? '' : 'Phát hành kết quả trước'}
+            onClick={() => setDraft({ subject: '', message: '', corrects: null })}>
+            <Mail className="w-4 h-4" /> Tạo lô thư kết quả
+          </button>
+        )}
+      </div>
+      {notice && <p className="text-xs text-emerald-700 font-bold">{notice}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      {batches.length === 0 && <p className={`${card} text-xs text-slate-500`}>Chưa có lô thư nào.</p>}
+      {batches.map((b) => {
+        const [label, tone] = BATCH_STATUS[b.status];
+        const failed = b.recipients.filter((r) => r.emailStatus === 'failed').length;
+        // A batch waiting for approval always shows its recipients: that is when they are reviewed.
+        const expanded = b.status === 'draft' || open === b.id;
+        return (
+          <div key={b.id} className={`${card} space-y-3 text-xs`}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button type="button" className="text-left cursor-pointer" onClick={() => setOpen(open === b.id ? null : b.id)}>
+                <div className="font-bold text-sm text-slate-800">{b.subject}</div>
+                <div className="text-slate-500">
+                  <span className={`font-bold ${tone}`}>{label}</span> · {b.recipients.length} thư · kết quả v{b.snapshotVersion} · tạo bởi {b.createdByName || '–'}
+                  {b.approvedByName ? ` · duyệt bởi ${b.approvedByName}` : ''}{b.sentAt ? ` · gửi ${new Date(b.sentAt).toLocaleString('vi-VN')}` : ''}
+                </div>
+              </button>
+              <div className="flex gap-2">
+                {canApprove && b.status === 'draft' && <button type="button" className={secondary} disabled={busy} onClick={() => act(() => api.post(`/staff/corporate/communications/${b.id}/approve/`), 'Đã duyệt lô thư.')}><CheckCircle2 className="w-4 h-4" /> Duyệt</button>}
+                {canSend && (b.status === 'approved' || (b.status === 'sent' && failed > 0)) && <button type="button" className={primary} disabled={busy} onClick={() => send(b)}><Mail className="w-4 h-4" /> {b.status === 'sent' ? 'Gửi lại thư lỗi' : `Gửi ${b.recipients.length} thư`}</button>}
+                {canSend && (b.status === 'draft' || b.status === 'approved') && <button type="button" className={secondary} disabled={busy} onClick={() => act(() => api.post(`/staff/corporate/communications/${b.id}/cancel/`))}>Hủy</button>}
+                {canSend && b.status === 'sent' && <button type="button" className={secondary} disabled={busy || !cls.lockedAt} onClick={() => setDraft({ subject: '', message: '', corrects: b.id })}>Gửi đính chính</button>}
+              </div>
+            </div>
+            {expanded && (
+              <div className="max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
+                <table className="w-full">
+                  <thead className="bg-slate-50 text-slate-600 text-left sticky top-0"><tr><th className="p-2">Học viên</th><th className="p-2">Gửi tới</th><th className="p-2">CC</th><th className="p-2">CC bị loại</th><th className="p-2">Trạng thái thư</th></tr></thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {b.recipients.map((r) => (
+                      <tr key={r.id}>
+                        <td className="p-2 font-bold">{r.name}</td>
+                        <td className="p-2">{r.to}</td>
+                        <td className="p-2">{r.cc.join(', ') || '–'}</td>
+                        <td className="p-2 text-red-600">{r.rejected.join(', ')}</td>
+                        <td className="p-2">{r.emailStatusLabel || 'Chưa gửi'}{r.error ? <div className="text-red-600">{r.error}</div> : null}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {draft && (
+        <Modal title={draft.corrects ? 'Lô thư đính chính' : 'Tạo lô thư kết quả'} onClose={() => setDraft(null)}>
+          <p className="text-slate-600">Kết quả từng học viên lấy từ bản kết quả đã phát hành mới nhất. Lời nhắn dưới đây hiện trong mọi thư.</p>
+          <label className="block">Tiêu đề (để trống: “Kết quả khóa học …”)<input className={input} value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} /></label>
+          <label className="block">Lời nhắn<textarea rows={5} className={input} value={draft.message} onChange={(e) => setDraft({ ...draft, message: e.target.value })} placeholder="VD: Cảm ơn anh/chị đã tham gia khóa học. Tài liệu buổi học được đính kèm trên hệ thống…" /></label>
+          <div className="flex justify-end"><button type="button" className={primary} disabled={busy} onClick={create}><Save className="w-4 h-4" /> Tạo lô (chờ duyệt)</button></div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
 const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, courses }) => {
   const canEdit = useStaffCan('corporate.classes');
   const canSend = useStaffCan('corporate.communications_send');
@@ -1140,7 +1291,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
   const { clients } = useClients();
   const [cls, setCls] = useState<CorpClass | null>(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'learners' | 'attendance' | 'surveys' | 'results' | 'overview'>('learners');
+  const [tab, setTab] = useState<'learners' | 'attendance' | 'surveys' | 'results' | 'communications' | 'overview'>('learners');
   const [editing, setEditing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
 
@@ -1183,7 +1334,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         )}
       </div>
       <div className="flex gap-1 border-b border-slate-200">
-        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['surveys', 'Khảo sát'], ['results', 'Kết quả'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
+        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['surveys', 'Khảo sát'], ['results', 'Kết quả'], ['communications', 'Truyền thông'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
           <button key={key} type="button" onClick={() => setTab(key)}
             className={`px-4 py-2 text-xs font-bold cursor-pointer border-b-2 ${tab === key ? 'border-[#0073C1] text-[#0073C1]' : 'border-transparent text-slate-500'}`}>
             {label}
@@ -1198,6 +1349,8 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         <SurveysTab cls={cls} />
       ) : tab === 'results' ? (
         <ResultsTab cls={cls} onChanged={load} />
+      ) : tab === 'communications' ? (
+        <CommunicationsTab cls={cls} />
       ) : (
         <div className={`${card} text-xs space-y-2`}>
           <p><strong>Chứng chỉ TWings:</strong> {cls.issueCertificate ? 'Có cấp khi hoàn thành' : 'Không cấp (theo hợp đồng)'}</p>

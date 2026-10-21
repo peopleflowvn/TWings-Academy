@@ -213,7 +213,23 @@ def results_published_and_locked(page: Page):
     assert page.locator("td:has-text('Trần Thị E2E')").count() == 1
     page.locator("button:has-text('Phát hành')").click()  # confirm accepted by the harness
     page.wait_for_selector("text=Phiên bản 1 · Đã phát hành", timeout=20000)
-    assert page.locator("button:has-text('Mở lại để sửa')").count() == 1, "class locked after publishing"
+    # The class reloads after publishing: locked, it offers to reopen.
+    page.wait_for_selector("button:has-text('Mở lại để sửa')", timeout=20000)
+
+
+@step
+def results_emailed_after_approval(page: Page):
+    page.locator("button:has-text('Truyền thông')").first.click()
+    page.locator("button:has-text('Tạo lô thư kết quả')").click()
+    dialog = page.locator("div.fixed.inset-0", has_text="Tạo lô thư kết quả")
+    dialog.locator("textarea").fill("Cảm ơn anh chị đã tham gia.")
+    dialog.locator("button:has-text('Tạo lô')").click()
+    page.wait_for_selector("text=Chờ duyệt", timeout=20000)
+    page.wait_for_selector("td:has-text('quanly@nhe2e.test')", timeout=20000)  # manager in CC, frozen
+    page.get_by_role("button", name="Duyệt", exact=True).click()  # not the header saying "Chờ duyệt"
+    page.wait_for_selector("text=Đã duyệt lô thư", timeout=20000)
+    page.locator("button:has-text('Gửi 1 thư')").click()
+    page.wait_for_selector("text=Đã gửi 1 thư", timeout=20000)
 
 
 def main() -> int:

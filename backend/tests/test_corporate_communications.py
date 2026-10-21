@@ -115,3 +115,36 @@ def test_invitations_preview_and_send(cls, staff_client, resend_calls):
 
     assert corp.post(url).json() == {"sent": 0, "failed": 0}  # only those not invited yet
     assert corp.post(url, {"all": True}, format="json").json()["sent"] == 2
+
+
+def test_results_batch_is_approved_then_sent_one_email_per_learner(cls, staff_client, resend_calls):
+    from apps.corporate import results
+
+    corp = staff_client(Role.CORPORATE_TRAINING)
+    _listing(cls, manager_email="ql@nhm.test")
+    _listing(cls, email="cuong@nhm.test")
+    url = "/api/v1/staff/corporate/communications/"
+    assert corp.post(url, {"corporateClass": cls.pk}, format="json").status_code == 400  # nothing published
+
+    results.publish(results.draft(cls, None), None)
+    res = corp.post(url, {"corporateClass": cls.pk, "message": "Cảm ơn anh chị đã tham gia."}, format="json")
+    assert res.status_code == 201, res.content
+    batch = res.json()
+    assert batch["status"] == "draft" and len(batch["recipients"]) == 2
+    binh = next(r for r in batch["recipients"] if r["to"] == "binh@nhm.test")
+    assert binh["cc"] == ["ql@nhm.test", "daotao@nhm.test"]
+
+    assert corp.post(f"{url}{batch['id']}/send/").status_code == 400  # not approved
+    assert staff_client(Role.ACADEMIC_MANAGEMENT).post(f"{url}{batch['id']}/approve/").status_code == 403
+    assert corp.post(f"{url}{batch['id']}/approve/").json()["status"] == "approved"
+    sent = corp.post(f"{url}{batch['id']}/send/").json()
+    assert (sent["sent"], sent["failed"]) == (2, 0) and sent["batch"]["status"] == "sent"
+    assert all(len(c["to"]) == 1 for c in resend_calls)
+    to_binh = next(c for c in resend_calls if c["to"] == ["binh@nhm.test"])
+    assert "Kết quả: <strong>Đạt</strong>" in to_binh["html"] and "Cảm ơn anh chị" in to_binh["html"]
+    assert "cuong@nhm.test" not in to_binh["html"]  # nobody else's details
+    assert corp.post(f"{url}{batch['id']}/send/").json()["skipped"] == 2  # never twice
+    assert corp.post(f"{url}{batch['id']}/cancel/").status_code == 400
+
+    fix = corp.post(url, {"corporateClass": cls.pk, "corrects": batch["id"]}, format="json").json()
+    assert fix["subject"].startswith("[Đính chính]") and fix["corrects"] == batch["id"]

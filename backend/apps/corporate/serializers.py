@@ -6,6 +6,8 @@ from apps.catalog.models import Instructor
 from .models import (
     AttendanceAdjustment,
     ClientUnit,
+    CommunicationBatch,
+    CommunicationRecipient,
     ContractRate,
     CorporateClass,
     CorporateClient,
@@ -359,3 +361,47 @@ class ResultSnapshotSerializer(serializers.ModelSerializer):
         model = ResultSnapshot
         exclude = ["updated_at"]
         read_only_fields = [f.name for f in ResultSnapshot._meta.fields]
+
+
+class CommunicationRecipientSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="enrollment.learner.full_name", read_only=True)
+    email_status = serializers.CharField(source="email_log.status", read_only=True, default="")
+    email_status_label = serializers.CharField(
+        source="email_log.get_status_display", read_only=True, default=""
+    )
+    error = serializers.CharField(source="email_log.error_message", read_only=True, default="")
+
+    class Meta:
+        model = CommunicationRecipient
+        fields = [
+            "id",
+            "enrollment",
+            "name",
+            "to",
+            "cc",
+            "rejected",
+            "email_status",
+            "email_status_label",
+            "error",
+        ]
+
+
+class CommunicationBatchSerializer(serializers.ModelSerializer):
+    recipients = CommunicationRecipientSerializer(many=True, read_only=True)
+    snapshot_version = serializers.IntegerField(source="snapshot.version", read_only=True)
+    created_by_name = serializers.CharField(source="created_by.name", read_only=True, default="")
+    approved_by_name = serializers.CharField(source="approved_by.name", read_only=True, default="")
+
+    class Meta:
+        model = CommunicationBatch
+        exclude = ["updated_at"]
+        read_only_fields = [f.name for f in CommunicationBatch._meta.fields]
+
+
+class CreateBatchSerializer(serializers.Serializer):
+    corporate_class = serializers.PrimaryKeyRelatedField(queryset=CorporateClass.objects.all())
+    subject = serializers.CharField(max_length=250, required=False, allow_blank=True, default="")
+    message = serializers.CharField(max_length=5000, required=False, allow_blank=True, default="")
+    corrects = serializers.PrimaryKeyRelatedField(
+        queryset=CommunicationBatch.objects.all(), required=False, allow_null=True
+    )
