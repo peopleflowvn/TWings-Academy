@@ -171,7 +171,12 @@ class TrainingPlanViewSet(
 ):
     serializer_class = TrainingPlanSerializer
     permission_classes = [ActionPermission]
-    permission_map = perm_map("corporate.classes", approve="corporate.approve", revise="corporate.classes")
+    permission_map = perm_map(
+        "corporate.classes",
+        approve="corporate.approve",
+        revise="corporate.classes",
+        execution="corporate.view",
+    )
     filterset_fields = ["client", "status", "contract"]
     search_fields = ["name", "period"]
 
@@ -195,6 +200,11 @@ class TrainingPlanViewSet(
         plan = _rule(lambda: services.approve_plan(self.get_object(), request.user))
         audit(request, "corporate.plan_approve", plan, version=plan.version)
         return Response(self.get_serializer(plan).data)
+
+    @action(detail=True, methods=["get"])
+    def execution(self, request, pk=None):
+        """Plan vs actual per line: classes, learners, budget vs accepted value and costs."""
+        return Response(services.plan_execution(self.get_object()))
 
     @action(detail=True, methods=["post"])
     def revise(self, request, pk=None):

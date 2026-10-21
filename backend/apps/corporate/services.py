@@ -201,3 +201,58 @@ def revise_plan(plan: TrainingPlan) -> TrainingPlan:
             for line in plan.lines.all()
         )
     return new
+
+
+def plan_execution(plan) -> dict:
+    """
+    Plan vs actual, line by line: classes opened from the line (not cancelled), learners listed in
+    them, accepted value and recorded costs (advances not counted until settled) against the planned
+    classes, learners and budget.
+    """
+    from django.db.models import Count, Q, Sum
+
+    from .models import AcceptanceLine, Expense
+
+    rows = []
+    for line in plan.lines.select_related("course", "unit"):
+        classes = line.classes.exclude(status="cancelled")
+        ids = list(classes.values_list("pk", flat=True))
+        learners = (
+            classes.aggregate(
+                n=Count("enrollments", filter=Q(enrollments__status__in=CorporateEnrollment.STUDYING))
+            )["n"]
+            or 0
+        )
+        accepted = (
+            AcceptanceLine.objects.filter(corporate_class__in=ids, batch__status="accepted").aggregate(
+                v=Sum("amount")
+            )["v"]
+            or 0
+        )
+        costs = (
+            Expense.objects.filter(corporate_class__in=ids, kind__in=Expense.COSTS).aggregate(
+                v=Sum("amount")
+            )["v"]
+            or 0
+        )
+        rows.append(
+            {
+                "line": line.pk,
+                "title": line.title,
+                "unit": line.unit.name if line.unit else "",
+                "planned_classes": line.planned_classes,
+                "classes": len(ids),
+                "classes_done": classes.filter(status__in=("finished", "closed")).count(),
+                "planned_learners": line.planned_learners,
+                "learners": learners,
+                "budget": line.budget,
+                "accepted": accepted,
+                "costs": costs,
+                "budget_used": round(100 * costs / line.budget, 1) if line.budget else None,
+            }
+        )
+    keys = ("planned_classes", "classes", "classes_done", "learners", "accepted", "costs")
+    total = {k: sum(r[k] for r in rows) for k in keys}
+    total["planned_learners"] = sum(r["planned_learners"] or 0 for r in rows)
+    total["budget"] = sum(r["budget"] or 0 for r in rows)
+    return {"rows": rows, "total": total}

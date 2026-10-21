@@ -227,3 +227,54 @@ def test_employment_rows_follow_the_dates(client_id):
     # A second change on the same day corrects that day's row instead of opening another one.
     third = services.ensure_employee(client, learner, on=mar, manager_email="c@nhm.test")
     assert third == second and CorporateEmployee.objects.filter(learner=learner).count() == 2
+
+
+def test_plan_execution_against_actual(corp, client_id, course):
+    from apps.corporate.models import CorporateClass, Expense
+
+    plan = corp.post(
+        f"{BASE}/plans/",
+        {
+            "client": client_id,
+            "name": "KH 2026",
+            "lines": [
+                {
+                    "title": "Bán hàng",
+                    "course": course.pk,
+                    "plannedClasses": 2,
+                    "plannedLearners": 60,
+                    "budget": 10_000_000,
+                }
+            ],
+        },
+        format="json",
+    ).json()
+    corp.post(f"{BASE}/plans/{plan['id']}/approve/")
+    line_id = corp.get(f"{BASE}/plans/{plan['id']}/").json()["lines"][0]["id"]
+    class_id = _class(corp, client_id, course, planLine=line_id).json()["id"]
+    for email in ("a@nhm.test", "b@nhm.test"):
+        corp.post(
+            f"{BASE}/classes/{class_id}/enrollments/", {"fullName": email, "email": email}, format="json"
+        )
+    cls = CorporateClass.objects.get(pk=class_id)
+    Expense.objects.create(
+        client=cls.client, corporate_class=cls, description="GV", amount=3_000_000, incurred_on="2026-10-01"
+    )
+    Expense.objects.create(
+        client=cls.client,
+        corporate_class=cls,
+        kind="advance",
+        description="TU",
+        amount=9,
+        incurred_on="2026-10-01",
+    )
+
+    data = corp.get(f"{BASE}/plans/{plan['id']}/execution/").json()
+    row = data["rows"][0]
+    assert (row["plannedClasses"], row["classes"], row["plannedLearners"], row["learners"]) == (2, 1, 60, 2)
+    assert (row["budget"], row["costs"], row["budgetUsed"]) == (
+        10_000_000,
+        3_000_000,
+        30.0,
+    )  # advance not a cost
+    assert data["total"]["learners"] == 2

@@ -2263,6 +2263,56 @@ const PlanList: React.FC = () => {
 
 const EMPTY_LINE: PlanLine = { course: null, title: '', unit: null, plannedStart: null, plannedEnd: null, plannedClasses: 1, plannedLearners: null, budget: null, note: '' };
 
+interface ExecutionRow {
+  line: string;
+  title: string;
+  unit: string;
+  plannedClasses: number;
+  classes: number;
+  classesDone: number;
+  plannedLearners: number | null;
+  learners: number;
+  budget: number | null;
+  accepted: number;
+  costs: number;
+  budgetUsed: number | null;
+}
+
+/** Plan vs actual: classes opened / done, learners, budget vs costs and accepted value. */
+const PlanExecution: React.FC<{ planId: string }> = ({ planId }) => {
+  const [data, setData] = useState<{ rows: ExecutionRow[]; total: Record<string, number> } | null>(null);
+  useEffect(() => {
+    api.get<{ rows: ExecutionRow[]; total: Record<string, number> }>(`/staff/corporate/plans/${planId}/execution/`).then(setData).catch(() => setData(null));
+  }, [planId]);
+  if (!data) return null;
+  const t = data.total;
+  return (
+    <div className={`${card} p-0 overflow-x-auto`}>
+      <div className="p-3 font-bold text-sm text-slate-800">Thực hiện kế hoạch</div>
+      <table className="w-full text-xs">
+        <thead className="bg-slate-50 text-slate-600 text-left">
+          <tr><th className="p-2">Nội dung</th><th className="p-2 text-right">Lớp (xong / mở / KH)</th><th className="p-2 text-right">Học viên / KH</th><th className="p-2 text-right">Ngân sách</th><th className="p-2 text-right">Chi phí</th><th className="p-2 text-right">Đã nghiệm thu</th></tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {data.rows.map((r) => (
+            <tr key={r.line}>
+              <td className="p-2 font-bold">{r.title}{r.unit ? <span className="font-normal text-slate-500"> · {r.unit}</span> : null}</td>
+              <td className="p-2 text-right">{r.classesDone} / {r.classes} / {r.plannedClasses}</td>
+              <td className="p-2 text-right">{r.learners} / {r.plannedLearners ?? '–'}</td>
+              <td className="p-2 text-right">{vnd(r.budget)}</td>
+              <td className={`p-2 text-right ${r.budgetUsed != null && r.budgetUsed > 100 ? 'text-red-600 font-bold' : ''}`}>{vnd(r.costs)}{r.budgetUsed != null ? ` (${r.budgetUsed}%)` : ''}</td>
+              <td className="p-2 text-right">{vnd(r.accepted)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot className="font-bold">
+          <tr><td className="p-2">Cộng</td><td className="p-2 text-right">{t.classesDone} / {t.classes} / {t.plannedClasses}</td><td className="p-2 text-right">{t.learners} / {t.plannedLearners}</td><td className="p-2 text-right">{vnd(t.budget)}</td><td className="p-2 text-right">{vnd(t.costs)}</td><td className="p-2 text-right">{vnd(t.accepted)}</td></tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+};
+
 const PlanDetail: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, courses }) => {
   const canEdit = useStaffCan('corporate.classes');
   const canApprove = useStaffCan('corporate.approve');
@@ -2399,6 +2449,7 @@ const PlanDetail: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, cou
           <div className="p-3"><button type="button" className={secondary} onClick={() => setLines((list) => [...list, { ...EMPTY_LINE }])}><Plus className="w-4 h-4" /> Thêm dòng</button></div>
         )}
       </div>
+      {plan.status !== 'draft' && <PlanExecution planId={plan.id} />}
       {importing && (
         <ImportDialog
           kind="plan"
