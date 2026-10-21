@@ -39,7 +39,9 @@ Kế hoạch tổng thể: [KE_HOACH_TICH_HOP_TMS_VAO_TWINGS_ACADEMY_V6.md](KE_H
 | C4 | **Staging**: dựng thêm một bản trên VPS (tốn RAM) hay dùng máy khác? | Thử nghiệm bằng dữ liệu giả trên CI; chưa thử dữ liệu thật | ⏳ |
 | C5 | **Tải thí điểm**: số học viên mỗi lớp, số lớp chạy song song, số người quét QR cùng lúc | Thiết kế cho lớp tới ~100 người quét QR trong vài phút | ⏳ |
 | C6 | Khảo sát chuẩn: **bộ câu hỏi** khảo sát cuối khóa (để tạo sẵn trong khóa mẫu Moodle), ẩn danh hay ghi tên? | Nhân viên tự tạo hoạt động Feedback trên Moodle; hệ thống đọc mọi khảo sát của lớp | ⏳ |
-| C7 | Khách hàng có cần **tự xem báo cáo** qua link (không cần tài khoản) không? Link hết hạn sau bao lâu? | Sẽ làm link có hạn 30 ngày, chỉ xem được dữ liệu khách hàng đó (tuần 7) | ⏳ |
+| C7 | Khách hàng có cần **tự xem báo cáo** qua link (không cần tài khoản) không? Link hết hạn sau bao lâu? | Đã có: link chỉ đọc, mặc định 30 ngày (tối đa 180), thu hồi được, chỉ dữ liệu khách hàng đó | ⏳ |
+| C8 | Cho phép **diễn tập khôi phục backup** (khôi phục bản backup đêm vào một DB tạm trên VPS rồi kiểm tra, xóa DB tạm)? Chạy trên VPS dùng chung nên cần đồng ý | Chưa chạy; backup đêm 02:30 vẫn chạy như cũ | ⏳ |
+| C9 | **Mẫu khảo sát chuẩn** muốn tạo sẵn trong khóa mẫu Moodle (dùng câu C6) và ai tạo trên Moodle | Nhân viên tự tạo hoạt động Feedback | ⏳ |
 
 ---
-*Cập nhật lần cuối: 21/10/2026, khi bắt đầu tuần 6 (nghiệm thu).*
+*Cập nhật lần cuối: 21/10/2026, sau tuần 7 (dashboard, chi phí, link khách hàng). Các tính năng đã chạy theo mặc định ở cột giữa.*
