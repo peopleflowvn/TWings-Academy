@@ -23,15 +23,17 @@ Làm cùng AI agent nên nhanh hơn nhiều so với dự kiến 8 tuần. Đã 
 | 3. DSHV & ghi danh | ✅ | Nhập Excel (DSHV, kế hoạch), CBQL theo hiệu lực, thư mời + `.ics`, email CC/BCC |
 | 4. Điểm danh & khảo sát | ✅ | QR xoay vòng (`local_twings`), điều chỉnh có duyệt, khảo sát `mod_feedback` |
 | 5. Kết quả & truyền thông | ✅ | `ResultSnapshot`, lô thư kết quả có duyệt, đính chính |
-| 6. Nghiệm thu & hồ sơ | ✅ (mẫu chung) | Bảng kê nghiệm thu mẫu TWings; **mẫu MSB/ROX chờ file thật (A1, A2)** |
+| 6. Nghiệm thu & hồ sơ | ✅ (mẫu chuẩn) | Biên bản nghiệm thu chuẩn mặc định (Excel + bản in / PDF, số tiền bằng chữ); chỉnh theo mẫu MSB/ROX khi có file |
 | 7. Dashboard & chi phí | ✅ | Tổng quan B2B, cảnh báo đối soát, từ điển KPI, chi phí / tạm ứng, link báo cáo khách hàng |
-| 8. E2E & hardening | 🔄 | E2E 16 bước B2B trong CI; còn: diễn tập backup, đo tải QR, UAT với dữ liệu thật |
+| 8. E2E & hardening | 🔄 | E2E 21 bước B2B trong CI; diễn tập khôi phục backup (Ops `restore-drill`, hằng tháng; cần đặt secret khóa); còn: đo tải QR, UAT với dữ liệu thật |
 
 **Giai đoạn 2 đã làm:** công nợ (tiền về, hạn thanh toán, tuổi nợ, cảnh báo quá hạn), thực hiện kế hoạch / ngân
-sách theo dòng, phân bổ chi phí dùng chung, báo cáo cho CBQL (mỗi CBQL một thư), kiểm thử cô lập giữa khách hàng.
+sách theo dòng, phân bổ chi phí dùng chung, báo cáo cho CBQL (mỗi CBQL một thư), kiểm thử cô lập giữa khách hàng,
+thương hiệu TNTalent cho B2B, yêu cầu & SLA theo giờ làm việc (nhắc hằng sáng), duyệt 2 cấp theo ngưỡng tiền, bản
+in / PDF (biên bản nghiệm thu, báo cáo kết quả lớp, link khách hàng).
 
 Còn mở: các câu ở [TMS_CAU_HOI_CAN_TRA_LOI.md](TMS_CAU_HOI_CAN_TRA_LOI.md) (mỗi câu có mặc định đang chạy);
-mẫu nghiệm thu MSB/ROX (cần file), PDF báo cáo, lịch Outlook 2 chiều, SLA yêu cầu, duyệt nhiều cấp, AI.
+mẫu nghiệm thu MSB/ROX (chỉnh khi có file), lịch Outlook 2 chiều, AI.
 
 ## 0. THAY ĐỔI SO VỚI V5
 

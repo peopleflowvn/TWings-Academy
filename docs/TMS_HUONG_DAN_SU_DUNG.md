@@ -16,6 +16,12 @@ Dành cho nhân sự vận hành đào tạo doanh nghiệp, kế toán và ngư
 Quyền chi tiết chỉnh ở **Hệ thống → Nhân sự & phân quyền** (nhóm "8. Đào tạo doanh nghiệp"). Các bước
 "duyệt" cần quyền **Duyệt (doanh nghiệp)**.
 
+**Duyệt 2 cấp:** đợt nghiệm thu từ **100.000.000 đ** và khoản chi từ **20.000.000 đ** (gồm VAT) cần hai người:
+người thứ nhất bấm *Duyệt* (ghi "Đã duyệt cấp 1 · chờ duyệt cấp cuối"), sau đó **một người khác** có quyền
+**Duyệt cấp cuối (doanh nghiệp)** bấm *Duyệt cấp cuối*. Mặc định chỉ Quản trị tối cao có quyền này; cấp thêm
+cho trưởng bộ phận ở màn phân quyền. Đợt trả về "Đang lập" hoặc khoản chi bị sửa sau cấp 1 thì duyệt lại từ đầu.
+Ngưỡng đổi bằng biến `CORPORATE_SECOND_APPROVAL_ACCEPTANCE` / `_EXPENSE` (0 = một cấp).
+
 ## 2. Quy trình một lớp, từ đầu đến cuối
 
 1. **Khách hàng & hợp đồng** → *Thêm khách hàng* (mã viết tắt, **tên miền email** được nhận CC, **CC mặc định**).
@@ -38,7 +44,8 @@ Quyền chi tiết chỉnh ở **Hệ thống → Nhân sự & phân quyền** (
    cũng có). Kết quả tự đọc về; nút *Cập nhật từ Moodle* để lấy ngay.
 9. **Kết quả** (tab *Kết quả*): đặt điều kiện hoàn thành (chuyên cần, điểm, khảo sát, hoàn thành Moodle) →
    *Tính kết quả (bản nháp)* → kiểm tra → **Phát hành**. Phát hành **chốt lớp**: không điều chỉnh điểm danh nữa,
-   bản phát hành không đổi. Cần sửa: *Mở lại để sửa* → phiên bản mới. *Xuất Excel* để gửi khách hàng.
+   bản phát hành không đổi. Cần sửa: *Mở lại để sửa* → phiên bản mới. *Xuất Excel* để gửi khách hàng;
+   *In / Lưu PDF* mở bản in A4 (bản nháp có nhãn BẢN NHÁP).
 10. **Truyền thông** (tab *Truyền thông*): *Tạo lô thư kết quả* (lời nhắn chung) → xem người nhận → **Duyệt** →
     *Gửi*. Mỗi học viên nhận kết quả của riêng mình, CC CBQL. Gửi nhầm → *Gửi đính chính*.
     Loại thư **Báo cáo cho cán bộ quản lý**: mỗi CBQL một thư tổng hợp kết quả các nhân viên của mình
@@ -50,7 +57,10 @@ Quyền chi tiết chỉnh ở **Hệ thống → Nhân sự & phân quyền** (
 13. **Nghiệm thu** → *Lập đợt nghiệm thu* (khách hàng, hợp đồng, kỳ, cơ sở tính học viên) → các lớp đã phát hành
     kết quả được tính tự động (khối lượng × đơn giá, VAT) → *Gửi duyệt* → **Duyệt** → *Khách hàng đã nghiệm thu*
     (nhập số / ngày hóa đơn). Đợt đã nghiệm thu không sửa; sai sót → đợt mới chọn *chỉ gồm điều chỉnh* → *Dòng điều
-    chỉnh* (số tiền âm để giảm, gắn với dòng cũ). *Xuất Excel* bảng kê.
+    chỉnh* (số tiền âm để giảm, gắn với dòng cũ). *Xuất Excel* hoặc *In / Lưu PDF*: biên bản nghiệm thu chuẩn
+    (quốc hiệu, căn cứ hợp đồng, Bên A / Bên B, khối lượng – giá trị – số tiền bằng chữ, chất lượng, thanh toán,
+    chữ ký) + bảng kê theo lớp + danh sách học viên. Địa chỉ, MST, người đại diện của khách hàng nhập ở trang khách
+    hàng; của TNTalent đặt trong cấu hình (`CORPORATE_PROVIDER_*`); để trống thì in dòng chấm để điền tay.
 14. **Công nợ**: các đợt khách hàng đã nghiệm thu (gồm VAT), hạn thanh toán (ngày hóa đơn + số ngày trong hợp
     đồng), tuổi nợ. *Ghi nhận tiền về* (số tiền, ngày, chứng từ); không ghi vượt số còn phải thu.
 15. **Chi phí chung theo hợp đồng** (trang khách hàng): khoản chi cho nhiều lớp (hội trường cả đợt…) → *Phân bổ*
@@ -58,15 +68,23 @@ Quyền chi tiết chỉnh ở **Hệ thống → Nhân sự & phân quyền** (
     được phân bổ.
 16. **Thực hiện kế hoạch** (trang kế hoạch đã duyệt): mỗi dòng so lớp đã mở / xong, học viên, chi phí so với
     ngân sách (vượt thì tô đỏ), giá trị đã nghiệm thu.
+17. **Yêu cầu & SLA**: mọi yêu cầu của khách hàng (mở lớp, đổi lịch / học viên, báo cáo, hồ sơ) → *Ghi nhận yêu
+    cầu* (khách hàng, nội dung, người yêu cầu, kênh, **ưu tiên**, người xử lý). Hạn xử lý tự tính theo giờ làm việc
+    thứ 2–6 (8h–17h): **Khẩn 4 giờ, Cao 1 ngày, Thường 3 ngày, Thấp 5 ngày**; ngày lễ thì sửa hạn bằng tay. Xong thì
+    chọn trạng thái *Đã xong* + ghi kết quả. Mỗi sáng ngày làm việc (8h15) người xử lý nhận email các yêu cầu quá hạn
+    / sắp đến hạn; yêu cầu chưa giao người gửi về email liên hệ chung (`CORPORATE_CONTACT_EMAIL`).
 
 ## 3. Theo dõi
 
 - **Tổng quan B2B**: lớp, lượt / học viên duy nhất, buổi đã học; hoàn thành, chuyên cần, hài lòng; giá trị HĐ, đã /
   chờ nghiệm thu, chi phí, **biên đóng góp theo lớp**. Rê chuột lên ô số để xem định nghĩa.
   Mục **Cần xử lý**: lớp học xong chưa chốt kết quả, đã chốt chưa nghiệm thu, chưa gắn HĐ, hồ sơ thiếu, điều chỉnh
-  chờ duyệt, thư bị dội, đợt đã duyệt lâu chưa được nghiệm thu. Bấm để mở đúng lớp / đợt.
+  chờ duyệt, thư bị dội, đợt đã duyệt lâu chưa được nghiệm thu, **yêu cầu quá hạn / sắp đến hạn SLA**. Bấm để mở
+  đúng lớp / đợt / trang yêu cầu.
+- **Yêu cầu & SLA**: số đang mở, quá hạn, **tỷ lệ xong đúng hạn 90 ngày**.
 - **Link báo cáo cho khách hàng** (trang khách hàng): tạo link có hạn để khách hàng tự xem kết quả đã chốt (không cần
-  tài khoản). Link chỉ hiện **một lần** khi tạo; thu hồi được bất cứ lúc nào.
+  tài khoản). Link chỉ hiện **một lần** khi tạo; thu hồi được bất cứ lúc nào. Khách hàng in / lưu PDF trang này được
+  (mỗi lớp một trang).
 
 ## 4. Nguyên tắc cần nhớ
 

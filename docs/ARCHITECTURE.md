@@ -370,6 +370,9 @@ hướng dẫn: [TMS_HUONG_DAN_SU_DUNG.md](TMS_HUONG_DAN_SU_DUNG.md).
 | Excel | `openpyxl`: nhập DSHV / kế hoạch (nhận cột theo tiêu đề hoặc `ImportTemplate`, xem trước, chống nhập trùng), xuất kết quả và bảng kê nghiệm thu |
 | Phạm vi khách hàng | `scoped_clients(user)` cho mọi truy vấn (hiện: ai có `corporate.view` thấy mọi khách hàng). Khách hàng xem qua link `/doi-tac/dn/<token>/` (chỉ đọc, có hạn, chỉ hash token được lưu) |
 | Quyền | Vai trò "Đào tạo doanh nghiệp" + `corporate.*`; Kế toán có xem + nghiệm thu |
+| Duyệt 2 cấp | Nghiệm thu / chi phí từ ngưỡng tiền: cấp 1 (`first_approved_*`) rồi người khác có `corporate.approve_final` (`approvals.py`) |
+| Yêu cầu & SLA | `TrainingRequest`: hạn = lúc nhận + giờ làm việc theo ưu tiên (`requests.py`); cảnh báo trên tổng quan; job `remind_corporate_requests` 8h15 |
+| Bản in / PDF | Trang HTML A4 in từ trình duyệt (như chứng chỉ, biên lai): biên bản nghiệm thu (`acceptance_print.html`, chung `document()` với bản Excel), báo cáo kết quả lớp; không thêm thư viện PDF |
 
 ## 11. Lộ trình
 
