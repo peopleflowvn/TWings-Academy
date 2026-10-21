@@ -148,3 +148,28 @@ def test_results_batch_is_approved_then_sent_one_email_per_learner(cls, staff_cl
 
     fix = corp.post(url, {"corporateClass": cls.pk, "corrects": batch["id"]}, format="json").json()
     assert fix["subject"].startswith("[Đính chính]") and fix["corrects"] == batch["id"]
+
+
+def test_manager_digest_one_email_per_manager_with_own_staff(cls, staff_client, resend_calls):
+    from apps.corporate import results
+
+    corp = staff_client(Role.CORPORATE_TRAINING)
+    _listing(cls, email="binh@nhm.test", manager_email="ql@nhm.test", manager_name="Lê Quản Lý")
+    second = Learner.objects.create(full_name="Lê Văn Cường", email="cuong@nhm.test")
+    services.list_learner(cls, second, manager_email="ql@nhm.test")
+    outsider = Learner.objects.create(full_name="Phạm Ngoài", email="ngoai@nhm.test")
+    services.list_learner(cls, outsider, manager_email="sep@gmail.com")  # outside the allowed domains
+    results.publish(results.draft(cls, None), None)
+
+    url = "/api/v1/staff/corporate/communications/"
+    batch = corp.post(url, {"corporateClass": cls.pk, "kind": "manager_digest"}, format="json").json()
+    assert [(r["to"], r["name"], len(r["learners"])) for r in batch["recipients"]] == [
+        ("ql@nhm.test", "Lê Quản Lý", 2)
+    ]
+    corp.post(f"{url}{batch['id']}/approve/")
+    assert corp.post(f"{url}{batch['id']}/send/").json()["sent"] == 1
+    (call,) = resend_calls
+    assert (
+        call["to"] == ["ql@nhm.test"] and "Trần Thị Bình" in call["html"] and "Lê Văn Cường" in call["html"]
+    )
+    assert "Phạm Ngoài" not in call["html"]  # not this manager's staff

@@ -566,6 +566,7 @@ class CommunicationBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadO
                 subject=data["subject"],
                 message=data["message"],
                 corrects=data.get("corrects"),
+                kind=data["kind"],
             )
         )
         audit(request, "corporate.batch_create", batch, recipients=batch.recipients.count())

@@ -480,7 +480,7 @@ class CommunicationBatch(BaseModel):
     only once approved. A correction is a new batch pointing at the one it corrects.
     """
 
-    KIND_CHOICES = [("results", "Kết quả cuối khóa")]
+    KIND_CHOICES = [("results", "Kết quả cho học viên"), ("manager_digest", "Báo cáo cho cán bộ quản lý")]
     STATUS_CHOICES = [
         ("draft", "Chờ duyệt"),
         ("approved", "Đã duyệt"),
@@ -516,7 +516,12 @@ class CommunicationRecipient(BaseModel):
     """One e-mail of a batch: the learner, To / CC frozen at creation, the EmailLog once sent."""
 
     batch = models.ForeignKey(CommunicationBatch, on_delete=models.CASCADE, related_name="recipients")
-    enrollment = models.ForeignKey(CorporateEnrollment, on_delete=models.PROTECT, related_name="+")
+    # The learner of a result e-mail; empty for a manager digest (which covers `learners`).
+    enrollment = models.ForeignKey(
+        CorporateEnrollment, null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    name = models.CharField(max_length=200, blank=True)  # who the e-mail greets
+    learners = models.JSONField(default=list, blank=True)  # enrollment ids a manager digest covers
     to = models.EmailField()
     cc = models.JSONField(default=list, blank=True)
     rejected = models.JSONField(default=list, blank=True)  # CC refused by the recipient policy

@@ -1140,6 +1140,7 @@ const ResultsTab: React.FC<{ cls: CorpClass; onChanged: () => void }> = ({ cls, 
 interface BatchRecipient {
   id: string;
   name: string;
+  learners: string[];
   to: string;
   cc: string[];
   rejected: string[];
@@ -1150,6 +1151,7 @@ interface BatchRecipient {
 
 interface Batch {
   id: string;
+  kind: 'results' | 'manager_digest';
   subject: string;
   message: string;
   status: 'draft' | 'approved' | 'sent' | 'cancelled';
@@ -1174,7 +1176,7 @@ const CommunicationsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
   const canApprove = useStaffCan('corporate.approve');
   const [batches, setBatches] = useState<Batch[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
-  const [draft, setDraft] = useState<{ subject: string; message: string; corrects: string | null } | null>(null);
+  const [draft, setDraft] = useState<{ subject: string; message: string; corrects: string | null; kind: Batch['kind'] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -1224,7 +1226,7 @@ const CommunicationsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
         </p>
         {canSend && (
           <button type="button" className={primary} disabled={!cls.lockedAt} title={cls.lockedAt ? '' : 'Phát hành kết quả trước'}
-            onClick={() => setDraft({ subject: '', message: '', corrects: null })}>
+            onClick={() => setDraft({ subject: '', message: '', corrects: null, kind: 'results' })}>
             <Mail className="w-4 h-4" /> Tạo lô thư kết quả
           </button>
         )}
@@ -1243,7 +1245,7 @@ const CommunicationsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
               <button type="button" className="text-left cursor-pointer" onClick={() => setOpen(open === b.id ? null : b.id)}>
                 <div className="font-bold text-sm text-slate-800">{b.subject}</div>
                 <div className="text-slate-500">
-                  <span className={`font-bold ${tone}`}>{label}</span> · {b.recipients.length} thư · kết quả v{b.snapshotVersion} · tạo bởi {b.createdByName || '–'}
+                  <span className={`font-bold ${tone}`}>{label}</span> · {b.kind === 'manager_digest' ? 'cho CBQL' : 'cho học viên'} · {b.recipients.length} thư · kết quả v{b.snapshotVersion} · tạo bởi {b.createdByName || '–'}
                   {b.approvedByName ? ` · duyệt bởi ${b.approvedByName}` : ''}{b.sentAt ? ` · gửi ${new Date(b.sentAt).toLocaleString('vi-VN')}` : ''}
                 </div>
               </button>
@@ -1251,7 +1253,7 @@ const CommunicationsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
                 {canApprove && b.status === 'draft' && <button type="button" className={secondary} disabled={busy} onClick={() => act(() => api.post(`/staff/corporate/communications/${b.id}/approve/`), 'Đã duyệt lô thư.')}><CheckCircle2 className="w-4 h-4" /> Duyệt</button>}
                 {canSend && (b.status === 'approved' || (b.status === 'sent' && failed > 0)) && <button type="button" className={primary} disabled={busy} onClick={() => send(b)}><Mail className="w-4 h-4" /> {b.status === 'sent' ? 'Gửi lại thư lỗi' : `Gửi ${b.recipients.length} thư`}</button>}
                 {canSend && (b.status === 'draft' || b.status === 'approved') && <button type="button" className={secondary} disabled={busy} onClick={() => act(() => api.post(`/staff/corporate/communications/${b.id}/cancel/`))}>Hủy</button>}
-                {canSend && b.status === 'sent' && <button type="button" className={secondary} disabled={busy || !cls.lockedAt} onClick={() => setDraft({ subject: '', message: '', corrects: b.id })}>Gửi đính chính</button>}
+                {canSend && b.status === 'sent' && <button type="button" className={secondary} disabled={busy || !cls.lockedAt} onClick={() => setDraft({ subject: '', message: '', corrects: b.id, kind: b.kind })}>Gửi đính chính</button>}
               </div>
             </div>
             {expanded && (
@@ -1261,7 +1263,7 @@ const CommunicationsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
                   <tbody className="divide-y divide-slate-100">
                     {b.recipients.map((r) => (
                       <tr key={r.id}>
-                        <td className="p-2 font-bold">{r.name}</td>
+                        <td className="p-2 font-bold">{r.name || '–'}{b.kind === 'manager_digest' ? <span className="font-normal text-slate-500"> · {r.learners.length} nhân viên</span> : null}</td>
                         <td className="p-2">{r.to}</td>
                         <td className="p-2">{r.cc.join(', ') || '–'}</td>
                         <td className="p-2 text-red-600">{r.rejected.join(', ')}</td>
@@ -1277,7 +1279,15 @@ const CommunicationsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
       })}
       {draft && (
         <Modal title={draft.corrects ? 'Lô thư đính chính' : 'Tạo lô thư kết quả'} onClose={() => setDraft(null)}>
-          <p className="text-slate-600">Kết quả từng học viên lấy từ bản kết quả đã phát hành mới nhất. Lời nhắn dưới đây hiện trong mọi thư.</p>
+          <p className="text-slate-600">Kết quả lấy từ bản kết quả đã phát hành mới nhất. Lời nhắn dưới đây hiện trong mọi thư.</p>
+          {!draft.corrects && (
+            <label className="block">Loại thư
+              <select className={input} value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as Batch['kind'] })}>
+                <option value="results">Mỗi học viên một thư kết quả (CC cán bộ quản lý)</option>
+                <option value="manager_digest">Mỗi cán bộ quản lý một thư tổng hợp nhân viên của mình</option>
+              </select>
+            </label>
+          )}
           <label className="block">Tiêu đề (để trống: “Kết quả khóa học …”)<input className={input} value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} /></label>
           <label className="block">Lời nhắn<textarea rows={5} className={input} value={draft.message} onChange={(e) => setDraft({ ...draft, message: e.target.value })} placeholder="VD: Cảm ơn anh/chị đã tham gia khóa học. Tài liệu buổi học được đính kèm trên hệ thống…" /></label>
           <div className="flex justify-end"><button type="button" className={primary} disabled={busy} onClick={create}><Save className="w-4 h-4" /> Tạo lô (chờ duyệt)</button></div>

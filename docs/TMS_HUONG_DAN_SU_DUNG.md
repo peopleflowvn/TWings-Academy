@@ -41,6 +41,8 @@ Quyền chi tiết chỉnh ở **Hệ thống → Nhân sự & phân quyền** (
    bản phát hành không đổi. Cần sửa: *Mở lại để sửa* → phiên bản mới. *Xuất Excel* để gửi khách hàng.
 10. **Truyền thông** (tab *Truyền thông*): *Tạo lô thư kết quả* (lời nhắn chung) → xem người nhận → **Duyệt** →
     *Gửi*. Mỗi học viên nhận kết quả của riêng mình, CC CBQL. Gửi nhầm → *Gửi đính chính*.
+    Loại thư **Báo cáo cho cán bộ quản lý**: mỗi CBQL một thư tổng hợp kết quả các nhân viên của mình
+    (CBQL ngoài tên miền được phép thì không gửi).
 11. **Hồ sơ** (tab *Hồ sơ*): checklist tự đánh dấu mục hệ thống đã có; tải lên bản ký (điểm danh, biên bản…),
     tải lại cùng tiêu đề = phiên bản mới.
 12. **Chi phí** (tab *Chi phí*): ghi nhận chi phí theo hạng mục; **tạm ứng** chỉ tính vào chi phí khi có
@@ -49,6 +51,13 @@ Quyền chi tiết chỉnh ở **Hệ thống → Nhân sự & phân quyền** (
     kết quả được tính tự động (khối lượng × đơn giá, VAT) → *Gửi duyệt* → **Duyệt** → *Khách hàng đã nghiệm thu*
     (nhập số / ngày hóa đơn). Đợt đã nghiệm thu không sửa; sai sót → đợt mới chọn *chỉ gồm điều chỉnh* → *Dòng điều
     chỉnh* (số tiền âm để giảm, gắn với dòng cũ). *Xuất Excel* bảng kê.
+14. **Công nợ**: các đợt khách hàng đã nghiệm thu (gồm VAT), hạn thanh toán (ngày hóa đơn + số ngày trong hợp
+    đồng), tuổi nợ. *Ghi nhận tiền về* (số tiền, ngày, chứng từ); không ghi vượt số còn phải thu.
+15. **Chi phí chung theo hợp đồng** (trang khách hàng): khoản chi cho nhiều lớp (hội trường cả đợt…) → *Phân bổ*
+    theo số học viên / buổi / giờ / chia đều; tổng phân bổ đúng bằng khoản chi. Chi phí lớp = chi phí riêng + phần
+    được phân bổ.
+16. **Thực hiện kế hoạch** (trang kế hoạch đã duyệt): mỗi dòng so lớp đã mở / xong, học viên, chi phí so với
+    ngân sách (vượt thì tô đỏ), giá trị đã nghiệm thu.
 
 ## 3. Theo dõi
 

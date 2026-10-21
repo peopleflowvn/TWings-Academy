@@ -371,7 +371,6 @@ class ResultSnapshotSerializer(serializers.ModelSerializer):
 
 
 class CommunicationRecipientSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(source="enrollment.learner.full_name", read_only=True)
     email_status = serializers.CharField(source="email_log.status", read_only=True, default="")
     email_status_label = serializers.CharField(
         source="email_log.get_status_display", read_only=True, default=""
@@ -384,6 +383,7 @@ class CommunicationRecipientSerializer(serializers.ModelSerializer):
             "id",
             "enrollment",
             "name",
+            "learners",
             "to",
             "cc",
             "rejected",
@@ -412,6 +412,7 @@ class CreateBatchSerializer(serializers.Serializer):
     corrects = serializers.PrimaryKeyRelatedField(
         queryset=CommunicationBatch.objects.all(), required=False, allow_null=True
     )
+    kind = serializers.ChoiceField(choices=CommunicationBatch.KIND_CHOICES, default="results")
 
 
 class AcceptanceLineSerializer(serializers.ModelSerializer):

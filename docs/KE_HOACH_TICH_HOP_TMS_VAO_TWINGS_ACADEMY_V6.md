@@ -27,8 +27,11 @@ Làm cùng AI agent nên nhanh hơn nhiều so với dự kiến 8 tuần. Đã 
 | 7. Dashboard & chi phí | ✅ | Tổng quan B2B, cảnh báo đối soát, từ điển KPI, chi phí / tạm ứng, link báo cáo khách hàng |
 | 8. E2E & hardening | 🔄 | E2E 16 bước B2B trong CI; còn: diễn tập backup, đo tải QR, UAT với dữ liệu thật |
 
+**Giai đoạn 2 đã làm:** công nợ (tiền về, hạn thanh toán, tuổi nợ, cảnh báo quá hạn), thực hiện kế hoạch / ngân
+sách theo dòng, phân bổ chi phí dùng chung, báo cáo cho CBQL (mỗi CBQL một thư), kiểm thử cô lập giữa khách hàng.
+
 Còn mở: các câu ở [TMS_CAU_HOI_CAN_TRA_LOI.md](TMS_CAU_HOI_CAN_TRA_LOI.md) (mỗi câu có mặc định đang chạy);
-giai đoạn 2 (ngân sách / cam kết, phân bổ chi phí, công nợ đầy đủ, PDF, lịch Outlook) theo mục 9.
+mẫu nghiệm thu MSB/ROX (cần file), PDF báo cáo, lịch Outlook 2 chiều, SLA yêu cầu, duyệt nhiều cấp, AI.
 
 ## 0. THAY ĐỔI SO VỚI V5
 

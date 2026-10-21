@@ -174,8 +174,14 @@ def send_invitations(corporate_class, *, sent_by, only_new: bool = True) -> dict
 RESULT_LABEL = {"passed": "Đạt", "not_passed": "Chưa đạt", "pending": "Đang chờ xác minh"}
 
 
-def create_results_batch(corporate_class, *, user, subject: str = "", message: str = "", corrects=None):
-    """A batch for the class's published results: recipients frozen now, sent once approved."""
+def create_results_batch(
+    corporate_class, *, user, subject: str = "", message: str = "", corrects=None, kind: str = "results"
+):
+    """
+    A batch for the class's published results, recipients frozen now, sent once approved:
+    "results" = one e-mail per learner (CC their manager); "manager_digest" = one e-mail per line
+    manager listing their own staff only (the manager's address must pass the recipient policy).
+    """
     from django.db import transaction
 
     from .models import CommunicationBatch, CommunicationRecipient
@@ -184,10 +190,13 @@ def create_results_batch(corporate_class, *, user, subject: str = "", message: s
     snapshot = corporate_class.results.filter(status="published").first()
     if snapshot is None:
         raise CorporateError("Chưa có kết quả đã phát hành để gửi.")
-    if corrects is not None and corrects.corporate_class_id != corporate_class.pk:
-        raise CorporateError("Lô cần đính chính thuộc lớp khác.")
+    if corrects is not None and (corrects.corporate_class_id != corporate_class.pk or corrects.kind != kind):
+        raise CorporateError("Lô cần đính chính thuộc lớp khác hoặc loại thư khác.")
     cohort = corporate_class.cohort
-    default = f"Kết quả khóa học {cohort.course.title} – {cohort.name}"
+    if kind == "manager_digest":
+        default = f"Kết quả học tập của nhân viên – {cohort.course.title} – {cohort.name}"
+    else:
+        default = f"Kết quả khóa học {cohort.course.title} – {cohort.name}"
     listings = {
         listing.pk: listing
         for listing in corporate_class.enrollments.select_related(
@@ -198,20 +207,74 @@ def create_results_batch(corporate_class, *, user, subject: str = "", message: s
         batch = CommunicationBatch.objects.create(
             corporate_class=corporate_class,
             snapshot=snapshot,
+            kind=kind,
             subject=(f"[Đính chính] {subject or default}" if corrects else subject or default)[:300],
             message=message,
             corrects=corrects,
             created_by=user,
         )
+        if kind == "manager_digest":
+            for manager, (name, staff) in _managers(corporate_class, snapshot, listings).items():
+                CommunicationRecipient.objects.create(batch=batch, to=manager, name=name, learners=staff)
+            return batch
         for row in snapshot.learners:
             listing = listings.get(row["enrollment"])
             if listing is None:
                 continue
             who = recipients(listing)
             CommunicationRecipient.objects.create(
-                batch=batch, enrollment=listing, to=who["to"], cc=who["cc"], rejected=who["rejected"]
+                batch=batch,
+                enrollment=listing,
+                name=listing.learner.full_name,
+                to=who["to"],
+                cc=who["cc"],
+                rejected=who["rejected"],
             )
     return batch
+
+
+def _managers(corporate_class, snapshot, listings) -> dict[str, tuple[str, list[str]]]:
+    """{manager e-mail: (manager name, [enrollment ids])} for managers allowed by the recipient policy."""
+    today = timezone.localdate()
+    out: dict[str, tuple[str, list[str]]] = {}
+    for row in snapshot.learners:
+        listing = listings.get(row["enrollment"])
+        if listing is None:
+            continue
+        employee = employment_on(corporate_class.client, listing.learner, today) or listing.employee
+        allowed, _ = cc_policy(corporate_class.client, [employee.manager_email])
+        if not allowed:
+            continue  # no manager on file, or outside the client's / our domains
+        name, staff = out.get(allowed[0], ("", []))
+        staff.append(listing.pk)
+        out[allowed[0]] = (name or employee.manager_name, staff)  # the first name on file
+    return out
+
+
+def digest_html(batch, staff: list[dict], name: str) -> str:
+    cohort = batch.corporate_class.cohort
+    rows = "".join(
+        "<tr>"
+        f"<td>{escape(r['name'])}</td><td>{escape(r.get('employee_code') or '')}</td>"
+        f"<td>{r['sessions_attended']}/{r['sessions_taken']}</td>"
+        f"<td>{'' if r.get('grade_percent') is None else str(r['grade_percent']) + '%'}</td>"
+        f"<td>{RESULT_LABEL.get(r['result'], r['result'])}</td>"
+        "</tr>"
+        for r in staff
+    )
+    message = "".join(f"<p>{escape(p)}</p>" for p in batch.message.split("\n\n") if p.strip())
+    return f"""
+<p>Kính gửi {escape(name or "Anh/Chị")},</p>
+<p>Lớp <strong>{escape(cohort.course.title)} – {escape(cohort.name)}</strong> đã kết thúc. Kết quả của
+{len(staff)} nhân viên thuộc quyền quản lý của Anh/Chị:</p>
+<table cellpadding="6" style="border-collapse:collapse;font-size:14px">
+<tr><th align="left">Họ tên</th><th align="left">Mã NV</th><th align="left">Buổi có mặt</th>
+<th align="left">Điểm</th><th align="left">Kết quả</th></tr>
+{rows}
+</table>
+{message}
+<p>Cần trao đổi thêm, vui lòng trả lời email này.</p>
+"""
 
 
 def result_html(batch, row: dict, name: str) -> str:
@@ -248,36 +311,44 @@ def send_batch(batch, *, user) -> dict:
 
     if batch.status not in ("approved", "sent"):
         raise CorporateError("Lô email cần được duyệt trước khi gửi.")
+    from apps.notifications.models import EmailLog
+
     rows = {row["enrollment"]: row for row in batch.snapshot.learners}
+    template = "corporate_manager_digest" if batch.kind == "manager_digest" else "corporate_results"
     counts = {"sent": 0, "failed": 0, "skipped": 0}
     for recipient in batch.recipients.select_related("enrollment__learner", "email_log"):
         if recipient.email_log and recipient.email_log.status not in ("failed",):
             counts["skipped"] += 1
             continue
-        row = rows.get(recipient.enrollment_id)
-        if row is None:
+        if batch.kind == "manager_digest":
+            staff = [rows[i] for i in recipient.learners if i in rows]
+            html = digest_html(batch, staff, recipient.name) if staff else ""
+        else:
+            row = rows.get(recipient.enrollment_id)
+            html = (
+                result_html(batch, row, recipient.name or recipient.enrollment.learner.full_name)
+                if row
+                else ""
+            )
+        if not html:
             counts["skipped"] += 1
             continue
-        name = recipient.enrollment.learner.full_name
         try:
             log = send_logged(
                 to=recipient.to,
                 cc=recipient.cc,
                 subject=batch.subject,
-                html=result_html(batch, row, name),
-                template_code="corporate_results",
-                name=name,
+                html=html,
+                template_code=template,
+                name=recipient.name,
                 sent_by=user,
                 corporate_enrollment=recipient.enrollment,
             )
         except ResendError:
             counts["failed"] += 1
-            from apps.notifications.models import EmailLog
-
+            # send_logged kept the failed attempt: link it so the screen shows the error.
             recipient.email_log = (
-                EmailLog.objects.filter(
-                    corporate_enrollment=recipient.enrollment, template_code="corporate_results"
-                )
+                EmailLog.objects.filter(recipient_email=recipient.to, template_code=template, status="failed")
                 .order_by("-created_at")
                 .first()
             )
