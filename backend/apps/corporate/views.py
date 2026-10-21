@@ -12,7 +12,7 @@ from apps.accounts.permissions import ActionPermission, require_perms
 from apps.catalog.models import Course
 from apps.core.models import audit
 
-from . import services
+from . import permissions, services  # scope via permissions.scoped_clients: one function
 from .models import (
     AcceptanceBatch,
     AttendanceAdjustment,
@@ -29,7 +29,6 @@ from .models import (
     ServiceContract,
     TrainingPlan,
 )
-from .permissions import in_scope, scoped_clients
 from .serializers import (
     AcceptanceAdjustmentSerializer,
     AcceptanceBatchSerializer,
@@ -83,10 +82,10 @@ class _Scoped:
     client_path = "client"
 
     def scoped(self, queryset):
-        return queryset.filter(**{f"{self.client_path}__in": scoped_clients(self.request.user)})
+        return queryset.filter(**{f"{self.client_path}__in": permissions.scoped_clients(self.request.user)})
 
     def check_client(self, client):
-        if not in_scope(self.request.user, client):
+        if not permissions.in_scope(self.request.user, client):
             raise PermissionDenied("Không có quyền với khách hàng này.")
 
 
@@ -100,7 +99,7 @@ class CorporateClientViewSet(
     filterset_fields = ["is_active"]
 
     def get_queryset(self):
-        return scoped_clients(self.request.user).annotate(
+        return permissions.scoped_clients(self.request.user).annotate(
             classes_count=Count("classes", distinct=True),
             active_contracts=Count("contracts", filter=Q(contracts__status="active"), distinct=True),
         )
@@ -626,7 +625,7 @@ class AcceptanceBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnly
         """Classes of a contract with published results, not billed yet (what a new batch would cover)."""
         from .acceptance import eligible_classes
 
-        contracts = ServiceContract.objects.filter(client__in=scoped_clients(request.user))
+        contracts = ServiceContract.objects.filter(client__in=permissions.scoped_clients(request.user))
         contract = get_object_or_404(contracts, pk=request.query_params.get("contract"))
         return Response(
             [
@@ -853,7 +852,7 @@ class DashboardView(APIView):
     def get(self, request):
         from .dashboard import overview
 
-        clients = scoped_clients(request.user)
+        clients = permissions.scoped_clients(request.user)
         client = (
             clients.filter(pk=request.query_params.get("client")).first()
             if request.query_params.get("client")
@@ -933,7 +932,7 @@ class CorporateEnrollmentViewSet(_Scoped, viewsets.GenericViewSet):
         return Response(self.get_serializer(new).data, status=201)
 
     def scoped_classes(self):
-        return CorporateClass.objects.filter(client__in=scoped_clients(self.request.user))
+        return CorporateClass.objects.filter(client__in=permissions.scoped_clients(self.request.user))
 
 
 class ImportTemplateViewSet(
