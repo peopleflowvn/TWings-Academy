@@ -35,6 +35,7 @@ from .serializers import (
     AcceptanceBatchSerializer,
     AcceptInvoiceSerializer,
     AdjustmentRequestSerializer,
+    AllocateSerializer,
     AttendanceAdjustmentSerializer,
     CancelSerializer,
     ClassDocumentSerializer,
@@ -764,7 +765,10 @@ class ExpenseViewSet(
     serializer_class = ExpenseSerializer
     permission_classes = [ActionPermission]
     permission_map = perm_map(
-        "corporate.acceptance", approve="corporate.approve", destroy="corporate.acceptance"
+        "corporate.acceptance",
+        approve="corporate.approve",
+        destroy="corporate.acceptance",
+        allocate="corporate.acceptance",
     )
     filterset_fields = ["client", "corporate_class", "contract", "kind", "category"]
     search_fields = ["description", "supplier"]
@@ -793,6 +797,19 @@ class ExpenseViewSet(
         audit(request, "corporate.expense_delete", expense, amount=expense.amount)
         expense.delete()
         return Response(status=204)
+
+    @action(detail=True, methods=["post"])
+    def allocate(self, request, pk=None):
+        """Split a shared cost (contract, no class) over classes; replaces an earlier split."""
+        from .allocations import allocate
+
+        expense = self.get_object()
+        ser = AllocateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        classes = ser.validated_data.get("classes") or None
+        _rule(lambda: allocate(expense, basis=ser.validated_data["basis"], classes=classes))
+        audit(request, "corporate.expense_allocate", expense, basis=ser.validated_data["basis"])
+        return Response(self.get_serializer(expense).data)
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):

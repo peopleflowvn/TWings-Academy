@@ -17,6 +17,7 @@ from .models import (
     CorporateClass,
     CorporateClient,
     CorporateEnrollment,
+    CostAllocation,
     Expense,
     ImportBatch,
     ImportTemplate,
@@ -500,11 +501,23 @@ class ExpenseSerializer(serializers.ModelSerializer):
     category_label = serializers.CharField(source="get_category_display", read_only=True)
     approved_by_name = serializers.CharField(source="approved_by.name", read_only=True, default="")
     settled = serializers.SerializerMethodField()
+    allocations = serializers.SerializerMethodField()
 
     class Meta:
         model = Expense
         exclude = ["updated_at"]
         read_only_fields = ["client", "approved_by", "approved_at", "created_by"]
+
+    def get_allocations(self, expense) -> list[dict]:
+        return [
+            {
+                "class": a.corporate_class_id,
+                "class_name": a.corporate_class.cohort.name,
+                "basis": a.basis,
+                "amount": a.amount,
+            }
+            for a in expense.allocations.select_related("corporate_class__cohort")
+        ]
 
     def get_settled(self, expense) -> int | None:
         """For an advance: the amount already settled."""
@@ -558,3 +571,10 @@ class ClientPaymentSerializer(serializers.ModelSerializer):
         model = ClientPayment
         exclude = ["updated_at"]
         read_only_fields = ["created_by"]
+
+
+class AllocateSerializer(serializers.Serializer):
+    basis = serializers.ChoiceField(choices=CostAllocation.BASIS_CHOICES)
+    classes = serializers.PrimaryKeyRelatedField(
+        queryset=CorporateClass.objects.all(), many=True, required=False
+    )

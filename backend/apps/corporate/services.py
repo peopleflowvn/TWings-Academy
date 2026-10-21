@@ -211,7 +211,8 @@ def plan_execution(plan) -> dict:
     """
     from django.db.models import Count, Q, Sum
 
-    from .models import AcceptanceLine, Expense
+    from .allocations import class_costs
+    from .models import AcceptanceLine
 
     rows = []
     for line in plan.lines.select_related("course", "unit"):
@@ -229,12 +230,7 @@ def plan_execution(plan) -> dict:
             )["v"]
             or 0
         )
-        costs = (
-            Expense.objects.filter(corporate_class__in=ids, kind__in=Expense.COSTS).aggregate(
-                v=Sum("amount")
-            )["v"]
-            or 0
-        )
+        costs = sum(class_costs(ids).values())  # own costs + shares of shared costs
         rows.append(
             {
                 "line": line.pk,

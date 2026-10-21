@@ -53,12 +53,9 @@ def _class_rows(classes) -> list[dict]:
         .annotate(total=Sum("amount"))
         .values_list("corporate_class", "total")
     )
-    costs = dict(
-        Expense.objects.filter(kind__in=Expense.COSTS, corporate_class__in=classes)
-        .values("corporate_class")
-        .annotate(total=Sum("amount"))
-        .values_list("corporate_class", "total")
-    )
+    from .allocations import class_costs
+
+    costs = class_costs([c.pk for c in classes])  # own costs + shares of shared costs
     rows = []
     for c in classes:
         published = next((s for s in c.results.all() if s.status == "published"), None)
@@ -206,6 +203,12 @@ def overview(clients, *, client=None) -> dict:
     receivable = receivables(clients, client=client)
     accepted_total = sum(r["accepted_amount"] for r in rows)
     costs_total = sum(r["costs"] for r in rows)
+    shared = Expense.objects.filter(
+        client__in=[client] if client else clients, corporate_class__isnull=True, kind__in=Expense.COSTS
+    )
+    unallocated = sum(
+        e.amount - sum(a.amount for a in e.allocations.all()) for e in shared.prefetch_related("allocations")
+    )
     return {
         "activity": {
             "classes": len(classes),
@@ -228,9 +231,20 @@ def overview(clients, *, client=None) -> dict:
             "collected": receivable["paid"],
             "outstanding": receivable["outstanding"],
             "overdue": receivable["overdue"],
+            "unallocated_costs": unallocated,
         },
         "classes": rows,
         "alerts": alerts(classes)
+        + (
+            [
+                {
+                    "level": "info",
+                    "text": f"Còn {unallocated:,} đ chi phí chung chưa phân bổ cho lớp".replace(",", "."),
+                }
+            ]
+            if unallocated
+            else []
+        )
         + [
             {
                 "level": "error",

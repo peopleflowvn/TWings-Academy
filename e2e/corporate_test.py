@@ -309,6 +309,21 @@ def receivables_payment(page: Page):
     page.locator("tr", has_text="Nghiệm thu đợt 1").locator("td:has-text('1.500.000')").wait_for(timeout=20000)
 
 
+@step
+def shared_cost_allocated(page: Page):
+    page.goto(f"{BASE}/app/corporate/clients")
+    page.locator("td:has-text('NHE2E')").first.click()
+    page.wait_for_selector("text=Chi phí chung theo hợp đồng", timeout=20000)
+    box = page.locator("div.space-y-3", has_text="Chi phí chung theo hợp đồng").last  # the card, not its title
+    field(box, "Hợp đồng").select_option(label="HD-E2E-01")
+    field(box, "Nội dung").fill("Hội trường cả đợt")
+    field(box, "Số tiền").fill("300000")
+    box.locator("button:has-text('Ghi nhận')").click()
+    page.locator("li", has_text="Hội trường cả đợt").wait_for(timeout=20000)
+    page.locator("li", has_text="Hội trường cả đợt").locator("button:has-text('Phân bổ')").click()
+    page.locator("li", has_text="Hội trường cả đợt").locator("text=đã phân bổ 300.000").wait_for(timeout=20000)
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:

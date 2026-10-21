@@ -740,3 +740,29 @@ class ClientPayment(BaseModel):
 
     class Meta:
         ordering = ["-received_on", "-created_at"]
+
+
+class CostAllocation(BaseModel):
+    """
+    The share of a shared cost (an Expense of a contract, not of one class) carried by a class. The
+    shares of one expense always add up exactly to its amount.
+    """
+
+    BASIS_CHOICES = [
+        ("equal", "Chia đều theo lớp"),
+        ("learners", "Theo số học viên"),
+        ("sessions", "Theo số buổi"),
+        ("hours", "Theo số giờ học"),
+    ]
+
+    expense = models.ForeignKey(Expense, on_delete=models.CASCADE, related_name="allocations")
+    corporate_class = models.ForeignKey(
+        CorporateClass, on_delete=models.PROTECT, related_name="allocated_costs"
+    )
+    basis = models.CharField(max_length=20, choices=BASIS_CHOICES)
+    amount = models.PositiveBigIntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["expense", "corporate_class"], name="uniq_allocation_per_class")
+        ]

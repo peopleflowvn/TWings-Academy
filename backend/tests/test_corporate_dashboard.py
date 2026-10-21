@@ -103,3 +103,48 @@ def test_overview_kpis_alerts_and_access(world, staff_client):
     assert staff_client(Role.SALES_CRM).get(f"{BASE}/dashboard/").status_code == 403
     only = staff_client(Role.CORPORATE_TRAINING).get(f"{BASE}/dashboard/", {"client": client.pk}).json()
     assert only["activity"]["classes"] == 2
+
+
+def test_shared_cost_allocated_exactly(world, staff_client, course):
+    from apps.corporate.models import Expense
+    from apps.crm.models import Learner
+
+    client, contract, billed, done = world
+    other = services.create_class(
+        client=client, course=course, name="Lớp B", cohort_fields={}, contract=contract
+    )
+    for i in range(3):
+        services.list_learner(billed, Learner.objects.create(full_name=f"A{i}", email=f"a{i}@nhm.test"))
+    services.list_learner(other, Learner.objects.create(full_name="B", email="b@nhm.test"))
+    corp = staff_client(Role.CORPORATE_TRAINING)
+    shared = Expense.objects.create(
+        client=client,
+        contract=contract,
+        category="venue",
+        description="Hội trường",
+        amount=1_000_001,
+        incurred_on=date.today(),
+    )
+    before = corp.get(f"{BASE}/dashboard/").json()
+    assert before["finance"]["unallocatedCosts"] == 1_000_001
+    assert any("chưa phân bổ" in a["text"] for a in before["alerts"])
+
+    url = f"{BASE}/expenses/{shared.pk}/allocate/"
+    res = corp.post(url, {"basis": "learners"}, format="json")
+    assert res.status_code == 200, res.content
+    shares = {a["className"]: a["amount"] for a in res.json()["allocations"]}
+    assert shares == {"Lớp đã nghiệm thu": 750_001, "Lớp B": 250_000}  # 3:1, adds up to the đồng
+    equal = corp.post(url, {"basis": "equal", "classes": [billed.pk, other.pk]}, format="json").json()
+    assert sorted(a["amount"] for a in equal["allocations"]) == [500_000, 500_001]  # replaces the split
+
+    own = Expense.objects.create(
+        client=client, corporate_class=billed, description="x", amount=5, incurred_on=date.today()
+    )
+    assert (
+        corp.post(f"{BASE}/expenses/{own.pk}/allocate/", {"basis": "equal"}, format="json").status_code == 400
+    )
+    after = corp.get(f"{BASE}/dashboard/").json()
+    row = next(r for r in after["classes"] if r["id"] == billed.pk)
+    assert after["finance"]["unallocatedCosts"] == 0
+    # Equal split of 1.000.001 đ: the first class listed takes the extra đồng; plus its own 5 đ.
+    assert row["costs"] == 500_001 + 5

@@ -1972,6 +1972,90 @@ const ShareLinks: React.FC<{ clientId: string }> = ({ clientId }) => {
   );
 };
 
+// ---------------------------------------------------------------- shared costs (contract level)
+const ALLOCATION_BASIS: [string, string][] = [
+  ['learners', 'Theo số học viên'],
+  ['sessions', 'Theo số buổi'],
+  ['hours', 'Theo số giờ học'],
+  ['equal', 'Chia đều theo lớp']
+];
+
+const SharedCosts: React.FC<{ clientId: string; contracts: Contract[] }> = ({ clientId, contracts }) => {
+  const canEdit = useStaffCan('corporate.acceptance');
+  const [rows, setRows] = useState<(Expense & { contract: string | null; contractNumber: string; allocations: { class: string; className: string; amount: number }[] })[]>([]);
+  const [form, setForm] = useState({ contract: '', category: 'venue', description: '', amount: '', incurredOn: new Date().toISOString().slice(0, 10) });
+  const [basis, setBasis] = useState<Record<string, string>>({});
+  const [error, setError] = useState('');
+  const load = useCallback(() => {
+    api
+      .get<Paginated<(typeof rows)[number] & { corporateClass: string | null }>>(`/staff/corporate/expenses/?client=${clientId}&pageSize=200`)
+      .then((res) => setRows(res.results.filter((e) => !e.corporateClass)))
+      .catch(() => setRows([]));
+  }, [clientId]);
+  useEffect(load, [load]);
+  const run = async (call: () => Promise<unknown>) => {
+    setError('');
+    try {
+      await call();
+      load();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  return (
+    <div className={`${card} space-y-3 text-xs`}>
+      <div className="font-bold text-sm text-slate-800">Chi phí chung theo hợp đồng</div>
+      <p className="text-slate-500">Khoản chi cho nhiều lớp (hội trường cả đợt, khảo sát nhu cầu…): ghi theo hợp đồng rồi phân bổ cho các lớp của hợp đồng; tổng phân bổ luôn đúng bằng khoản chi.</p>
+      {canEdit && (
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
+          <label>Hợp đồng
+            <select className={input} value={form.contract} onChange={(e) => setForm({ ...form, contract: e.target.value })}>
+              <option value="">– Chọn –</option>
+              {contracts.map((c) => <option key={c.id} value={c.id}>{c.number}</option>)}
+            </select>
+          </label>
+          <label>Hạng mục
+            <select className={input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+              {EXPENSE_CATEGORIES.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+            </select>
+          </label>
+          <label className="md:col-span-2">Nội dung<input className={input} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
+          <label>Số tiền (đ)<input type="number" min={1} className={input} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
+          <button type="button" className={secondary} disabled={!form.contract || !form.description.trim() || !form.amount}
+            onClick={() => run(() => api.post('/staff/corporate/expenses/', { ...form, amount: Number(form.amount) }).then(() => setForm({ ...form, description: '', amount: '' })))}>
+            <Plus className="w-4 h-4" /> Ghi nhận
+          </button>
+        </div>
+      )}
+      {error && <p className="text-red-600">{error}</p>}
+      {rows.length > 0 && (
+        <ul className="divide-y divide-slate-100">
+          {rows.map((e) => {
+            const allocated = e.allocations.reduce((n, a) => n + a.amount, 0);
+            return (
+              <li key={e.id} className="py-2 space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span><strong>{e.description}</strong> · {e.categoryLabel} · HĐ {e.contractNumber || '–'} · {vnd(e.amount)}
+                    <span className={allocated === e.amount ? 'text-emerald-700' : 'text-amber-700'}> · đã phân bổ {vnd(allocated)}</span></span>
+                  {canEdit && e.kind !== 'advance' && (
+                    <span className="flex gap-2 items-center">
+                      <select className={`${input} w-44`} value={basis[e.id] || 'learners'} onChange={(ev) => setBasis({ ...basis, [e.id]: ev.target.value })}>
+                        {ALLOCATION_BASIS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+                      </select>
+                      <button type="button" className={secondary} onClick={() => run(() => api.post(`/staff/corporate/expenses/${e.id}/allocate/`, { basis: basis[e.id] || 'learners' }))}>Phân bổ</button>
+                    </span>
+                  )}
+                </div>
+                {e.allocations.length > 0 && <div className="text-slate-500">{e.allocations.map((a) => `${a.className}: ${vnd(a.amount)}`).join(' · ')}</div>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const ClientDetail: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, courses }) => {
   const canEdit = useStaffCan('corporate.clients');
   const [client, setClient] = useState<Client | null>(null);
@@ -2067,6 +2151,7 @@ const ClientDetail: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, c
           </table>
         )}
       </div>
+      <SharedCosts clientId={id} contracts={contracts} />
       <ShareLinks clientId={id} />
       {editing && <ClientEditor existing={client} onClose={() => setEditing(false)} onSaved={setClient} />}
       {contract && (
