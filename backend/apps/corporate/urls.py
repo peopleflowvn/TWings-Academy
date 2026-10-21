@@ -7,6 +7,7 @@ from .views import (
     AcceptanceBatchViewSet,
     AttendanceAdjustmentViewSet,
     ClassDocumentViewSet,
+    ClientPaymentViewSet,
     ClientShareViewSet,
     ClientUnitViewSet,
     CommunicationBatchViewSet,
@@ -17,6 +18,7 @@ from .views import (
     ExpenseViewSet,
     ImportBatchViewSet,
     ImportTemplateViewSet,
+    ReceivablesView,
     ResultSnapshotViewSet,
     ServiceContractViewSet,
     TrainingPlanViewSet,
@@ -38,5 +40,10 @@ router.register("acceptances", AcceptanceBatchViewSet, basename="corporate-accep
 router.register("documents", ClassDocumentViewSet, basename="corporate-document")
 router.register("expenses", ExpenseViewSet, basename="corporate-expense")
 router.register("shares", ClientShareViewSet, basename="corporate-share")
+router.register("payments", ClientPaymentViewSet, basename="corporate-payment")
 
-urlpatterns = [path("dashboard/", DashboardView.as_view(), name="corporate-dashboard"), *router.urls]
+urlpatterns = [
+    path("dashboard/", DashboardView.as_view(), name="corporate-dashboard"),
+    path("receivables/", ReceivablesView.as_view(), name="corporate-receivables"),
+    *router.urls,
+]

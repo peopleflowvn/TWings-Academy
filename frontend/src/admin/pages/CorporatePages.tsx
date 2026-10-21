@@ -6,6 +6,7 @@
  *                             ?new=1&client=&course=&planLine= opens "new class" prefilled (from a plan line)
  *   /corporate/clients        clients; ?id=<id> one client (details, legal entities / units, contracts + rates)
  *   /corporate/plans          training plans; ?id=<id> one plan (lines, approve, new version)
+ *   /corporate/receivables    accepted batches: paid, outstanding, aging; record payments
  *   /corporate/acceptance     acceptance batches of contracts; ?id=<id> one batch (lines, approval, export)
  * Every list is limited by the API to the clients the user may see.
  */
@@ -64,6 +65,7 @@ interface Contract {
   validTo: string | null;
   value: number | null;
   vatRate: number | null;
+  paymentTermsDays: number;
   note: string;
   rates: Rate[];
 }
@@ -2101,6 +2103,7 @@ const ContractEditor: React.FC<{
     validTo: viDateToIso(existing?.validTo) || '',
     value: existing?.value != null ? String(existing.value) : '',
     vatRate: existing?.vatRate != null ? String(existing.vatRate) : '',
+    paymentTermsDays: String(existing?.paymentTermsDays ?? 30),
     note: existing?.note || ''
   });
   const [rates, setRates] = useState<Rate[]>(existing?.rates.map((r) => ({ ...r, validFrom: viDateToIso(r.validFrom), validTo: viDateToIso(r.validTo) })) || []);
@@ -2118,6 +2121,7 @@ const ContractEditor: React.FC<{
       validTo: d.validTo || null,
       value: numberOrNull(d.value),
       vatRate: numberOrNull(d.vatRate),
+      paymentTermsDays: Number(d.paymentTermsDays) || 30,
       note: d.note,
       rates: rates.map(({ courseTitle: _unused, ...r }) => r)
     };
@@ -2151,7 +2155,8 @@ const ContractEditor: React.FC<{
         </label>
         <label>Giá trị trước thuế (đ)<input type="number" min={0} className={input} value={d.value} onChange={(e) => setD({ ...d, value: e.target.value })} /></label>
         <label>VAT (%)<input type="number" min={0} max={100} className={input} value={d.vatRate} onChange={(e) => setD({ ...d, vatRate: e.target.value })} /></label>
-        <label className="md:col-span-2">Ghi chú<input className={input} value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} /></label>
+        <label>Hạn thanh toán (ngày sau hóa đơn)<input type="number" min={0} className={input} value={d.paymentTermsDays} onChange={(e) => setD({ ...d, paymentTermsDays: e.target.value })} /></label>
+        <label>Ghi chú<input className={input} value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} /></label>
       </div>
       <div className="font-bold text-slate-800 pt-2">Đơn giá (dùng khi lập nghiệm thu; không lấy học phí bán lẻ)</div>
       <div className="border border-slate-200 rounded-xl divide-y divide-slate-100">
@@ -2791,6 +2796,9 @@ export const CorporateOverviewPage: React.FC = () => {
         <Tile label="Chờ nghiệm thu" value={vnd(data.finance.awaitingAcceptance)} />
         <Tile label="Chi phí" value={vnd(data.finance.costs)} hint={k.costs} />
         <Tile label="Biên đóng góp" value={vnd(data.finance.margin)} hint={k.margin} />
+        <Tile label="Đã thu" value={vnd(data.finance.collected)} />
+        <Tile label="Còn phải thu" value={vnd(data.finance.outstanding)} />
+        <Tile label="Quá hạn" value={<span className={data.finance.overdue ? 'text-red-600' : ''}>{vnd(data.finance.overdue)}</span>} />
       </div>
       {data.alerts.length > 0 && (
         <div className={`${card} space-y-2`}>
@@ -2829,6 +2837,116 @@ export const CorporateOverviewPage: React.FC = () => {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+};
+
+// ================================================================ receivables (công nợ)
+interface ReceivableRow {
+  id: string;
+  title: string;
+  clientCode: string;
+  contractNumber: string;
+  invoiceNumber: string;
+  invoiceDate: string | null;
+  total: number;
+  paid: number;
+  outstanding: number;
+  dueDate: string | null;
+  daysLate: number;
+  bucket: string;
+}
+
+interface Receivables {
+  rows: ReceivableRow[];
+  buckets: { key: string; label: string; amount: number }[];
+  total: number;
+  paid: number;
+  outstanding: number;
+  overdue: number;
+}
+
+export const CorporateReceivablesPage: React.FC = () => {
+  const canRecord = useStaffCan('corporate.acceptance');
+  const { clients } = useClients();
+  const [client, setClient] = useState('');
+  const [data, setData] = useState<Receivables | null>(null);
+  const [paying, setPaying] = useState<ReceivableRow | null>(null);
+  const [form, setForm] = useState({ amount: '', receivedOn: new Date().toISOString().slice(0, 10), reference: '', note: '' });
+  const [error, setError] = useState('');
+  const load = useCallback(() => {
+    api.get<Receivables>(`/staff/corporate/receivables/${client ? `?client=${client}` : ''}`).then(setData).catch((e) => setError(errorText(e)));
+  }, [client]);
+  useEffect(load, [load]);
+  const record = async () => {
+    if (!paying) return;
+    setError('');
+    try {
+      await api.post('/staff/corporate/payments/', { batch: paying.id, amount: Number(form.amount), receivedOn: form.receivedOn, reference: form.reference, note: form.note });
+      setPaying(null);
+      load();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  if (!data) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
+  return (
+    <div className="space-y-4">
+      <div className={`${card} flex flex-wrap items-center justify-between gap-3`}>
+        <div>
+          <h2 className="font-bold text-slate-900">Công nợ đào tạo doanh nghiệp</h2>
+          <p className="text-xs text-slate-500">Các đợt khách hàng đã nghiệm thu (gồm VAT), tiền đã về và còn phải thu. Hạn thanh toán = ngày hóa đơn + số ngày theo hợp đồng. Sổ sách chính thức vẫn ở phần mềm kế toán.</p>
+        </div>
+        <select className={`${input} max-w-xs`} value={client} onChange={(e) => setClient(e.target.value)}>
+          <option value="">Mọi khách hàng</option>
+          {clients.map((c) => <option key={c.id} value={c.id}>{c.code} – {c.name}</option>)}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Tile label="Phải thu (đã nghiệm thu)" value={vnd(data.total)} />
+        <Tile label="Đã thu" value={vnd(data.paid)} />
+        <Tile label="Còn phải thu" value={vnd(data.outstanding)} />
+        <Tile label="Quá hạn" value={<span className={data.overdue ? 'text-red-600' : ''}>{vnd(data.overdue)}</span>} />
+        {data.buckets.map((b) => <Tile key={b.key} label={b.label} value={vnd(b.amount)} />)}
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className={`${card} p-0 overflow-x-auto`}>
+        {data.rows.length === 0 ? (
+          <p className="p-5 text-xs text-slate-500">Chưa có đợt nghiệm thu nào được khách hàng nghiệm thu.</p>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 text-slate-600 text-left">
+              <tr><th className="p-2">Đợt</th><th className="p-2">KH · HĐ</th><th className="p-2">Hóa đơn</th><th className="p-2">Hạn</th><th className="p-2 text-right">Phải thu</th><th className="p-2 text-right">Đã thu</th><th className="p-2 text-right">Còn lại</th><th className="p-2" /></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.rows.map((r) => (
+                <tr key={r.id}>
+                  <td className="p-2"><button type="button" className="font-bold text-left cursor-pointer" onClick={() => navigate(`/corporate/acceptance?id=${r.id}`)}>{r.title}</button></td>
+                  <td className="p-2">{r.clientCode} · {r.contractNumber}</td>
+                  <td className="p-2">{r.invoiceNumber || '–'}{r.invoiceDate ? ` · ${day(r.invoiceDate)}` : ''}</td>
+                  <td className={`p-2 ${r.daysLate ? 'text-red-600 font-bold' : ''}`}>{day(r.dueDate)}{r.daysLate ? ` · quá ${r.daysLate} ngày` : ''}</td>
+                  <td className="p-2 text-right">{vnd(r.total)}</td>
+                  <td className="p-2 text-right">{vnd(r.paid)}</td>
+                  <td className="p-2 text-right font-bold">{vnd(r.outstanding)}</td>
+                  <td className="p-2">{canRecord && r.outstanding > 0 && <button type="button" className="text-[#0073C1] font-bold cursor-pointer whitespace-nowrap" onClick={() => { setPaying(r); setForm({ ...form, amount: String(r.outstanding) }); }}>Ghi nhận tiền về</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {paying && (
+        <Modal title={`Tiền về – ${paying.title}`} onClose={() => setPaying(null)}>
+          <p className="text-slate-600">Còn phải thu {vnd(paying.outstanding)}. Không ghi nhận vượt số này.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <label>Số tiền (đ, gồm VAT) *<input type="number" min={1} max={paying.outstanding} className={input} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
+            <label>Ngày nhận *<input type="date" className={input} value={form.receivedOn} onChange={(e) => setForm({ ...form, receivedOn: e.target.value })} /></label>
+            <label>Chứng từ (UNC / mã giao dịch)<input className={input} value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} /></label>
+            <label>Ghi chú<input className={input} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+          </div>
+          <div className="flex justify-end"><button type="button" className={primary} disabled={!form.amount || !form.receivedOn} onClick={record}><Save className="w-4 h-4" /> Ghi nhận</button></div>
+        </Modal>
+      )}
     </div>
   );
 };

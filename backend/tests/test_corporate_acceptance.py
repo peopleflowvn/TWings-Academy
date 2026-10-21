@@ -136,3 +136,42 @@ def test_flow_accept_then_adjust_in_a_new_batch(setup, staff_client):
         c for row in load_workbook(BytesIO(xlsx.content)).active.iter_rows(values_only=True) for c in row
     ]
     assert "Tổng cộng" in values and 17_480_000 in values
+
+
+def test_receivables_payments_and_aging(setup, staff_client):
+    from apps.corporate.receivables import report
+
+    contract, cls = setup
+    corp = staff_client(Role.CORPORATE_TRAINING)
+    batch = corp.post(URL, {"contract": contract.pk, "title": "Đợt 1"}, format="json").json()
+    b = f"{URL}{batch['id']}/"
+    corp.post(f"{b}submit/")
+    corp.post(f"{b}approve/")
+    payments = "/api/v1/staff/corporate/payments/"
+    early = {"batch": batch["id"], "amount": 1, "receivedOn": "2026-11-01"}
+    assert corp.post(payments, early, format="json").status_code == 400  # not accepted yet
+
+    accepted = corp.post(
+        f"{b}accept/", {"invoiceNumber": "0009", "invoiceDate": "2026-11-01"}, format="json"
+    ).json()
+    assert accepted["dueDate"] == "01/12/2026"  # invoice date + 30 days (contract terms)
+    assert accepted["balance"]["outstanding"] == 17_480_000
+
+    part = {"batch": batch["id"], "amount": 10_000_000, "receivedOn": "2026-11-20", "reference": "UNC 123"}
+    assert corp.post(payments, part, format="json").status_code == 201
+    too_much = {**part, "amount": 7_480_001}
+    assert corp.post(payments, too_much, format="json").status_code == 400  # never more than owed
+    balance = corp.get(b).json()["balance"]
+    assert (balance["paid"], balance["outstanding"]) == (10_000_000, 7_480_000)
+
+    from apps.corporate.models import CorporateClient
+
+    clients = CorporateClient.objects.all()
+    late = report(clients, today=date(2027, 1, 15))  # 45 days after the due date
+    assert late["overdue"] == 7_480_000
+    assert next(x for x in late["buckets"] if x["key"] == "31_60")["amount"] == 7_480_000
+    assert report(clients, today=date(2026, 11, 25))["overdue"] == 0
+    assert (
+        staff_client(Role.FINANCE_ACCOUNTANT).get("/api/v1/staff/corporate/receivables/").json()["paid"]
+        == 10_000_000
+    )

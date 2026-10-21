@@ -17,6 +17,7 @@ from .models import (
     AcceptanceBatch,
     AttendanceAdjustment,
     ClassDocument,
+    ClientPayment,
     ClientShare,
     ClientUnit,
     CommunicationBatch,
@@ -37,6 +38,7 @@ from .serializers import (
     AttendanceAdjustmentSerializer,
     CancelSerializer,
     ClassDocumentSerializer,
+    ClientPaymentSerializer,
     ClientShareSerializer,
     ClientUnitSerializer,
     CommunicationBatchSerializer,
@@ -842,6 +844,64 @@ class ClientShareViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnlyMode
             share.save(update_fields=["revoked_at", "updated_at"])
             audit(request, "corporate.share_revoke", share)
         return Response(self.get_serializer(share).data)
+
+
+class ClientPaymentViewSet(
+    _Scoped, mixins.CreateModelMixin, mixins.DestroyModelMixin, viewsets.ReadOnlyModelViewSet
+):
+    """Money received for accepted acceptance batches (never more than what is still owed)."""
+
+    serializer_class = ClientPaymentSerializer
+    permission_classes = [ActionPermission]
+    permission_map = {
+        "list": ["corporate.view"],
+        "retrieve": ["corporate.view"],
+        "create": ["corporate.acceptance"],
+        "destroy": ["corporate.acceptance"],
+    }
+    client_path = "batch__contract__client"
+    filterset_fields = ["batch", "batch__contract", "batch__contract__client"]
+
+    def get_queryset(self):
+        return self.scoped(ClientPayment.objects.select_related("batch__contract__client", "created_by"))
+
+    def create(self, request, *args, **kwargs):
+        from .receivables import record_payment
+
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        self.check_client(data["batch"].contract.client)
+        payment = _rule(
+            lambda: record_payment(
+                data["batch"],
+                amount=data["amount"],
+                received_on=data["received_on"],
+                reference=data.get("reference", ""),
+                note=data.get("note", ""),
+                user=request.user,
+            )
+        )
+        audit(request, "corporate.payment_record", payment, amount=payment.amount)
+        return Response(self.get_serializer(payment).data, status=201)
+
+    def perform_destroy(self, instance):
+        audit(self.request, "corporate.payment_delete", instance, amount=instance.amount)
+        instance.delete()
+
+
+class ReceivablesView(APIView):
+    """Accepted batches with what was paid and what is still owed, by aging bucket."""
+
+    permission_classes = [require_perms("corporate.view")]
+
+    def get(self, request):
+        from .receivables import report
+
+        clients = permissions.scoped_clients(request.user)
+        client_id = request.query_params.get("client")
+        client = clients.filter(pk=client_id).first() if client_id else None
+        return Response(report(clients, client=client))
 
 
 class DashboardView(APIView):

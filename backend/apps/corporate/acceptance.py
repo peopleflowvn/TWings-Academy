@@ -215,7 +215,10 @@ def move(batch, to: str, *, user, invoice_number: str = "", invoice_date=None) -
         if to == "accepted":
             batch.accepted_at = timezone.now()
             batch.invoice_number, batch.invoice_date = invoice_number, invoice_date
-            fields += ["accepted_at", "invoice_number", "invoice_date"]
+            from .receivables import due_date_for
+
+            batch.due_date = due_date_for(batch, invoice_date)
+            fields += ["accepted_at", "invoice_number", "invoice_date", "due_date"]
         batch.status = to
         batch.save(update_fields=fields)
     return batch

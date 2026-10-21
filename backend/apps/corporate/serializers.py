@@ -8,6 +8,7 @@ from .models import (
     AcceptanceLine,
     AttendanceAdjustment,
     ClassDocument,
+    ClientPayment,
     ClientShare,
     ClientUnit,
     CommunicationBatch,
@@ -435,10 +436,18 @@ class AcceptanceBatchSerializer(serializers.ModelSerializer):
         exclude = ["updated_at"]
         read_only_fields = [f.name for f in AcceptanceBatch._meta.fields]
 
+    balance = serializers.SerializerMethodField()
+
     def get_totals(self, batch) -> dict:
         from .acceptance import totals
 
         return totals(batch)
+
+    def get_balance(self, batch) -> dict | None:
+        """Paid / outstanding / days late, once the client has accepted the batch."""
+        from .receivables import balance
+
+        return balance(batch) if batch.status == "accepted" else None
 
 
 class CreateAcceptanceSerializer(serializers.Serializer):
@@ -538,3 +547,14 @@ class ClientShareSerializer(serializers.ModelSerializer):
         model = ClientShare
         exclude = ["token_hash", "updated_at"]
         read_only_fields = ["expires_at", "revoked_at", "created_by", "last_viewed_at", "view_count"]
+
+
+class ClientPaymentSerializer(serializers.ModelSerializer):
+    batch_title = serializers.CharField(source="batch.title", read_only=True)
+    client_code = serializers.CharField(source="batch.contract.client.code", read_only=True)
+    created_by_name = serializers.CharField(source="created_by.name", read_only=True, default="")
+
+    class Meta:
+        model = ClientPayment
+        exclude = ["updated_at"]
+        read_only_fields = ["created_by"]

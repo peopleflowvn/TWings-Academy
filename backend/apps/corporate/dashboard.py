@@ -201,6 +201,9 @@ def overview(clients, *, client=None) -> dict:
     )
     if client:
         awaiting = awaiting.filter(batch__contract__client=client)
+    from .receivables import report as receivables
+
+    receivable = receivables(clients, client=client)
     accepted_total = sum(r["accepted_amount"] for r in rows)
     costs_total = sum(r["costs"] for r in rows)
     return {
@@ -222,8 +225,20 @@ def overview(clients, *, client=None) -> dict:
             "awaiting_acceptance": awaiting.aggregate(v=Sum("amount"))["v"] or 0,
             "costs": costs_total,
             "margin": accepted_total - costs_total,
+            "collected": receivable["paid"],
+            "outstanding": receivable["outstanding"],
+            "overdue": receivable["overdue"],
         },
         "classes": rows,
-        "alerts": alerts(classes),
+        "alerts": alerts(classes)
+        + [
+            {
+                "level": "error",
+                "acceptance": r["id"],
+                "text": f"{r['title']}: quá hạn thanh toán {r['days_late']} ngày",
+            }
+            for r in receivable["rows"]
+            if r["days_late"] > 0
+        ],
         "kpi_dictionary": KPI_DICTIONARY,
     }

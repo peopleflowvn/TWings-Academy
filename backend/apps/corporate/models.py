@@ -114,6 +114,7 @@ class ServiceContract(BaseModel):
     # Contract value before VAT, in đồng (management figure: acceptance decides what is billed).
     value = models.PositiveBigIntegerField(null=True, blank=True)
     vat_rate = models.PositiveSmallIntegerField(null=True, blank=True)  # %, e.g. 8 or 10
+    payment_terms_days = models.PositiveSmallIntegerField(default=30)  # invoice date + this = due date
     note = models.TextField(blank=True)
 
     class Meta:
@@ -556,6 +557,7 @@ class AcceptanceBatch(BaseModel):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft", db_index=True)
     invoice_number = models.CharField(max_length=50, blank=True)  # from the accounting software
     invoice_date = models.DateField(null=True, blank=True)
+    due_date = models.DateField(null=True, blank=True)  # set on acceptance: invoice date + contract terms
     note = models.TextField(blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
@@ -719,3 +721,22 @@ class ClientShare(BaseModel):
         from django.utils import timezone
 
         return self.revoked_at is None and self.expires_at > timezone.now()
+
+
+class ClientPayment(BaseModel):
+    """
+    Money received from a client for an accepted acceptance batch (from the bank statement or the
+    accounting software). Receivable = batch total incl. VAT − payments; never mixed with B2C tuition.
+    """
+
+    batch = models.ForeignKey(AcceptanceBatch, on_delete=models.PROTECT, related_name="payments")
+    amount = models.PositiveBigIntegerField()  # đồng, VAT included
+    received_on = models.DateField()
+    reference = models.CharField(max_length=200, blank=True)  # bank transaction / accounting voucher
+    note = models.CharField(max_length=500, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["-received_on", "-created_at"]

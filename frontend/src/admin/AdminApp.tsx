@@ -80,7 +80,8 @@ import {
   CorporateClassesPage,
   CorporateClientsPage,
   CorporateOverviewPage,
-  CorporatePlansPage
+  CorporatePlansPage,
+  CorporateReceivablesPage
 } from './pages/CorporatePages';
 
 interface NavItem {
@@ -145,6 +146,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { path: '/corporate/classes', label: 'Lớp doanh nghiệp', icon: Users, perms: ['corporate.view'] },
       { path: '/corporate/plans', label: 'Kế hoạch đào tạo', icon: ClipboardList, perms: ['corporate.view'] },
       { path: '/corporate/acceptance', label: 'Nghiệm thu', icon: FileCheck2, perms: ['corporate.view'] },
+      { path: '/corporate/receivables', label: 'Công nợ', icon: Receipt, perms: ['corporate.view'] },
       { path: '/corporate/clients', label: 'Khách hàng & hợp đồng', icon: Handshake, perms: ['corporate.view'] }
     ]
   },
@@ -324,6 +326,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <CorporatePlansPage courses={corporateCourses} />;
       case '/corporate/acceptance':
         return <CorporateAcceptancePage />;
+      case '/corporate/receivables':
+        return <CorporateReceivablesPage />;
       case '/corporate/clients':
         return <CorporateClientsPage courses={corporateCourses} />;
       case '/jobs/referrals':

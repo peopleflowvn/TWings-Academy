@@ -296,6 +296,19 @@ def costs_and_overview(page: Page):
     page.locator("tr", has_text="NHE2E – Bán hàng – Lớp 1").locator("text=1.500.000").wait_for(timeout=20000)
 
 
+@step
+def receivables_payment(page: Page):
+    # The accepted batch (2.000.000 đ, no VAT): 500.000 đ received -> 1.500.000 đ still owed.
+    page.goto(f"{BASE}/app/corporate/receivables")
+    page.wait_for_selector("text=Công nợ đào tạo doanh nghiệp", timeout=20000)
+    page.locator("tr", has_text="Nghiệm thu đợt 1").locator("button:has-text('Ghi nhận tiền về')").click()
+    m = modal(page, "Tiền về – Nghiệm thu đợt 1")
+    field(m, "Số tiền").fill("500000")
+    field(m, "Chứng từ").fill("UNC-E2E")
+    m.locator("button:has-text('Ghi nhận')").click()
+    page.locator("tr", has_text="Nghiệm thu đợt 1").locator("td:has-text('1.500.000')").wait_for(timeout=20000)
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
