@@ -12,6 +12,24 @@ học, lớp/buổi, Moodle, email, báo cáo và CI/CD. Không dựng hệ TMS 
 > nghiệm thu MSB/ROX). Các nghiệp vụ tài chính sâu (ngân sách, tạm ứng, mua sắm, phân bổ, công nợ) làm ở **giai đoạn
 > 2 (4–6 tuần)**. Trong 08 tuần, các nghiệp vụ này được ghi nhận thủ công có nhật ký, ghi rõ trong biên bản.
 
+## TIẾN ĐỘ THỰC HIỆN (cập nhật 21/10/2026)
+
+Làm cùng AI agent nên nhanh hơn nhiều so với dự kiến 8 tuần. Đã có trên `main` (CI xanh, đã deploy):
+
+| Tuần (theo kế hoạch) | Trạng thái | Ghi chú |
+|---|---|---|
+| 1. Nền tích hợp | ✅ | `LmsEnrollment` dùng chung, SSO B2B, `Cohort.audience`, vai trò & quyền |
+| 2. Khách hàng & kế hoạch | ✅ | Hợp đồng, đơn giá, kế hoạch có phiên bản, API + `/app` |
+| 3. DSHV & ghi danh | ✅ | Nhập Excel (DSHV, kế hoạch), CBQL theo hiệu lực, thư mời + `.ics`, email CC/BCC |
+| 4. Điểm danh & khảo sát | ✅ | QR xoay vòng (`local_twings`), điều chỉnh có duyệt, khảo sát `mod_feedback` |
+| 5. Kết quả & truyền thông | ✅ | `ResultSnapshot`, lô thư kết quả có duyệt, đính chính |
+| 6. Nghiệm thu & hồ sơ | ✅ (mẫu chung) | Bảng kê nghiệm thu mẫu TWings; **mẫu MSB/ROX chờ file thật (A1, A2)** |
+| 7. Dashboard & chi phí | ✅ | Tổng quan B2B, cảnh báo đối soát, từ điển KPI, chi phí / tạm ứng, link báo cáo khách hàng |
+| 8. E2E & hardening | 🔄 | E2E 16 bước B2B trong CI; còn: diễn tập backup, đo tải QR, UAT với dữ liệu thật |
+
+Còn mở: các câu ở [TMS_CAU_HOI_CAN_TRA_LOI.md](TMS_CAU_HOI_CAN_TRA_LOI.md) (mỗi câu có mặc định đang chạy);
+giai đoạn 2 (ngân sách / cam kết, phân bổ chi phí, công nợ đầy đủ, PDF, lịch Outlook) theo mục 9.
+
 ## 0. THAY ĐỔI SO VỚI V5
 
 | # | V5 | V6 | Lý do (bằng chứng trong code) |

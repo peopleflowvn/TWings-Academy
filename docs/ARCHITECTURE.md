@@ -110,7 +110,7 @@ của Django, Web Service của Moodle, OAuth2. Nhờ vậy mỗi phần build, 
 | `crm` | Lead và đơn, chiến dịch, hoạt động, việc cần làm, lịch hẹn, hóa đơn VAT, trả góp, giới thiệu việc làm, link đối tác | `Order`, `AdmissionCampaign`, `Activity`, `FollowupTask`, `Appointment`, `Installment`, `Placement`, `PartnerShare` |
 | `payments` | VietQR, webhook ngân hàng, xác nhận thủ công, hoàn tiền, biên nhận | `BankTransaction`, `Payment`, `Refund` |
 | `notifications` | Mẫu email, gửi qua Resend, trạng thái giao nhận, email theo hành trình | `EmailTemplate`, `EmailLog`, `EmailEvent` |
-| `corporate` | Đào tạo doanh nghiệp (B2B): khách hàng, pháp nhân/đơn vị, nhân sự + CBQL theo hiệu lực, lớp doanh nghiệp (1–1 `Cohort` có `audience=corporate`), học viên được công ty cử đi học (không qua `Order`). Kế hoạch: `docs/KE_HOACH_TICH_HOP_TMS_VAO_TWINGS_ACADEMY_V6.md` | `CorporateClient`, `ClientUnit`, `CorporateEmployee`, `CorporateClass`, `CorporateEnrollment` |
+| `corporate` | Đào tạo doanh nghiệp (B2B): khách hàng, pháp nhân/đơn vị, nhân sự + CBQL theo hiệu lực, lớp doanh nghiệp (1–1 `Cohort` có `audience=corporate`), học viên được công ty cử đi học (không qua `Order`). Kế hoạch: `docs/KE_HOACH_TICH_HOP_TMS_VAO_TWINGS_ACADEMY_V6.md` | `CorporateClient`, `ServiceContract`, `TrainingPlan`, `CorporateClass`, `CorporateEnrollment`, `ResultSnapshot`, `AcceptanceBatch` (đủ: mục 10.8) |
 | `lms` | Ghi danh Moodle, đợt học thành khóa Moodle, đồng bộ tiến độ/chuyên cần/điểm, rủi ro, chứng chỉ. `LmsEnrollment` có đúng một nguồn: `order` (B2C) hoặc `corporate_enrollment` (B2B) | `LmsEnrollment`, `Certificate` |
 | `sso` | Nhà cung cấp OAuth2 cho Moodle, đăng nhập bằng mã email, tài khoản học viên | – (cache) |
 
@@ -352,6 +352,24 @@ liệu tóm tắt phục vụ nghiệp vụ** (tư vấn, tài chính, việc l�
 | Cảnh báo rủi ro | Giữ ở TWings (kết hợp học phí, tư vấn viên). Bật thêm Analytics của Moodle cho giảng viên |
 | Chế độ demo của frontend | Bỏ khỏi bản production: mỗi màn hình chỉ một nguồn dữ liệu (API) |
 | `/sales/pipeline` (màn hình "cũ" xem tất cả lead) trùng với pipeline theo chiến dịch; quản lý đợt khai giảng thứ hai trong CRM | **Đã làm (09/10/2026):** một pipeline (`LeadPipelineView`: tất cả lead / chưa gắn chiến dịch / từng chiến dịch; kanban + bảng chi tiết, lọc khóa, lớp, giai đoạn, học phí, mức quan tâm, PIC, vị trí; xuất CSV). Lead thuộc chiến dịch theo liên kết thật (`Order.campaign` hoặc mã chiến dịch), không đoán theo chuỗi. `/sales/pipeline` chuyển hướng. Gỡ trình quản lý đợt khai giảng trong CRM (ghi đè / xóa cùng dữ liệu với `/sales/intakes`), trình **giả lập webhook VietQR** (ghi nhận thanh toán thật khi không có tiền), hàng đợi "AI Agent" giả. Kéo thẻ không còn đặt "Đã đóng phí". `CMSCRMOrdersTab` 2.198 → khoảng 240 dòng |
+
+### 10.8 Đào tạo doanh nghiệp (B2B, app `corporate`)
+
+**Đã làm (21/10/2026)**, kế hoạch: [KE_HOACH_TICH_HOP_TMS_VAO_TWINGS_ACADEMY_V6.md](KE_HOACH_TICH_HOP_TMS_VAO_TWINGS_ACADEMY_V6.md),
+hướng dẫn: [TMS_HUONG_DAN_SU_DUNG.md](TMS_HUONG_DAN_SU_DUNG.md).
+
+| Phần | Cách làm |
+|---|---|
+| Ranh giới với B2C | Không `Order` / `Payment`. Lớp = `Cohort(audience=corporate)` + `CorporateClass`; mọi truy vấn bán hàng qua `Cohort.objects.public()`. Doanh thu B2B = nghiệm thu, không cộng vào học phí |
+| Học trên Moodle | `LmsEnrollment` có đúng một nguồn (`order` hoặc `corporate_enrollment`); ghi danh, đồng bộ, rủi ro, chứng chỉ dùng chung. SSO nhận học viên doanh nghiệp còn trong danh sách |
+| Điểm danh | QR xoay vòng của `mod_attendance` bật từng phiên qua hàm WS `local_twings_attendance_selfmark`; TWings lưu từng buổi (`AttendanceRecord`) + điều chỉnh có duyệt (`AttendanceAdjustment`) |
+| Khảo sát | Hoạt động Feedback (`mod_feedback`) trong khóa mẫu, đọc về `ClassSurvey` |
+| Kết quả | `ResultSnapshot` có phiên bản, điều kiện hoàn thành của lớp; phát hành = chốt lớp, bất biến |
+| Email | Mỗi học viên một thư, CC CBQL theo ngày (lịch sử `CorporateEmployee`), chính sách tên miền; thư mời kèm `.ics`; lô thư kết quả có duyệt (`CommunicationBatch`) |
+| Nghiệm thu | `AcceptanceBatch/Line`: khối lượng từ kết quả × `ContractRate`; đợt đã nghiệm thu bất biến, sửa = dòng điều chỉnh |
+| Excel | `openpyxl`: nhập DSHV / kế hoạch (nhận cột theo tiêu đề hoặc `ImportTemplate`, xem trước, chống nhập trùng), xuất kết quả và bảng kê nghiệm thu |
+| Phạm vi khách hàng | `scoped_clients(user)` cho mọi truy vấn (hiện: ai có `corporate.view` thấy mọi khách hàng). Khách hàng xem qua link `/doi-tac/dn/<token>/` (chỉ đọc, có hạn, chỉ hash token được lưu) |
+| Quyền | Vai trò "Đào tạo doanh nghiệp" + `corporate.*`; Kế toán có xem + nghiệm thu |
 
 ## 11. Lộ trình
 
