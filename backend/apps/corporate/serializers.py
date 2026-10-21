@@ -4,6 +4,7 @@ from rest_framework import serializers
 from apps.catalog.models import Instructor
 
 from .models import (
+    AttendanceAdjustment,
     ClientUnit,
     ContractRate,
     CorporateClass,
@@ -309,3 +310,31 @@ class ImportUploadSerializer(serializers.Serializer):
         queryset=ImportTemplate.objects.all(), required=False, allow_null=True
     )
     file = serializers.FileField()
+
+
+class AdjustmentRequestSerializer(serializers.Serializer):
+    enrollment = serializers.CharField()
+    session = serializers.CharField()
+    status = serializers.ChoiceField(choices=AttendanceAdjustment.STATUS_CHOICES)
+    reason = serializers.CharField(max_length=500)
+    evidence = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
+
+
+class AttendanceAdjustmentSerializer(serializers.ModelSerializer):
+    learner_name = serializers.CharField(source="enrollment.learner.full_name", read_only=True)
+    class_name = serializers.CharField(source="enrollment.corporate_class.cohort.name", read_only=True)
+    session_title = serializers.CharField(source="session.title", read_only=True)
+    session_starts_at = serializers.DateTimeField(source="session.starts_at", read_only=True)
+    status_label = serializers.CharField(source="get_status_display", read_only=True)
+    requested_by_name = serializers.CharField(source="requested_by.name", read_only=True, default="")
+    decided_by_name = serializers.CharField(source="decided_by.name", read_only=True, default="")
+
+    class Meta:
+        model = AttendanceAdjustment
+        exclude = ["updated_at"]
+        read_only_fields = [f.name for f in AttendanceAdjustment._meta.fields]
+
+
+class SelfmarkSerializer(serializers.Serializer):
+    session = serializers.CharField()
+    enabled = serializers.BooleanField()

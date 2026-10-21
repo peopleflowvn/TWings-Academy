@@ -8,9 +8,9 @@
  * Every list is limited by the API to the clients the user may see.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, FileSpreadsheet, Loader2, Mail, Plus, Save, UserMinus, X } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, FileSpreadsheet, Loader2, Mail, Plus, QrCode, Save, UserMinus, X, XCircle } from 'lucide-react';
 import { api, apiFetch, ApiError, Paginated } from '../../lib/api';
-import { useStaffCan } from '../../lib/lms';
+import { openInMoodle, useStaffCan } from '../../lib/lms';
 import { viDateToIso } from '../../lib/serverCollection';
 import { navigate, useAppSearch } from '../router';
 import { SessionsEditor } from './IntakesPage';
@@ -117,6 +117,7 @@ interface CorpClass {
   planLine: string | null;
   status: string;
   issueCertificate: boolean;
+  lockedAt: string | null;
   note: string;
   learners: number;
   sessions: number;
@@ -662,6 +663,191 @@ const InvitationDialog: React.FC<{ cls: CorpClass; onClose: () => void; onSent: 
   );
 };
 
+// ---------------------------------------------------------------- attendance
+interface AttendanceCell {
+  status: string;
+  attended: boolean | null;
+  source: 'moodle' | 'adjusted' | 'missing' | 'none';
+  pending?: string;
+}
+
+interface AttendanceSheet {
+  sessions: { id: string; title: string; startsAt: string; endsAt: string; synced: boolean; qrUrl: string }[];
+  rows: { enrollment: string; name: string; email: string; cells: Record<string, AttendanceCell>; taken: number; attended: number; rate: number | null }[];
+}
+
+interface Adjustment {
+  id: string;
+  enrollment: string;
+  learnerName: string;
+  sessionTitle: string;
+  sessionStartsAt: string;
+  statusLabel: string;
+  reason: string;
+  evidence: string;
+  requestedByName: string;
+  decision: 'pending' | 'approved' | 'rejected';
+  decidedByName: string;
+}
+
+const ADJUST_STATUS: [string, string][] = [
+  ['present', 'Có mặt'],
+  ['late', 'Đi muộn'],
+  ['excused', 'Vắng có phép'],
+  ['absent', 'Vắng'],
+  ['makeup', 'Học bù']
+];
+const when = (iso: string) => new Date(iso).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+
+const AttendanceTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
+  const canAdjust = useStaffCan('corporate.attendance_adjust');
+  const canApprove = useStaffCan('corporate.approve');
+  const [sheet, setSheet] = useState<AttendanceSheet | null>(null);
+  const [pending, setPending] = useState<Adjustment[]>([]);
+  const [editing, setEditing] = useState<{ enrollment: string; name: string; session: string; title: string } | null>(null);
+  const [form, setForm] = useState({ status: 'late', reason: '', evidence: '' });
+  const [error, setError] = useState('');
+
+  const load = useCallback(() => {
+    api.get<AttendanceSheet>(`/staff/corporate/classes/${cls.id}/attendance/`).then(setSheet).catch((e) => setError(errorText(e)));
+    api
+      .get<Paginated<Adjustment>>(`/staff/corporate/attendance-adjustments/?enrollment__corporate_class=${cls.id}&decision=pending&pageSize=200`)
+      .then((res) => setPending(res.results))
+      .catch(() => setPending([]));
+  }, [cls.id]);
+  useEffect(load, [load]);
+
+  const request = async () => {
+    if (!editing) return;
+    try {
+      await api.post(`/staff/corporate/classes/${cls.id}/attendance/`, { enrollment: editing.enrollment, session: editing.session, ...form });
+      setEditing(null);
+      setForm({ status: 'late', reason: '', evidence: '' });
+      load();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  const decide = async (id: string, approve: boolean) => {
+    try {
+      await api.post(`/staff/corporate/attendance-adjustments/${id}/${approve ? 'approve' : 'reject'}/`);
+      load();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+
+  if (!sheet) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
+  const locked = Boolean(cls.lockedAt);
+  return (
+    <div className="space-y-4">
+      <div className={`${card} space-y-2`}>
+        <div className="font-bold text-sm text-slate-800">Buổi học & mã QR điểm danh</div>
+        <p className="text-xs text-slate-500">
+          Học viên tự điểm danh bằng cách quét mã QR xoay vòng (đổi liên tục, chụp lại không dùng được) do giảng viên / PIC mở trên Moodle ở đầu buổi;
+          trạng thái có mặt / đi muộn theo giờ quét. Giảng viên vẫn điểm danh tay được trên Moodle. Số liệu cập nhật về đây sau mỗi lần điểm danh.
+        </p>
+        {sheet.sessions.length === 0 ? (
+          <p className="text-xs text-slate-500">Lớp chưa có lịch học.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {sheet.sessions.map((s) => (
+              <div key={s.id} className="border border-slate-200 rounded-xl px-3 py-2 text-xs flex items-center gap-2">
+                <span><strong>{s.title || 'Buổi học'}</strong> · {when(s.startsAt)}</span>
+                {s.qrUrl ? (
+                  <button type="button" className="text-[#0073C1] font-bold flex items-center gap-1 cursor-pointer" onClick={() => openInMoodle(s.qrUrl)}>
+                    <QrCode className="w-4 h-4" /> Mở QR
+                  </button>
+                ) : (
+                  <span className="text-slate-400">chưa lên Moodle</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {pending.length > 0 && (
+        <div className={`${card} space-y-2`}>
+          <div className="font-bold text-sm text-slate-800">Điều chỉnh chờ duyệt ({pending.length})</div>
+          <ul className="text-xs divide-y divide-slate-100">
+            {pending.map((a) => (
+              <li key={a.id} className="py-2 flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  <strong>{a.learnerName}</strong> · {a.sessionTitle || 'Buổi học'} {when(a.sessionStartsAt)} → <strong>{a.statusLabel}</strong> · {a.reason}
+                  {a.evidence ? ` · ${a.evidence}` : ''} <span className="text-slate-500">(đề nghị: {a.requestedByName || '–'})</span>
+                </span>
+                {canApprove && !locked && (
+                  <span className="flex gap-2">
+                    <button type="button" className="text-emerald-700 font-bold flex items-center gap-1 cursor-pointer" onClick={() => decide(a.id, true)}><CheckCircle2 className="w-4 h-4" /> Duyệt</button>
+                    <button type="button" className="text-red-600 font-bold flex items-center gap-1 cursor-pointer" onClick={() => decide(a.id, false)}><XCircle className="w-4 h-4" /> Từ chối</button>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+
+      <div className={`${card} p-0 overflow-x-auto`}>
+        <table className="w-full text-xs">
+          <thead className="bg-slate-50 text-slate-600 text-left">
+            <tr>
+              <th className="p-2 sticky left-0 bg-slate-50">Học viên</th>
+              {sheet.sessions.map((s, i) => <th key={s.id} className="p-2 text-center whitespace-nowrap" title={s.title}>B{i + 1}<div className="font-normal">{when(s.startsAt).split(' ')[1] || ''}</div></th>)}
+              <th className="p-2 text-right">Chuyên cần</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {sheet.rows.map((r) => (
+              <tr key={r.enrollment}>
+                <td className="p-2 sticky left-0 bg-white font-bold whitespace-nowrap">{r.name}</td>
+                {sheet.sessions.map((s) => {
+                  const c = r.cells[s.id];
+                  const tone = c.attended === true ? 'text-emerald-700' : c.attended === false ? 'text-red-600' : 'text-slate-400';
+                  const label = c.source === 'none' ? '·' : c.source === 'missing' ? '?' : c.status || '–';
+                  return (
+                    <td key={s.id} className="p-2 text-center">
+                      <button
+                        type="button"
+                        disabled={!canAdjust || locked || c.source === 'none'}
+                        title={c.source === 'adjusted' ? 'Đã điều chỉnh (đã duyệt)' : c.source === 'missing' ? 'Buổi đã qua, chưa có điểm danh' : 'Bấm để đề nghị điều chỉnh'}
+                        className={`${tone} font-bold cursor-pointer disabled:cursor-default ${c.source === 'adjusted' ? 'underline decoration-dotted' : ''}`}
+                        onClick={() => setEditing({ enrollment: r.enrollment, name: r.name, session: s.id, title: `${s.title || 'Buổi học'} ${when(s.startsAt)}` })}
+                      >
+                        {label}{c.pending ? '*' : ''}
+                      </button>
+                    </td>
+                  );
+                })}
+                <td className="p-2 text-right font-bold">{r.rate != null ? `${r.rate}%` : '–'} <span className="font-normal text-slate-500">({r.attended}/{r.taken})</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="p-3 text-[11px] text-slate-500">? buổi đã qua chưa có điểm danh · * có đề nghị điều chỉnh chờ duyệt · gạch chân: đã điều chỉnh. Chuyên cần tính trên trạng thái đã xác minh, không đếm số lần quét.</p>
+      </div>
+
+      {editing && (
+        <Modal title={`Điều chỉnh điểm danh – ${editing.name}`} onClose={() => setEditing(null)}>
+          <p className="text-slate-600">{editing.title}. Điều chỉnh chỉ được tính sau khi được duyệt; lịch sử được giữ.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <label>Trạng thái
+              <select className={input} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                {ADJUST_STATUS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+              </select>
+            </label>
+            <label className="md:col-span-2">Lý do *<input className={input} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} /></label>
+            <label className="md:col-span-3">Bằng chứng (link / số văn bản)<input className={input} value={form.evidence} onChange={(e) => setForm({ ...form, evidence: e.target.value })} /></label>
+          </div>
+          <div className="flex justify-end"><button type="button" className={primary} disabled={!form.reason.trim()} onClick={request}><Save className="w-4 h-4" /> Gửi đề nghị</button></div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
 const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, courses }) => {
   const canEdit = useStaffCan('corporate.classes');
   const canSend = useStaffCan('corporate.communications_send');
@@ -670,7 +856,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
   const { clients } = useClients();
   const [cls, setCls] = useState<CorpClass | null>(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'learners' | 'overview'>('learners');
+  const [tab, setTab] = useState<'learners' | 'attendance' | 'overview'>('learners');
   const [editing, setEditing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
 
@@ -713,7 +899,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         )}
       </div>
       <div className="flex gap-1 border-b border-slate-200">
-        {([['learners', 'Học viên'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
+        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
           <button key={key} type="button" onClick={() => setTab(key)}
             className={`px-4 py-2 text-xs font-bold cursor-pointer border-b-2 ${tab === key ? 'border-[#0073C1] text-[#0073C1]' : 'border-transparent text-slate-500'}`}>
             {label}
@@ -722,13 +908,15 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
       </div>
       {tab === 'learners' ? (
         <LearnersTab cls={cls} canEdit={canEdit} onChanged={load} version={listVersion} />
+      ) : tab === 'attendance' ? (
+        <AttendanceTab cls={cls} />
       ) : (
         <div className={`${card} text-xs space-y-2`}>
           <p><strong>Chứng chỉ TWings:</strong> {cls.issueCertificate ? 'Có cấp khi hoàn thành' : 'Không cấp (theo hợp đồng)'}</p>
           <p><strong>Lịch:</strong> {cls.scheduleText || 'Chưa có mô tả lịch'} · {cls.sessions} buổi (điểm danh trên Moodle, mỗi buổi một phiên)</p>
           <p><strong>Giảng viên chính:</strong> {cls.leadInstructorName || '–'}</p>
           {cls.note && <p><strong>Ghi chú:</strong> {cls.note}</p>}
-          <p className="text-slate-500">Điểm danh QR, khảo sát và chốt kết quả sẽ có ở các bước tiếp theo của kế hoạch tích hợp.</p>
+          <p className="text-slate-500">Khảo sát và chốt kết quả sẽ có ở các bước tiếp theo của kế hoạch tích hợp.</p>
         </div>
       )}
       {inviting && <InvitationDialog cls={cls} onClose={() => setInviting(false)} onSent={() => { load(); setListVersion((v) => v + 1); }} />}

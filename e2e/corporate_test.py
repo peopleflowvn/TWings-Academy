@@ -160,6 +160,15 @@ def invitations_with_manager_in_cc(page: Page):
 
 
 @step
+def attendance_tab(page: Page):
+    page.locator("button:has-text('Điểm danh')").first.click()
+    page.wait_for_selector("text=Buổi học & mã QR điểm danh", timeout=20000)
+    # Without Moodle (CI) the sessions are listed but not on Moodle yet; the sheet lists the learners.
+    assert page.locator("text=chưa lên Moodle").count() == 3, "three sessions"
+    assert page.locator("td:has-text('Trần Thị E2E')").count() == 1, "learner row in the sheet"
+
+
+@step
 def corporate_class_is_not_an_intake_for_sale(page: Page):
     page.goto(f"{BASE}/app/sales/intakes")
     page.wait_for_selector("text=E2E K9", timeout=20000)

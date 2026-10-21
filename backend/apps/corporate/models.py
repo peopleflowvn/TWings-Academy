@@ -355,3 +355,57 @@ class ImportBatch(BaseModel):
 
     def __str__(self):
         return f"{self.kind} {self.file_name}"
+
+
+class AttendanceRecord(BaseModel):
+    """One learner's mark for one session as Moodle has it (synced; never edited in TWings)."""
+
+    enrollment = models.ForeignKey(CorporateEnrollment, on_delete=models.CASCADE, related_name="attendance")
+    session = models.ForeignKey("catalog.CohortSession", on_delete=models.CASCADE, related_name="+")
+    acronym = models.CharField(max_length=10, blank=True)  # Moodle status, e.g. P / L / E / A
+    description = models.CharField(max_length=100, blank=True)
+    attended = models.BooleanField(default=False)
+    synced_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["enrollment", "session"], name="uniq_attendance_record")
+        ]
+
+
+class AttendanceAdjustment(BaseModel):
+    """
+    A correction of one session's attendance (late, excused, make-up session, wrong scan...), with the
+    reason and evidence. Counts once approved; the latest approved one wins; history is kept.
+    """
+
+    STATUS_CHOICES = [
+        ("present", "Có mặt"),
+        ("late", "Đi muộn"),
+        ("excused", "Vắng có phép"),
+        ("absent", "Vắng"),
+        ("makeup", "Học bù"),
+    ]
+    ATTENDED = ("present", "late", "makeup")
+    DECISION_CHOICES = [("pending", "Chờ duyệt"), ("approved", "Đã duyệt"), ("rejected", "Từ chối")]
+
+    enrollment = models.ForeignKey(CorporateEnrollment, on_delete=models.CASCADE, related_name="adjustments")
+    session = models.ForeignKey("catalog.CohortSession", on_delete=models.CASCADE, related_name="+")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    reason = models.CharField(max_length=500)
+    evidence = models.CharField(max_length=500, blank=True)  # link or reference of the proof
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    decision = models.CharField(max_length=20, choices=DECISION_CHOICES, default="pending", db_index=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def attended(self) -> bool:
+        return self.status in self.ATTENDED

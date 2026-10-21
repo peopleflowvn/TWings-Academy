@@ -109,12 +109,17 @@ def test_roster_preview_then_confirm(corp, cls):
 
 def test_same_file_twice_and_a_changed_manager(corp, cls):
     rows = [[1, "Lê Văn Cường", "NV02", "cuong@nhm.test", "", "", "Lê Quản Lý", "ql@nhm.test"]]
+    content = roster(*rows).read()  # the very same file twice (a rebuilt workbook has a new timestamp)
     first = corp.post(
-        URL, {"kind": "roster", "corporateClass": cls.pk, "file": roster(*rows)}, format="multipart"
+        URL,
+        {"kind": "roster", "corporateClass": cls.pk, "file": SimpleUploadedFile("dshv.xlsx", content)},
+        format="multipart",
     )
     corp.post(f"{URL}{first.json()['id']}/confirm/")
     again = corp.post(
-        URL, {"kind": "roster", "corporateClass": cls.pk, "file": roster(*rows)}, format="multipart"
+        URL,
+        {"kind": "roster", "corporateClass": cls.pk, "file": SimpleUploadedFile("dshv.xlsx", content)},
+        format="multipart",
     )
     assert again.status_code == 400 and "đã được nhập" in again.json()["detail"]
 

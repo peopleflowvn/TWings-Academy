@@ -46,6 +46,8 @@ $settings = [
 foreach ($settings as $name => $value) {
     set_config($name, $value);
 }
+// Students may mark their own attendance (corporate classes check in by rotating QR code, per session).
+set_config('studentscanmark', 1, 'attendance');
 // The site administrator is the sender shown on system e-mails and administrative account.
 $admin_email = getenv('MOODLE_ADMIN_EMAIL') ?: 'tuyendung@tntalent.vn';
 $admin_updates = ['id' => $admin->id];
@@ -216,6 +218,8 @@ $functions = [
     // Attendance (mod_attendance) per intake, and the gradebook per learner
     'mod_attendance_add_attendance', 'mod_attendance_add_session', 'mod_attendance_remove_session',
     'mod_attendance_get_session', 'gradereport_user_get_grade_items',
+    // Corporate classes: students check in by rotating QR code (local_twings sets it on a session)
+    'local_twings_attendance_selfmark',
     // Link /app straight to the course's Announcements forum (class announcements live in Moodle)
     'mod_forum_get_forums_by_courses',
 ];

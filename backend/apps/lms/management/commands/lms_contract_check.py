@@ -149,6 +149,21 @@ class Command(BaseCommand):
         )
         self.expect("corporate learner can sign in (SSO)", identity_for_email(learner.email) is not None)
 
+        from apps.catalog.intakes import sync_sessions
+        from apps.lms.learning import set_selfmark
+
+        start = timezone.now() + timedelta(days=3)
+        CohortSession.objects.create(
+            cohort=cohort, title="Buổi DN", starts_at=start, ends_at=start + timedelta(hours=2)
+        )
+        sync_sessions(cohort)
+        session = cohort.sessions.get()
+        self.expect(
+            "corporate session -> attendance session with QR self check-in (local_twings)",
+            bool(session.moodle_attendance_session_id) and set_selfmark(session, True),
+        )
+        self.expect("QR self check-in can be turned off", set_selfmark(session, False))
+
         listing.status = "cancelled"
         listing.save()
         revoke_corporate(listing.pk)

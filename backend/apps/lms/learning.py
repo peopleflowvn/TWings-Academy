@@ -69,12 +69,46 @@ def sync_attendance_sessions(cohort, moodle_course_id: int) -> int:
         session.moodle_attendance_session_id = res["sessionid"]
         session.save(update_fields=["moodle_attendance_session_id", "updated_at"])
         created += 1
+        if cohort.audience == cohort.AUDIENCE_CORPORATE:
+            set_selfmark(session, True)
     return created
 
 
-def read_attendance(cohort) -> dict[int, tuple[int, int]]:
-    """{moodle user id: (sessions taken, attended)} over the intake's past sessions."""
-    stats: dict[int, list[int]] = {}
+def set_selfmark(session, enabled: bool) -> bool:
+    """
+    Learners check in themselves by scanning the session's rotating QR code (shown by the teacher from
+    qr_url); the status follows the scan time. On by default for corporate classes. False if Moodle
+    refused (the session still works with teacher-taken attendance).
+    """
+    try:
+        moodle.call(
+            "local_twings_attendance_selfmark",
+            sessionid=session.moodle_attendance_session_id,
+            enabled=int(enabled),
+            rotateqrcode=1,
+            autoassignstatus=1,
+        )
+    except moodle.MoodleError as exc:
+        logger.warning(
+            "QR self-marking for attendance session %s failed: %s", session.moodle_attendance_session_id, exc
+        )
+        return False
+    return True
+
+
+def qr_url(session) -> str:
+    """The page that shows the session's rotating QR code (teacher / class PIC, signed in to Moodle)."""
+    from .overview import LEARN_PATH
+
+    return f"{LEARN_PATH}/mod/attendance/password.php?session={session.moodle_attendance_session_id}"
+
+
+def read_attendance_marks(cohort) -> list[dict]:
+    """
+    Every mark of the intake's past sessions: {"session", "user" (Moodle id), "acronym", "description",
+    "attended"}. Present / late count as attended (status grade > 0), as Moodle grades them.
+    """
+    marks = []
     past = cohort.sessions.filter(moodle_attendance_session_id__isnull=False, starts_at__lte=timezone.now())
     for session in past:
         try:
@@ -82,13 +116,30 @@ def read_attendance(cohort) -> dict[int, tuple[int, int]]:
         except moodle.MoodleError as exc:
             logger.warning("Attendance session %s unreadable: %s", session.moodle_attendance_session_id, exc)
             continue
-        if not data.get("lasttaken"):
-            continue  # not marked yet
-        grade_of = {int(s["id"]): float(s.get("grade") or 0) for s in data.get("statuses", [])}
+        if not data.get("lasttaken") and not data.get("attendance_log"):
+            continue  # not marked yet (self check-ins mark without "taking" the session)
+        statuses = {int(s["id"]): s for s in data.get("statuses", [])}
         for log in data.get("attendance_log", []):
-            row = stats.setdefault(int(log["studentid"]), [0, 0])
-            row[0] += 1
-            row[1] += int(grade_of.get(int(log["statusid"] or 0), 0) > 0)  # present / late count
+            status = statuses.get(int(log["statusid"] or 0), {})
+            marks.append(
+                {
+                    "session": session,
+                    "user": int(log["studentid"]),
+                    "acronym": status.get("acronym", ""),
+                    "description": status.get("description", ""),
+                    "attended": float(status.get("grade") or 0) > 0,
+                }
+            )
+    return marks
+
+
+def read_attendance(cohort, marks: list[dict] | None = None) -> dict[int, tuple[int, int]]:
+    """{moodle user id: (sessions taken, attended)} over the intake's past sessions."""
+    stats: dict[int, list[int]] = {}
+    for mark in read_attendance_marks(cohort) if marks is None else marks:
+        row = stats.setdefault(mark["user"], [0, 0])
+        row[0] += 1
+        row[1] += int(mark["attended"])
     return {uid: (taken, attended) for uid, (taken, attended) in stats.items()}
 
 
@@ -181,7 +232,12 @@ def refresh_course(moodle_course_id: int, enrollments: list[LmsEnrollment]) -> i
     for e in enrollments:
         if e.cohort_id and e.cohort_id not in per_cohort:
             own = e.cohort.moodle_attendance_id and _is_cohort_course(e.cohort, moodle_course_id)
-            per_cohort[e.cohort_id] = (read_attendance(e.cohort) if own else {}, expected_progress(e.cohort))
+            marks = read_attendance_marks(e.cohort) if own else []
+            if marks and e.cohort.audience == e.cohort.AUDIENCE_CORPORATE:
+                from apps.corporate.attendance import store_marks  # session-level records, adjustable
+
+                store_marks(e.cohort, marks)
+            per_cohort[e.cohort_id] = (read_attendance(e.cohort, marks), expected_progress(e.cohort))
     for e in enrollments:
         attendance, expected = per_cohort.get(e.cohort_id, ({}, None))
         uid = e.moodle_user_id

@@ -13,6 +13,7 @@ from apps.core.models import audit
 
 from . import services
 from .models import (
+    AttendanceAdjustment,
     ClientUnit,
     CorporateClass,
     CorporateEnrollment,
@@ -23,6 +24,8 @@ from .models import (
 )
 from .permissions import in_scope, scoped_clients
 from .serializers import (
+    AdjustmentRequestSerializer,
+    AttendanceAdjustmentSerializer,
     CancelSerializer,
     ClientUnitSerializer,
     CorporateClassSerializer,
@@ -32,6 +35,7 @@ from .serializers import (
     ImportTemplateSerializer,
     ImportUploadSerializer,
     ListLearnerSerializer,
+    SelfmarkSerializer,
     ServiceContractSerializer,
     TrainingPlanSerializer,
     TransferSerializer,
@@ -191,6 +195,9 @@ class CorporateClassViewSet(
         add_learner="corporate.classes",
         invitations="corporate.view",
         send_invitations="corporate.communications_send",
+        attendance="corporate.view",
+        adjust_attendance="corporate.attendance_adjust",
+        selfmark="corporate.classes",
     )
     filterset_fields = ["client", "status", "contract", "plan_line"]
     search_fields = ["cohort__name", "cohort__course__title"]
@@ -301,6 +308,94 @@ class CorporateClassViewSet(
         result = send_invitations(corporate_class, sent_by=request.user, only_new=not request.data.get("all"))
         audit(request, "corporate.invitations_send", corporate_class, **result)
         return Response(result)
+
+    @action(detail=True, methods=["get"])
+    def attendance(self, request, pk=None):
+        from .attendance import sheet
+
+        return Response(sheet(self.get_object()))
+
+    @attendance.mapping.post
+    def adjust_attendance(self, request, pk=None):
+        """Ask for a correction of one session's attendance (counts once approved)."""
+        from .attendance import request_adjustment
+
+        corporate_class = self.get_object()
+        ser = AdjustmentRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        listing = get_object_or_404(corporate_class.enrollments, pk=data["enrollment"])
+        session = get_object_or_404(corporate_class.cohort.sessions, pk=data["session"])
+        adjustment = _rule(
+            lambda: request_adjustment(
+                listing,
+                session,
+                status=data["status"],
+                reason=data["reason"],
+                evidence=data["evidence"],
+                user=request.user,
+            )
+        )
+        audit(request, "corporate.attendance_adjust", adjustment, status=adjustment.status)
+        return Response(AttendanceAdjustmentSerializer(adjustment).data, status=201)
+
+    @action(detail=True, methods=["post"])
+    def selfmark(self, request, pk=None):
+        """Turn QR self check-in on / off for one session (on by default for corporate classes)."""
+        from apps.lms import moodle
+        from apps.lms.learning import set_selfmark
+
+        corporate_class = self.get_object()
+        ser = SelfmarkSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        session = get_object_or_404(corporate_class.cohort.sessions, pk=ser.validated_data["session"])
+        if not (moodle.is_configured() and session.moodle_attendance_session_id):
+            raise serializers.ValidationError({"detail": "Buổi học chưa được đưa lên Moodle."})
+        if not set_selfmark(session, ser.validated_data["enabled"]):
+            raise serializers.ValidationError({"detail": "Moodle chưa nhận thay đổi, thử lại sau."})
+        audit(request, "corporate.attendance_selfmark", session, enabled=ser.validated_data["enabled"])
+        return Response({"session": session.pk, "enabled": ser.validated_data["enabled"]})
+
+
+class AttendanceAdjustmentViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):
+    """Attendance corrections waiting for (or after) a decision."""
+
+    serializer_class = AttendanceAdjustmentSerializer
+    permission_classes = [ActionPermission]
+    permission_map = {
+        "list": ["corporate.view"],
+        "retrieve": ["corporate.view"],
+        "approve": ["corporate.approve"],
+        "reject": ["corporate.approve"],
+    }
+    client_path = "enrollment__corporate_class__client"
+    filterset_fields = ["decision", "enrollment__corporate_class"]
+
+    def get_queryset(self):
+        return self.scoped(
+            AttendanceAdjustment.objects.select_related(
+                "enrollment__learner",
+                "enrollment__corporate_class__cohort",
+                "session",
+                "requested_by",
+                "decided_by",
+            )
+        )
+
+    def _decide(self, request, approve: bool):
+        from .attendance import decide
+
+        adjustment = _rule(lambda: decide(self.get_object(), approve=approve, user=request.user))
+        audit(request, "corporate.attendance_decide", adjustment, decision=adjustment.decision)
+        return Response(self.get_serializer(adjustment).data)
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        return self._decide(request, True)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        return self._decide(request, False)
 
 
 class CorporateEnrollmentViewSet(_Scoped, viewsets.GenericViewSet):
