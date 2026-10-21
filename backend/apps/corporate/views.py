@@ -13,6 +13,7 @@ from apps.core.models import audit
 
 from . import services
 from .models import (
+    AcceptanceBatch,
     AttendanceAdjustment,
     ClientUnit,
     CommunicationBatch,
@@ -26,6 +27,9 @@ from .models import (
 )
 from .permissions import in_scope, scoped_clients
 from .serializers import (
+    AcceptanceAdjustmentSerializer,
+    AcceptanceBatchSerializer,
+    AcceptInvoiceSerializer,
     AdjustmentRequestSerializer,
     AttendanceAdjustmentSerializer,
     CancelSerializer,
@@ -34,6 +38,7 @@ from .serializers import (
     CorporateClassSerializer,
     CorporateClientSerializer,
     CorporateEnrollmentSerializer,
+    CreateAcceptanceSerializer,
     CreateBatchSerializer,
     ImportBatchSerializer,
     ImportTemplateSerializer,
@@ -519,6 +524,159 @@ class CommunicationBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadO
         batch.status = "cancelled"
         batch.save(update_fields=["status", "updated_at"])
         return Response(self.get_serializer(batch).data)
+
+
+class AcceptanceBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnlyModelViewSet):
+    """Acceptance (nghiệm thu) of a contract: draft -> submitted -> approved -> accepted by the client."""
+
+    serializer_class = AcceptanceBatchSerializer
+    permission_classes = [ActionPermission]
+    permission_map = {
+        "list": ["corporate.view"],
+        "retrieve": ["corporate.view"],
+        "eligible": ["corporate.view"],
+        "export": ["corporate.view"],
+        "create": ["corporate.acceptance"],
+        "add_adjustment": ["corporate.acceptance"],
+        "remove_line": ["corporate.acceptance"],
+        "submit": ["corporate.acceptance"],
+        "back_to_draft": ["corporate.acceptance"],
+        "cancel": ["corporate.acceptance"],
+        "approve": ["corporate.approve"],
+        "accept": ["corporate.acceptance"],
+    }
+    client_path = "contract__client"
+    filterset_fields = ["contract", "status", "contract__client"]
+
+    def get_queryset(self):
+        return self.scoped(
+            AcceptanceBatch.objects.select_related(
+                "contract__client", "created_by", "approved_by"
+            ).prefetch_related("lines__corporate_class__cohort", "lines__snapshot")
+        )
+
+    @action(detail=False, methods=["get"])
+    def eligible(self, request):
+        """Classes of a contract with published results, not billed yet (what a new batch would cover)."""
+        from .acceptance import eligible_classes
+
+        contracts = ServiceContract.objects.filter(client__in=scoped_clients(request.user))
+        contract = get_object_or_404(contracts, pk=request.query_params.get("contract"))
+        return Response(
+            [
+                {
+                    "id": c.pk,
+                    "name": c.cohort.name,
+                    "course_title": c.cohort.course.title,
+                    "start_date": c.cohort.start_date,
+                }
+                for c in eligible_classes(contract)
+            ]
+        )
+
+    def create(self, request, *args, **kwargs):
+        from .acceptance import build_batch
+
+        ser = CreateAcceptanceSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        self.check_client(data["contract"].client)
+        batch = _rule(
+            lambda: build_batch(
+                data["contract"],
+                title=data["title"],
+                period_from=data.get("period_from"),
+                period_to=data.get("period_to"),
+                learner_basis=data["learner_basis"],
+                classes=data.get("classes"),
+                user=request.user,
+                adjustment_only=data["adjustment_only"],
+            )
+        )
+        audit(request, "corporate.acceptance_create", batch)
+        return Response(self.get_serializer(self.get_queryset().get(pk=batch.pk)).data, status=201)
+
+    def _done(self, request, batch, event, **details):
+        audit(request, event, batch, status=batch.status, **details)
+        return Response(self.get_serializer(self.get_queryset().get(pk=batch.pk)).data)
+
+    @action(detail=True, methods=["post"], url_path="adjustments")
+    def add_adjustment(self, request, pk=None):
+        from .acceptance import add_adjustment
+
+        batch = self.get_object()
+        ser = AcceptanceAdjustmentSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        _rule(
+            lambda: add_adjustment(
+                batch,
+                adjusts=data.get("adjusts"),
+                description=data["description"],
+                amount=data["amount"],
+                vat_rate=data.get("vat_rate"),
+            )
+        )
+        return self._done(request, batch, "corporate.acceptance_adjust", amount=data["amount"])
+
+    @action(detail=True, methods=["post"], url_path="remove-line")
+    def remove_line(self, request, pk=None):
+        from .acceptance import remove_line
+
+        batch = self.get_object()
+        line = get_object_or_404(batch.lines, pk=request.data.get("line"))
+        _rule(lambda: remove_line(line))
+        return self._done(request, batch, "corporate.acceptance_remove_line")
+
+    def _move(self, request, to, **extra):
+        from .acceptance import move
+
+        batch = _rule(lambda: move(self.get_object(), to, user=request.user, **extra))
+        return self._done(request, batch, f"corporate.acceptance_{to}")
+
+    @action(detail=True, methods=["post"])
+    def submit(self, request, pk=None):
+        return self._move(request, "submitted")
+
+    @action(detail=True, methods=["post"], url_path="back-to-draft")
+    def back_to_draft(self, request, pk=None):
+        return self._move(request, "draft")
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        return self._move(request, "cancelled")
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        return self._move(request, "approved")
+
+    @action(detail=True, methods=["post"])
+    def accept(self, request, pk=None):
+        ser = AcceptInvoiceSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        return self._move(
+            request,
+            "accepted",
+            invoice_number=ser.validated_data["invoice_number"],
+            invoice_date=ser.validated_data.get("invoice_date"),
+        )
+
+    @action(detail=True, methods=["get"])
+    def export(self, request, pk=None):
+        from django.http import HttpResponse
+
+        from .acceptance import export_xlsx
+
+        batch = self.get_object()
+        response = HttpResponse(
+            export_xlsx(batch),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = (
+            f'attachment; filename="nghiem-thu-{batch.contract.client.code}.xlsx"'
+        )
+        audit(request, "corporate.acceptance_export", batch)
+        return response
 
 
 class AttendanceAdjustmentViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):

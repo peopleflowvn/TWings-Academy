@@ -3,6 +3,7 @@
 from rest_framework.routers import SimpleRouter
 
 from .views import (
+    AcceptanceBatchViewSet,
     AttendanceAdjustmentViewSet,
     ClientUnitViewSet,
     CommunicationBatchViewSet,
@@ -28,5 +29,6 @@ router.register("imports", ImportBatchViewSet, basename="corporate-import")
 router.register("attendance-adjustments", AttendanceAdjustmentViewSet, basename="corporate-adjustment")
 router.register("results", ResultSnapshotViewSet, basename="corporate-result")
 router.register("communications", CommunicationBatchViewSet, basename="corporate-communication")
+router.register("acceptances", AcceptanceBatchViewSet, basename="corporate-acceptance")
 
 urlpatterns = router.urls

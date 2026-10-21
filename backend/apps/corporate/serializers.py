@@ -4,6 +4,8 @@ from rest_framework import serializers
 from apps.catalog.models import Instructor
 
 from .models import (
+    AcceptanceBatch,
+    AcceptanceLine,
     AttendanceAdjustment,
     ClientUnit,
     CommunicationBatch,
@@ -405,3 +407,58 @@ class CreateBatchSerializer(serializers.Serializer):
     corrects = serializers.PrimaryKeyRelatedField(
         queryset=CommunicationBatch.objects.all(), required=False, allow_null=True
     )
+
+
+class AcceptanceLineSerializer(serializers.ModelSerializer):
+    class_name = serializers.CharField(source="corporate_class.cohort.name", read_only=True, default="")
+    snapshot_version = serializers.IntegerField(source="snapshot.version", read_only=True, default=None)
+
+    class Meta:
+        model = AcceptanceLine
+        exclude = ["batch", "created_at", "updated_at"]
+
+
+class AcceptanceBatchSerializer(serializers.ModelSerializer):
+    lines = AcceptanceLineSerializer(many=True, read_only=True)
+    contract_number = serializers.CharField(source="contract.number", read_only=True)
+    client = serializers.CharField(source="contract.client_id", read_only=True)
+    client_code = serializers.CharField(source="contract.client.code", read_only=True)
+    totals = serializers.SerializerMethodField()
+    created_by_name = serializers.CharField(source="created_by.name", read_only=True, default="")
+    approved_by_name = serializers.CharField(source="approved_by.name", read_only=True, default="")
+
+    class Meta:
+        model = AcceptanceBatch
+        exclude = ["updated_at"]
+        read_only_fields = [f.name for f in AcceptanceBatch._meta.fields]
+
+    def get_totals(self, batch) -> dict:
+        from .acceptance import totals
+
+        return totals(batch)
+
+
+class CreateAcceptanceSerializer(serializers.Serializer):
+    contract = serializers.PrimaryKeyRelatedField(queryset=ServiceContract.objects.all())
+    title = serializers.CharField(max_length=300)
+    period_from = serializers.DateField(required=False, allow_null=True)
+    period_to = serializers.DateField(required=False, allow_null=True)
+    learner_basis = serializers.ChoiceField(choices=AcceptanceBatch.LEARNER_BASIS_CHOICES, default="listed")
+    classes = serializers.PrimaryKeyRelatedField(
+        queryset=CorporateClass.objects.all(), many=True, required=False
+    )
+    adjustment_only = serializers.BooleanField(default=False)  # an empty batch for corrections
+
+
+class AcceptanceAdjustmentSerializer(serializers.Serializer):
+    adjusts = serializers.PrimaryKeyRelatedField(
+        queryset=AcceptanceLine.objects.all(), required=False, allow_null=True
+    )
+    description = serializers.CharField(max_length=500)
+    amount = serializers.IntegerField()  # before VAT, negative to reduce
+    vat_rate = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=100)
+
+
+class AcceptInvoiceSerializer(serializers.Serializer):
+    invoice_number = serializers.CharField(max_length=50, required=False, allow_blank=True, default="")
+    invoice_date = serializers.DateField(required=False, allow_null=True)

@@ -237,6 +237,36 @@ def results_emailed_after_approval(page: Page):
     page.wait_for_selector("text=Đã gửi 1 thư", timeout=20000)
 
 
+@step
+def acceptance_from_published_results(page: Page):
+    # Class 1 is on contract HD-E2E-01 (2.000.000 đ per learner); its remaining learner is billed.
+    page.goto(f"{BASE}/app/corporate/classes")
+    page.locator("td:has-text('NHE2E – Bán hàng – Lớp 1')").click()
+    page.locator("button:has-text('Kết quả')").first.click()
+    page.locator("button:has-text('Tính kết quả')").click()
+    page.wait_for_selector("text=Phiên bản 1 · Bản nháp", timeout=20000)
+    page.locator("button:has-text('Phát hành')").click()
+    page.wait_for_selector("text=Phiên bản 1 · Đã phát hành", timeout=20000)
+
+    page.goto(f"{BASE}/app/corporate/acceptance")
+    page.locator("button:has-text('Lập đợt nghiệm thu')").click()
+    m = modal(page, "Lập đợt nghiệm thu")
+    field(m, "Khách hàng").select_option(label="NHE2E – Ngân hàng E2E")
+    field(m, "Hợp đồng").select_option(label="HD-E2E-01")
+    m.locator("text=NHE2E – Bán hàng – Lớp 1").wait_for(timeout=20000)  # the eligible class
+    field(m, "Tên đợt").fill("Nghiệm thu đợt 1")
+    m.locator("button:has-text('Lập đợt')").click()
+    page.wait_for_selector("h2:has-text('Nghiệm thu đợt 1')", timeout=20000)
+    page.locator("td:has-text('2.000.000')").first.wait_for(timeout=20000)
+    page.locator("button:has-text('Gửi duyệt')").click()
+    page.get_by_role("button", name="Duyệt", exact=True).click()
+    page.locator("button:has-text('Khách hàng đã nghiệm thu')").click()
+    d = modal(page, "Sau bước này")
+    field(d, "Số hóa đơn").fill("0000123")
+    d.locator("button:has-text('Xác nhận')").click()
+    page.wait_for_selector("text=hóa đơn 0000123", timeout=20000)
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:

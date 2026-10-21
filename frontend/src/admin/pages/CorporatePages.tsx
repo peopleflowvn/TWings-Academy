@@ -5,6 +5,7 @@
  *                             ?new=1&client=&course=&planLine= opens "new class" prefilled (from a plan line)
  *   /corporate/clients        clients; ?id=<id> one client (details, legal entities / units, contracts + rates)
  *   /corporate/plans          training plans; ?id=<id> one plan (lines, approve, new version)
+ *   /corporate/acceptance     acceptance batches of contracts; ?id=<id> one batch (lines, approval, export)
  * Every list is limited by the API to the clients the user may see.
  */
 import React, { useCallback, useEffect, useState } from 'react';
@@ -2063,6 +2064,319 @@ const PlanDetail: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, cou
           onClose={() => setImporting(false)}
           onDone={() => api.get<Plan>(`/staff/corporate/plans/${id}/`).then(show).catch((e) => setError(errorText(e)))}
         />
+      )}
+    </div>
+  );
+};
+
+// ================================================================ acceptance (nghiệm thu)
+interface AcceptanceLine {
+  id: string;
+  kind: 'service' | 'adjustment';
+  corporateClass: string | null;
+  className: string;
+  snapshotVersion: number | null;
+  adjusts: string | null;
+  description: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  vatRate: number | null;
+  vatAmount: number;
+}
+
+interface AcceptanceBatch {
+  id: string;
+  contract: string;
+  contractNumber: string;
+  client: string;
+  clientCode: string;
+  title: string;
+  periodFrom: string | null;
+  periodTo: string | null;
+  learnerBasis: 'listed' | 'attended' | 'passed';
+  status: 'draft' | 'submitted' | 'approved' | 'accepted' | 'cancelled';
+  invoiceNumber: string;
+  invoiceDate: string | null;
+  note: string;
+  createdByName: string;
+  approvedByName: string;
+  lines: AcceptanceLine[];
+  totals: { amount: number; vat: number; total: number; lines: number };
+}
+
+const ACCEPTANCE_STATUS: Record<AcceptanceBatch['status'], [string, string]> = {
+  draft: ['Đang lập', 'text-slate-600'],
+  submitted: ['Chờ duyệt nội bộ', 'text-amber-700'],
+  approved: ['Đã duyệt – gửi khách hàng', 'text-blue-700'],
+  accepted: ['Khách hàng đã nghiệm thu', 'text-emerald-700'],
+  cancelled: ['Đã hủy', 'text-slate-400']
+};
+const LEARNER_BASIS: [AcceptanceBatch['learnerBasis'], string][] = [
+  ['listed', 'Học viên trong danh sách lớp'],
+  ['attended', 'Học viên có mặt ít nhất 1 buổi'],
+  ['passed', 'Học viên đạt']
+];
+
+export const CorporateAcceptancePage: React.FC = () => {
+  const search = useAppSearch();
+  const id = search.get('id');
+  return id ? <AcceptanceDetail key={id} id={id} /> : <AcceptanceList />;
+};
+
+const AcceptanceList: React.FC = () => {
+  const canCreate = useStaffCan('corporate.acceptance');
+  const { clients } = useClients();
+  const [rows, setRows] = useState<AcceptanceBatch[] | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    api.get<Paginated<AcceptanceBatch>>('/staff/corporate/acceptances/?pageSize=200').then((res) => setRows(res.results)).catch((e) => setError(errorText(e)));
+  }, []);
+  return (
+    <div className="space-y-4">
+      <div className={`${card} flex flex-wrap items-start justify-between gap-3`}>
+        <div>
+          <h2 className="font-bold text-slate-900">Nghiệm thu</h2>
+          <p className="text-xs text-slate-500">
+            Mỗi đợt nghiệm thu thuộc một hợp đồng: các lớp đã phát hành kết quả × đơn giá hợp đồng. Khối lượng lấy từ kết quả và lịch học, không nhập tay.
+            Đợt khách hàng đã nghiệm thu không sửa được; sai sót xử lý bằng dòng điều chỉnh ở đợt sau.
+          </p>
+        </div>
+        {canCreate && <button type="button" className={primary} onClick={() => setCreating(true)}><Plus className="w-4 h-4" /> Lập đợt nghiệm thu</button>}
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className={`${card} p-0 overflow-x-auto`}>
+        {!rows ? (
+          <Loader2 className="w-5 h-5 animate-spin text-slate-400 m-5" />
+        ) : rows.length === 0 ? (
+          <p className="p-5 text-xs text-slate-500">Chưa có đợt nghiệm thu.</p>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 text-slate-600 text-left"><tr><th className="p-3">Đợt</th><th className="p-3">Khách hàng · HĐ</th><th className="p-3 text-right">Dòng</th><th className="p-3 text-right">Tổng (gồm VAT)</th><th className="p-3">Hóa đơn</th><th className="p-3">Trạng thái</th></tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((b) => {
+                const [label, tone] = ACCEPTANCE_STATUS[b.status];
+                return (
+                  <tr key={b.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => navigate(`/corporate/acceptance?id=${b.id}`)}>
+                    <td className="p-3 font-bold">{b.title}</td>
+                    <td className="p-3">{b.clientCode} · {b.contractNumber}</td>
+                    <td className="p-3 text-right">{b.totals.lines}</td>
+                    <td className="p-3 text-right">{vnd(b.totals.total)}</td>
+                    <td className="p-3">{b.invoiceNumber || '–'}</td>
+                    <td className={`p-3 font-bold ${tone}`}>{label}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {creating && <AcceptanceCreator clients={clients} onClose={() => setCreating(false)} />}
+    </div>
+  );
+};
+
+const AcceptanceCreator: React.FC<{ clients: Client[]; onClose: () => void }> = ({ clients, onClose }) => {
+  const [client, setClient] = useState('');
+  const { contracts } = useContracts(client);
+  const [contract, setContract] = useState('');
+  const [eligible, setEligible] = useState<{ id: string; name: string; courseTitle: string; startDate: string | null }[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [d, setD] = useState({ title: '', periodFrom: '', periodTo: '', learnerBasis: 'listed', adjustmentOnly: false });
+  const [error, setError] = useState('');
+  useEffect(() => {
+    setEligible([]);
+    setPicked([]);
+    if (!contract) return;
+    api
+      .get<{ id: string; name: string; courseTitle: string; startDate: string | null }[]>(`/staff/corporate/acceptances/eligible/?contract=${contract}`)
+      .then((rows) => {
+        setEligible(rows);
+        setPicked(rows.map((r) => r.id));
+      })
+      .catch((e) => setError(errorText(e)));
+  }, [contract]);
+  const create = async () => {
+    try {
+      const b = await api.post<AcceptanceBatch>('/staff/corporate/acceptances/', {
+        contract,
+        title: d.title.trim(),
+        periodFrom: d.periodFrom || null,
+        periodTo: d.periodTo || null,
+        learnerBasis: d.learnerBasis,
+        adjustmentOnly: d.adjustmentOnly,
+        classes: d.adjustmentOnly ? [] : picked
+      });
+      navigate(`/corporate/acceptance?id=${b.id}`);
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  return (
+    <Modal title="Lập đợt nghiệm thu" onClose={onClose} wide>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <label>Khách hàng
+          <select className={input} value={client} onChange={(e) => { setClient(e.target.value); setContract(''); }}>
+            <option value="">– Chọn –</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{c.code} – {c.name}</option>)}
+          </select>
+        </label>
+        <label>Hợp đồng
+          <select className={input} value={contract} onChange={(e) => setContract(e.target.value)}>
+            <option value="">– Chọn –</option>
+            {contracts.map((c) => <option key={c.id} value={c.id}>{c.number}{c.title ? ` – ${c.title}` : ''}</option>)}
+          </select>
+        </label>
+        <label>Tên đợt *<input className={input} value={d.title} placeholder="VD: Nghiệm thu đợt 1/2026" onChange={(e) => setD({ ...d, title: e.target.value })} /></label>
+        <label>Kỳ từ ngày<input type="date" className={input} value={d.periodFrom} onChange={(e) => setD({ ...d, periodFrom: e.target.value })} /></label>
+        <label>Đến ngày (tính buổi / giờ đã học tới ngày này)<input type="date" className={input} value={d.periodTo} onChange={(e) => setD({ ...d, periodTo: e.target.value })} /></label>
+        <label>Đơn giá theo học viên tính trên
+          <select className={input} value={d.learnerBasis} onChange={(e) => setD({ ...d, learnerBasis: e.target.value })}>
+            {LEARNER_BASIS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+          </select>
+        </label>
+      </div>
+      <label className="flex items-center gap-2"><input type="checkbox" checked={d.adjustmentOnly} onChange={(e) => setD({ ...d, adjustmentOnly: e.target.checked })} /> Đợt chỉ gồm điều chỉnh cho đợt đã nghiệm thu (không thêm lớp)</label>
+      {!d.adjustmentOnly && contract && (
+        <div className="border border-slate-200 rounded-xl divide-y divide-slate-100">
+          {eligible.length === 0 && <p className="p-3 text-slate-500">Không có lớp nào của hợp đồng đã phát hành kết quả mà chưa nghiệm thu.</p>}
+          {eligible.map((c) => (
+            <label key={c.id} className="p-2 flex items-center gap-2">
+              <input type="checkbox" checked={picked.includes(c.id)} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, c.id] : p.filter((x) => x !== c.id)))} />
+              <span><strong>{c.name}</strong> · {c.courseTitle} · khai giảng {day(c.startDate)}</span>
+            </label>
+          ))}
+        </div>
+      )}
+      {error && <p className="text-red-600">{error}</p>}
+      <div className="flex justify-end">
+        <button type="button" className={primary} disabled={!contract || !d.title.trim() || (!d.adjustmentOnly && picked.length === 0)} onClick={create}><Save className="w-4 h-4" /> Lập đợt</button>
+      </div>
+    </Modal>
+  );
+};
+
+const AcceptanceDetail: React.FC<{ id: string }> = ({ id }) => {
+  const canEdit = useStaffCan('corporate.acceptance');
+  const canApprove = useStaffCan('corporate.approve');
+  const [batch, setBatch] = useState<AcceptanceBatch | null>(null);
+  const [acceptedLines, setAcceptedLines] = useState<(AcceptanceLine & { batchTitle: string })[]>([]);
+  const [adjusting, setAdjusting] = useState(false);
+  const [adj, setAdj] = useState({ adjusts: '', description: '', amount: '', vatRate: '' });
+  const [invoice, setInvoice] = useState<{ invoiceNumber: string; invoiceDate: string } | null>(null);
+  const [error, setError] = useState('');
+  const base = `/staff/corporate/acceptances/${id}/`;
+
+  useEffect(() => {
+    api.get<AcceptanceBatch>(base).then(setBatch).catch((e) => setError(errorText(e)));
+  }, [base]);
+  useEffect(() => {
+    if (!batch || batch.status !== 'draft') return;
+    api
+      .get<Paginated<AcceptanceBatch>>(`/staff/corporate/acceptances/?contract=${batch.contract}&status=accepted&pageSize=200`)
+      .then((res) => setAcceptedLines(res.results.flatMap((b) => b.lines.filter((l) => l.kind === 'service').map((l) => ({ ...l, batchTitle: b.title })))))
+      .catch(() => setAcceptedLines([]));
+  }, [batch]);
+
+  const run = async (path: string, body?: unknown) => {
+    setError('');
+    try {
+      setBatch(await api.post<AcceptanceBatch>(`${base}${path}`, body));
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  const addAdjustment = async () => {
+    await run('adjustments/', {
+      adjusts: adj.adjusts || null,
+      description: adj.description,
+      amount: Number(adj.amount),
+      vatRate: adj.vatRate === '' ? null : Number(adj.vatRate)
+    });
+    setAdjusting(false);
+    setAdj({ adjusts: '', description: '', amount: '', vatRate: '' });
+  };
+
+  if (!batch) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
+  const [label, tone] = ACCEPTANCE_STATUS[batch.status];
+  const draft = batch.status === 'draft';
+  return (
+    <div className="space-y-4">
+      <BackLink to="/corporate/acceptance" label="Danh sách nghiệm thu" />
+      <div className={`${card} flex flex-wrap items-start justify-between gap-3`}>
+        <div className="text-xs space-y-1">
+          <h2 className="font-bold text-slate-900 text-lg">{batch.title}</h2>
+          <p>{batch.clientCode} · HĐ {batch.contractNumber} · {LEARNER_BASIS.find(([k]) => k === batch.learnerBasis)?.[1]}{batch.periodTo ? ` · tính đến ${day(batch.periodTo)}` : ''}</p>
+          <p><span className={`font-bold ${tone}`}>{label}</span>{batch.approvedByName ? ` · duyệt bởi ${batch.approvedByName}` : ''}{batch.invoiceNumber ? ` · hóa đơn ${batch.invoiceNumber}${batch.invoiceDate ? ` ngày ${day(batch.invoiceDate)}` : ''}` : ''}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <a className={secondary} href={`${API_ROOT}${base}export/`}><Download className="w-4 h-4" /> Xuất Excel</a>
+          {canEdit && draft && <button type="button" className={secondary} onClick={() => setAdjusting(true)}><Plus className="w-4 h-4" /> Dòng điều chỉnh</button>}
+          {canEdit && draft && <button type="button" className={primary} onClick={() => run('submit/')}>Gửi duyệt</button>}
+          {canApprove && batch.status === 'submitted' && <button type="button" className={primary} onClick={() => run('approve/')}><CheckCircle2 className="w-4 h-4" /> Duyệt</button>}
+          {canEdit && batch.status === 'approved' && <button type="button" className={primary} onClick={() => setInvoice({ invoiceNumber: '', invoiceDate: '' })}><CheckCircle2 className="w-4 h-4" /> Khách hàng đã nghiệm thu</button>}
+          {canEdit && (batch.status === 'submitted' || batch.status === 'approved') && <button type="button" className={secondary} onClick={() => run('back-to-draft/')}>Trả về đang lập</button>}
+          {canEdit && batch.status !== 'accepted' && batch.status !== 'cancelled' && <button type="button" className={secondary} onClick={() => window.confirm('Hủy đợt nghiệm thu? Các lớp sẽ được lập lại ở đợt khác.') && run('cancel/')}>Hủy đợt</button>}
+        </div>
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className={`${card} p-0 overflow-x-auto`}>
+        <table className="w-full text-xs">
+          <thead className="bg-slate-50 text-slate-600 text-left">
+            <tr><th className="p-2">Nội dung</th><th className="p-2">ĐVT</th><th className="p-2 text-right">Khối lượng</th><th className="p-2 text-right">Đơn giá</th><th className="p-2 text-right">Thành tiền</th><th className="p-2 text-right">VAT</th>{canEdit && draft && <th className="p-2" />}</tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {batch.lines.map((l) => (
+              <tr key={l.id} className={l.kind === 'adjustment' ? 'bg-amber-50/40' : ''}>
+                <td className="p-2">{l.kind === 'adjustment' && <span className="font-bold text-amber-700">[Điều chỉnh] </span>}{l.description}{l.snapshotVersion ? <span className="text-slate-400"> · kết quả v{l.snapshotVersion}</span> : null}</td>
+                <td className="p-2">{l.unit}</td>
+                <td className="p-2 text-right">{new Intl.NumberFormat('vi-VN').format(l.quantity)}</td>
+                <td className="p-2 text-right">{vnd(l.unitPrice)}</td>
+                <td className="p-2 text-right">{vnd(l.amount)}</td>
+                <td className="p-2 text-right">{l.vatRate != null ? `${l.vatRate}% · ${vnd(l.vatAmount)}` : '–'}</td>
+                {canEdit && draft && <td className="p-2"><button type="button" title="Bỏ dòng" className="text-red-500 cursor-pointer" onClick={() => run('remove-line/', { line: l.id })}><X className="w-4 h-4" /></button></td>}
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="font-bold">
+            <tr><td className="p-2" colSpan={4}>Cộng trước thuế</td><td className="p-2 text-right">{vnd(batch.totals.amount)}</td><td /></tr>
+            <tr><td className="p-2" colSpan={4}>Thuế GTGT</td><td className="p-2 text-right">{vnd(batch.totals.vat)}</td><td /></tr>
+            <tr><td className="p-2" colSpan={4}>Tổng cộng</td><td className="p-2 text-right">{vnd(batch.totals.total)}</td><td /></tr>
+          </tfoot>
+        </table>
+      </div>
+      {adjusting && (
+        <Modal title="Dòng điều chỉnh" onClose={() => setAdjusting(false)}>
+          <p className="text-slate-600">Số tiền trước thuế, âm để giảm. Gắn với dòng của đợt đã nghiệm thu nếu là đính chính đợt đó.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <label className="md:col-span-3">Điều chỉnh cho dòng (tùy chọn)
+              <select className={input} value={adj.adjusts} onChange={(e) => setAdj({ ...adj, adjusts: e.target.value })}>
+                <option value="">– Không gắn –</option>
+                {acceptedLines.map((l) => <option key={l.id} value={l.id}>{l.batchTitle}: {l.description} ({vnd(l.amount)})</option>)}
+              </select>
+            </label>
+            <label className="md:col-span-3">Nội dung / lý do *<input className={input} value={adj.description} onChange={(e) => setAdj({ ...adj, description: e.target.value })} /></label>
+            <label>Số tiền (đ) *<input type="number" className={input} value={adj.amount} onChange={(e) => setAdj({ ...adj, amount: e.target.value })} /></label>
+            <label>VAT (%)<input type="number" min={0} max={100} className={input} value={adj.vatRate} onChange={(e) => setAdj({ ...adj, vatRate: e.target.value })} placeholder="theo dòng / HĐ" /></label>
+          </div>
+          <div className="flex justify-end"><button type="button" className={primary} disabled={!adj.description.trim() || adj.amount === ''} onClick={addAdjustment}><Save className="w-4 h-4" /> Thêm</button></div>
+        </Modal>
+      )}
+      {invoice && (
+        <Modal title="Khách hàng đã nghiệm thu" onClose={() => setInvoice(null)}>
+          <p className="text-slate-600">Sau bước này đợt nghiệm thu không sửa được nữa.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <label>Số hóa đơn (phần mềm kế toán)<input className={input} value={invoice.invoiceNumber} onChange={(e) => setInvoice({ ...invoice, invoiceNumber: e.target.value })} /></label>
+            <label>Ngày hóa đơn<input type="date" className={input} value={invoice.invoiceDate} onChange={(e) => setInvoice({ ...invoice, invoiceDate: e.target.value })} /></label>
+          </div>
+          <div className="flex justify-end">
+            <button type="button" className={primary} onClick={async () => { await run('accept/', { invoiceNumber: invoice.invoiceNumber, invoiceDate: invoice.invoiceDate || null }); setInvoice(null); }}>
+              <CheckCircle2 className="w-4 h-4" /> Xác nhận
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

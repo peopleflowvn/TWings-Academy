@@ -7,6 +7,7 @@ import {
   BookOpen,
   Building2,
   ClipboardList,
+  FileCheck2,
   Handshake,
   Users,
   ExternalLink,
@@ -74,7 +75,7 @@ import { CampaignLinksPage, ReviewsPage } from './pages/MarketingPages';
 import { ConsultingPage, InvoicesPage } from './pages/JourneyPages';
 import { LearningSupportPage } from './pages/LearningPages';
 import { JobOutcomesPage, JobsPage } from './pages/PlacementPages';
-import { CorporateClassesPage, CorporateClientsPage, CorporatePlansPage } from './pages/CorporatePages';
+import { CorporateAcceptancePage, CorporateClassesPage, CorporateClientsPage, CorporatePlansPage } from './pages/CorporatePages';
 
 interface NavItem {
   path: string;
@@ -136,6 +137,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     items: [
       { path: '/corporate/classes', label: 'Lớp doanh nghiệp', icon: Users, perms: ['corporate.view'] },
       { path: '/corporate/plans', label: 'Kế hoạch đào tạo', icon: ClipboardList, perms: ['corporate.view'] },
+      { path: '/corporate/acceptance', label: 'Nghiệm thu', icon: FileCheck2, perms: ['corporate.view'] },
       { path: '/corporate/clients', label: 'Khách hàng & hợp đồng', icon: Handshake, perms: ['corporate.view'] }
     ]
   },
@@ -311,6 +313,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <CorporateClassesPage courses={corporateCourses} />;
       case '/corporate/plans':
         return <CorporatePlansPage courses={corporateCourses} />;
+      case '/corporate/acceptance':
+        return <CorporateAcceptancePage />;
       case '/corporate/clients':
         return <CorporateClientsPage courses={corporateCourses} />;
       case '/jobs/referrals':

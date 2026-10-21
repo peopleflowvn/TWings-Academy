@@ -526,3 +526,81 @@ class CommunicationRecipient(BaseModel):
     class Meta:
         ordering = ["batch", "to"]
         constraints = [models.UniqueConstraint(fields=["batch", "enrollment"], name="uniq_batch_recipient")]
+
+
+class AcceptanceBatch(BaseModel):
+    """
+    One acceptance (nghiệm thu) of a contract for a period: the classes delivered, quantities taken from
+    their published results × the contract rates. Once the client has accepted it, it never changes:
+    a later correction is an adjustment line in a new batch.
+    """
+
+    STATUS_CHOICES = [
+        ("draft", "Đang lập"),
+        ("submitted", "Chờ duyệt nội bộ"),
+        ("approved", "Đã duyệt – gửi khách hàng"),
+        ("accepted", "Khách hàng đã nghiệm thu"),
+        ("cancelled", "Đã hủy"),
+    ]
+    LEARNER_BASIS_CHOICES = [
+        ("listed", "Học viên trong danh sách lớp"),
+        ("attended", "Học viên có mặt ít nhất 1 buổi"),
+        ("passed", "Học viên đạt"),
+    ]
+
+    contract = models.ForeignKey(ServiceContract, on_delete=models.PROTECT, related_name="acceptances")
+    title = models.CharField(max_length=300)
+    period_from = models.DateField(null=True, blank=True)
+    period_to = models.DateField(null=True, blank=True)
+    learner_basis = models.CharField(max_length=20, choices=LEARNER_BASIS_CHOICES, default="listed")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft", db_index=True)
+    invoice_number = models.CharField(max_length=50, blank=True)  # from the accounting software
+    invoice_date = models.DateField(null=True, blank=True)
+    note = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
+class AcceptanceLine(BaseModel):
+    """
+    A billed line: a class × a contract rate (quantity from the class results), or an adjustment of an
+    earlier accepted line (signed amount, with its reason). Money in đồng.
+    """
+
+    KIND_CHOICES = [("service", "Dịch vụ"), ("adjustment", "Điều chỉnh")]
+
+    batch = models.ForeignKey(AcceptanceBatch, on_delete=models.CASCADE, related_name="lines")
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default="service")
+    corporate_class = models.ForeignKey(
+        CorporateClass, null=True, blank=True, on_delete=models.PROTECT, related_name="acceptance_lines"
+    )
+    snapshot = models.ForeignKey(
+        ResultSnapshot, null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    rate = models.ForeignKey(ContractRate, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    adjusts = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="adjustments"
+    )
+    description = models.CharField(max_length=500)
+    unit = models.CharField(max_length=50, blank=True)  # lớp / học viên / buổi / giờ / gói
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=1)
+    unit_price = models.BigIntegerField(default=0)
+    amount = models.BigIntegerField(default=0)  # before VAT, may be negative for an adjustment
+    vat_rate = models.PositiveSmallIntegerField(null=True, blank=True)
+    vat_amount = models.BigIntegerField(default=0)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["batch", "sort_order"]
