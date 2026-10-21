@@ -6,8 +6,9 @@ from rest_framework import mixins, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from apps.accounts.permissions import ActionPermission
+from apps.accounts.permissions import ActionPermission, require_perms
 from apps.catalog.models import Course
 from apps.core.models import audit
 
@@ -20,6 +21,7 @@ from .models import (
     CommunicationBatch,
     CorporateClass,
     CorporateEnrollment,
+    Expense,
     ImportBatch,
     ImportTemplate,
     ResultSnapshot,
@@ -43,6 +45,7 @@ from .serializers import (
     CreateAcceptanceSerializer,
     CreateBatchSerializer,
     DocumentUploadSerializer,
+    ExpenseSerializer,
     ImportBatchSerializer,
     ImportTemplateSerializer,
     ImportUploadSerializer,
@@ -738,6 +741,74 @@ class AcceptanceBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnly
         )
         audit(request, "corporate.acceptance_export", batch)
         return response
+
+
+class ExpenseViewSet(
+    _Scoped, mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.ReadOnlyModelViewSet
+):
+    """Costs of corporate training by class / contract; advances count once settled."""
+
+    serializer_class = ExpenseSerializer
+    permission_classes = [ActionPermission]
+    permission_map = perm_map(
+        "corporate.acceptance", approve="corporate.approve", destroy="corporate.acceptance"
+    )
+    filterset_fields = ["client", "corporate_class", "contract", "kind", "category"]
+    search_fields = ["description", "supplier"]
+
+    def get_queryset(self):
+        return self.scoped(
+            Expense.objects.select_related(
+                "client", "corporate_class__cohort", "contract", "approved_by"
+            ).prefetch_related("settlements")
+        )
+
+    def perform_create(self, serializer):
+        self.check_client(serializer.validated_data["client"])
+        audit(self.request, "corporate.expense_create", serializer.save(created_by=self.request.user))
+
+    def perform_update(self, serializer):
+        self.check_client(serializer.validated_data["client"])
+        audit(self.request, "corporate.expense_update", serializer.save())
+
+    def destroy(self, request, *args, **kwargs):
+        expense = self.get_object()
+        if expense.approved_at or expense.settlements.exists():
+            raise serializers.ValidationError(
+                {"detail": "Khoản đã duyệt hoặc đã có quyết toán không xóa được."}
+            )
+        audit(request, "corporate.expense_delete", expense, amount=expense.amount)
+        expense.delete()
+        return Response(status=204)
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        from django.utils import timezone
+
+        expense = self.get_object()
+        if expense.approved_at:
+            raise serializers.ValidationError({"detail": "Khoản này đã được duyệt."})
+        expense.approved_by, expense.approved_at = request.user, timezone.now()
+        expense.save(update_fields=["approved_by", "approved_at", "updated_at"])
+        audit(request, "corporate.expense_approve", expense)
+        return Response(self.get_serializer(expense).data)
+
+
+class DashboardView(APIView):
+    """Overview of corporate training: activity, quality, finance per class, alerts, KPI definitions."""
+
+    permission_classes = [require_perms("corporate.view")]
+
+    def get(self, request):
+        from .dashboard import overview
+
+        clients = scoped_clients(request.user)
+        client = (
+            clients.filter(pk=request.query_params.get("client")).first()
+            if request.query_params.get("client")
+            else None
+        )
+        return Response(overview(clients, client=client))
 
 
 class AttendanceAdjustmentViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):

@@ -75,7 +75,13 @@ import { CampaignLinksPage, ReviewsPage } from './pages/MarketingPages';
 import { ConsultingPage, InvoicesPage } from './pages/JourneyPages';
 import { LearningSupportPage } from './pages/LearningPages';
 import { JobOutcomesPage, JobsPage } from './pages/PlacementPages';
-import { CorporateAcceptancePage, CorporateClassesPage, CorporateClientsPage, CorporatePlansPage } from './pages/CorporatePages';
+import {
+  CorporateAcceptancePage,
+  CorporateClassesPage,
+  CorporateClientsPage,
+  CorporateOverviewPage,
+  CorporatePlansPage
+} from './pages/CorporatePages';
 
 interface NavItem {
   path: string;
@@ -135,6 +141,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     // B2B: classes a client company sends its staff to (no orders, no tuition).
     title: 'Đào tạo doanh nghiệp',
     items: [
+      { path: '/corporate/overview', label: 'Tổng quan B2B', icon: Gauge, perms: ['corporate.view'] },
       { path: '/corporate/classes', label: 'Lớp doanh nghiệp', icon: Users, perms: ['corporate.view'] },
       { path: '/corporate/plans', label: 'Kế hoạch đào tạo', icon: ClipboardList, perms: ['corporate.view'] },
       { path: '/corporate/acceptance', label: 'Nghiệm thu', icon: FileCheck2, perms: ['corporate.view'] },
@@ -309,6 +316,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <CMSLmsTab />;
       case '/learning/support':
         return <LearningSupportPage />;
+      case '/corporate/overview':
+        return <CorporateOverviewPage />;
       case '/corporate/classes':
         return <CorporateClassesPage courses={corporateCourses} />;
       case '/corporate/plans':

@@ -637,3 +637,53 @@ class ClassDocument(BaseModel):
 
     class Meta:
         ordering = ["corporate_class", "kind", "title", "-version"]
+
+
+class Expense(BaseModel):
+    """
+    A cost of corporate training (management figure, not the accounting ledger), by class or contract.
+    An advance (tạm ứng) is money handed out, not a cost: it counts once settled (kind "settlement").
+    """
+
+    CATEGORY_CHOICES = [
+        ("trainer", "Giảng viên"),
+        ("venue", "Phòng học"),
+        ("travel", "Đi lại, lưu trú"),
+        ("materials", "In ấn, tài liệu"),
+        ("catering", "Ăn uống"),
+        ("equipment", "Thiết bị"),
+        ("other", "Khác"),
+    ]
+    KIND_CHOICES = [("expense", "Chi phí"), ("advance", "Tạm ứng"), ("settlement", "Quyết toán tạm ứng")]
+    COSTS = ("expense", "settlement")
+
+    client = models.ForeignKey(CorporateClient, on_delete=models.PROTECT, related_name="expenses")
+    corporate_class = models.ForeignKey(
+        CorporateClass, null=True, blank=True, on_delete=models.PROTECT, related_name="expenses"
+    )
+    contract = models.ForeignKey(
+        ServiceContract, null=True, blank=True, on_delete=models.PROTECT, related_name="expenses"
+    )
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default="expense")
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="other")
+    supplier = models.CharField(max_length=300, blank=True)
+    description = models.CharField(max_length=500)
+    amount = models.PositiveBigIntegerField()  # đồng, before VAT
+    vat_amount = models.PositiveBigIntegerField(default=0)
+    incurred_on = models.DateField()
+    advance = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="settlements"
+    )  # the advance a settlement closes
+    document = models.ForeignKey(
+        ClassDocument, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["-incurred_on", "-created_at"]

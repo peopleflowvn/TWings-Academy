@@ -15,6 +15,7 @@ from .models import (
     CorporateClass,
     CorporateClient,
     CorporateEnrollment,
+    Expense,
     ImportBatch,
     ImportTemplate,
     PlanLine,
@@ -479,3 +480,48 @@ class DocumentUploadSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=300, required=False, allow_blank=True, default="")
     note = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
     file = serializers.FileField()
+
+
+class ExpenseSerializer(serializers.ModelSerializer):
+    client_code = serializers.CharField(source="client.code", read_only=True)
+    class_name = serializers.CharField(source="corporate_class.cohort.name", read_only=True, default="")
+    contract_number = serializers.CharField(source="contract.number", read_only=True, default="")
+    kind_label = serializers.CharField(source="get_kind_display", read_only=True)
+    category_label = serializers.CharField(source="get_category_display", read_only=True)
+    approved_by_name = serializers.CharField(source="approved_by.name", read_only=True, default="")
+    settled = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Expense
+        exclude = ["updated_at"]
+        read_only_fields = ["client", "approved_by", "approved_at", "created_by"]
+
+    def get_settled(self, expense) -> int | None:
+        """For an advance: the amount already settled."""
+        if expense.kind != "advance":
+            return None
+        return sum(s.amount for s in expense.settlements.all())
+
+    def validate(self, attrs):
+        if self.instance is not None and self.instance.approved_at:
+            raise serializers.ValidationError({"detail": "Khoản đã duyệt không sửa được."})
+        cls = attrs.get("corporate_class", getattr(self.instance, "corporate_class", None))
+        contract = attrs.get("contract", getattr(self.instance, "contract", None))
+        if cls is None and contract is None:
+            raise serializers.ValidationError({"detail": "Gắn khoản chi với lớp hoặc hợp đồng."})
+        client = cls.client if cls else contract.client
+        if cls and contract and cls.client_id != contract.client_id:
+            raise serializers.ValidationError({"contract": "Hợp đồng và lớp thuộc hai khách hàng khác nhau."})
+        kind = attrs.get("kind", getattr(self.instance, "kind", "expense"))
+        advance = attrs.get("advance", getattr(self.instance, "advance", None))
+        if kind == "settlement":
+            if advance is None or advance.kind != "advance" or advance.client_id != client.pk:
+                raise serializers.ValidationError(
+                    {"advance": "Quyết toán phải gắn với một khoản tạm ứng của khách hàng này."}
+                )
+        elif advance is not None:
+            raise serializers.ValidationError({"advance": "Chỉ quyết toán mới gắn với tạm ứng."})
+        if attrs.get("amount", getattr(self.instance, "amount", 0)) <= 0:
+            raise serializers.ValidationError({"amount": "Số tiền phải lớn hơn 0."})
+        attrs["client"] = client
+        return attrs

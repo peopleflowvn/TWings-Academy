@@ -281,6 +281,21 @@ def documents_checklist(page: Page):
     page.locator("li", has_text="Danh sách điểm danh có ký").locator("text=đã tải lên").wait_for(timeout=20000)
 
 
+@step
+def costs_and_overview(page: Page):
+    page.locator("button:has-text('Chi phí')").first.click()
+    page.wait_for_selector("text=Ghi nhận khoản chi", timeout=20000)
+    field(page, "Nội dung").fill("Thù lao giảng viên")
+    field(page, "Số tiền trước thuế").fill("500000")
+    page.locator("button:has-text('Ghi nhận')").last.click()
+    page.locator("td:has-text('Thù lao giảng viên')").wait_for(timeout=20000)
+
+    page.goto(f"{BASE}/app/corporate/overview")
+    page.wait_for_selector("text=Tổng quan đào tạo doanh nghiệp", timeout=20000)
+    # Class 1: accepted 2.000.000 đ, cost 500.000 đ -> margin 1.500.000 đ.
+    page.locator("tr", has_text="NHE2E – Bán hàng – Lớp 1").locator("text=1.500.000").wait_for(timeout=20000)
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:

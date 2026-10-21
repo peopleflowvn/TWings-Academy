@@ -1,6 +1,7 @@
 /**
  * Đào tạo doanh nghiệp (B2B, /app/corporate/…): classes a client company sends its staff to, under a
  * service contract. No order, no tuition: a listed learner gets Moodle access at once.
+ *   /corporate/overview       activity, quality, finance per class, alerts (KPI definitions on hover)
  *   /corporate/classes        classes; ?id=<id> the class workspace (details, learners, sessions);
  *                             ?new=1&client=&course=&planLine= opens "new class" prefilled (from a plan line)
  *   /corporate/clients        clients; ?id=<id> one client (details, legal entities / units, contracts + rates)
@@ -1397,6 +1398,144 @@ const DocumentsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
   );
 };
 
+// ---------------------------------------------------------------- costs
+interface Expense {
+  id: string;
+  kind: 'expense' | 'advance' | 'settlement';
+  kindLabel: string;
+  category: string;
+  categoryLabel: string;
+  supplier: string;
+  description: string;
+  amount: number;
+  vatAmount: number;
+  incurredOn: string;
+  advance: string | null;
+  settled: number | null;
+  approvedAt: string | null;
+  approvedByName: string;
+}
+
+const EXPENSE_CATEGORIES: [string, string][] = [
+  ['trainer', 'Giảng viên'],
+  ['venue', 'Phòng học'],
+  ['travel', 'Đi lại, lưu trú'],
+  ['materials', 'In ấn, tài liệu'],
+  ['catering', 'Ăn uống'],
+  ['equipment', 'Thiết bị'],
+  ['other', 'Khác']
+];
+const EMPTY_EXPENSE = { kind: 'expense', category: 'trainer', supplier: '', description: '', amount: '', vatAmount: '', incurredOn: new Date().toISOString().slice(0, 10), advance: '' };
+
+const CostsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
+  const canEdit = useStaffCan('corporate.acceptance');
+  const canApprove = useStaffCan('corporate.approve');
+  const [rows, setRows] = useState<Expense[] | null>(null);
+  const [form, setForm] = useState(EMPTY_EXPENSE);
+  const [error, setError] = useState('');
+  const load = useCallback(() => {
+    api.get<Paginated<Expense>>(`/staff/corporate/expenses/?corporate_class=${cls.id}&pageSize=200`).then((res) => setRows(res.results)).catch((e) => setError(errorText(e)));
+  }, [cls.id]);
+  useEffect(load, [load]);
+  const add = async () => {
+    setError('');
+    try {
+      await api.post('/staff/corporate/expenses/', {
+        corporateClass: cls.id,
+        contract: cls.contract,
+        kind: form.kind,
+        category: form.category,
+        supplier: form.supplier,
+        description: form.description,
+        amount: Number(form.amount),
+        vatAmount: Number(form.vatAmount || 0),
+        incurredOn: form.incurredOn,
+        advance: form.kind === 'settlement' ? form.advance || null : null
+      });
+      setForm(EMPTY_EXPENSE);
+      load();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  const act = async (call: () => Promise<unknown>) => {
+    setError('');
+    try {
+      await call();
+      load();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  if (!rows) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
+  const costs = rows.filter((r) => r.kind !== 'advance').reduce((n, r) => n + r.amount, 0);
+  const advances = rows.filter((r) => r.kind === 'advance');
+  return (
+    <div className="space-y-4">
+      <div className={`${card} text-xs space-y-1`}>
+        <div className="font-bold text-sm text-slate-800">Chi phí lớp: {vnd(costs)} <span className="font-normal text-slate-500">(trước thuế; tạm ứng chỉ tính khi quyết toán)</span></div>
+        {advances.length > 0 && <p className="text-slate-600">Tạm ứng: {advances.map((a) => `${a.description} ${vnd(a.amount)} (đã quyết toán ${vnd(a.settled || 0)})`).join(' · ')}</p>}
+      </div>
+      {canEdit && (
+        <div className={`${card} space-y-3 text-xs`}>
+          <div className="font-bold text-sm text-slate-800">Ghi nhận khoản chi</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <label>Loại
+              <select className={input} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
+                <option value="expense">Chi phí</option>
+                <option value="advance">Tạm ứng</option>
+                <option value="settlement">Quyết toán tạm ứng</option>
+              </select>
+            </label>
+            <label>Hạng mục
+              <select className={input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                {EXPENSE_CATEGORIES.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+              </select>
+            </label>
+            <label>Ngày<input type="date" className={input} value={form.incurredOn} onChange={(e) => setForm({ ...form, incurredOn: e.target.value })} /></label>
+            {form.kind === 'settlement' ? (
+              <label>Quyết toán cho tạm ứng
+                <select className={input} value={form.advance} onChange={(e) => setForm({ ...form, advance: e.target.value })}>
+                  <option value="">– Chọn –</option>
+                  {advances.map((a) => <option key={a.id} value={a.id}>{a.description} · {vnd(a.amount)}</option>)}
+                </select>
+              </label>
+            ) : (
+              <label>Nhà cung cấp / người nhận<input className={input} value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} /></label>
+            )}
+            <label className="md:col-span-2">Nội dung *<input className={input} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
+            <label>Số tiền trước thuế (đ) *<input type="number" min={1} className={input} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
+            <label>Thuế GTGT (đ)<input type="number" min={0} className={input} value={form.vatAmount} onChange={(e) => setForm({ ...form, vatAmount: e.target.value })} /></label>
+          </div>
+          <div className="flex justify-end"><button type="button" className={primary} disabled={!form.description.trim() || !form.amount} onClick={add}><Plus className="w-4 h-4" /> Ghi nhận</button></div>
+        </div>
+      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className={`${card} p-0 overflow-x-auto`}>
+        {rows.length === 0 ? (
+          <p className="p-5 text-xs text-slate-500">Chưa có khoản chi nào.</p>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 text-slate-600 text-left"><tr><th className="p-2">Ngày</th><th className="p-2">Nội dung</th><th className="p-2">Loại · hạng mục</th><th className="p-2 text-right">Số tiền</th><th className="p-2">Duyệt</th><th className="p-2" /></tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((r) => (
+                <tr key={r.id} className={r.kind === 'advance' ? 'text-slate-500' : ''}>
+                  <td className="p-2">{r.incurredOn}</td>
+                  <td className="p-2"><div className="font-bold">{r.description}</div>{r.supplier && <div className="text-slate-500">{r.supplier}</div>}</td>
+                  <td className="p-2">{r.kindLabel} · {r.categoryLabel}</td>
+                  <td className="p-2 text-right">{vnd(r.amount)}{r.vatAmount ? <div className="text-slate-500">VAT {vnd(r.vatAmount)}</div> : null}</td>
+                  <td className="p-2">{r.approvedAt ? `Đã duyệt${r.approvedByName ? ` · ${r.approvedByName}` : ''}` : canApprove ? <button type="button" className="text-emerald-700 font-bold cursor-pointer" onClick={() => act(() => api.post(`/staff/corporate/expenses/${r.id}/approve/`))}>Duyệt</button> : 'Chờ duyệt'}</td>
+                  <td className="p-2">{canEdit && !r.approvedAt && <button type="button" title="Xóa" className="text-red-500 cursor-pointer" onClick={() => window.confirm('Xóa khoản chi?') && act(() => api.delete(`/staff/corporate/expenses/${r.id}/`))}><X className="w-4 h-4" /></button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, courses }) => {
   const canEdit = useStaffCan('corporate.classes');
   const canSend = useStaffCan('corporate.communications_send');
@@ -1405,7 +1544,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
   const { clients } = useClients();
   const [cls, setCls] = useState<CorpClass | null>(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'learners' | 'attendance' | 'surveys' | 'results' | 'communications' | 'documents' | 'overview'>('learners');
+  const [tab, setTab] = useState<'learners' | 'attendance' | 'surveys' | 'results' | 'communications' | 'documents' | 'costs' | 'overview'>('learners');
   const [editing, setEditing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
 
@@ -1448,7 +1587,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         )}
       </div>
       <div className="flex gap-1 border-b border-slate-200">
-        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['surveys', 'Khảo sát'], ['results', 'Kết quả'], ['communications', 'Truyền thông'], ['documents', 'Hồ sơ'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
+        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['surveys', 'Khảo sát'], ['results', 'Kết quả'], ['communications', 'Truyền thông'], ['documents', 'Hồ sơ'], ['costs', 'Chi phí'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
           <button key={key} type="button" onClick={() => setTab(key)}
             className={`px-4 py-2 text-xs font-bold cursor-pointer border-b-2 ${tab === key ? 'border-[#0073C1] text-[#0073C1]' : 'border-transparent text-slate-500'}`}>
             {label}
@@ -1467,6 +1606,8 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         <CommunicationsTab cls={cls} />
       ) : tab === 'documents' ? (
         <DocumentsTab cls={cls} />
+      ) : tab === 'costs' ? (
+        <CostsTab cls={cls} />
       ) : (
         <div className={`${card} text-xs space-y-2`}>
           <p><strong>Chứng chỉ TWings:</strong> {cls.issueCertificate ? 'Có cấp khi hoàn thành' : 'Không cấp (theo hợp đồng)'}</p>
@@ -2493,6 +2634,120 @@ const AcceptanceDetail: React.FC<{ id: string }> = ({ id }) => {
           </div>
         </Modal>
       )}
+    </div>
+  );
+};
+
+// ================================================================ overview (Tổng quan B2B)
+interface OverviewRow {
+  id: string;
+  clientCode: string;
+  name: string;
+  courseTitle: string;
+  status: string;
+  startDate: string | null;
+  learners: number;
+  resultsPublished: boolean;
+  completionRate: number | null;
+  attendanceRate: number | null;
+  satisfaction: number | null;
+  acceptedAmount: number;
+  costs: number;
+  margin: number | null;
+}
+
+interface Overview {
+  activity: Record<string, number>;
+  quality: Record<string, number | null>;
+  finance: Record<string, number>;
+  classes: OverviewRow[];
+  alerts: { level: 'error' | 'warning' | 'info'; text: string; class?: string; acceptance?: string }[];
+  kpiDictionary: Record<string, string>;
+}
+
+const Tile: React.FC<{ label: string; value: React.ReactNode; hint?: string }> = ({ label, value, hint }) => (
+  <div className="border border-slate-200 rounded-xl p-3 bg-white" title={hint}>
+    <div className="text-lg font-bold text-slate-900">{value}</div>
+    <div className="text-[11px] text-slate-500">{label}{hint ? ' ⓘ' : ''}</div>
+  </div>
+);
+const pct = (v: number | null | undefined) => (v == null ? '–' : `${v}%`);
+const ALERT_TONE = { error: 'border-red-200 bg-red-50 text-red-800', warning: 'border-amber-200 bg-amber-50 text-amber-900', info: 'border-slate-200 bg-slate-50 text-slate-700' };
+
+export const CorporateOverviewPage: React.FC = () => {
+  const { clients } = useClients();
+  const [client, setClient] = useState('');
+  const [data, setData] = useState<Overview | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    setData(null);
+    api.get<Overview>(`/staff/corporate/dashboard/${client ? `?client=${client}` : ''}`).then(setData).catch((e) => setError(errorText(e)));
+  }, [client]);
+  if (!data) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
+  const k = data.kpiDictionary;
+  return (
+    <div className="space-y-4">
+      <div className={`${card} flex flex-wrap items-center justify-between gap-3`}>
+        <div>
+          <h2 className="font-bold text-slate-900">Tổng quan đào tạo doanh nghiệp</h2>
+          <p className="text-xs text-slate-500">Số quản trị của mảng B2B (không gộp học phí B2C). Rê chuột lên ô số để xem định nghĩa.</p>
+        </div>
+        <select className={`${input} max-w-xs`} value={client} onChange={(e) => setClient(e.target.value)}>
+          <option value="">Mọi khách hàng</option>
+          {clients.map((c) => <option key={c.id} value={c.id}>{c.code} – {c.name}</option>)}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <Tile label="Lớp (đang học)" value={`${data.activity.classes} (${data.activity.classesRunning})`} />
+        <Tile label="Lượt học viên" value={data.activity.learnerEnrolments} hint={k.learnerEnrolments} />
+        <Tile label="Học viên duy nhất" value={data.activity.uniqueLearners} hint={k.uniqueLearners} />
+        <Tile label="Buổi đã học" value={data.activity.sessionsHeld} />
+        <Tile label="Hoàn thành TB" value={pct(data.quality.completionRate)} hint={k.completionRate} />
+        <Tile label="Chuyên cần TB" value={pct(data.quality.attendanceRate)} hint={k.attendanceRate} />
+        <Tile label="Hài lòng TB" value={pct(data.quality.satisfaction)} hint={k.satisfaction} />
+        <Tile label="Giá trị HĐ hiệu lực" value={vnd(data.finance.contractValue)} hint={k.contractValue} />
+        <Tile label="Đã nghiệm thu" value={vnd(data.finance.acceptedAmount)} hint={k.acceptedAmount} />
+        <Tile label="Chờ nghiệm thu" value={vnd(data.finance.awaitingAcceptance)} />
+        <Tile label="Chi phí" value={vnd(data.finance.costs)} hint={k.costs} />
+        <Tile label="Biên đóng góp" value={vnd(data.finance.margin)} hint={k.margin} />
+      </div>
+      {data.alerts.length > 0 && (
+        <div className={`${card} space-y-2`}>
+          <div className="font-bold text-sm text-slate-800">Cần xử lý ({data.alerts.length})</div>
+          <ul className="space-y-1 text-xs">
+            {data.alerts.map((a, i) => (
+              <li key={i}>
+                <button type="button" className={`w-full text-left border rounded-lg px-3 py-1.5 cursor-pointer ${ALERT_TONE[a.level]}`}
+                  onClick={() => navigate(a.class ? `/corporate/classes?id=${a.class}` : `/corporate/acceptance?id=${a.acceptance}`)}>
+                  {a.text}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className={`${card} p-0 overflow-x-auto`}>
+        <table className="w-full text-xs">
+          <thead className="bg-slate-50 text-slate-600 text-left">
+            <tr><th className="p-2">Lớp</th><th className="p-2">KH</th><th className="p-2 text-right">HV</th><th className="p-2 text-right">Hoàn thành</th><th className="p-2 text-right">Chuyên cần</th><th className="p-2 text-right">Hài lòng</th><th className="p-2 text-right">Nghiệm thu</th><th className="p-2 text-right">Chi phí</th><th className="p-2 text-right">Biên</th></tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {data.classes.map((r) => (
+              <tr key={r.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => navigate(`/corporate/classes?id=${r.id}`)}>
+                <td className="p-2"><div className="font-bold">{r.name}</div><div className="text-slate-500">{r.courseTitle}{r.resultsPublished ? '' : ' · chưa chốt kết quả'}</div></td>
+                <td className="p-2">{r.clientCode}</td>
+                <td className="p-2 text-right">{r.learners}</td>
+                <td className="p-2 text-right">{pct(r.completionRate)}</td>
+                <td className="p-2 text-right">{pct(r.attendanceRate)}</td>
+                <td className="p-2 text-right">{pct(r.satisfaction)}</td>
+                <td className="p-2 text-right">{r.acceptedAmount ? vnd(r.acceptedAmount) : '–'}</td>
+                <td className="p-2 text-right">{r.costs ? vnd(r.costs) : '–'}</td>
+                <td className={`p-2 text-right font-bold ${r.margin != null && r.margin < 0 ? 'text-red-600' : ''}`}>{r.margin != null ? vnd(r.margin) : '–'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

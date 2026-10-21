@@ -1,5 +1,6 @@
 """Mounted at /api/v1/staff/corporate/ (see config/staff_urls.py)."""
 
+from django.urls import path
 from rest_framework.routers import SimpleRouter
 
 from .views import (
@@ -11,6 +12,8 @@ from .views import (
     CorporateClassViewSet,
     CorporateClientViewSet,
     CorporateEnrollmentViewSet,
+    DashboardView,
+    ExpenseViewSet,
     ImportBatchViewSet,
     ImportTemplateViewSet,
     ResultSnapshotViewSet,
@@ -32,5 +35,6 @@ router.register("results", ResultSnapshotViewSet, basename="corporate-result")
 router.register("communications", CommunicationBatchViewSet, basename="corporate-communication")
 router.register("acceptances", AcceptanceBatchViewSet, basename="corporate-acceptance")
 router.register("documents", ClassDocumentViewSet, basename="corporate-document")
+router.register("expenses", ExpenseViewSet, basename="corporate-expense")
 
-urlpatterns = router.urls
+urlpatterns = [path("dashboard/", DashboardView.as_view(), name="corporate-dashboard"), *router.urls]
