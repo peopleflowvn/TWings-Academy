@@ -8,6 +8,7 @@ from .models import (
     AcceptanceLine,
     AttendanceAdjustment,
     ClassDocument,
+    ClientShare,
     ClientUnit,
     CommunicationBatch,
     CommunicationRecipient,
@@ -525,3 +526,15 @@ class ExpenseSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"amount": "Số tiền phải lớn hơn 0."})
         attrs["client"] = client
         return attrs
+
+
+class ClientShareSerializer(serializers.ModelSerializer):
+    class_name = serializers.CharField(source="corporate_class.cohort.name", read_only=True, default="")
+    created_by_name = serializers.CharField(source="created_by.name", read_only=True, default="")
+    active = serializers.BooleanField(read_only=True)
+    days = serializers.IntegerField(write_only=True, required=False, min_value=1, max_value=180)
+
+    class Meta:
+        model = ClientShare
+        exclude = ["token_hash", "updated_at"]
+        read_only_fields = ["expires_at", "revoked_at", "created_by", "last_viewed_at", "view_count"]

@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 
 from apps.cms import seo
+from apps.corporate.shares import client_report_page
 from apps.crm.partner import partner_cv, partner_page
 from apps.lms.public import certificate_json, certificate_page, certificate_print
 from apps.payments.receipts import receipt_page
@@ -17,6 +18,8 @@ urlpatterns = [
     path("xac-minh/<str:code>/", certificate_page, name="certificate-page"),
     path("xac-minh/<str:code>/in/", certificate_print, name="certificate-print"),
     path("bien-nhan/<str:token>/", receipt_page, name="payment-receipt"),
+    # Corporate client report (read-only link); before partner-page, same /doi-tac/ route in Caddy.
+    path("doi-tac/dn/<str:token>/", client_report_page, name="corporate-client-report"),
     path("doi-tac/<str:token>/", partner_page, name="partner-page"),
     path("doi-tac/<str:token>/cv/<str:placement_id>/", partner_cv, name="partner-cv"),
     path("api/v1/public/certificates/<str:code>/", certificate_json, name="certificate-json"),

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{ share.title }} – Báo cáo đào tạo</title>
+<style>
+:root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--brand:#0073C1}
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:#f1f5f9;margin:0;padding:16px}
+.wrap{max-width:1080px;margin:0 auto}
+header{margin:8px 0 16px}h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:0}.muted{color:var(--muted);font-size:13px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:12px 0}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
+.kpi b{display:block;font-size:18px}.kpi span{font-size:12px;color:var(--muted)}
+.table{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-top:1px solid var(--line)}th{color:var(--muted);font-weight:600;background:#f8fafc}
+td.num,th.num{text-align:right}
+footer{font-size:12px;color:var(--muted);margin:20px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="muted">Báo cáo đào tạo cho {{ share.client.name }}</div>
+  <h1>{{ share.title }}</h1>
+  <div class="muted">Kết quả đã chốt của các lớp · Link có hiệu lực đến {{ share.expires_at|date:"d/m/Y" }}. Vui lòng không chuyển tiếp link này.</div>
+</header>
+{% for c in classes %}
+<div class="card">
+  <h2>{{ c.course }} – {{ c.name }}</h2>
+  <div class="muted">{% if c.start_date %}Khai giảng {{ c.start_date|date:"d/m/Y" }} · {% endif %}Kết quả phiên bản {{ c.version }}{% if c.published_at %}, chốt ngày {{ c.published_at|date:"d/m/Y" }}{% endif %}</div>
+  <div class="kpis">
+    <div class="kpi"><b>{{ c.kpis.learners|default:"0" }}</b><span>Học viên</span></div>
+    <div class="kpi"><b>{{ c.kpis.passed|default:"0" }}</b><span>Đạt</span></div>
+    <div class="kpi"><b>{% if c.kpis.completion_rate is not None %}{{ c.kpis.completion_rate }}%{% else %}–{% endif %}</b><span>Tỷ lệ hoàn thành</span></div>
+    <div class="kpi"><b>{% if c.kpis.attendance_rate is not None %}{{ c.kpis.attendance_rate }}%{% else %}–{% endif %}</b><span>Chuyên cần trung bình</span></div>
+    <div class="kpi"><b>{{ c.kpis.sessions|default:"0" }}</b><span>Buổi học</span></div>
+    <div class="kpi"><b>{% if c.kpis.satisfaction is not None %}{{ c.kpis.satisfaction }}%{% else %}–{% endif %}</b><span>Mức hài lòng</span></div>
+  </div>
+  {% if c.learners %}
+  <div class="table"><table>
+    <tr><th>Học viên</th><th>Mã NV</th><th>Đơn vị</th><th class="num">Chuyên cần</th><th class="num">Điểm</th><th>Kết quả</th></tr>
+    {% for r in c.learners %}
+    <tr><td>{{ r.name }}</td><td>{{ r.employee_code }}</td><td>{{ r.unit }}</td>
+      <td class="num">{{ r.attendance }}{% if r.attendance_rate is not None %} ({{ r.attendance_rate }}%){% endif %}</td>
+      <td class="num">{% if r.grade_percent is not None %}{{ r.grade_percent }}%{% endif %}</td><td>{{ r.result }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% endif %}
+</div>
+{% empty %}
+<div class="card muted">Chưa có lớp nào được chốt kết quả.</div>
+{% endfor %}
+<footer>Chuyên cần tính trên trạng thái điểm danh đã xác minh. Số liệu là bản kết quả đã chốt, không tự thay đổi; nếu có đính chính sẽ có phiên bản mới.</footer>
+</div>
+</body>
+</html>

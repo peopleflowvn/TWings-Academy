@@ -687,3 +687,35 @@ class Expense(BaseModel):
 
     class Meta:
         ordering = ["-incurred_on", "-created_at"]
+
+
+class ClientShare(BaseModel):
+    """
+    A time-limited, read-only link for the client (no account): the published results of its classes
+    (one class or all), never another client's data nor internal figures (costs, margin). The token
+    is shown once; only its hash is stored. Links expire and can be revoked.
+    """
+
+    client = models.ForeignKey(CorporateClient, on_delete=models.CASCADE, related_name="shares")
+    corporate_class = models.ForeignKey(
+        CorporateClass, null=True, blank=True, on_delete=models.CASCADE, related_name="shares"
+    )
+    token_hash = models.CharField(max_length=64, unique=True)
+    title = models.CharField(max_length=200)
+    include_learners = models.BooleanField(default=True)  # per-learner results, or class figures only
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    last_viewed_at = models.DateTimeField(null=True, blank=True)
+    view_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def active(self) -> bool:
+        from django.utils import timezone
+
+        return self.revoked_at is None and self.expires_at > timezone.now()

@@ -17,6 +17,7 @@ from .models import (
     AcceptanceBatch,
     AttendanceAdjustment,
     ClassDocument,
+    ClientShare,
     ClientUnit,
     CommunicationBatch,
     CorporateClass,
@@ -37,6 +38,7 @@ from .serializers import (
     AttendanceAdjustmentSerializer,
     CancelSerializer,
     ClassDocumentSerializer,
+    ClientShareSerializer,
     ClientUnitSerializer,
     CommunicationBatchSerializer,
     CorporateClassSerializer,
@@ -792,6 +794,55 @@ class ExpenseViewSet(
         expense.save(update_fields=["approved_by", "approved_at", "updated_at"])
         audit(request, "corporate.expense_approve", expense)
         return Response(self.get_serializer(expense).data)
+
+
+class ClientShareViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnlyModelViewSet):
+    """Read-only report links for clients (no account); the URL with its token is returned once."""
+
+    serializer_class = ClientShareSerializer
+    permission_classes = [ActionPermission]
+    permission_map = {
+        "list": ["corporate.view"],
+        "retrieve": ["corporate.view"],
+        "create": ["corporate.share"],
+        "revoke": ["corporate.share"],
+    }
+    filterset_fields = ["client", "corporate_class"]
+    pagination_class = None
+
+    def get_queryset(self):
+        return self.scoped(ClientShare.objects.select_related("corporate_class__cohort", "created_by"))
+
+    def create(self, request, *args, **kwargs):
+        from .shares import DEFAULT_DAYS, create_share, share_url
+
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        self.check_client(data["client"])
+        share, token = _rule(
+            lambda: create_share(
+                data["client"],
+                user=request.user,
+                title=data["title"],
+                days=data.get("days", DEFAULT_DAYS),
+                corporate_class=data.get("corporate_class"),
+                include_learners=data.get("include_learners", True),
+            )
+        )
+        audit(request, "corporate.share_create", share, expires=share.expires_at.isoformat())
+        return Response({**self.get_serializer(share).data, "url": share_url(token)}, status=201)
+
+    @action(detail=True, methods=["post"])
+    def revoke(self, request, pk=None):
+        from django.utils import timezone
+
+        share = self.get_object()
+        if share.revoked_at is None:
+            share.revoked_at = timezone.now()
+            share.save(update_fields=["revoked_at", "updated_at"])
+            audit(request, "corporate.share_revoke", share)
+        return Response(self.get_serializer(share).data)
 
 
 class DashboardView(APIView):

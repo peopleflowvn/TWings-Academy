@@ -7,6 +7,7 @@ from .views import (
     AcceptanceBatchViewSet,
     AttendanceAdjustmentViewSet,
     ClassDocumentViewSet,
+    ClientShareViewSet,
     ClientUnitViewSet,
     CommunicationBatchViewSet,
     CorporateClassViewSet,
@@ -36,5 +37,6 @@ router.register("communications", CommunicationBatchViewSet, basename="corporate
 router.register("acceptances", AcceptanceBatchViewSet, basename="corporate-acceptance")
 router.register("documents", ClassDocumentViewSet, basename="corporate-document")
 router.register("expenses", ExpenseViewSet, basename="corporate-expense")
+router.register("shares", ClientShareViewSet, basename="corporate-share")
 
 urlpatterns = [path("dashboard/", DashboardView.as_view(), name="corporate-dashboard"), *router.urls]

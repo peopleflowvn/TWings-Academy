@@ -1890,6 +1890,86 @@ const ClientEditor: React.FC<{ existing?: Client; onClose: () => void; onSaved: 
   );
 };
 
+// ---------------------------------------------------------------- client report links
+interface ClientShare {
+  id: string;
+  title: string;
+  className: string;
+  includeLearners: boolean;
+  expiresAt: string;
+  revokedAt: string | null;
+  active: boolean;
+  viewCount: number;
+  lastViewedAt: string | null;
+  createdByName: string;
+}
+
+const ShareLinks: React.FC<{ clientId: string }> = ({ clientId }) => {
+  const canShare = useStaffCan('corporate.share');
+  const [rows, setRows] = useState<ClientShare[]>([]);
+  const [form, setForm] = useState({ title: '', days: '30', includeLearners: true });
+  const [created, setCreated] = useState('');
+  const [error, setError] = useState('');
+  const load = useCallback(() => {
+    api.get<ClientShare[]>(`/staff/corporate/shares/?client=${clientId}`).then(setRows).catch(() => setRows([]));
+  }, [clientId]);
+  useEffect(load, [load]);
+  const create = async () => {
+    setError('');
+    try {
+      const res = await api.post<ClientShare & { url: string }>('/staff/corporate/shares/', {
+        client: clientId,
+        title: form.title.trim(),
+        days: Number(form.days) || 30,
+        includeLearners: form.includeLearners
+      });
+      setCreated(res.url);
+      setForm({ title: '', days: '30', includeLearners: true });
+      load();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  return (
+    <div className={`${card} space-y-3 text-xs`}>
+      <div className="font-bold text-sm text-slate-800">Link báo cáo cho khách hàng</div>
+      <p className="text-slate-500">
+        Khách hàng xem kết quả đã chốt của các lớp (không cần tài khoản): số liệu lớp và, nếu cho phép, kết quả từng nhân viên. Không hiện chi phí, biên lợi nhuận
+        hay dữ liệu khách hàng khác. Link có hạn, thu hồi được; link chỉ hiện một lần khi tạo.
+      </p>
+      {canShare && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+          <label className="md:col-span-2">Tiêu đề *<input className={input} value={form.title} placeholder="VD: Báo cáo đào tạo quý 4/2026" onChange={(e) => setForm({ ...form, title: e.target.value })} /></label>
+          <label>Hiệu lực (ngày)<input type="number" min={1} max={180} className={input} value={form.days} onChange={(e) => setForm({ ...form, days: e.target.value })} /></label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.includeLearners} onChange={(e) => setForm({ ...form, includeLearners: e.target.checked })} /> Kèm kết quả từng học viên</label>
+          <div className="md:col-span-4 flex justify-end"><button type="button" className={primary} disabled={!form.title.trim()} onClick={create}><Plus className="w-4 h-4" /> Tạo link</button></div>
+        </div>
+      )}
+      {created && (
+        <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-3 space-y-1">
+          <div className="font-bold text-emerald-800">Link mới (chỉ hiện lần này, hãy sao chép):</div>
+          <div className="flex gap-2 items-center"><input readOnly className={input} value={created} onFocus={(e) => e.target.select()} />
+            <button type="button" className={secondary} onClick={() => navigator.clipboard?.writeText(created)}>Chép</button></div>
+        </div>
+      )}
+      {error && <p className="text-red-600">{error}</p>}
+      {rows.length > 0 && (
+        <ul className="divide-y divide-slate-100">
+          {rows.map((r) => (
+            <li key={r.id} className="py-2 flex flex-wrap items-center justify-between gap-2">
+              <span>
+                <strong>{r.title}</strong>{r.className ? ` · lớp ${r.className}` : ' · mọi lớp'}{r.includeLearners ? ' · kèm học viên' : ' · chỉ số liệu lớp'}
+                <span className="text-slate-500"> · {r.active ? `hiệu lực đến ${new Date(r.expiresAt).toLocaleDateString('vi-VN')}` : r.revokedAt ? 'đã thu hồi' : 'hết hạn'} · {r.viewCount} lượt xem</span>
+              </span>
+              {canShare && r.active && <button type="button" className="text-red-600 font-bold cursor-pointer" onClick={() => api.post(`/staff/corporate/shares/${r.id}/revoke/`).then(load)}>Thu hồi</button>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const ClientDetail: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, courses }) => {
   const canEdit = useStaffCan('corporate.clients');
   const [client, setClient] = useState<Client | null>(null);
@@ -1985,6 +2065,7 @@ const ClientDetail: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, c
           </table>
         )}
       </div>
+      <ShareLinks clientId={id} />
       {editing && <ClientEditor existing={client} onClose={() => setEditing(false)} onSaved={setClient} />}
       {contract && (
         <ContractEditor
