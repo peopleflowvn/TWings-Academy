@@ -73,6 +73,15 @@ def perm_map(write: str, **extra) -> dict:
     return mapping
 
 
+def _html(request, template: str, context: dict):
+    """A printable page (In / Lưu PDF in the browser) from a staff API action, not cached."""
+    from django.shortcuts import render
+
+    response = render(request, template, context)
+    response["Cache-Control"] = "no-store"
+    return response
+
+
 def _rule(call):
     """Run a service call; a business rule refusal becomes a 400 with its message."""
     try:
@@ -495,6 +504,7 @@ class ResultSnapshotViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):
         "retrieve": ["corporate.view"],
         "publish": ["corporate.results_publish"],
         "export": ["corporate.view"],
+        "printable": ["corporate.view"],
     }
     client_path = "corporate_class__client"
     filterset_fields = ["corporate_class", "status"]
@@ -502,8 +512,34 @@ class ResultSnapshotViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return self.scoped(
             ResultSnapshot.objects.select_related(
-                "corporate_class__cohort__course", "created_by", "published_by"
+                "corporate_class__cohort__course", "corporate_class__client", "created_by", "published_by"
             )
+        )
+
+    @action(detail=True, methods=["get"], url_path="print")
+    def printable(self, request, pk=None):
+        """The class report (figures + each learner) as an A4 page to print or save as PDF."""
+        from apps.notifications.layout import brand
+
+        from .shares import class_block
+
+        snapshot = self.get_object()
+        c = snapshot.corporate_class
+        if snapshot.status == "published":
+            note = f"Kết quả đã chốt, phiên bản {snapshot.version}"
+        else:
+            note = f"BẢN NHÁP phiên bản {snapshot.version}: chưa chốt, số liệu còn có thể thay đổi"
+        audit(request, "corporate.results_print", snapshot, version=snapshot.version)
+        return _html(
+            request,
+            "corporate/client_report.html",
+            {
+                "title": f"Báo cáo kết quả lớp {c.cohort.name}",
+                "client_name": c.client.name,
+                "note": note,
+                "classes": [class_block(c, snapshot)],
+                "brand": brand("corporate"),
+            },
         )
 
     @action(detail=True, methods=["post"])
@@ -617,6 +653,7 @@ class AcceptanceBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnly
         "retrieve": ["corporate.view"],
         "eligible": ["corporate.view"],
         "export": ["corporate.view"],
+        "printable": ["corporate.view"],
         "create": ["corporate.acceptance"],
         "add_adjustment": ["corporate.acceptance"],
         "remove_line": ["corporate.acceptance"],
@@ -758,6 +795,15 @@ class AcceptanceBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnly
         )
         audit(request, "corporate.acceptance_export", batch)
         return response
+
+    @action(detail=True, methods=["get"], url_path="print")
+    def printable(self, request, pk=None):
+        """The same minutes as an A4 page to print or save as PDF from the browser."""
+        from .acceptance_template import document
+
+        batch = self.get_object()
+        audit(request, "corporate.acceptance_print", batch)
+        return _html(request, "corporate/acceptance_print.html", document(batch))
 
 
 class ExpenseViewSet(

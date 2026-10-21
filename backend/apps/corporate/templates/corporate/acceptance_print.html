@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Biên bản nghiệm thu – {{ batch.title }}</title>
+<style>
+@page{size:A4;margin:15mm 15mm 15mm 20mm}
+@page landscape{size:A4 landscape;margin:12mm}
+*{box-sizing:border-box}
+body{margin:0;background:#e2e8f0;font-family:"Times New Roman",Times,serif;font-size:12pt;line-height:1.3;color:#000}
+.sheet{width:210mm;min-height:297mm;margin:12px auto;background:#fff;padding:15mm 15mm 15mm 20mm}
+.sheet.wide{width:297mm;min-height:210mm;padding:12mm}
+.head{display:grid;grid-template-columns:1fr 1.3fr;text-align:center;font-weight:bold;font-size:12pt}
+.head span{display:block;font-weight:normal}.head u{text-decoration:none;border-bottom:1px solid #000}
+h1{text-align:center;font-size:15pt;margin:14px 0 0}h2{font-size:12.5pt;margin:8px 0 3px;break-after:avoid}
+.center{text-align:center}p{margin:2px 0}
+table{width:100%;border-collapse:collapse;margin:6px 0;font-size:11.5pt}
+th,td{border:1px solid #000;padding:3px 5px;vertical-align:top}th{text-align:center}
+td.num{text-align:right;white-space:nowrap}td.c{text-align:center}
+.sign{display:grid;grid-template-columns:1fr 1fr;text-align:center;margin-top:12px;font-weight:bold;break-inside:avoid}
+.sign span{display:block;font-weight:normal;font-style:italic;font-size:11pt}
+.sign-space{height:28mm}
+.hint{text-align:center;font:12px system-ui,sans-serif;color:#475569;margin:8px}
+@media print{
+  body{background:#fff}.hint{display:none}
+  .sheet{margin:0;padding:0;width:auto;min-height:0}.sheet + .sheet{break-before:page}
+  .sheet.wide{page:landscape;width:auto;min-height:0;padding:0}
+  tr{break-inside:avoid}thead{display:table-header-group}
+}
+</style>
+</head>
+<body>
+<p class="hint">In hoặc lưu PDF: lệnh In của trình duyệt (Ctrl+P), khổ A4, chọn "Lưu dưới dạng PDF". Biên bản ở khổ dọc, bảng kê và danh sách học viên ở khổ ngang.</p>
+
+<div class="sheet">
+  <div class="head">
+    <div>{{ provider.legal_name|upper }}<span>Số: ……/BBNT</span></div>
+    <div>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<span><u><b>Độc lập – Tự do – Hạnh phúc</b></u></span></div>
+  </div>
+  <h1>BIÊN BẢN NGHIỆM THU DỊCH VỤ ĐÀO TẠO</h1>
+  <p class="center">({{ batch.title }})</p>
+  <p>– Căn cứ Hợp đồng dịch vụ đào tạo số {{ contract.number }}{{ signed }} giữa {{ client.name }} và {{ provider.legal_name }};</p>
+  <p>– Căn cứ kết quả tổ chức các lớp đào tạo{% if period %} {{ period }}{% endif %} và các tài liệu kèm theo.</p>
+  <p>Hôm nay, ngày …… tháng …… năm ……, tại ……………………………, chúng tôi gồm:</p>
+  {% for p in parties %}
+  <p><b>{{ p.title }}: {{ p.name }}</b></p>
+  <p>Địa chỉ: {{ p.address }}</p>
+  <p>Mã số thuế: {{ p.tax_code }}</p>
+  <p>Đại diện: {{ p.representative }} &nbsp;&nbsp; Chức vụ: {{ p.rep_title }}</p>
+  {% endfor %}
+  <p>Hai bên thống nhất nghiệm thu dịch vụ đào tạo với các nội dung sau:</p>
+  <h2>Điều 1. Nội dung, khối lượng và giá trị nghiệm thu</h2>
+  <table>
+    <thead><tr><th>STT</th><th>Nội dung</th><th>ĐVT</th><th>Khối lượng</th><th>Đơn giá (đ)</th><th>Thành tiền (đ)</th></tr></thead>
+    <tbody>
+    {% for l in lines %}
+    <tr><td class="c">{{ l.no }}</td><td>{{ l.description }}</td><td class="c">{{ l.unit }}</td><td class="num">{{ l.quantity }}</td><td class="num">{{ l.unit_price }}</td><td class="num">{{ l.amount }}</td></tr>
+    {% endfor %}
+    <tr><td></td><td colspan="4"><b>Cộng trước thuế</b></td><td class="num"><b>{{ totals.amount }}</b></td></tr>
+    <tr><td></td><td colspan="4"><b>Thuế GTGT</b></td><td class="num"><b>{{ totals.vat }}</b></td></tr>
+    <tr><td></td><td colspan="4"><b>Tổng cộng</b></td><td class="num"><b>{{ totals.total }}</b></td></tr>
+    </tbody>
+  </table>
+  <p><b><i>Bằng chữ: {{ words }}.</i></b></p>
+  <h2>Điều 2. Chất lượng dịch vụ</h2>
+  <p>Bên B đã tổ chức các lớp đào tạo theo nội dung hợp đồng. Lịch học, sĩ số, chuyên cần và kết quả học tập chi tiết theo Bảng kê theo lớp và Danh sách học viên kèm theo biên bản này.</p>
+  <h2>Điều 3. Thanh toán</h2>
+  <p>Bên A thanh toán cho Bên B số tiền {{ totals.total }} đồng ({{ words|lower }}) trong vòng {{ contract.payment_terms_days }} ngày kể từ ngày nhận được hóa đơn giá trị gia tăng hợp lệ.</p>
+  <h2>Điều 4. Điều khoản chung</h2>
+  <p>Biên bản được lập thành 04 (bốn) bản có giá trị pháp lý như nhau, mỗi bên giữ 02 (hai) bản.</p>
+  <div class="sign">
+    <div>ĐẠI DIỆN BÊN A<span>(Ký, ghi rõ họ tên, đóng dấu)</span></div>
+    <div>ĐẠI DIỆN BÊN B<span>(Ký, ghi rõ họ tên, đóng dấu)</span></div>
+  </div>
+  <div class="sign-space"></div><!-- room to sign; may run onto the next page, the titles may not -->
+</div>
+
+<div class="sheet wide">
+  <h1>BẢNG KÊ CÁC LỚP ĐÀO TẠO</h1>
+  <p class="center">{{ batch.title }} – Hợp đồng {{ contract.number }} (kèm biên bản nghiệm thu)</p>
+  <table>
+    <thead><tr><th>STT</th><th>Lớp</th><th>Khóa học</th><th>Từ ngày</th><th>Đến ngày</th><th>Số buổi</th><th>Số giờ</th><th>HV danh sách</th><th>HV có mặt</th><th>HV đạt</th></tr></thead>
+    <tbody>
+    {% for f in facts %}
+    <tr><td class="c">{{ forloop.counter }}</td><td>{{ f.class.cohort.name }}</td><td>{{ f.class.cohort.course.title }}</td>
+      <td class="c">{{ f.first|date:"d/m/Y"|default:"…" }}</td><td class="c">{{ f.last|date:"d/m/Y"|default:"…" }}</td>
+      <td class="num">{{ f.sessions }}</td><td class="num">{{ f.hours }}</td><td class="num">{{ f.listed }}</td><td class="num">{{ f.attended }}</td><td class="num">{{ f.passed }}</td></tr>
+    {% empty %}
+    <tr><td colspan="10" class="c">Đợt này chỉ có dòng điều chỉnh.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if facts %}
+<div class="sheet wide">
+  <h1>DANH SÁCH HỌC VIÊN</h1>
+  <p class="center">{{ batch.title }} – theo kết quả đã chốt của từng lớp</p>
+  <table>
+    <thead><tr><th>STT</th><th>Lớp</th><th>Họ tên</th><th>Mã NV</th><th>Đơn vị</th><th>Buổi có mặt / đã học</th><th>Chuyên cần (%)</th><th>Điểm (%)</th><th>Kết quả</th></tr></thead>
+    <tbody>
+    {% for f in facts %}{% for r in f.learners %}
+    <tr><td class="c">{{ forloop.counter }}</td><td>{{ f.class.cohort.name }}</td><td>{{ r.name }}</td><td>{{ r.employee_code }}</td><td>{{ r.unit }}</td>
+      <td class="c">{{ r.sessions_attended|default:0 }}{% if r.sessions_taken %}/{{ r.sessions_taken }}{% endif %}</td>
+      <td class="num">{{ r.attendance_rate|default_if_none:"" }}</td><td class="num">{{ r.grade_percent|default_if_none:"" }}</td>
+      <td>{% for k, v in result_labels.items %}{% if k == r.result %}{{ v }}{% endif %}{% endfor %}</td></tr>
+    {% endfor %}{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+</body>
+</html>

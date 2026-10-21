@@ -12,7 +12,7 @@
  * Every list is limited by the API to the clients the user may see.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, Download, FileSpreadsheet, Loader2, Mail, Plus, QrCode, RefreshCw, Save, UserMinus, X, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, Download, FileSpreadsheet, Loader2, Mail, Plus, Printer, QrCode, RefreshCw, Save, UserMinus, X, XCircle } from 'lucide-react';
 import { api, apiFetch, ApiError, API_ROOT, Paginated } from '../../lib/api';
 import { openInMoodle, useStaffCan } from '../../lib/lms';
 import { viDateToIso } from '../../lib/serverCollection';
@@ -1096,6 +1096,7 @@ const ResultsTab: React.FC<{ cls: CorpClass; onChanged: () => void }> = ({ cls, 
             </div>
             <div className="flex gap-2">
               <a className={secondary} href={`${API_ROOT}/staff/corporate/results/${shown.id}/export/`}><Download className="w-4 h-4" /> Xuất Excel</a>
+              <a className={secondary} href={`${API_ROOT}/staff/corporate/results/${shown.id}/print/`} target="_blank" rel="noopener"><Printer className="w-4 h-4" /> In / Lưu PDF</a>
               {canPublish && shown.status === 'draft' && (
                 <button type="button" className={primary} disabled={busy}
                   onClick={() => window.confirm('Phát hành kết quả? Lớp sẽ được chốt; bản phát hành không thay đổi.') && run(() => api.post<Snapshot>(`/staff/corporate/results/${shown.id}/publish/`))}>
@@ -2828,6 +2829,7 @@ const AcceptanceDetail: React.FC<{ id: string }> = ({ id }) => {
         </div>
         <div className="flex flex-wrap gap-2">
           <a className={secondary} href={`${API_ROOT}${base}export/`}><Download className="w-4 h-4" /> Xuất Excel</a>
+          <a className={secondary} href={`${API_ROOT}${base}print/`} target="_blank" rel="noopener"><Printer className="w-4 h-4" /> In / Lưu PDF</a>
           {canEdit && draft && <button type="button" className={secondary} onClick={() => setAdjusting(true)}><Plus className="w-4 h-4" /> Dòng điều chỉnh</button>}
           {canEdit && draft && <button type="button" className={primary} onClick={() => run('submit/')}>Gửi duyệt</button>}
           {canApprove && batch.status === 'submitted' && <button type="button" className={primary} onClick={() => run('approve/')}><CheckCircle2 className="w-4 h-4" /> {batch.approval?.firstBy ? 'Duyệt cấp cuối' : 'Duyệt'}</button>}

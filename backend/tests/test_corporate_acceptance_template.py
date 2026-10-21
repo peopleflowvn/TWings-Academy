@@ -1,4 +1,4 @@
-"""The default acceptance workbook: amount in words, parties, articles, class and learner sheets."""
+"""The default acceptance document (Excel + printable page): amount in words, parties, articles, evidence."""
 
 import pytest
 
@@ -29,7 +29,7 @@ def test_amount_in_words(amount, words):
 
 
 @pytest.mark.django_db
-def test_workbook_parties_articles_and_evidence(course, settings):
+def test_workbook_and_printable_page(course, settings, staff_client):
     from io import BytesIO
 
     from openpyxl import load_workbook
@@ -81,3 +81,15 @@ def test_workbook_parties_articles_and_evidence(course, settings):
     assert "trong vòng 45 ngày" in text and "Đại diện: ……" in text  # blanks to fill in by hand
     rows = list(book["Danh sách học viên"].iter_rows(values_only=True))
     assert rows[1][2] == "Trần Thị Bình" and rows[1][8] == "Đạt"
+
+    # The same minutes as a printable page (In / Lưu PDF), for staff who may see the client only.
+    from apps.accounts.rbac import Role
+
+    url = f"/api/v1/staff/corporate/acceptances/{batch.pk}/print/"
+    page = staff_client(Role.CORPORATE_TRAINING).get(url)
+    html = page.content.decode()
+    assert page.status_code == 200 and page["Content-Type"].startswith("text/html")
+    assert "BIÊN BẢN NGHIỆM THU DỊCH VỤ ĐÀO TẠO" in html and "CÔNG TY TNTALENT" in html
+    assert "Bằng chữ: Một triệu không trăm tám mươi nghìn đồng." in html and "trong vòng 45 ngày" in html
+    assert "Trần Thị Bình" in html and "NV01" in html and "Đạt" in html  # learner list
+    assert staff_client(Role.SALES_CRM).get(url).status_code == 403

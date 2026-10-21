@@ -55,6 +55,33 @@ def share_url(token: str) -> str:
     return f"{base_url()}/doi-tac/dn/{token}/"
 
 
+def class_block(corporate_class, snapshot, *, include_learners: bool = True) -> dict:
+    """One class of a report (client link, printed report): figures and, if allowed, each learner."""
+    learners = [
+        {
+            "name": r["name"],
+            "employee_code": r.get("employee_code", ""),
+            "unit": r.get("unit", ""),
+            "attendance": f"{r['sessions_attended']}/{r['sessions_taken']}"
+            if r.get("sessions_taken")
+            else "",
+            "attendance_rate": r.get("attendance_rate"),
+            "grade_percent": r.get("grade_percent"),
+            "result": RESULT_LABEL.get(r["result"], r["result"]),
+        }
+        for r in snapshot.learners
+    ]
+    return {
+        "name": corporate_class.cohort.name,
+        "course": corporate_class.cohort.course.title,
+        "start_date": corporate_class.cohort.start_date,
+        "version": snapshot.version,
+        "published_at": snapshot.published_at,
+        "kpis": snapshot.kpis,
+        "learners": learners if include_learners else [],
+    }
+
+
 def report(share: ClientShare) -> list[dict]:
     classes = share.client.classes.exclude(status="cancelled").select_related("cohort__course")
     if share.corporate_class_id:
@@ -64,31 +91,7 @@ def report(share: ClientShare) -> list[dict]:
         snapshot = c.results.filter(status="published").first()
         if snapshot is None:
             continue  # nothing is shown before the results are published
-        learners = [
-            {
-                "name": r["name"],
-                "employee_code": r.get("employee_code", ""),
-                "unit": r.get("unit", ""),
-                "attendance": f"{r['sessions_attended']}/{r['sessions_taken']}"
-                if r.get("sessions_taken")
-                else "",
-                "attendance_rate": r.get("attendance_rate"),
-                "grade_percent": r.get("grade_percent"),
-                "result": RESULT_LABEL.get(r["result"], r["result"]),
-            }
-            for r in snapshot.learners
-        ]
-        out.append(
-            {
-                "name": c.cohort.name,
-                "course": c.cohort.course.title,
-                "start_date": c.cohort.start_date,
-                "version": snapshot.version,
-                "published_at": snapshot.published_at,
-                "kpis": snapshot.kpis,
-                "learners": learners if share.include_learners else [],
-            }
-        )
+        out.append(class_block(c, snapshot, include_learners=share.include_learners))
     return out
 
 
@@ -105,6 +108,13 @@ def client_report_page(request, token: str):
         render(
             request,
             "corporate/client_report.html",
-            {"share": share, "classes": report(share), "brand": brand("corporate")},
+            {
+                "title": share.title,
+                "client_name": share.client.name,
+                "note": f"Kết quả đã chốt của các lớp · Link có hiệu lực đến {share.expires_at:%d/%m/%Y}."
+                " Vui lòng không chuyển tiếp link này.",
+                "classes": report(share),
+                "brand": brand("corporate"),
+            },
         )
     )

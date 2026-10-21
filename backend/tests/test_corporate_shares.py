@@ -80,3 +80,17 @@ def test_expired_link_and_class_only_figures(clients, staff_client):
     assert "NHM – Lớp đã chốt" in html and "Trần Thị Bình" not in html  # class figures only
     ClientShare.objects.update(expires_at=timezone.now() - timedelta(minutes=1))
     assert Client().get(path).status_code == 404
+
+
+def test_printable_class_report_for_staff(clients, staff_client, course):
+    mine, _ = clients
+    corp = staff_client(Role.CORPORATE_TRAINING)
+    published = ResultSnapshot.objects.get(corporate_class__cohort__name="NHM – Lớp đã chốt")
+    page = corp.get(f"/api/v1/staff/corporate/results/{published.pk}/print/")
+    html = page.content.decode()
+    assert page.status_code == 200 and "Báo cáo kết quả lớp NHM – Lớp đã chốt" in html
+    assert "Kết quả đã chốt, phiên bản 1" in html and "Trần Thị Bình" in html and "TNTalent" in html
+
+    draft_class = services.create_class(client=mine, course=course, name="NHM – Lớp nháp", cohort_fields={})
+    draft = ResultSnapshot.objects.create(corporate_class=draft_class, learners=[], kpis={})
+    assert "BẢN NHÁP" in corp.get(f"/api/v1/staff/corporate/results/{draft.pk}/print/").content.decode()

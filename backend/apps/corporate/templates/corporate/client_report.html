@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>{{ share.title }} – {{ brand.name }}</title>
+<title>{{ title }} – {{ brand.name }}</title>
 <style>
 :root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--brand:{{ brand.color }}}
 *{box-sizing:border-box}
@@ -21,15 +21,25 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{text-align:left;padding:6px 8px;border-top:1px solid var(--line)}th{color:var(--muted);font-weight:600;background:#f8fafc}
 td.num,th.num{text-align:right}
 footer{font-size:12px;color:var(--muted);margin:20px 0}
+.hint{font-size:12px;color:var(--muted);text-align:right;margin:0 0 8px}
+@page{size:A4;margin:12mm}
+@media print{
+  body{background:#fff;padding:0;font-size:12px}.hint{display:none}
+  .bar{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .card{border:0;border-radius:0;padding:0 0 12px;break-inside:avoid-page}
+  .card + .card{break-before:page}
+  .table{overflow:visible}tr{break-inside:avoid}thead{display:table-header-group}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
+<p class="hint">In hoặc lưu PDF: lệnh In của trình duyệt (Ctrl+P), khổ A4, chọn "Lưu dưới dạng PDF".</p>
 <div class="bar">{{ brand.name }}</div>
 <header>
-  <div class="muted">Báo cáo đào tạo cho {{ share.client.name }}</div>
-  <h1>{{ share.title }}</h1>
-  <div class="muted">Kết quả đã chốt của các lớp · Link có hiệu lực đến {{ share.expires_at|date:"d/m/Y" }}. Vui lòng không chuyển tiếp link này.</div>
+  <div class="muted">Báo cáo đào tạo cho {{ client_name }}</div>
+  <h1>{{ title }}</h1>
+  <div class="muted">{{ note }}</div>
 </header>
 {% for c in classes %}
 <div class="card">
@@ -45,7 +55,7 @@ footer{font-size:12px;color:var(--muted);margin:20px 0}
   </div>
   {% if c.learners %}
   <div class="table"><table>
-    <tr><th>Học viên</th><th>Mã NV</th><th>Đơn vị</th><th class="num">Chuyên cần</th><th class="num">Điểm</th><th>Kết quả</th></tr>
+    <thead><tr><th>Học viên</th><th>Mã NV</th><th>Đơn vị</th><th class="num">Chuyên cần</th><th class="num">Điểm</th><th>Kết quả</th></tr></thead>
     {% for r in c.learners %}
     <tr><td>{{ r.name }}</td><td>{{ r.employee_code }}</td><td>{{ r.unit }}</td>
       <td class="num">{{ r.attendance }}{% if r.attendance_rate is not None %} ({{ r.attendance_rate }}%){% endif %}</td>

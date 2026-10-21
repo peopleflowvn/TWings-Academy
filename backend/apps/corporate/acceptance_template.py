@@ -1,6 +1,7 @@
 """
-The default acceptance workbook (biên bản nghiệm thu + bảng kê), until each client's own template is
-known (TMS questions A1, A2). Three sheets, A4 portrait, ready to print and sign:
+The default acceptance document (biên bản nghiệm thu + bảng kê), until each client's own template is
+known (TMS questions A1, A2): an Excel workbook (export_xlsx) and the same content as a printable A4
+page (corporate/acceptance_print.html, "In / Lưu PDF"), both from document(). Three parts:
 
 1. "Biên bản nghiệm thu": parties A (client) and B (the provider, settings.CORPORATE_PROVIDER), the
    contract it rests on, the services and value with the amount in words, quality, payment, copies,
@@ -103,10 +104,66 @@ def _class_facts(batch) -> list[dict]:
     return rows
 
 
+def document(batch) -> dict:
+    """Everything the minutes show, shared by the workbook and the printable page."""
+    contract, client, provider = batch.contract, batch.contract.client, settings.CORPORATE_PROVIDER
+    t = totals(batch)
+    lines = []
+    for i, row in enumerate(batch.lines.order_by("sort_order"), start=1):
+        quantity = float(row.quantity) if row.quantity != row.quantity.to_integral() else int(row.quantity)
+        lines.append(
+            {
+                "no": i,
+                "description": ("[Điều chỉnh] " if row.kind == "adjustment" else "") + row.description,
+                "unit": row.unit,
+                "quantity": quantity,
+                "unit_price": _money(row.unit_price),
+                "amount": _money(row.amount),
+            }
+        )
+    period = (
+        f"từ {_day(batch.period_from)} đến {_day(batch.period_to)}"
+        if batch.period_from or batch.period_to
+        else ""
+    )
+    return {
+        "batch": batch,
+        "contract": contract,
+        "provider": provider,
+        "signed": f" ký ngày {_day(contract.signed_on)}" if contract.signed_on else "",
+        "period": period,
+        "parties": [
+            {
+                "title": "BÊN A (Bên sử dụng dịch vụ)",
+                "name": client.name,
+                "address": client.address or BLANK,
+                "tax_code": client.tax_code or BLANK,
+                "representative": client.representative or BLANK,
+                "rep_title": client.representative_title or BLANK,
+            },
+            {
+                "title": "BÊN B (Bên cung cấp dịch vụ)",
+                "name": provider["legal_name"],
+                "address": provider["address"] or BLANK,
+                "tax_code": provider["tax_code"] or BLANK,
+                "representative": provider["representative"] or BLANK,
+                "rep_title": provider["title"] or BLANK,
+            },
+        ],
+        "client": client,
+        "lines": lines,
+        "totals": {k: _money(v) for k, v in t.items() if k != "lines"},
+        "words": amount_in_words(t["total"]),
+        "facts": _class_facts(batch),
+        "result_labels": {"passed": "Đạt", "not_passed": "Không đạt", "pending": "Chờ xác minh"},
+    }
+
+
 def export_xlsx(batch) -> bytes:
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, Side
 
+    doc = document(batch)
     contract, client, provider = batch.contract, batch.contract.client, settings.CORPORATE_PROVIDER
     t = totals(batch)
     thin = Side(style="thin", color="999999")
@@ -150,53 +207,31 @@ def export_xlsx(batch) -> bytes:
     line("BIÊN BẢN NGHIỆM THU DỊCH VỤ ĐÀO TẠO", font=Font(bold=True, size=14), align=center, height=22)
     line(f"({batch.title})", align=center)
     line()
-    signed = f" ký ngày {_day(contract.signed_on)}" if contract.signed_on else ""
     line(
-        f"– Căn cứ Hợp đồng dịch vụ đào tạo số {contract.number}{signed} "
+        f"– Căn cứ Hợp đồng dịch vụ đào tạo số {contract.number}{doc['signed']} "
         f"giữa {client.name} và {provider['legal_name']};"
     )
-    period = (
-        f"từ {_day(batch.period_from)} đến {_day(batch.period_to)}"
-        if batch.period_from or batch.period_to
-        else ""
-    )
+    period = doc["period"]
     line(
         f"– Căn cứ kết quả tổ chức các lớp đào tạo{(' ' + period) if period else ''} "
         "và các tài liệu kèm theo."
     )
     line("Hôm nay, ngày …… tháng …… năm ……, tại ……………………………, chúng tôi gồm:")
-    for title, name, addr, tax, rep, rep_title in (
-        (
-            "BÊN A (Bên sử dụng dịch vụ)",
-            client.name,
-            client.address,
-            client.tax_code,
-            client.representative,
-            client.representative_title,
-        ),
-        (
-            "BÊN B (Bên cung cấp dịch vụ)",
-            provider["legal_name"],
-            provider["address"],
-            provider["tax_code"],
-            provider["representative"],
-            provider["title"],
-        ),
-    ):
-        line(f"{title}: {name}", font=bold)
-        line(f"Địa chỉ: {addr or BLANK}")
-        line(f"Mã số thuế: {tax or BLANK}")
-        line(f"Đại diện: {rep or BLANK}        Chức vụ: {rep_title or BLANK}")
+    for party in doc["parties"]:
+        line(f"{party['title']}: {party['name']}", font=bold)
+        line(f"Địa chỉ: {party['address']}")
+        line(f"Mã số thuế: {party['tax_code']}")
+        line(f"Đại diện: {party['representative']}        Chức vụ: {party['rep_title']}")
     line("Hai bên thống nhất nghiệm thu dịch vụ đào tạo với các nội dung sau:")
     line("Điều 1. Nội dung, khối lượng và giá trị nghiệm thu", font=bold)
     header = ["STT", "Nội dung", "ĐVT", "Khối lượng", "Đơn giá (đ)", "Thành tiền (đ)"]
     ws.append(header)
     for cell in ws[ws.max_row]:
         cell.font, cell.alignment, cell.border = bold, center, box
-    for i, row in enumerate(batch.lines.order_by("sort_order"), start=1):
-        description = ("[Điều chỉnh] " if row.kind == "adjustment" else "") + row.description
-        quantity = float(row.quantity) if row.quantity != row.quantity.to_integral() else int(row.quantity)
-        ws.append([i, description, row.unit, quantity, _money(row.unit_price), _money(row.amount)])
+    for row in doc["lines"]:
+        ws.append(
+            [row["no"], row["description"], row["unit"], row["quantity"], row["unit_price"], row["amount"]]
+        )
         for cell in ws[ws.max_row]:
             cell.border, cell.alignment = box, wrap
     for label, value in (
@@ -241,7 +276,7 @@ def export_xlsx(batch) -> bytes:
     ws.cell(row=r, column=1).alignment = ws.cell(row=r, column=4).alignment = center
 
     # Sheet 2: per class facts.
-    facts = _class_facts(batch)
+    facts = doc["facts"]
     ws2 = book.create_sheet("Bảng kê theo lớp")
     ws2.append([f"BẢNG KÊ CÁC LỚP ĐÀO TẠO – {batch.title} – Hợp đồng {contract.number}"])
     ws2["A1"].font = Font(bold=True, size=12)
@@ -300,7 +335,7 @@ def export_xlsx(batch) -> bytes:
     )
     for cell in ws3[1]:
         cell.font, cell.alignment, cell.border = bold, center, box
-    labels = {"passed": "Đạt", "not_passed": "Không đạt", "pending": "Chờ xác minh"}
+    labels = doc["result_labels"]
     n = 0
     for f in facts:
         for r in f["learners"]:
