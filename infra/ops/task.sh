@@ -113,6 +113,11 @@ case "$TASK" in
     remote "sudo $APP/bin/backup.sh && sudo journalctl -t twings-backup -n 3 --no-pager"
     ;;
 
+  restore-drill)
+    # Restore the newest backup into a throwaway Postgres on this runner and check it (never on the VPS).
+    bash infra/ops/restore_drill.sh
+    ;;
+
   storage-check)
     # Write, read back and delete a probe file through Django's storages (R2 or local volume).
     remote "cd $APP && sudo docker compose exec -T backend python -c '

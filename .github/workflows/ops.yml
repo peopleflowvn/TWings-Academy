@@ -1,7 +1,7 @@
 name: Ops
 
 # Administrative access to the VPS from GitHub's runners (the admin workstation's network blocks SSH).
-# Manually triggered only, from main only, using the admin key stored in the protected "ops"
+# Manually triggered (plus the monthly restore drill), from main only, using the admin key stored in the protected "ops"
 # environment. The repository is public, so NOTHING from the VPS is printed to the job log: the
 # remote output is encrypted with OPS_OUTPUT_KEY and uploaded as a short-lived artifact. Decrypt it
 # locally with:  python infra/ops/fetch_output.py <run-id>
@@ -11,11 +11,14 @@ on:
       task:
         description: What to run on the VPS
         type: choice
-        options: [status, hostkey, smoke-host, gateway-logs, setup-shared, sync-env, gateway-sync, smoke, backup, storage-check, lms-check, lms-usage, lms-admin-check, lms-intake-check, catalog-report, journey-audit, crm-data-check, seed-sales, lms-e2e, test-learner, logs, seed-content, create-admin, restart, bootstrap]
+        options: [status, hostkey, smoke-host, gateway-logs, setup-shared, sync-env, gateway-sync, smoke, backup, restore-drill, storage-check, lms-check, lms-usage, lms-admin-check, lms-intake-check, catalog-report, journey-audit, crm-data-check, seed-sales, lms-e2e, test-learner, logs, seed-content, create-admin, restart, bootstrap]
       arg:
         description: "create-admin / test-learner: e-mail address"
         required: false
         default: ""
+  # Monthly backup restore drill (1st of the month, 03:30 Vietnam time, after the nightly backup).
+  schedule:
+    - cron: "30 20 1 * *"
 
 permissions:
   contents: read
@@ -37,7 +40,7 @@ jobs:
 
       - name: Validate input
         env:
-          TASK: ${{ inputs.task }}
+          TASK: ${{ inputs.task || 'restore-drill' }}
           ARG: ${{ inputs.arg }}
         run: |
           if [[ "$TASK" == create-admin || "$TASK" == test-learner ]]; then
@@ -77,11 +80,12 @@ jobs:
 
       - name: Run task (output captured, never printed)
         env:
-          TASK: ${{ inputs.task }}
+          TASK: ${{ inputs.task || 'restore-drill' }}
           ARG: ${{ inputs.arg }}
           ENV_BUNDLE: ${{ secrets.VPS_ENV_BUNDLE }}
           CI_DEPLOY_PUBKEY: ${{ vars.CI_DEPLOY_PUBKEY }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
+          BACKUP_AGE_SECRET_KEY: ${{ secrets.BACKUP_AGE_SECRET_KEY }}
         run: |
           set -o pipefail
           rc=0

@@ -374,7 +374,23 @@ trong `.env` rồi chạy lại `sync_github.py` để ghim cố định. Thu h�
 | Rollback về commit cũ | `sudo /opt/twings/bin/deploy.sh <git-sha-cũ>` (chỉ đổi image, không đảo migration) |
 | Chạy backup thủ công | `sudo /opt/twings/bin/backup.sh && journalctl -t twings-backup -n 5` |
 | Khôi phục backup | xem cuối file `infra/vps/bin/backup.sh` (thực hiện trên máy có khóa riêng `age`) |
+| Diễn tập khôi phục | Ops task `restore-drill` (tự chạy ngày 1 hằng tháng), xem mục dưới |
 | Cập nhật cấu hình infra | chép lại thư mục `infra/` lên `/tmp/twings-infra` và chạy lại `bootstrap.sh` (an toàn khi chạy nhiều lần) |
+
+**Diễn tập khôi phục backup** (`infra/ops/restore_drill.sh`): runner GitHub lấy bản backup mới nhất
+(VPS chỉ chuyển bản đã mã hóa), giải mã bằng khóa riêng `age`, khôi phục DB `twings`, DB `moodle` vào một
+Postgres tạm trên runner và giải nén `moodledata`, rồi kiểm tra: tuổi bản backup (≤ 26 giờ), số bảng, số dòng
+các bảng lớn nhất, migration cuối, người dùng theo vai trò, người dùng / khóa học Moodle, thư mục `filedir`. Kết quả
+(kèm tổng thời gian khôi phục) nằm trong output mã hóa như mọi Ops task; lỗi thì run báo đỏ. Không đụng VPS
+production. Cần secret `BACKUP_AGE_SECRET_KEY` trong environment `ops` (đặt một lần, chỉ người quản trị):
+
+```bash
+python -c "from dotenv import dotenv_values as d; print(d('.env')['BACKUP_AGE_SECRET_KEY'], end='')"   | gh secret set BACKUP_AGE_SECRET_KEY --env ops
+gh workflow run ops.yml -f task=restore-drill      # chạy ngay; kết quả: python infra/ops/fetch_output.py <run-id>
+```
+
+Khóa nằm trên GitHub (environment `ops`, chỉ nhánh `main`), không bao giờ lên VPS. Muốn thu hồi:
+`gh secret delete BACKUP_AGE_SECRET_KEY --env ops` (diễn tập hằng tháng sẽ báo thiếu secret).
 
 **Xoay vòng khóa mã hóa dữ liệu cá nhân**: thêm khóa mới **vào đầu** danh sách `FIELD_ENCRYPTION_KEYS`
 (phân cách bằng dấu phẩy, giữ khóa cũ phía sau) rồi khởi động lại backend. Bản ghi cũ vẫn đọc được bằng khóa cũ
