@@ -169,6 +169,12 @@ def attendance_tab(page: Page):
 
 
 @step
+def surveys_tab(page: Page):
+    page.locator("button:has-text('Khảo sát')").first.click()
+    page.wait_for_selector("text=Lớp chưa có khảo sát nào trên Moodle", timeout=20000)
+
+
+@step
 def corporate_class_is_not_an_intake_for_sale(page: Page):
     page.goto(f"{BASE}/app/sales/intakes")
     page.wait_for_selector("text=E2E K9", timeout=20000)

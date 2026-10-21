@@ -153,6 +153,8 @@ $capabilities = [
     'moodle/backup:backupcourse', 'moodle/backup:configure', 'moodle/restore:restorecourse',
     'moodle/restore:configure', 'moodle/restore:rolldates', 'moodle/course:update',
     'moodle/course:changefullname', 'moodle/course:visibility',
+    // Corporate class surveys (mod_feedback, anonymous or not): read the results and who answered.
+    'mod/feedback:view', 'mod/feedback:viewanalysepage', 'mod/feedback:viewreports',
 ];
 $role = $DB->get_record('role', ['shortname' => 'twingsintegration']);
 $roleid = $role ? $role->id : create_role(
@@ -220,6 +222,8 @@ $functions = [
     'mod_attendance_get_session', 'gradereport_user_get_grade_items',
     // Corporate classes: students check in by rotating QR code (local_twings sets it on a session)
     'local_twings_attendance_selfmark',
+    // Corporate class surveys: the course's feedback activities, their results and respondents
+    'mod_feedback_get_feedbacks_by_courses', 'mod_feedback_get_analysis', 'mod_feedback_get_responses_analysis',
     // Link /app straight to the course's Announcements forum (class announcements live in Moodle)
     'mod_forum_get_forums_by_courses',
 ];

@@ -1,5 +1,6 @@
 """Corporate attendance: Moodle marks per session, corrections counted once approved, QR check-in."""
 
+import json
 from datetime import timedelta
 
 import pytest
@@ -18,11 +19,43 @@ from tests.test_learning import NOW, FakeLearning
 pytestmark = pytest.mark.django_db
 
 
+class FakeCorporate(FakeLearning):
+    """FakeLearning plus a named end-of-course survey (mod_feedback) answered by both learners."""
+
+    def __call__(self, function, **params):
+        if function == "mod_feedback_get_feedbacks_by_courses":
+            return {"feedbacks": [{"id": 31, "name": "Khảo sát cuối khóa", "anonymous": 2}]}
+        if function == "mod_feedback_get_analysis":
+            rated = [  # 1 learner answered 5, 1 answered 4 on a 1-5 scale: mean 4.5
+                {"answertext": "Rất hài lòng", "answercount": 1, "avg": 2.5, "value": 5},
+                {"answertext": "Hài lòng", "answercount": 1, "avg": 2.0, "value": 4},
+                {"answertext": "Chưa hài lòng", "answercount": 0, "avg": 0, "value": 1},
+            ]
+            return {
+                "completedcount": 2,
+                "itemsdata": [
+                    {
+                        "item": {"name": "Mức hài lòng", "typ": "multichoicerated"},
+                        "data": [json.dumps(a) for a in rated],
+                    },
+                    {"item": {"name": "Điểm giảng viên", "typ": "numeric"}, "data": ["8", "10"]},
+                    {"item": {"name": "Góp ý", "typ": "textarea"}, "data": []},
+                ],
+            }
+        if function == "mod_feedback_get_responses_analysis":
+            return {
+                "attempts": [{"userid": 501}, {"userid": 502}],
+                "totalattempts": 2,
+                "totalanonattempts": 0,
+            }
+        return super().__call__(function, **params)
+
+
 @pytest.fixture
 def corp_class(course, settings, monkeypatch):
     """A corporate class on Moodle course 77: 3 sessions held (501 always present, 502 absent twice)."""
     settings.MOODLE_INTERNAL_URL, settings.MOODLE_WS_TOKEN = "http://lms:8080/learn", "t" * 32
-    fake = FakeLearning()
+    fake = FakeCorporate()
     monkeypatch.setattr(moodle, "call", fake)
     client = services.create_client(name="Ngân hàng Mẫu", code="NHM")
     cls = services.create_class(
@@ -116,3 +149,21 @@ def test_corporate_sessions_get_qr_self_check_in(course, settings, monkeypatch):
     sync_attendance_sessions(cls.cohort, 77)
     selfmark = [p for f, p in calls if f == "local_twings_attendance_selfmark"]
     assert selfmark == [{"sessionid": 901, "enabled": 1, "rotateqrcode": 1, "autoassignstatus": 1}]
+
+
+def test_survey_results_and_response_rate(corp_class, staff_client):
+    cls, sessions, listings = corp_class
+    refresh_learning()  # reads the class surveys too
+    corp = staff_client(Role.CORPORATE_TRAINING)
+    data = corp.get(f"/api/v1/staff/corporate/classes/{cls.pk}/surveys/").json()
+    survey = data["surveys"][0]
+    assert (survey["name"], survey["anonymous"], survey["responses"]) == ("Khảo sát cuối khóa", False, 2)
+    assert (survey["responseRate"], survey["respondentsListed"], survey["satisfaction"]) == (100, 2, 90.0)
+    rated, numeric, _ = survey["items"]
+    assert (rated["average"], rated["scaleMax"], numeric["average"]) == (4.5, 5.0, 9.0)
+    listings[1].status = "cancelled"
+    listings[1].save()
+    assert (
+        corp.get(f"/api/v1/staff/corporate/classes/{cls.pk}/surveys/").json()["surveys"][0]["responseRate"]
+        == 100
+    )

@@ -8,7 +8,7 @@
  * Every list is limited by the API to the clients the user may see.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, FileSpreadsheet, Loader2, Mail, Plus, QrCode, Save, UserMinus, X, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, FileSpreadsheet, Loader2, Mail, Plus, QrCode, RefreshCw, Save, UserMinus, X, XCircle } from 'lucide-react';
 import { api, apiFetch, ApiError, Paginated } from '../../lib/api';
 import { openInMoodle, useStaffCan } from '../../lib/lms';
 import { viDateToIso } from '../../lib/serverCollection';
@@ -848,6 +848,96 @@ const AttendanceTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
   );
 };
 
+// ---------------------------------------------------------------- surveys
+interface SurveyItem {
+  name: string;
+  type: string;
+  average: number | null;
+  scaleMax: number | null;
+  answers: { text: string; count: number }[];
+}
+
+interface Survey {
+  id: string;
+  name: string;
+  anonymous: boolean;
+  responses: number;
+  learners: number;
+  responseRate: number | null;
+  respondentsListed: number | null;
+  satisfaction: number | null;
+  items: SurveyItem[];
+  syncedAt: string;
+}
+
+const SurveysTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
+  const canRefresh = useStaffCan('corporate.classes');
+  const [data, setData] = useState<{ learners: number; surveys: Survey[] } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    api.get<{ learners: number; surveys: Survey[] }>(`/staff/corporate/classes/${cls.id}/surveys/`).then(setData).catch((e) => setError(errorText(e)));
+  }, [cls.id]);
+  const refresh = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      setData(await api.post<{ learners: number; surveys: Survey[] }>(`/staff/corporate/classes/${cls.id}/surveys/`));
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!data) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
+  return (
+    <div className="space-y-4">
+      <div className={`${card} flex flex-wrap items-start justify-between gap-3`}>
+        <p className="text-xs text-slate-500 max-w-3xl">
+          Khảo sát là hoạt động “Phản hồi” (Feedback) trên Moodle: đặt trong khóa mẫu của khóa học thì mọi lớp tạo từ khóa đó đều có, chọn ẩn danh hay ghi tên
+          khi tạo. Học viên làm khảo sát trên Moodle; kết quả được đọc về đây cùng lúc với điểm danh. Tỷ lệ phản hồi tính trên học viên còn trong danh sách lớp.
+        </p>
+        {canRefresh && (
+          <button type="button" className={secondary} disabled={busy} onClick={refresh}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Cập nhật từ Moodle
+          </button>
+        )}
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      {data.surveys.length === 0 && <p className={`${card} text-xs text-slate-500`}>Lớp chưa có khảo sát nào trên Moodle (hoặc chưa đồng bộ).</p>}
+      {data.surveys.map((sv) => (
+        <div key={sv.id} className={`${card} space-y-3 text-xs`}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="font-bold text-sm text-slate-800">{sv.name} <span className="font-normal text-slate-500">· {sv.anonymous ? 'ẩn danh' : 'ghi tên'}</span></div>
+            <div className="text-slate-600">
+              {sv.responses} phản hồi / {sv.learners} học viên{sv.responseRate != null ? ` (${sv.responseRate}%)` : ''}
+              {sv.satisfaction != null && <> · Hài lòng <strong className="text-emerald-700">{sv.satisfaction}%</strong></>}
+            </div>
+          </div>
+          <div className="space-y-2">
+            {sv.items.filter((it) => it.answers.length || it.average != null).map((it) => {
+              const total = it.answers.reduce((n, a) => n + a.count, 0);
+              return (
+                <div key={it.name}>
+                  <div className="font-bold text-slate-700">{it.name}{it.average != null ? ` · trung bình ${it.average}${it.scaleMax ? `/${it.scaleMax}` : ''}` : ''}</div>
+                  {it.answers.map((a) => (
+                    <div key={a.text} className="flex items-center gap-2">
+                      <span className="w-40 truncate text-slate-600">{a.text}</span>
+                      <div className="flex-1 bg-slate-100 rounded h-2"><div className="bg-[#0073C1] h-2 rounded" style={{ width: `${total ? (100 * a.count) / total : 0}%` }} /></div>
+                      <span className="w-8 text-right">{a.count}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-slate-400">Cập nhật {new Date(sv.syncedAt).toLocaleString('vi-VN')}. Câu trả lời tự do xem trên Moodle.</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, courses }) => {
   const canEdit = useStaffCan('corporate.classes');
   const canSend = useStaffCan('corporate.communications_send');
@@ -856,7 +946,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
   const { clients } = useClients();
   const [cls, setCls] = useState<CorpClass | null>(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'learners' | 'attendance' | 'overview'>('learners');
+  const [tab, setTab] = useState<'learners' | 'attendance' | 'surveys' | 'overview'>('learners');
   const [editing, setEditing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
 
@@ -899,7 +989,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         )}
       </div>
       <div className="flex gap-1 border-b border-slate-200">
-        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
+        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['surveys', 'Khảo sát'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
           <button key={key} type="button" onClick={() => setTab(key)}
             className={`px-4 py-2 text-xs font-bold cursor-pointer border-b-2 ${tab === key ? 'border-[#0073C1] text-[#0073C1]' : 'border-transparent text-slate-500'}`}>
             {label}
@@ -910,13 +1000,15 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         <LearnersTab cls={cls} canEdit={canEdit} onChanged={load} version={listVersion} />
       ) : tab === 'attendance' ? (
         <AttendanceTab cls={cls} />
+      ) : tab === 'surveys' ? (
+        <SurveysTab cls={cls} />
       ) : (
         <div className={`${card} text-xs space-y-2`}>
           <p><strong>Chứng chỉ TWings:</strong> {cls.issueCertificate ? 'Có cấp khi hoàn thành' : 'Không cấp (theo hợp đồng)'}</p>
           <p><strong>Lịch:</strong> {cls.scheduleText || 'Chưa có mô tả lịch'} · {cls.sessions} buổi (điểm danh trên Moodle, mỗi buổi một phiên)</p>
           <p><strong>Giảng viên chính:</strong> {cls.leadInstructorName || '–'}</p>
           {cls.note && <p><strong>Ghi chú:</strong> {cls.note}</p>}
-          <p className="text-slate-500">Khảo sát và chốt kết quả sẽ có ở các bước tiếp theo của kế hoạch tích hợp.</p>
+          <p className="text-slate-500">Chốt kết quả và báo cáo sẽ có ở bước tiếp theo của kế hoạch tích hợp.</p>
         </div>
       )}
       {inviting && <InvitationDialog cls={cls} onClose={() => setInviting(false)} onSent={() => { load(); setListVersion((v) => v + 1); }} />}

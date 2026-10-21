@@ -233,10 +233,13 @@ def refresh_course(moodle_course_id: int, enrollments: list[LmsEnrollment]) -> i
         if e.cohort_id and e.cohort_id not in per_cohort:
             own = e.cohort.moodle_attendance_id and _is_cohort_course(e.cohort, moodle_course_id)
             marks = read_attendance_marks(e.cohort) if own else []
-            if marks and e.cohort.audience == e.cohort.AUDIENCE_CORPORATE:
-                from apps.corporate.attendance import store_marks  # session-level records, adjustable
+            if own and e.cohort.audience == e.cohort.AUDIENCE_CORPORATE:
+                # Corporate classes: session-level marks (adjustable) and the class surveys' results.
+                from apps.corporate.attendance import store_marks
+                from apps.corporate.surveys import sync_surveys
 
                 store_marks(e.cohort, marks)
+                sync_surveys(e.cohort.corporate_class)
             per_cohort[e.cohort_id] = (read_attendance(e.cohort, marks), expected_progress(e.cohort))
     for e in enrollments:
         attendance, expected = per_cohort.get(e.cohort_id, ({}, None))

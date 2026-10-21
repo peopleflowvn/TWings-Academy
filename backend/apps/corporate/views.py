@@ -196,6 +196,8 @@ class CorporateClassViewSet(
         invitations="corporate.view",
         send_invitations="corporate.communications_send",
         attendance="corporate.view",
+        surveys="corporate.view",
+        refresh_surveys="corporate.classes",
         adjust_attendance="corporate.attendance_adjust",
         selfmark="corporate.classes",
     )
@@ -355,6 +357,25 @@ class CorporateClassViewSet(
             raise serializers.ValidationError({"detail": "Moodle chưa nhận thay đổi, thử lại sau."})
         audit(request, "corporate.attendance_selfmark", session, enabled=ser.validated_data["enabled"])
         return Response({"session": session.pk, "enabled": ser.validated_data["enabled"]})
+
+    @action(detail=True, methods=["get"])
+    def surveys(self, request, pk=None):
+        from .surveys import summary
+
+        return Response(summary(self.get_object()))
+
+    @surveys.mapping.post
+    def refresh_surveys(self, request, pk=None):
+        """Read the surveys' results from Moodle now (otherwise every learning refresh does)."""
+        from apps.lms import moodle
+
+        from .surveys import summary, sync_surveys
+
+        corporate_class = self.get_object()
+        if not moodle.is_configured():
+            raise serializers.ValidationError({"detail": "LMS chưa cấu hình."})
+        sync_surveys(corporate_class)
+        return Response(summary(corporate_class))
 
 
 class AttendanceAdjustmentViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):

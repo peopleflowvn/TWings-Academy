@@ -164,6 +164,12 @@ class Command(BaseCommand):
         )
         self.expect("QR self check-in can be turned off", set_selfmark(session, False))
 
+        from apps.corporate.surveys import class_course_id
+
+        course_id = class_course_id(corporate_class)
+        feedbacks = moodle.call("mod_feedback_get_feedbacks_by_courses", courseids=[course_id])
+        self.expect("corporate class surveys (mod_feedback) readable", "feedbacks" in feedbacks)
+
         listing.status = "cancelled"
         listing.save()
         revoke_corporate(listing.pk)

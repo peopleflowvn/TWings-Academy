@@ -409,3 +409,29 @@ class AttendanceAdjustment(BaseModel):
     @property
     def attended(self) -> bool:
         return self.status in self.ATTENDED
+
+
+class ClassSurvey(BaseModel):
+    """
+    A survey (Moodle feedback activity) of a corporate class, read back from Moodle: how many answered,
+    who (unless anonymous), each question's results and the satisfaction score (rated questions, %).
+    """
+
+    corporate_class = models.ForeignKey(CorporateClass, on_delete=models.CASCADE, related_name="surveys")
+    moodle_feedback_id = models.PositiveIntegerField()
+    name = models.CharField(max_length=300)
+    anonymous = models.BooleanField(default=True)
+    responses = models.PositiveIntegerField(default=0)
+    respondents = models.JSONField(default=list, blank=True)  # Moodle user ids (named surveys only)
+    # [{"name", "type", "average", "scale_max", "answers": [{"text", "count"}]}]
+    items = models.JSONField(default=list, blank=True)
+    satisfaction = models.FloatField(null=True, blank=True)  # mean of rated questions, % of the scale
+    synced_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["corporate_class", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["corporate_class", "moodle_feedback_id"], name="uniq_class_survey"
+            )
+        ]
