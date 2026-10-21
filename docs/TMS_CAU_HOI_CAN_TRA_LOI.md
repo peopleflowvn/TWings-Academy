@@ -1,47 +1,47 @@
 # TMS B2B – Các câu cần nghiệp vụ / lãnh đạo trả lời
 
-Danh sách gom lại để trả lời một lần. Mỗi câu ghi **mặc định đang dùng**: hệ thống đã chạy theo mặc định đó, trả lời
-khác thì chỉ cần cấu hình hoặc sửa nhỏ, không chặn phát triển. Trạng thái: ⏳ chưa trả lời · ✅ đã trả lời.
+Ngày 21/10/2026 lãnh đạo đã chốt: **dùng mặc định / đề xuất cho mọi câu**, nghiệm thu dùng **mẫu chuẩn mặc định**
+(chỉnh khi có mẫu khách hàng), **TNTalent cho B2B, TWings cho B2C**. Bảng dưới ghi cách hệ thống đang chạy; chỉ những
+dòng ⏳ còn cần thêm thông tin (không chặn vận hành). ✅ đã chốt · ⏳ còn chờ thông tin.
 
-Kế hoạch tổng thể: [KE_HOACH_TICH_HOP_TMS_VAO_TWINGS_ACADEMY_V6.md](KE_HOACH_TICH_HOP_TMS_VAO_TWINGS_ACADEMY_V6.md).
+Kế hoạch: [KE_HOACH_TICH_HOP_TMS_VAO_TWINGS_ACADEMY_V6.md](KE_HOACH_TICH_HOP_TMS_VAO_TWINGS_ACADEMY_V6.md) ·
+hướng dẫn: [TMS_HUONG_DAN_SU_DUNG.md](TMS_HUONG_DAN_SU_DUNG.md).
 
-## A. Dữ liệu và biểu mẫu thật (cần file)
+## A. Dữ liệu và biểu mẫu thật
 
-| # | Cần cung cấp | Dùng cho | Mặc định đang dùng | TT |
-|---|---|---|---|---|
-| A1 | Mẫu biên bản / bảng kê **nghiệm thu MSB** (file Excel đang dùng) | Xuất nghiệm thu đúng mẫu khách hàng | Xuất theo mẫu chung của TWings (thông tin HĐ, kỳ, danh sách lớp, khối lượng × đơn giá, VAT, tổng) | ⏳ |
-| A2 | Mẫu nghiệm thu **ROX** | Như trên | Như trên | ⏳ |
-| A3 | 1 file **kế hoạch đào tạo** và 1 file **DSHV có CBQL** thật của mỗi khách hàng (bản được phép dùng thử) | Kiểm tra nhận cột khi nhập Excel; tạo mẫu nhập riêng nếu tiêu đề khác thường | Nhận cột theo tiêu đề tiếng Việt phổ biến (Họ tên, Email, Mã CBNV, Phòng ban, Email CBQL…) | ⏳ |
-| A4 | 1 **báo cáo sau đào tạo** khách hàng đang nhận | Báo cáo 4 góc nhìn (tuần 7) | Báo cáo theo bản kết quả đã chốt + KPI lớp | ⏳ |
-| A5 | **Bảng kê chi phí** thực tế của 1 lớp (giảng viên, phòng, ăn uống…) | Hạng mục chi phí (tuần 7) | Hạng mục: giảng viên, phòng học, đi lại, in ấn/tài liệu, ăn uống, thiết bị, khác | ⏳ |
-| A6 | **Checklist hồ sơ** nghiệm thu của mỗi khách hàng | Checklist hồ sơ theo hợp đồng | Danh sách chung: DSHV, điểm danh, kết quả, khảo sát, biên bản nghiệm thu, hóa đơn | ⏳ |
-
-## B. Quy tắc nghiệp vụ
-
-| # | Câu hỏi | Mặc định đang dùng | TT |
+| # | Nội dung | Đang chạy | TT |
 |---|---|---|---|
-| B1 | Học viên doanh nghiệp hoàn thành có được cấp **chứng chỉ TWings (TWC-…)** không? | Không cấp; bật theo từng lớp (ô "Cấp chứng chỉ TWings") nếu hợp đồng có | ⏳ |
-| B2 | **Điều kiện hoàn thành** mặc định (chuyên cần tối thiểu, điểm tối thiểu, bắt buộc khảo sát, phải hoàn thành trên Moodle)? | Không áp điều kiện nào cho tới khi nhân viên đặt ở từng lớp | ⏳ |
-| B3 | Đơn giá **theo học viên** khi nghiệm thu tính trên: học viên trong danh sách, học viên có đi học ít nhất 1 buổi, hay học viên đạt? | Học viên trong danh sách lớp lúc chốt kết quả (chọn được khi lập đợt nghiệm thu) | ⏳ |
-| B4 | Đơn giá **theo buổi / theo giờ**: chỉ tính buổi đã diễn ra, hay theo lịch đã chốt? | Buổi đã diễn ra tính đến ngày cuối kỳ nghiệm thu; giờ = tổng thời lượng các buổi đó | ⏳ |
-| B5 | **Vắng có phép** có tính vào mẫu số chuyên cần không? | Có tính (vắng có phép = không có mặt); điều chỉnh "Học bù" mới tính là có mặt | ⏳ |
-| B6 | Ai **duyệt**: điều chỉnh điểm danh, phát hành kết quả, lô email, đợt nghiệm thu? Có cần người duyệt khác người đề nghị (4 mắt) không? | Người có quyền "Duyệt (doanh nghiệp)" duyệt; cùng một người được tự duyệt, mọi thao tác có nhật ký | ⏳ |
-| B7 | Nhân sự nội bộ có cần **giới hạn theo khách hàng** (chỉ thấy khách hàng mình phụ trách) không? | Ai có quyền xem đào tạo doanh nghiệp thì thấy mọi khách hàng (đã chuẩn bị sẵn chỗ để giới hạn) | ⏳ |
-| B8 | Khi gửi thư kết quả, ngoài CBQL trực tiếp còn **CC ai** (phòng đào tạo khách hàng, PIC nội bộ…)? | CBQL hiện tại + "CC mặc định" khai ở khách hàng; BCC: không | ⏳ |
+| A1–A2 | Mẫu nghiệm thu MSB / ROX | **Mẫu chuẩn mặc định**: biên bản nghiệm thu (quốc hiệu, căn cứ hợp đồng, Bên A / Bên B, Điều 1 khối lượng – giá trị – số tiền bằng chữ, Điều 2 chất lượng, Điều 3 thanh toán theo hạn hợp đồng, Điều 4 số bản, chữ ký) + bảng kê theo lớp + danh sách học viên. Có mẫu khách hàng thì chỉnh thêm | ✅ (chỉnh khi có mẫu) |
+| A3 | File kế hoạch / DSHV thật | Nhận cột theo tiêu đề tiếng Việt phổ biến; tiêu đề khác thường thì tạo mẫu nhập riêng cho khách hàng trong hệ thống | ✅ |
+| A4 | Báo cáo sau đào tạo khách hàng đang nhận | Kết quả đã chốt + KPI lớp (Excel, link báo cáo khách hàng, thư học viên, thư CBQL) | ✅ |
+| A5 | Bảng kê chi phí thực tế | Hạng mục: giảng viên, phòng học, đi lại, in ấn / tài liệu, ăn uống, thiết bị, khác | ✅ |
+| A6 | Checklist hồ sơ | DSHV, điểm danh có ký, kết quả, khảo sát, biên bản nghiệm thu, hóa đơn | ✅ |
 
-## C. Cấu hình, hạ tầng, pháp lý
+## B. Quy tắc nghiệp vụ (đều theo mặc định)
 
-| # | Câu hỏi | Mặc định đang dùng | TT |
+| # | Quy tắc | TT |
+|---|---|---|
+| B1 | Chứng chỉ TWings cho học viên doanh nghiệp: không cấp, bật theo từng lớp nếu hợp đồng có | ✅ |
+| B2 | Điều kiện hoàn thành: nhân viên đặt theo từng lớp; thiếu dữ liệu = "Chờ xác minh" | ✅ |
+| B3 | Đơn giá theo học viên: mặc định học viên trong danh sách lúc chốt kết quả (chọn được khi lập đợt) | ✅ |
+| B4 | Theo buổi / giờ: buổi đã diễn ra tới ngày cuối kỳ nghiệm thu | ✅ |
+| B5 | Vắng có phép tính là không có mặt; "Học bù" (đã duyệt) tính là có mặt | ✅ |
+| B6 | Người có quyền "Duyệt (doanh nghiệp)" duyệt; được tự duyệt, mọi thao tác có nhật ký | ✅ |
+| B7 | Nhân sự nội bộ thấy mọi khách hàng (đã có sẵn và đã kiểm thử cơ chế giới hạn nếu cần sau này) | ✅ |
+| B8 | CC: CBQL hiện tại + CC mặc định của khách hàng; không BCC; có thêm thư tổng hợp cho từng CBQL | ✅ |
+
+## C. Cấu hình, hạ tầng
+
+| # | Nội dung | Đang chạy | TT |
 |---|---|---|---|
-| C1 | **Tên miền nội bộ** được phép nhận CC (ví dụ tntalent.vn, twings.edu.vn) → biến `CORPORATE_INTERNAL_EMAIL_DOMAINS` trên production | Chỉ tên miền gửi thư của Resend | ⏳ |
-| C2 | Thư B2B gửi từ **địa chỉ / thương hiệu** nào (TNTalent hay TWings)? Ai cấu hình DNS cho tên miền gửi trên Resend? | Gửi như thư TWings hiện nay, khung thư TWings | ⏳ |
-| C3 | Logo / màu / chân thư **TNTalent** (nếu dùng thương hiệu TNTalent cho thư và file xuất) | Chưa áp | ⏳ |
-| C4 | **Staging**: dựng thêm một bản trên VPS (tốn RAM) hay dùng máy khác? | Thử nghiệm bằng dữ liệu giả trên CI; chưa thử dữ liệu thật | ⏳ |
-| C5 | **Tải thí điểm**: số học viên mỗi lớp, số lớp chạy song song, số người quét QR cùng lúc | Thiết kế cho lớp tới ~100 người quét QR trong vài phút | ⏳ |
-| C6 | Khảo sát chuẩn: **bộ câu hỏi** khảo sát cuối khóa (để tạo sẵn trong khóa mẫu Moodle), ẩn danh hay ghi tên? | Nhân viên tự tạo hoạt động Feedback trên Moodle; hệ thống đọc mọi khảo sát của lớp | ⏳ |
-| C7 | Khách hàng có cần **tự xem báo cáo** qua link (không cần tài khoản) không? Link hết hạn sau bao lâu? | Đã có: link chỉ đọc, mặc định 30 ngày (tối đa 180), thu hồi được, chỉ dữ liệu khách hàng đó | ⏳ |
-| C8 | Cho phép **diễn tập khôi phục backup** (khôi phục bản backup đêm vào một DB tạm trên VPS rồi kiểm tra, xóa DB tạm)? Chạy trên VPS dùng chung nên cần đồng ý | Chưa chạy; backup đêm 02:30 vẫn chạy như cũ | ⏳ |
-| C9 | **Mẫu khảo sát chuẩn** muốn tạo sẵn trong khóa mẫu Moodle (dùng câu C6) và ai tạo trên Moodle | Nhân viên tự tạo hoạt động Feedback | ⏳ |
+| C1 | Tên miền nội bộ được nhận CC | Biến `CORPORATE_INTERNAL_EMAIL_DOMAINS` (đang trống = chỉ tên miền gửi thư). Khi có danh sách (ví dụ tntalent.vn) thì điền vào `.env` | ⏳ |
+| C2 | Thương hiệu / địa chỉ gửi thư B2B | **TNTalent** cho mọi thư, trang và tài liệu B2B; người gửi "TNTalent &lt;địa chỉ gửi hiện có&gt;". Muốn gửi từ tên miền TNTalent: xác minh tên miền trên Resend rồi đặt `CORPORATE_FROM_EMAIL` | ✅ (tên miền riêng ⏳) |
+| C3 | Thông tin pháp nhân TNTalent in lên biên bản | Biến `CORPORATE_PROVIDER_*` (tên, địa chỉ, MST, người đại diện, chức vụ); đang trống thì in dòng chấm để điền tay. Màu thương hiệu `CORPORATE_BRAND_COLOR` | ⏳ (cần thông tin) |
+| C4 | Staging | Thử nghiệm bằng dữ liệu giả trong CI (e2e trên trình duyệt, Moodle thật cho phần tích hợp) | ✅ |
+| C5 | Tải thí điểm | Thiết kế cho lớp tới ~100 người quét QR trong vài phút; đo khi chạy lớp thật đầu tiên | ✅ |
+| C6, C9 | Khảo sát chuẩn | Nhân viên tạo hoạt động Feedback trong khóa mẫu Moodle (ẩn danh hoặc ghi tên); hệ thống đọc mọi khảo sát | ✅ |
+| C7 | Link báo cáo cho khách hàng | Mặc định 30 ngày (tối đa 180), thu hồi được | ✅ |
+| C8 | Diễn tập khôi phục backup | Đã được đồng ý | ✅ |
 
 ---
-*Cập nhật lần cuối: 21/10/2026, sau tuần 7 (dashboard, chi phí, link khách hàng). Các tính năng đã chạy theo mặc định ở cột giữa.*
+*Cập nhật: 21/10/2026, sau quyết định của lãnh đạo.*

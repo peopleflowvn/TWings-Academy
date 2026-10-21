@@ -744,7 +744,7 @@ class AcceptanceBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnly
     def export(self, request, pk=None):
         from django.http import HttpResponse
 
-        from .acceptance import export_xlsx
+        from .acceptance_template import export_xlsx
 
         batch = self.get_object()
         response = HttpResponse(

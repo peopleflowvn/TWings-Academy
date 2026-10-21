@@ -15,7 +15,6 @@ pointing at the line it corrects. Money is in đồng; amounts are rounded per l
 
 from datetime import date, datetime, time
 from decimal import ROUND_HALF_UP, Decimal
-from io import BytesIO
 
 from django.db import transaction
 from django.db.models import Q
@@ -229,68 +228,3 @@ def totals(batch) -> dict:
     amount = sum(line.amount for line in lines)
     vat = sum(line.vat_amount for line in lines)
     return {"amount": amount, "vat": vat, "total": amount + vat, "lines": len(lines)}
-
-
-# ---------------------------------------------------------------- export
-def export_xlsx(batch) -> bytes:
-    """The generic TWings acceptance statement (each client's own template comes later, see TMS A1/A2)."""
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font
-
-    contract = batch.contract
-    book = Workbook()
-    sheet = book.active
-    sheet.title = "Nghiệm thu"
-    bold = Font(bold=True)
-    sheet.append(["BẢNG KÊ NGHIỆM THU DỊCH VỤ ĐÀO TẠO"])
-    sheet["A1"].font = Font(bold=True, size=14)
-    sheet.append([f"Khách hàng: {contract.client.name}"])
-    sheet.append([f"Hợp đồng: {contract.number}" + (f" – {contract.title}" if contract.title else "")])
-    period = " – ".join(d.strftime("%d/%m/%Y") for d in (batch.period_from, batch.period_to) if d)
-    sheet.append([f"Đợt: {batch.title}" + (f" · Kỳ: {period}" if period else "")])
-    sheet.append([f"Cơ sở tính học viên: {batch.get_learner_basis_display()}"])
-    sheet.append([])
-    header = [
-        "STT",
-        "Nội dung",
-        "Đơn vị tính",
-        "Khối lượng",
-        "Đơn giá (đ)",
-        "Thành tiền (đ)",
-        "VAT (%)",
-        "Tiền VAT (đ)",
-    ]
-    sheet.append(header)
-    for cell in sheet[sheet.max_row]:
-        cell.font = bold
-        cell.alignment = Alignment(wrap_text=True)
-    for i, line in enumerate(batch.lines.order_by("sort_order"), start=1):
-        sheet.append(
-            [
-                i,
-                ("[Điều chỉnh] " if line.kind == "adjustment" else "") + line.description,
-                line.unit,
-                float(line.quantity),
-                line.unit_price,
-                line.amount,
-                line.vat_rate,
-                line.vat_amount,
-            ]
-        )
-    t = totals(batch)
-    sheet.append([])
-    for label, value in (
-        ("Cộng trước thuế", t["amount"]),
-        ("Thuế GTGT", t["vat"]),
-        ("Tổng cộng", t["total"]),
-    ):
-        sheet.append(["", label, "", "", "", value])
-        sheet.cell(row=sheet.max_row, column=2).font = bold
-    for col, width in zip("ABCDEFGH", (6, 60, 12, 12, 16, 18, 9, 16), strict=True):
-        sheet.column_dimensions[col].width = width
-    for row in sheet.iter_rows(min_row=8, min_col=4, max_col=8):
-        for cell in row:
-            cell.number_format = "#,##0.##" if cell.column == 4 else "#,##0"
-    buf = BytesIO()
-    book.save(buf)
-    return buf.getvalue()

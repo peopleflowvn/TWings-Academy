@@ -17,6 +17,10 @@ class CorporateClient(BaseModel):
     name = models.CharField(max_length=300)
     code = models.CharField(max_length=30, unique=True)  # short name used in lists and exports, e.g. "MSB"
     tax_code = models.CharField(max_length=20, blank=True)
+    # Printed on acceptance records (party A); empty prints as a blank to fill in.
+    address = models.CharField(max_length=500, blank=True)
+    representative = models.CharField(max_length=200, blank=True)
+    representative_title = models.CharField(max_length=200, blank=True)
     # Recipient policy: CC addresses must be at one of these domains (or internal ones).
     email_domains = models.JSONField(default=list, blank=True)
     default_cc = models.JSONField(default=list, blank=True)

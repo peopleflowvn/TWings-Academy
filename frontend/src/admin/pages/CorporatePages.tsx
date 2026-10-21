@@ -24,6 +24,9 @@ interface Client {
   name: string;
   code: string;
   taxCode: string;
+  address: string;
+  representative: string;
+  representativeTitle: string;
   emailDomains: string[];
   defaultCc: string[];
   isActive: boolean;
@@ -1863,6 +1866,9 @@ const ClientEditor: React.FC<{ existing?: Client; onClose: () => void; onSaved: 
     name: existing?.name || '',
     code: existing?.code || '',
     taxCode: existing?.taxCode || '',
+    address: existing?.address || '',
+    representative: existing?.representative || '',
+    representativeTitle: existing?.representativeTitle || '',
     emailDomains: csv(existing?.emailDomains || []),
     defaultCc: csv(existing?.defaultCc || []),
     isActive: existing?.isActive ?? true,
@@ -1887,6 +1893,9 @@ const ClientEditor: React.FC<{ existing?: Client; onClose: () => void; onSaved: 
         <label className="md:col-span-2">Tên khách hàng *<input className={input} value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></label>
         <label>Mã viết tắt * (dùng trong danh sách, file xuất)<input className={input} value={d.code} onChange={(e) => setD({ ...d, code: e.target.value })} /></label>
         <label>Mã số thuế<input className={input} value={d.taxCode} onChange={(e) => setD({ ...d, taxCode: e.target.value })} /></label>
+        <label className="md:col-span-2">Địa chỉ (in trên biên bản nghiệm thu)<input className={input} value={d.address} onChange={(e) => setD({ ...d, address: e.target.value })} /></label>
+        <label>Người đại diện<input className={input} value={d.representative} onChange={(e) => setD({ ...d, representative: e.target.value })} /></label>
+        <label>Chức vụ<input className={input} value={d.representativeTitle} onChange={(e) => setD({ ...d, representativeTitle: e.target.value })} /></label>
         <label className="md:col-span-2">Tên miền email được phép nhận CC (cách nhau bằng dấu phẩy)
           <input className={input} value={d.emailDomains} placeholder="msb.com.vn, ..." onChange={(e) => setD({ ...d, emailDomains: e.target.value })} />
         </label>

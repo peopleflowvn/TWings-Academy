@@ -135,7 +135,8 @@ def test_flow_accept_then_adjust_in_a_new_batch(setup, staff_client):
     values = [
         c for row in load_workbook(BytesIO(xlsx.content)).active.iter_rows(values_only=True) for c in row
     ]
-    assert "Tổng cộng" in values and 17_480_000 in values
+    assert "Tổng cộng" in values and "17.480.000" in values
+    assert "Bằng chữ: Mười bảy triệu bốn trăm tám mươi nghìn đồng." in values
 
 
 def test_receivables_payments_and_aging(setup, staff_client):
