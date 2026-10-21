@@ -147,6 +147,19 @@ def class_schedule(page: Page):
 
 
 @step
+def invitations_with_manager_in_cc(page: Page):
+    page.locator("button:has-text('Gửi thư mời')").click()
+    dialog = page.locator("div.fixed.inset-0", has_text="Thư mời học")
+    row = dialog.locator("tr", has_text="tran.e2e@nhe2e.test")
+    row.wait_for(timeout=20000)  # the preview (the class list behind shows the same e-mail)
+    assert row.locator("td:has-text('quanly@nhe2e.test')").count() == 1, "line manager in CC"
+    dialog.locator("button:has-text('Gửi 2 thư mời')").click()
+    page.wait_for_selector("text=Đã gửi 2 thư", timeout=20000)
+    dialog.locator("button").first.click()  # close
+    page.wait_for_selector("text=Đã gửi thư mời", timeout=20000)
+
+
+@step
 def corporate_class_is_not_an_intake_for_sale(page: Page):
     page.goto(f"{BASE}/app/sales/intakes")
     page.wait_for_selector("text=E2E K9", timeout=20000)

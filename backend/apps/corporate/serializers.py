@@ -229,6 +229,7 @@ class CorporateEnrollmentSerializer(serializers.ModelSerializer):
             "corporate_class",
             "status",
             "transferred_from",
+            "invited_at",
             "note",
             "created_at",
             "full_name",

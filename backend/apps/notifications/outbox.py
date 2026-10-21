@@ -7,19 +7,45 @@ from .resend import ResendError, send_email
 
 
 def send_logged(
-    *, to: str, subject: str, html: str, order=None, sent_by=None, template_code="", name=""
+    *,
+    to: str,
+    subject: str,
+    html: str,
+    order=None,
+    sent_by=None,
+    template_code="",
+    name="",
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    reply_to: str = "",
+    attachments: list[dict] | None = None,
+    corporate_enrollment=None,
 ) -> EmailLog:
     log = EmailLog.objects.create(
         template_code=template_code,
         order=order,
+        corporate_enrollment=corporate_enrollment,
         recipient_email=to,
         recipient_name=name,
+        cc=list(cc or []),
+        bcc=list(bcc or []),
+        reply_to=reply_to,
+        attachment_names=[a["filename"] for a in attachments or []],
         subject=subject,
         rendered_html=html,
         sent_by=sent_by,
     )
     try:
-        message_id = send_email(to=to, subject=subject, html=html, idempotency_key=log.pk)
+        message_id = send_email(
+            to=to,
+            subject=subject,
+            html=html,
+            idempotency_key=log.pk,
+            cc=cc,
+            bcc=bcc,
+            reply_to=reply_to,
+            attachments=attachments,
+        )
     except ResendError as exc:
         log.status, log.error_message = "failed", str(exc)[:500]
         log.save(update_fields=["status", "error_message", "updated_at"])

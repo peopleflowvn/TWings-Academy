@@ -266,6 +266,8 @@ BLIND_INDEX_KEY = env("BLIND_INDEX_KEY")
 # ---------------------------------------------------------------------------
 RESEND_API_KEY = env("RESEND_API_KEY", default="")
 RESEND_FROM_EMAIL = env("RESEND_FROM_EMAIL", default="TWings Academy <onboarding@resend.dev>")
+# Corporate training: e-mail domains of our own staff, always allowed in CC next to a client's domains.
+CORPORATE_INTERNAL_EMAIL_DOMAINS = env.list("CORPORATE_INTERNAL_EMAIL_DOMAINS", default=[])
 RESEND_WEBHOOK_SECRET = env("RESEND_WEBHOOK_SECRET", default="")
 
 # Bank transaction webhook (SePay-compatible: "Authorization: Apikey <key>")

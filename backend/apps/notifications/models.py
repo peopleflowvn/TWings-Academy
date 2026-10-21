@@ -45,8 +45,21 @@ class EmailLog(BaseModel):
     template = models.ForeignKey(EmailTemplate, null=True, blank=True, on_delete=models.SET_NULL)
     template_code = models.CharField(max_length=100, blank=True)
     order = models.ForeignKey(Order, null=True, blank=True, on_delete=models.SET_NULL, related_name="emails")
+    # A corporate learner's e-mail (B2B: no order).
+    corporate_enrollment = models.ForeignKey(
+        "corporate.CorporateEnrollment",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="emails",
+    )
     recipient_email = models.EmailField()
     recipient_name = models.CharField(max_length=200, blank=True)
+    # Who else got this same message, as sent (a later change of manager does not rewrite it).
+    cc = models.JSONField(default=list, blank=True)
+    bcc = models.JSONField(default=list, blank=True)
+    reply_to = models.EmailField(blank=True)
+    attachment_names = models.JSONField(default=list, blank=True)
     subject = models.CharField(max_length=300)
     rendered_html = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="queued", db_index=True)

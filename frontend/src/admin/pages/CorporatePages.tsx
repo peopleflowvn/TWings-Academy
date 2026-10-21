@@ -8,7 +8,7 @@
  * Every list is limited by the API to the clients the user may see.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, FileSpreadsheet, Loader2, Plus, Save, UserMinus, X } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, CalendarDays, CheckCircle2, CopyPlus, FileSpreadsheet, Loader2, Mail, Plus, Save, UserMinus, X } from 'lucide-react';
 import { api, apiFetch, ApiError, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { viDateToIso } from '../../lib/serverCollection';
@@ -126,6 +126,7 @@ interface Listing {
   id: string;
   status: string;
   transferredFrom: string | null;
+  invitedAt: string | null;
   note: string;
   fullName: string;
   email: string;
@@ -585,8 +586,87 @@ const ClassEditor: React.FC<{
   );
 };
 
+interface InvitationRow {
+  enrollment: string;
+  name: string;
+  to: string;
+  cc: string[];
+  rejected: string[];
+  invitedAt: string | null;
+}
+
+/** Class invitation: schedule + .ics, one e-mail per learner, CC the line manager; preview before sending. */
+const InvitationDialog: React.FC<{ cls: CorpClass; onClose: () => void; onSent: () => void }> = ({ cls, onClose, onSent }) => {
+  const [all, setAll] = useState(false);
+  const [rows, setRows] = useState<InvitationRow[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState('');
+  const [error, setError] = useState('');
+  useEffect(() => {
+    setRows(null);
+    api
+      .get<InvitationRow[]>(`/staff/corporate/classes/${cls.id}/invitations/${all ? '?all=1' : ''}`)
+      .then(setRows)
+      .catch((e) => setError(errorText(e)));
+  }, [cls.id, all]);
+  const send = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.post<{ sent: number; failed: number }>(`/staff/corporate/classes/${cls.id}/invitations/`, { all });
+      setResult(`Đã gửi ${res.sent} thư${res.failed ? `, ${res.failed} thư lỗi (xem Mẫu email & lịch sử gửi)` : ''}.`);
+      onSent();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Thư mời học – ${cls.name}`} onClose={onClose} wide>
+      <p className="text-slate-600">
+        Mỗi học viên một email riêng (không lộ danh sách lớp), kèm lịch học dạng tệp .ics và hướng dẫn vào học. CC: cán bộ quản lý hiện tại và
+        CC mặc định của khách hàng; địa chỉ ngoài tên miền của khách hàng / nội bộ bị loại.
+      </p>
+      {cls.sessions === 0 && <p className="text-amber-700 font-bold">Lớp chưa có lịch học: tạo lịch trước khi gửi thư mời.</p>}
+      <label className="flex items-center gap-2"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Gửi lại cho cả học viên đã nhận thư mời</label>
+      {!rows ? (
+        <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+      ) : rows.length === 0 ? (
+        <p className="text-slate-500">Không có học viên nào cần gửi.</p>
+      ) : (
+        <div className="max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 text-slate-600 text-left sticky top-0"><tr><th className="p-2">Học viên</th><th className="p-2">Gửi tới</th><th className="p-2">CC</th><th className="p-2">CC bị loại</th></tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((r) => (
+                <tr key={r.enrollment}>
+                  <td className="p-2 font-bold">{r.name}{r.invitedAt ? <div className="font-normal text-slate-500">Đã mời {new Date(r.invitedAt).toLocaleString('vi-VN')}</div> : null}</td>
+                  <td className="p-2">{r.to}</td>
+                  <td className="p-2">{r.cc.join(', ') || '–'}</td>
+                  <td className="p-2 text-red-600">{r.rejected.join(', ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {result && <p className="text-emerald-700 font-bold">{result}</p>}
+      {error && <p className="text-red-600">{error}</p>}
+      <div className="flex justify-end">
+        <button type="button" className={primary} disabled={busy || !rows?.length || cls.sessions === 0 || Boolean(result)} onClick={send}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />} Gửi {rows?.length || 0} thư mời
+        </button>
+      </div>
+    </Modal>
+  );
+};
+
 const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id, courses }) => {
   const canEdit = useStaffCan('corporate.classes');
+  const canSend = useStaffCan('corporate.communications_send');
+  const [inviting, setInviting] = useState(false);
+  const [listVersion, setListVersion] = useState(0); // bumped when something else changed the class list
   const { clients } = useClients();
   const [cls, setCls] = useState<CorpClass | null>(null);
   const [error, setError] = useState('');
@@ -616,12 +696,19 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
           </p>
           {cls.location && <p className="text-xs text-slate-500">Địa điểm: {cls.location}</p>}
         </div>
-        {canEdit && (
+        {(canEdit || canSend) && (
           <div className="flex gap-2">
+            {canSend && (
+              <button type="button" className={secondary} onClick={() => setInviting(true)}>
+                <Mail className="w-4 h-4" /> Gửi thư mời
+              </button>
+            )}
+            {canEdit && (
             <button type="button" className={secondary} onClick={() => setScheduling(true)}>
               <CalendarDays className="w-4 h-4" /> Lịch học
             </button>
-            <button type="button" className={secondary} onClick={() => setEditing(true)}>Sửa thông tin</button>
+            )}
+            {canEdit && <button type="button" className={secondary} onClick={() => setEditing(true)}>Sửa thông tin</button>}
           </div>
         )}
       </div>
@@ -634,7 +721,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         ))}
       </div>
       {tab === 'learners' ? (
-        <LearnersTab cls={cls} canEdit={canEdit} onChanged={load} />
+        <LearnersTab cls={cls} canEdit={canEdit} onChanged={load} version={listVersion} />
       ) : (
         <div className={`${card} text-xs space-y-2`}>
           <p><strong>Chứng chỉ TWings:</strong> {cls.issueCertificate ? 'Có cấp khi hoàn thành' : 'Không cấp (theo hợp đồng)'}</p>
@@ -644,6 +731,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
           <p className="text-slate-500">Điểm danh QR, khảo sát và chốt kết quả sẽ có ở các bước tiếp theo của kế hoạch tích hợp.</p>
         </div>
       )}
+      {inviting && <InvitationDialog cls={cls} onClose={() => setInviting(false)} onSent={() => { load(); setListVersion((v) => v + 1); }} />}
       {editing && <ClassEditor clients={clients} courses={courses} existing={cls} onClose={() => setEditing(false)} onSaved={setCls} />}
       {scheduling && (
         <SessionsEditor
@@ -658,7 +746,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
 
 const EMPTY_LEARNER = { fullName: '', email: '', phone: '', employeeCode: '', jobTitle: '', unit: '', managerName: '', managerEmail: '' };
 
-const LearnersTab: React.FC<{ cls: CorpClass; canEdit: boolean; onChanged: () => void }> = ({ cls, canEdit, onChanged }) => {
+const LearnersTab: React.FC<{ cls: CorpClass; canEdit: boolean; onChanged: () => void; version: number }> = ({ cls, canEdit, onChanged, version }) => {
   const [rows, setRows] = useState<Listing[] | null>(null);
   const [error, setError] = useState('');
   const [form, setForm] = useState(EMPTY_LEARNER);
@@ -669,7 +757,7 @@ const LearnersTab: React.FC<{ cls: CorpClass; canEdit: boolean; onChanged: () =>
 
   const load = useCallback(() => {
     api.get<Listing[]>(`/staff/corporate/classes/${cls.id}/enrollments/`).then(setRows).catch((e) => setError(errorText(e)));
-  }, [cls.id]);
+  }, [cls.id, version]);
   useEffect(load, [load]);
 
   const add = async () => {
@@ -765,7 +853,7 @@ const LearnersTab: React.FC<{ cls: CorpClass; canEdit: boolean; onChanged: () =>
                     <td className="p-3">{r.managerName || r.managerEmail ? <>{r.managerName}<div>{r.managerEmail}</div></> : '–'}</td>
                     <td className="p-3">{r.lmsStatus || 'Chờ ghi danh'}{r.progress != null ? ` · ${r.progress}%` : ''}</td>
                     <td className="p-3 text-right">{r.attendanceRate != null ? `${r.attendanceRate}%` : '–'}</td>
-                    <td className="p-3">{LISTING_STATUS[r.status] || r.status}</td>
+                    <td className="p-3">{LISTING_STATUS[r.status] || r.status}{r.invitedAt ? <div className="text-slate-500">Đã gửi thư mời</div> : null}</td>
                     {canEdit && (
                       <td className="p-3">
                         {active && (

@@ -267,6 +267,7 @@ class CorporateEnrollment(BaseModel):
     transferred_from = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="transferred_to"
     )
+    invited_at = models.DateTimeField(null=True, blank=True)  # class invitation (schedule + .ics) sent
     note = models.TextField(blank=True)
 
     class Meta:

@@ -21,18 +21,46 @@ class ResendError(Exception):
     pass
 
 
-def send_email(*, to: str, subject: str, html: str, idempotency_key: str) -> str | None:
+def send_email(
+    *,
+    to: str,
+    subject: str,
+    html: str,
+    idempotency_key: str,
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    reply_to: str = "",
+    attachments: list[dict] | None = None,
+) -> str | None:
     """
     Send via Resend and return its message id, or None when no API key is configured (sandbox mode:
-    the caller records the email as 'simulated').
+    the caller records the email as 'simulated'). One message: `to` is a single person, `cc` / `bcc`
+    are who else receives that same message (Resend reports delivery per message, not per copy).
+    `attachments`: [{"filename": "lich-hoc.ics", "content": <bytes>, "content_type": "text/calendar"}].
     """
     api_key = settings.RESEND_API_KEY
     if not api_key:
         return None
+    payload = {"from": settings.RESEND_FROM_EMAIL, "to": [to], "subject": subject, "html": wrap(html)}
+    if cc:
+        payload["cc"] = list(cc)
+    if bcc:
+        payload["bcc"] = list(bcc)
+    if reply_to:
+        payload["reply_to"] = reply_to
+    if attachments:
+        payload["attachments"] = [
+            {
+                "filename": a["filename"],
+                "content": base64.b64encode(a["content"]).decode(),
+                **({"content_type": a["content_type"]} if a.get("content_type") else {}),
+            }
+            for a in attachments
+        ]
     try:
         response = requests.post(
             RESEND_API_URL,
-            json={"from": settings.RESEND_FROM_EMAIL, "to": [to], "subject": subject, "html": wrap(html)},
+            json=payload,
             headers={"Authorization": f"Bearer {api_key}", "Idempotency-Key": idempotency_key},
             timeout=10,
         )

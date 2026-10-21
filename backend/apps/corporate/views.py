@@ -186,7 +186,11 @@ class CorporateClassViewSet(
     serializer_class = CorporateClassSerializer
     permission_classes = [ActionPermission]
     permission_map = perm_map(
-        "corporate.classes", enrollments="corporate.view", add_learner="corporate.classes"
+        "corporate.classes",
+        enrollments="corporate.view",
+        add_learner="corporate.classes",
+        invitations="corporate.view",
+        send_invitations="corporate.communications_send",
     )
     filterset_fields = ["client", "status", "contract", "plan_line"]
     search_fields = ["cohort__name", "cohort__course__title"]
@@ -263,6 +267,40 @@ class CorporateClassViewSet(
         listing = _rule(lambda: services.list_learner(corporate_class, learner, **employment))
         audit(request, "corporate.enrollment_add", listing, corporate_class=corporate_class.pk)
         return Response(CorporateEnrollmentSerializer(listing).data, status=201)
+
+    @action(detail=True, methods=["get"])
+    def invitations(self, request, pk=None):
+        """Preview: who gets the class invitation (To, CC allowed, CC refused by the policy)."""
+        from .communications import invitation_rows
+
+        only_new = request.query_params.get("all") != "1"
+        rows = invitation_rows(self.get_object(), only_new)
+        return Response(
+            [
+                {
+                    "enrollment": r["listing"].pk,
+                    "name": r["listing"].learner.full_name,
+                    "to": r["to"],
+                    "cc": r["cc"],
+                    "rejected": r["rejected"],
+                    "invited_at": r["listing"].invited_at,
+                }
+                for r in rows
+            ]
+        )
+
+    @invitations.mapping.post
+    def send_invitations(self, request, pk=None):
+        from .communications import send_invitations
+
+        corporate_class = self.get_object()
+        if not corporate_class.cohort.sessions.exists():
+            raise serializers.ValidationError(
+                {"detail": "Lớp chưa có lịch học: tạo lịch trước khi gửi thư mời."}
+            )
+        result = send_invitations(corporate_class, sent_by=request.user, only_new=not request.data.get("all"))
+        audit(request, "corporate.invitations_send", corporate_class, **result)
+        return Response(result)
 
 
 class CorporateEnrollmentViewSet(_Scoped, viewsets.GenericViewSet):
