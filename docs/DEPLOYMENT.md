@@ -385,8 +385,7 @@ các bảng lớn nhất, migration cuối, người dùng theo vai trò, ngư�
 production. Cần secret `BACKUP_AGE_SECRET_KEY` trong environment `ops` (đặt một lần, chỉ người quản trị):
 
 ```bash
-grep '^BACKUP_AGE_SECRET_KEY=' .env | cut -d= -f2- | tr -d '
-' | gh secret set BACKUP_AGE_SECRET_KEY --env ops
+grep '^BACKUP_AGE_SECRET_KEY=' .env | cut -d= -f2- | tr -d '\r\n' | gh secret set BACKUP_AGE_SECRET_KEY --env ops
 gh workflow run ops.yml -f task=restore-drill      # chạy ngay; kết quả: python infra/ops/fetch_output.py <run-id>
 ```
 
