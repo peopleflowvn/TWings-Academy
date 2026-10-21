@@ -100,3 +100,71 @@ def remind_due_installments() -> dict:
             FollowupTask.objects.create(order=order, title=title, due_date=today, priority="high")
             tasks += 1
     return {"sent": sent, "overdueTasks": tasks}
+
+
+HOLD_REMIND_HOURS = 24
+
+
+def send_hold_email(order) -> None:
+    """The checkout is still unpaid and its hold ends soon: the same QR, and when it ends."""
+    from apps.lms.emails import account_url
+
+    qr = vietqr_payload(order)
+    until = timezone.localtime(order.hold_expires_at).strftime("%H:%M ngày %d/%m/%Y")
+    html = f"""
+<p>Chào {escape(order.customer_name)},</p>
+<p>TWings Academy đang giữ chỗ và học phí ưu đãi của bạn cho
+<strong>{escape(order.course_title)}</strong> đến <strong>{until}</strong>.
+Sau thời điểm này đơn chưa thanh toán sẽ tự hủy và chỗ được nhường cho học viên khác.</p>
+<p>Số tiền cần chuyển: <strong>{_vnd(qr["amount"])}</strong><br>
+Ngân hàng: {escape(qr["bank_name"])}<br>
+Số tài khoản: <strong>{escape(qr["account_number"])}</strong> – {escape(qr["account_name"])}<br>
+Nội dung chuyển khoản: <strong>{escape(qr["transfer_content"])}</strong></p>
+<p><img src="{qr["qr_image_url"]}" alt="VietQR" width="220"></p>
+<p>Hệ thống tự xác nhận sau khi nhận tiền. Theo dõi đơn tại
+<a href="{account_url()}">{account_url()}</a>.</p>
+<p>TWings Academy</p>
+"""
+    send_logged(
+        to=order.customer_email,
+        subject=f"Giữ chỗ đến {until} – {order.order_code} | TWings Academy",
+        html=html,
+        order=order,
+        template_code="checkout_hold_reminder",
+        name=order.customer_name,
+    )
+
+
+def remind_expiring_checkouts(now=None) -> int:
+    """Once per checkout, when less than HOLD_REMIND_HOURS of its hold are left."""
+    from apps.crm.models import Order
+
+    if not settings.VIETQR_ACCOUNT_NUMBER:
+        return 0
+    now = now or timezone.now()
+    due = (
+        Order.objects.filter(
+            status="pending",
+            parent__isnull=True,
+            total_paid_amount=0,
+            hold_expires_at__gt=now,
+            hold_expires_at__lte=now + timedelta(hours=HOLD_REMIND_HOURS),
+        )
+        .exclude(customer_email="")
+        .exclude(emails__template_code="checkout_hold_reminder")
+    )
+    sent = 0
+    for order in due:
+        try:
+            send_hold_email(order)
+        except ResendError:
+            logger.warning("Hold reminder for %s could not be sent", order.order_code)
+            continue
+        Activity.objects.create(
+            order=order,
+            type="email",
+            title="Đã gửi email nhắc thanh toán trước khi hết giữ chỗ",
+            actor="Hệ thống thanh toán",
+        )
+        sent += 1
+    return sent

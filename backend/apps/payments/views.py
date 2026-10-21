@@ -18,9 +18,11 @@ from .billing import order_billing
 from .models import BankTransaction
 from .services import (
     RefundError,
+    RestoreError,
     confirm_manual_payment,
     ingest_bank_transaction,
     refund_order,
+    restore_and_credit,
     vietqr_payload,
 )
 
@@ -153,6 +155,23 @@ class ConfirmManualPaymentView(APIView):
             },
             status=201,
         )
+
+
+class RestoreTransactionView(APIView):
+    """Finance: credit an unmatched transfer, reopening the order cancelled at the end of its hold."""
+
+    permission_classes = [require_perms("finance.confirm_manual")]
+
+    def post(self, request, pk):
+        txn = get_object_or_404(BankTransaction, pk=pk)
+        code = str(request.data.get("order_code") or "").strip().upper()
+        order = get_object_or_404(Order, order_code=code) if code else None
+        try:
+            restore_and_credit(request, txn, order)
+        except RestoreError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        txn.refresh_from_db()
+        return Response(BankTransactionSerializer(txn).data)
 
 
 class OrderBillingView(APIView):

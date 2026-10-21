@@ -64,4 +64,12 @@ for i in range(32):
         customer_name=f"Lead chăm sóc {i:02d}", customer_phone=f"09130000{i:02d}", course=gdv,
         course_title=gdv.title, crm_status="6. Chăm sóc lại",
     )
+# A transfer whose memo has no order code (checkout_test.py credits it to the order it creates).
+from apps.payments.models import BankTransaction  # noqa: E402
+
+BankTransaction.objects.create(
+    provider_txn_id="E2E-NO-CODE", transfer_type="in", amount=rm.price, content="CHUYEN TIEN HOC PHI E2E",
+    transaction_date="2026-10-21 09:00:00", match_status="unmatched",
+    match_note="Không tìm thấy mã đơn trong nội dung chuyển khoản",
+)
 print("e2e seed:", Order.objects.count(), "registrations")

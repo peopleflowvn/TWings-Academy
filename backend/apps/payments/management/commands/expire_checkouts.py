@@ -1,7 +1,8 @@
 """
-Checkouts unpaid after their hold: cancelled (price, coupon and seat released). The consultant gets a
-follow-up task; a transfer arriving later is left unmatched for finance (it is never credited at the
-old price).
+Checkouts with less than a day of hold left get one reminder e-mail (with the QR). Those still unpaid
+after their hold are cancelled (price, coupon and seat released) and the consultant gets a follow-up
+task. A transfer arriving later is left unmatched; finance can restore the order from the transaction
+(payments.services.restore_and_credit).
 """
 
 from django.core.management.base import BaseCommand
@@ -40,4 +41,7 @@ class Command(BaseCommand):
     help = "Cancel checkouts still unpaid after their hold (CHECKOUT_HOLD_HOURS)."
 
     def handle(self, *args, **options):
-        self.stdout.write(f"expired: {expire_checkouts()}")
+        from apps.payments.reminders import remind_expiring_checkouts
+
+        reminded = remind_expiring_checkouts()  # less than a day left: one e-mail with the QR
+        self.stdout.write(f"reminded: {reminded}, expired: {expire_checkouts()}")

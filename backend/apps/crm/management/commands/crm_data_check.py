@@ -11,7 +11,9 @@ What it reports:
 - a class written as text without the intake (cohort) it belongs to;
 - campaign codes that match no campaign (e.g. the old defaults CAMP-2026-Q4-HN, TW3);
 - registrations without a learner, learners with several registrations, duplicate flags;
-- e-mails already sent with the sample bank account of the old tuition template.
+- e-mails already sent with the sample bank account of the old tuition template;
+- selling rules (15/10/2026): published courses whose struck-through price is hidden for want of a
+  promotion end date, checkouts on hold, coupons used.
 No names, phones, e-mails or identity numbers are printed.
 """
 
@@ -109,6 +111,24 @@ def collect() -> dict:
         .filter(n__gt=1)
         .count(),
         "registrations_flagged_duplicate": leads.filter(is_duplicate=True).count(),
+    }
+
+    from django.db.models import F
+    from django.utils import timezone
+
+    from apps.catalog.models import Coupon, Course
+
+    no_end = Course.objects.filter(
+        status="published", original_price__gt=F("price"), sale_ends_on__isnull=True
+    )
+    holds = leads.filter(status="pending", hold_expires_at__isnull=False)
+    report["selling_rules"] = {
+        "courses_promotion_without_end_date": list(no_end.values_list("slug", flat=True)[:30]),
+        "checkouts_on_hold": holds.filter(hold_expires_at__gt=timezone.now()).count(),
+        "checkouts_hold_passed_not_cancelled": holds.filter(hold_expires_at__lte=timezone.now()).count(),
+        "coupons_used": {c.code: c.usage_count for c in Coupon.objects.filter(usage_count__gt=0)[:30]},
+        "note": "Khóa trong danh sách đầu: nhập 'Khuyến mãi đến hết ngày' nếu đang khuyến mãi, "
+        "nếu không thì đặt giá gốc bằng học phí.",
     }
     return report
 

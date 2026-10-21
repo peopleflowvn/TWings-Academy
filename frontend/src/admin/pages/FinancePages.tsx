@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { api, Paginated } from '../../lib/api';
 import { CollectionOptions, isoToViDate, useServerCollection, viDateToIso } from '../../lib/serverCollection';
+import { useStaffCan } from '../../lib/lms';
 
 const vnd = (n: number | null | undefined) => (n || n === 0 ? `${Number(n).toLocaleString('vi-VN')}đ` : '–');
 
@@ -35,6 +36,27 @@ export const TransactionsPage: React.FC = () => {
     return s && ['unmatched', 'matched', 'ignored'].includes(s) ? (s as any) : '';
   });
   const [error, setError] = useState('');
+  const canCredit = useStaffCan('finance.confirm_manual');
+  // Order code typed for a transfer whose memo had none, by transaction id.
+  const [codes, setCodes] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState('');
+
+  /** Credit an unmatched transfer; an order cancelled at the end of its hold is reopened. */
+  const restore = async (r: BankTransaction) => {
+    const orderCode = (codes[r.id] || '').trim().toUpperCase();
+    if (!r.orderCode && !orderCode) return setError('Nhập mã đơn nhận khoản tiền này.');
+    if (!window.confirm(`Ghi nhận ${vnd(r.amount)} vào đơn ${orderCode || r.orderCode}? Đơn đã hủy do hết hạn giữ chỗ sẽ được khôi phục.`)) return;
+    setBusy(r.id);
+    setError('');
+    try {
+      const updated = await api.post<BankTransaction>(`/staff/transactions/${r.id}/restore/`, orderCode ? { orderCode } : {});
+      setRows((prev) => (prev || []).map((x) => (x.id === r.id ? updated : x)));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy('');
+    }
+  };
 
   const handleFilterChange = (k: '' | 'unmatched' | 'matched' | 'ignored') => {
     setFilter(k);
@@ -71,7 +93,7 @@ export const TransactionsPage: React.FC = () => {
           <h1 className="text-xl font-black text-slate-900">Giao dịch ngân hàng & đối soát</h1>
           <p className="text-xs text-slate-500 max-w-2xl">
             Giao dịch tiền vào do ngân hàng báo về (webhook). Hệ thống tự khớp theo mã đơn trong nội dung chuyển khoản; giao
-            dịch “Chưa khớp” cần Kế toán xác nhận thủ công trên đơn hàng.
+            dịch “Chưa khớp” (thiếu mã đơn, hoặc tiền về sau khi đơn hết hạn giữ chỗ) được Kế toán ghi nhận ngay tại đây.
           </p>
         </div>
         <div className="flex gap-2 text-xs">
@@ -117,6 +139,26 @@ export const TransactionsPage: React.FC = () => {
                 <td className="p-3">
                   <span className={`inline-block px-2 py-0.5 rounded-full border font-bold ${MATCH_STYLE[r.matchStatus]}`}>{MATCH_LABEL[r.matchStatus]}</span>
                   {r.matchNote && <div className="text-[10px] text-slate-500 mt-1">{r.matchNote}</div>}
+                  {canCredit && r.matchStatus === 'unmatched' && r.transferType === 'in' && (
+                    <div className="mt-2 flex items-center gap-1">
+                      {!r.orderCode && (
+                        <input
+                          value={codes[r.id] || ''}
+                          onChange={(e) => setCodes({ ...codes, [r.id]: e.target.value })}
+                          placeholder="Mã đơn TW…"
+                          className="w-28 px-2 py-1 border border-slate-300 rounded-lg font-mono"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        disabled={busy === r.id}
+                        onClick={() => restore(r)}
+                        className="px-2 py-1 rounded-lg bg-[#0073C1] text-white font-bold disabled:opacity-50 cursor-pointer"
+                      >
+                        {r.orderCode ? 'Khôi phục đơn & ghi nhận' : 'Ghi nhận vào đơn'}
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

@@ -120,3 +120,82 @@ def test_seo_links_follow_the_public_domain_reached(client, course, settings):
     # internal callers (container name, loopback) get the configured site address
     xml = client.get("/sitemap.xml").content.decode()
     assert "https://tuyensinh.twings.edu.vn/" in xml and "testserver" not in xml
+
+
+def test_one_reminder_e_mail_on_the_last_day_of_the_hold(api, registration_payload):
+    from apps.notifications.models import EmailLog
+    from apps.payments.reminders import remind_expiring_checkouts
+
+    _, order = _checkout(api, registration_payload)
+    assert remind_expiring_checkouts() == 0  # 72 hours left
+    Order.objects.filter(pk=order.pk).update(hold_expires_at=timezone.now() + timedelta(hours=5))
+    assert remind_expiring_checkouts() == 1
+    assert remind_expiring_checkouts() == 0  # once
+    log = EmailLog.objects.get(template_code="checkout_hold_reminder")
+    assert order.order_code in log.rendered_html and "tự hủy" in log.rendered_html
+
+
+def test_finance_restores_an_order_paid_after_its_hold(api, registration_payload, staff_client, fake_moodle):  # noqa: F811
+    from apps.payments.models import BankTransaction
+    from tests.conftest import Role
+
+    body, order = _checkout(api, registration_payload)
+    Order.objects.filter(pk=order.pk).update(hold_expires_at=timezone.now() - timedelta(minutes=1))
+    expire_checkouts()
+    _transfer(api, order, body["amount"], "TXN-LATE")
+    txn = BankTransaction.objects.get(provider_txn_id="TXN-LATE")
+    assert txn.match_status == "unmatched" and order.status == "cancelled"
+
+    sales = staff_client(Role.SALES_CRM)
+    assert sales.post(f"/api/v1/staff/transactions/{txn.pk}/restore/").status_code == 403
+    finance = staff_client(Role.SUPER_ADMIN)
+    res = finance.post(f"/api/v1/staff/transactions/{txn.pk}/restore/", {}, format="json")
+    assert res.status_code == 200, res.content
+    order.refresh_from_db()
+    txn.refresh_from_db()
+    assert order.status == "paid" and order.learning_access and txn.match_status == "matched"
+    assert finance.post(f"/api/v1/staff/transactions/{txn.pk}/restore/").status_code == 400  # not twice
+
+
+def test_transfer_without_order_code_is_credited_to_the_order_finance_names(
+    api,
+    registration_payload,
+    staff_client,
+    fake_moodle,  # noqa: F811
+):
+    from apps.payments.models import BankTransaction
+    from tests.conftest import Role
+
+    body, order = _checkout(api, registration_payload)
+    txn = BankTransaction.objects.create(
+        provider_txn_id="NO-CODE",
+        transfer_type="in",
+        amount=body["amount"],
+        content="chuyen tien hoc",
+        match_status="unmatched",
+    )
+    finance = staff_client(Role.SUPER_ADMIN)
+    res = finance.post(
+        f"/api/v1/staff/transactions/{txn.pk}/restore/", {"orderCode": order.order_code}, format="json"
+    )
+    assert res.status_code == 200, res.content
+    order.refresh_from_db()
+    assert order.status == "paid"
+
+
+def test_backfill_holds_old_checkouts_and_lowers_coupon_counts(course):
+    from importlib import import_module
+
+    from django.apps import apps as django_apps
+
+    checkout = Order.objects.create(
+        customer_name="A", course=course, amount=100, status="pending", terms_accepted_at=timezone.now()
+    )
+    lead = Order.objects.create(customer_name="B", course=course, amount=100, status="pending")
+    Coupon.objects.create(code="OLD", discount_percent=10, usage_count=5)
+    Order.objects.filter(pk=checkout.pk).update(discount_code="OLD")
+    import_module("apps.crm.migrations.0013_selling_rules_backfill").backfill(django_apps, None)
+    checkout.refresh_from_db()
+    lead.refresh_from_db()
+    assert checkout.hold_expires_at is not None and lead.hold_expires_at is None
+    assert Coupon.objects.get(code="OLD").usage_count == 0

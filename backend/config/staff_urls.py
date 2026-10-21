@@ -47,6 +47,7 @@ from apps.payments.views import (
     ConfirmManualPaymentView,
     OrderBillingView,
     RefundOrderView,
+    RestoreTransactionView,
 )
 
 router = SimpleRouter()
@@ -79,6 +80,9 @@ urlpatterns = [
     ),
     path("orders/<str:pk>/billing/", OrderBillingView.as_view(), name="staff-order-billing"),
     path("orders/<str:pk>/refund/", RefundOrderView.as_view(), name="staff-order-refund"),
+    path(
+        "transactions/<str:pk>/restore/", RestoreTransactionView.as_view(), name="staff-transaction-restore"
+    ),
     path("intakes/", IntakesOverviewView.as_view(), name="staff-intakes"),
     path("cohorts/<str:pk>/sessions/", CohortSessionsView.as_view(), name="staff-cohort-sessions"),
     path("cohorts/<str:pk>/roster/", CohortRosterView.as_view(), name="staff-cohort-roster"),

@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from apps.crm.models import ORDER_CODE_ALPHABET, Activity, Order
+from apps.crm.models import ORDER_CODE_ALPHABET, Activity, FollowupTask, Order
 
 from .models import BankTransaction, Payment, Refund
 
@@ -134,6 +134,55 @@ def confirm_manual_payment(request, order: Order, amount: int, note: str) -> Pay
     order = Order.objects.select_for_update().get(pk=order.pk)
     payment = _credit(order, amount, source="manual", user=request.user, note=note)
     audit(request, "payment.confirm_manual", order, amount=amount, note=note)
+    return payment
+
+
+class RestoreError(Exception):
+    pass
+
+
+@transaction.atomic
+def restore_and_credit(request, txn: BankTransaction, order: Order | None = None) -> Payment:
+    """
+    Finance, for a transfer left unmatched: credit it to its order (or the one finance names when the
+    memo had no order code). An order cancelled at the end of its hold is reopened at its price; a
+    full intake is not changed but the consultant gets a task to move the learner.
+    """
+    from apps.catalog.intakes import has_seat
+    from apps.core.models import audit
+
+    txn = BankTransaction.objects.select_for_update().get(pk=txn.pk)
+    if txn.match_status != "unmatched":
+        raise RestoreError("Giao dịch này không ở trạng thái chưa khớp.")
+    order = order or txn.order
+    if order is None:
+        raise RestoreError("Chọn đơn hàng nhận khoản tiền này.")
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    if order.status == "refunded":
+        raise RestoreError("Đơn đã hoàn tiền: tạo đơn mới hoặc hoàn lại khoản chuyển.")
+    if order.status == "cancelled":
+        if order.cohort_id and not has_seat(order.cohort):
+            FollowupTask.objects.create(
+                order=order,
+                title=f"Lớp {order.cohort.name} đã đủ chỗ: xếp học viên sang lớp khác",
+                due_date=timezone.localdate(),
+                priority="high",
+                assigned_to=order.pic,
+            )
+        order.status = "pending"
+        order.save(update_fields=["status", "updated_at"])
+        Activity.objects.create(
+            order=order,
+            type="note",
+            title="Khôi phục đơn đã hủy: tiền chuyển đến sau hạn giữ chỗ",
+            actor=request.user.email,
+            actor_user=request.user,
+        )
+    payment = _credit(order, txn.amount, source="bank_webhook", txn=txn, user=request.user)
+    txn.order, txn.match_status = order, "matched"
+    txn.match_note = f"Kế toán ghi nhận vào {order.order_code}"
+    txn.save(update_fields=["order", "match_status", "match_note"])
+    audit(request, "payment.restore_and_credit", order, amount=txn.amount, transaction=txn.provider_txn_id)
     return payment
 
 
