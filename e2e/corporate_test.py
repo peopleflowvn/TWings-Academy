@@ -27,8 +27,16 @@ def step(fn):
     return fn
 
 
-def modal(page: Page):
-    return page.locator("div.fixed.inset-0").last
+def modal(page: Page, title: str):
+    """The open dialog showing this text (never just "the last overlay": other layers exist)."""
+    dialog = page.locator("div.fixed.inset-0", has_text=title).last
+    dialog.wait_for(timeout=20000)
+    return dialog
+
+
+def close(dialog):
+    dialog.locator("button").first.click()  # the X in the dialog header
+    dialog.wait_for(state="detached", timeout=20000)
 
 
 def field(scope, label: str):
@@ -49,16 +57,16 @@ def login(page: Page):
 def client_with_contract_and_rate(page: Page):
     page.goto(f"{BASE}/app/corporate/clients")
     page.locator("button:has-text('Thêm khách hàng')").click()
-    m = modal(page)
+    m = modal(page, "Tên khách hàng")
     field(m, "Tên khách hàng").fill("Ngân hàng E2E")
     field(m, "Mã viết tắt").fill("NHE2E")
     field(m, "Tên miền email").fill("nhe2e.test")
     m.locator("button:has-text('Lưu')").click()
     page.wait_for_selector("text=NHE2E – Ngân hàng E2E", timeout=20000)
-    assert page.locator("text=Pháp nhân").count() >= 1, "a client starts with its legal entity"
+    page.locator("text=Pháp nhân").first.wait_for(timeout=20000)  # a client starts with its legal entity
 
     page.locator("button:has-text('Thêm hợp đồng')").click()
-    m = modal(page)
+    m = modal(page, "Số hợp đồng")
     field(m, "Số hợp đồng").fill("HD-E2E-01")
     field(m, "Trạng thái").select_option("active")
     m.locator("button:has-text('Thêm đơn giá')").click()
@@ -71,7 +79,7 @@ def client_with_contract_and_rate(page: Page):
 def plan_approved_then_opens_a_class(page: Page):
     page.goto(f"{BASE}/app/corporate/plans")
     page.locator("button:has-text('Thêm kế hoạch')").click()
-    m = modal(page)
+    m = modal(page, "Tên kế hoạch")
     field(m, "Khách hàng").select_option(label="NHE2E – Ngân hàng E2E")
     field(m, "Tên kế hoạch").fill("Kế hoạch E2E")
     m.locator("button:has-text('Tạo')").click()
@@ -86,13 +94,12 @@ def plan_approved_then_opens_a_class(page: Page):
     page.wait_for_selector("text=Đã duyệt", timeout=20000)
 
     page.locator("button:has-text('Tạo lớp')").first.click()
-    page.wait_for_selector("text=Tạo lớp doanh nghiệp", timeout=20000)
-    m = modal(page)
+    m = modal(page, "Tạo lớp doanh nghiệp")
     field(m, "Tên lớp").fill("NHE2E – Bán hàng – Lớp 1")
     field(m, "Hợp đồng").select_option(label="HD-E2E-01")
     m.locator("button:has-text('Lưu')").click()
     page.wait_for_selector("h2:has-text('NHE2E – Bán hàng – Lớp 1')", timeout=20000)
-    assert page.locator("text=HĐ HD-E2E-01").count() == 1, "the class keeps its contract"
+    page.locator("text=HĐ HD-E2E-01").wait_for(timeout=20000)  # the class keeps its contract
 
 
 @step
@@ -103,7 +110,7 @@ def learner_listed_with_manager(page: Page):
     field(page, "CBQL – email").fill("quanly@nhe2e.test")
     page.locator("button:has-text('Thêm vào lớp')").click()
     page.wait_for_selector("td:has-text('Trần Thị E2E')", timeout=20000)
-    assert page.locator("text=quanly@nhe2e.test").count() == 1, "line manager on the list"
+    page.locator("td:has-text('quanly@nhe2e.test')").first.wait_for(timeout=20000)  # line manager listed
 
 
 @step
@@ -122,40 +129,38 @@ def roster_imported_from_excel(page: Page):
     path = OUT / "dshv_e2e.xlsx"
     book.save(path)
     page.locator("button:has-text('Nhập từ Excel')").click()
-    m = modal(page)
+    m = modal(page, "Nhập danh sách học viên từ Excel")
     m.locator("input[type=file]").set_input_files(str(path))
-    page.wait_for_selector("text=1 thêm", timeout=20000)
-    assert m.locator("text=Thiếu email").count() == 1, "row without e-mail flagged"
+    m.locator("text=1 thêm").wait_for(timeout=20000)
+    m.locator("text=Thiếu email").wait_for(timeout=20000)  # the row without e-mail is flagged
     m.locator("button:has-text('Nhập 1 dòng')").click()
-    page.wait_for_selector("text=Đã nhập 1 dòng", timeout=20000)
-    m.locator("button").first.click()  # close
+    m.locator("text=Đã nhập 1 dòng").wait_for(timeout=20000)
+    close(m)
     page.wait_for_selector("td:has-text('Lê Văn Nhập')", timeout=20000)
 
 
 @step
 def class_schedule(page: Page):
     page.locator("button:has-text('Lịch học')").click()
-    page.wait_for_selector("text=Tạo nhanh theo mẫu", timeout=20000)
-    m = modal(page)
+    m = modal(page, "Tạo nhanh theo mẫu")
     m.locator("input[type=number]").first.fill("3")
     m.locator("button:has-text('Tạo lịch')").click()
     m.locator("button:has-text('Lưu lịch')").click()
     # Saved; without Moodle (CI) the editor says the calendar could not be pushed yet.
-    page.wait_for_selector("text=/Đã lưu 3 buổi|LMS chưa cấu hình/", timeout=20000)
-    m.locator("button").first.click()  # close
+    m.locator("text=/Đã lưu 3 buổi|LMS chưa cấu hình/").wait_for(timeout=20000)
+    close(m)
     page.wait_for_selector("text=· 3 buổi", timeout=20000)
 
 
 @step
 def invitations_with_manager_in_cc(page: Page):
     page.locator("button:has-text('Gửi thư mời')").click()
-    dialog = page.locator("div.fixed.inset-0", has_text="Thư mời học")
+    dialog = modal(page, "Thư mời học")
     row = dialog.locator("tr", has_text="tran.e2e@nhe2e.test")
-    row.wait_for(timeout=20000)  # the preview (the class list behind shows the same e-mail)
-    assert row.locator("td:has-text('quanly@nhe2e.test')").count() == 1, "line manager in CC"
+    row.locator("td:has-text('quanly@nhe2e.test')").wait_for(timeout=20000)  # line manager in CC
     dialog.locator("button:has-text('Gửi 2 thư mời')").click()
-    page.wait_for_selector("text=Đã gửi 2 thư", timeout=20000)
-    dialog.locator("button").first.click()  # close
+    dialog.locator("text=Đã gửi 2 thư").wait_for(timeout=20000)
+    close(dialog)
     page.wait_for_selector("text=Đã gửi thư mời", timeout=20000)
 
 
@@ -164,8 +169,8 @@ def attendance_tab(page: Page):
     page.locator("button:has-text('Điểm danh')").first.click()
     page.wait_for_selector("text=Buổi học & mã QR điểm danh", timeout=20000)
     # Without Moodle (CI) the sessions are listed but not on Moodle yet; the sheet lists the learners.
-    assert page.locator("text=chưa lên Moodle").count() == 3, "three sessions"
-    assert page.locator("td:has-text('Trần Thị E2E')").count() == 1, "learner row in the sheet"
+    page.locator("text=chưa lên Moodle").nth(2).wait_for(timeout=20000)
+    page.locator("td:has-text('Trần Thị E2E')").first.wait_for(timeout=20000)
 
 
 @step
@@ -185,7 +190,7 @@ def corporate_class_is_not_an_intake_for_sale(page: Page):
 def transfer_to_another_class(page: Page):
     page.goto(f"{BASE}/app/corporate/classes")
     page.locator("button:has-text('Tạo lớp')").click()
-    m = modal(page)
+    m = modal(page, "Tạo lớp doanh nghiệp")
     field(m, "Khách hàng").select_option(label="NHE2E – Ngân hàng E2E")
     field(m, "Khóa học").select_option(label="E2E RM Doanh nghiệp")
     field(m, "Tên lớp").fill("NHE2E – Bán hàng – Lớp 2")
@@ -196,7 +201,7 @@ def transfer_to_another_class(page: Page):
     page.locator("td:has-text('NHE2E – Bán hàng – Lớp 1')").click()
     page.wait_for_selector("td:has-text('Trần Thị E2E')", timeout=20000)
     page.locator("tr", has_text="Trần Thị E2E").locator("button[title='Chuyển lớp']").click()
-    m = modal(page)
+    m = modal(page, "Chuyển lớp – Trần Thị E2E")
     m.locator("select").select_option(label="NHE2E – Bán hàng – Lớp 2 · E2E RM Doanh nghiệp")
     m.locator("button:has-text('Chuyển')").click()
     page.wait_for_selector("td:has-text('Đã chuyển lớp')", timeout=20000)
@@ -210,7 +215,7 @@ def results_published_and_locked(page: Page):
     page.locator("button:has-text('Kết quả')").first.click()
     page.locator("button:has-text('Tính kết quả')").click()
     page.wait_for_selector("text=Phiên bản 1 · Bản nháp", timeout=20000)
-    assert page.locator("td:has-text('Trần Thị E2E')").count() == 1
+    page.locator("td:has-text('Trần Thị E2E')").wait_for(timeout=20000)
     page.locator("button:has-text('Phát hành')").click()  # confirm accepted by the harness
     page.wait_for_selector("text=Phiên bản 1 · Đã phát hành", timeout=20000)
     # The class reloads after publishing: locked, it offers to reopen.
@@ -221,7 +226,7 @@ def results_published_and_locked(page: Page):
 def results_emailed_after_approval(page: Page):
     page.locator("button:has-text('Truyền thông')").first.click()
     page.locator("button:has-text('Tạo lô thư kết quả')").click()
-    dialog = page.locator("div.fixed.inset-0", has_text="Tạo lô thư kết quả")
+    dialog = modal(page, "Lời nhắn")
     dialog.locator("textarea").fill("Cảm ơn anh chị đã tham gia.")
     dialog.locator("button:has-text('Tạo lô')").click()
     page.wait_for_selector("text=Chờ duyệt", timeout=20000)
