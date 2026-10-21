@@ -48,6 +48,7 @@ PERMISSIONS: dict[str, str] = {
     "corporate.communications_send": "Gửi email lớp doanh nghiệp (học viên, CC cán bộ quản lý)",
     "corporate.acceptance": "Lập và xuất hồ sơ nghiệm thu",
     "corporate.approve": "Duyệt kết quả, điều chỉnh, lô email, nghiệm thu",
+    "corporate.approve_final": "Duyệt cấp cuối nghiệm thu / chi phí vượt ngưỡng (cấp 2)",
     "corporate.share": "Tạo link xem báo cáo cho khách hàng",
 }
 

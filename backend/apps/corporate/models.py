@@ -571,6 +571,10 @@ class AcceptanceBatch(BaseModel):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
+    first_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )  # two-level approval (approvals.py): the first of two approvers
+    first_approved_at = models.DateTimeField(null=True, blank=True)
     approved_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -688,6 +692,10 @@ class Expense(BaseModel):
     document = models.ForeignKey(
         ClassDocument, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
+    first_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )  # two-level approval (approvals.py): the first of two approvers
+    first_approved_at = models.DateTimeField(null=True, blank=True)
     approved_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )

@@ -209,8 +209,15 @@ def move(batch, to: str, *, user, invoice_number: str = "", invoice_date=None) -
             raise CorporateError("Đợt nghiệm thu chưa có dòng nào.")
         fields = ["status", "updated_at"]
         if to == "approved":
-            batch.approved_by, batch.approved_at = user, timezone.now()
-            fields += ["approved_by", "approved_at"]
+            from . import approvals
+
+            fields += ["first_approved_by", "first_approved_at", "approved_by", "approved_at"]
+            if not approvals.approve(batch, kind="acceptance", value=totals(batch)["total"], user=user):
+                batch.save(update_fields=fields)  # first of two approvals: stays submitted
+                return batch
+        if to == "draft":  # back for changes: approvals start over
+            batch.first_approved_by = batch.first_approved_at = batch.approved_by = batch.approved_at = None
+            fields += ["first_approved_by", "first_approved_at", "approved_by", "approved_at"]
         if to == "accepted":
             batch.accepted_at = timezone.now()
             batch.invoice_number, batch.invoice_date = invoice_number, invoice_date

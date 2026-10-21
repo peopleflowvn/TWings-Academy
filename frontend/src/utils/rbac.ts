@@ -407,6 +407,15 @@ export const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
     riskLevel: 'high'
   },
   {
+    id: 'perm-corporate-11',
+    code: 'corporate.approve_final',
+    name: 'Duyệt cấp cuối (doanh nghiệp)',
+    description: 'Duyệt lần hai nghiệm thu / chi phí từ ngưỡng tiền (người khác người duyệt cấp một)',
+    category: 'corporate',
+    categoryLabel: '8. Đào Tạo Doanh Nghiệp',
+    riskLevel: 'high'
+  },
+  {
     id: 'perm-corporate-10',
     code: 'corporate.share',
     name: 'Link cho khách hàng',

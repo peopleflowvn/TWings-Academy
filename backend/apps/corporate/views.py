@@ -630,7 +630,7 @@ class AcceptanceBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnly
     def get_queryset(self):
         return self.scoped(
             AcceptanceBatch.objects.select_related(
-                "contract__client", "created_by", "approved_by"
+                "contract__client", "created_by", "first_approved_by", "approved_by"
             ).prefetch_related("lines__corporate_class__cohort", "lines__snapshot")
         )
 
@@ -777,7 +777,7 @@ class ExpenseViewSet(
     def get_queryset(self):
         return self.scoped(
             Expense.objects.select_related(
-                "client", "corporate_class__cohort", "contract", "approved_by"
+                "client", "corporate_class__cohort", "contract", "first_approved_by", "approved_by"
             ).prefetch_related("settlements")
         )
 
@@ -787,7 +787,10 @@ class ExpenseViewSet(
 
     def perform_update(self, serializer):
         self.check_client(serializer.validated_data["client"])
-        audit(self.request, "corporate.expense_update", serializer.save())
+        extra = {}
+        if serializer.instance.first_approved_at and not serializer.instance.approved_at:
+            extra = {"first_approved_by": None, "first_approved_at": None}  # changed: approve again
+        audit(self.request, "corporate.expense_update", serializer.save(**extra))
 
     def destroy(self, request, *args, **kwargs):
         expense = self.get_object()
@@ -814,14 +817,16 @@ class ExpenseViewSet(
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
-        from django.utils import timezone
+        from . import approvals
 
         expense = self.get_object()
         if expense.approved_at:
             raise serializers.ValidationError({"detail": "Khoản này đã được duyệt."})
-        expense.approved_by, expense.approved_at = request.user, timezone.now()
-        expense.save(update_fields=["approved_by", "approved_at", "updated_at"])
-        audit(request, "corporate.expense_approve", expense)
+        value = expense.amount + expense.vat_amount
+        final = _rule(lambda: approvals.approve(expense, kind="expense", value=value, user=request.user))
+        fields = ["first_approved_by", "first_approved_at", "approved_by", "approved_at", "updated_at"]
+        expense.save(update_fields=fields)
+        audit(request, "corporate.expense_approve" if final else "corporate.expense_approve_first", expense)
         return Response(self.get_serializer(expense).data)
 
 

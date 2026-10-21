@@ -432,6 +432,7 @@ class AcceptanceBatchSerializer(serializers.ModelSerializer):
     totals = serializers.SerializerMethodField()
     created_by_name = serializers.CharField(source="created_by.name", read_only=True, default="")
     approved_by_name = serializers.CharField(source="approved_by.name", read_only=True, default="")
+    approval = serializers.SerializerMethodField()
 
     class Meta:
         model = AcceptanceBatch
@@ -439,6 +440,12 @@ class AcceptanceBatchSerializer(serializers.ModelSerializer):
         read_only_fields = [f.name for f in AcceptanceBatch._meta.fields]
 
     balance = serializers.SerializerMethodField()
+
+    def get_approval(self, batch) -> dict:
+        from . import approvals
+        from .acceptance import totals
+
+        return approvals.state(batch, kind="acceptance", value=totals(batch)["total"])
 
     def get_totals(self, batch) -> dict:
         from .acceptance import totals
@@ -503,11 +510,24 @@ class ExpenseSerializer(serializers.ModelSerializer):
     approved_by_name = serializers.CharField(source="approved_by.name", read_only=True, default="")
     settled = serializers.SerializerMethodField()
     allocations = serializers.SerializerMethodField()
+    approval = serializers.SerializerMethodField()
 
     class Meta:
         model = Expense
         exclude = ["updated_at"]
-        read_only_fields = ["client", "approved_by", "approved_at", "created_by"]
+        read_only_fields = [
+            "client",
+            "first_approved_by",
+            "first_approved_at",
+            "approved_by",
+            "approved_at",
+            "created_by",
+        ]
+
+    def get_approval(self, expense) -> dict:
+        from . import approvals
+
+        return approvals.state(expense, kind="expense", value=expense.amount + expense.vat_amount)
 
     def get_allocations(self, expense) -> list[dict]:
         return [

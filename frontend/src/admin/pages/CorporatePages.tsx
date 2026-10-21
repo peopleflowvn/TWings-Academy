@@ -1414,6 +1414,16 @@ const DocumentsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
 };
 
 // ---------------------------------------------------------------- costs
+/** Two-level approval (from a money threshold): levels needed and the first approver so far. */
+interface Approval {
+  levels: 1 | 2;
+  firstBy: string;
+  firstAt: string | null;
+}
+
+const approvalNote = (a: Approval | undefined, done: boolean) =>
+  a && a.levels === 2 && !done ? (a.firstBy ? `Đã duyệt cấp 1 (${a.firstBy}) · chờ duyệt cấp cuối` : 'Cần duyệt 2 cấp') : '';
+
 interface Expense {
   id: string;
   kind: 'expense' | 'advance' | 'settlement';
@@ -1429,6 +1439,7 @@ interface Expense {
   settled: number | null;
   approvedAt: string | null;
   approvedByName: string;
+  approval: Approval;
 }
 
 const EXPENSE_CATEGORIES: [string, string][] = [
@@ -1539,7 +1550,12 @@ const CostsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
                   <td className="p-2"><div className="font-bold">{r.description}</div>{r.supplier && <div className="text-slate-500">{r.supplier}</div>}</td>
                   <td className="p-2">{r.kindLabel} · {r.categoryLabel}</td>
                   <td className="p-2 text-right">{vnd(r.amount)}{r.vatAmount ? <div className="text-slate-500">VAT {vnd(r.vatAmount)}</div> : null}</td>
-                  <td className="p-2">{r.approvedAt ? `Đã duyệt${r.approvedByName ? ` · ${r.approvedByName}` : ''}` : canApprove ? <button type="button" className="text-emerald-700 font-bold cursor-pointer" onClick={() => act(() => api.post(`/staff/corporate/expenses/${r.id}/approve/`))}>Duyệt</button> : 'Chờ duyệt'}</td>
+                  <td className="p-2">{r.approvedAt ? `Đã duyệt${r.approvedByName ? ` · ${r.approvedByName}` : ''}` : (
+                    <>
+                      {approvalNote(r.approval, false) && <span className="block text-amber-700">{approvalNote(r.approval, false)}</span>}
+                      {canApprove ? <button type="button" className="text-emerald-700 font-bold cursor-pointer" onClick={() => act(() => api.post(`/staff/corporate/expenses/${r.id}/approve/`))}>{r.approval?.firstBy ? 'Duyệt cấp cuối' : 'Duyệt'}</button> : 'Chờ duyệt'}
+                    </>
+                  )}</td>
                   <td className="p-2">{canEdit && !r.approvedAt && <button type="button" title="Xóa" className="text-red-500 cursor-pointer" onClick={() => window.confirm('Xóa khoản chi?') && act(() => api.delete(`/staff/corporate/expenses/${r.id}/`))}><X className="w-4 h-4" /></button>}</td>
                 </tr>
               ))}
@@ -2599,6 +2615,7 @@ interface AcceptanceBatch {
   note: string;
   createdByName: string;
   approvedByName: string;
+  approval: Approval;
   lines: AcceptanceLine[];
   totals: { amount: number; vat: number; total: number; lines: number };
 }
@@ -2806,13 +2823,13 @@ const AcceptanceDetail: React.FC<{ id: string }> = ({ id }) => {
         <div className="text-xs space-y-1">
           <h2 className="font-bold text-slate-900 text-lg">{batch.title}</h2>
           <p>{batch.clientCode} · HĐ {batch.contractNumber} · {LEARNER_BASIS.find(([k]) => k === batch.learnerBasis)?.[1]}{batch.periodTo ? ` · tính đến ${day(batch.periodTo)}` : ''}</p>
-          <p><span className={`font-bold ${tone}`}>{label}</span>{batch.approvedByName ? ` · duyệt bởi ${batch.approvedByName}` : ''}{batch.invoiceNumber ? ` · hóa đơn ${batch.invoiceNumber}${batch.invoiceDate ? ` ngày ${day(batch.invoiceDate)}` : ''}` : ''}</p>
+          <p><span className={`font-bold ${tone}`}>{label}</span>{batch.approvedByName ? ` · duyệt bởi ${batch.approvedByName}` : ''}{approvalNote(batch.approval, !!batch.approvedByName) && <span className="text-amber-700"> · {approvalNote(batch.approval, !!batch.approvedByName)}</span>}{batch.invoiceNumber ? ` · hóa đơn ${batch.invoiceNumber}${batch.invoiceDate ? ` ngày ${day(batch.invoiceDate)}` : ''}` : ''}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <a className={secondary} href={`${API_ROOT}${base}export/`}><Download className="w-4 h-4" /> Xuất Excel</a>
           {canEdit && draft && <button type="button" className={secondary} onClick={() => setAdjusting(true)}><Plus className="w-4 h-4" /> Dòng điều chỉnh</button>}
           {canEdit && draft && <button type="button" className={primary} onClick={() => run('submit/')}>Gửi duyệt</button>}
-          {canApprove && batch.status === 'submitted' && <button type="button" className={primary} onClick={() => run('approve/')}><CheckCircle2 className="w-4 h-4" /> Duyệt</button>}
+          {canApprove && batch.status === 'submitted' && <button type="button" className={primary} onClick={() => run('approve/')}><CheckCircle2 className="w-4 h-4" /> {batch.approval?.firstBy ? 'Duyệt cấp cuối' : 'Duyệt'}</button>}
           {canEdit && batch.status === 'approved' && <button type="button" className={primary} onClick={() => setInvoice({ invoiceNumber: '', invoiceDate: '' })}><CheckCircle2 className="w-4 h-4" /> Khách hàng đã nghiệm thu</button>}
           {canEdit && (batch.status === 'submitted' || batch.status === 'approved') && <button type="button" className={secondary} onClick={() => run('back-to-draft/')}>Trả về đang lập</button>}
           {canEdit && batch.status !== 'accepted' && batch.status !== 'cancelled' && <button type="button" className={secondary} onClick={() => window.confirm('Hủy đợt nghiệm thu? Các lớp sẽ được lập lại ở đợt khác.') && run('cancel/')}>Hủy đợt</button>}

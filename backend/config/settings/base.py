@@ -274,6 +274,12 @@ CORPORATE_BRAND_NAME = env("CORPORATE_BRAND_NAME", default="TNTalent")
 CORPORATE_BRAND_COLOR = env("CORPORATE_BRAND_COLOR", default="#C8102E")
 CORPORATE_FROM_EMAIL = env("CORPORATE_FROM_EMAIL", default="")  # empty: TNTalent <the Resend sender address>
 CORPORATE_CONTACT_EMAIL = env("CORPORATE_CONTACT_EMAIL", default="")
+# Two-level approval from these amounts (đồng, VAT included; 0 = one approver): a second, different
+# person with corporate.approve_final confirms (apps/corporate/approvals.py).
+CORPORATE_SECOND_APPROVAL_FROM = {
+    "acceptance": env.int("CORPORATE_SECOND_APPROVAL_ACCEPTANCE", default=100_000_000),
+    "expense": env.int("CORPORATE_SECOND_APPROVAL_EXPENSE", default=20_000_000),
+}
 CORPORATE_PROVIDER = {
     "legal_name": env("CORPORATE_PROVIDER_LEGAL_NAME", default="TNTalent"),
     "address": env("CORPORATE_PROVIDER_ADDRESS", default=""),
