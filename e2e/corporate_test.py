@@ -347,6 +347,18 @@ def client_request_with_sla(page: Page):
     page.locator("label:has-text('Chỉ đang mở') input").uncheck()
     row.locator("text=Đã xong").wait_for(timeout=20000)
 
+
+@step
+def manager_changed_from_a_date(page: Page):
+    page.goto(f"{BASE}/app/corporate/employees")
+    page.wait_for_selector("text=Học viên & cán bộ quản lý", timeout=20000)
+    page.locator("tr", has_text="Trần Thị E2E").first.click()
+    m = modal(page, "Lịch sử đơn vị / CBQL")
+    field(m, "Email CBQL").fill("quanly.moi@nhe2e.test")
+    m.locator("button:has-text('Lưu thay đổi')").click()
+    m.wait_for(state="detached", timeout=20000)
+    page.locator("tr", has_text="Trần Thị E2E").locator("text=quanly.moi@nhe2e.test").first.wait_for(timeout=20000)
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:

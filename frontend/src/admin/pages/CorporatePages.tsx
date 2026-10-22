@@ -8,6 +8,7 @@
  *   /corporate/plans          training plans; ?id=<id> one plan (lines, approve, new version)
  *   /corporate/receivables    accepted batches: paid, outstanding, aging; record payments
  *   /corporate/requests       client requests with their SLA deadline (working hours by priority)
+ *   /corporate/employees      people of each client: unit, job, line manager over time
  *   /corporate/acceptance     acceptance batches of contracts; ?id=<id> one batch (lines, approval, export)
  * Every list is limited by the API to the clients the user may see.
  */
@@ -3110,6 +3111,147 @@ export const CorporateOverviewPage: React.FC = () => {
         </table>
       </div>
     </div>
+  );
+};
+
+// ================================================================ employees (Học viên & CBQL)
+interface Employee {
+  id: string;
+  client: string;
+  clientCode: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  learnerCode: string;
+  legalEntityName: string;
+  unit: string | null;
+  unitName: string;
+  employeeCode: string;
+  jobTitle: string;
+  managerName: string;
+  managerEmail: string;
+  validFrom: string;
+  validTo: string | null;
+  classes: number;
+}
+
+export const CorporateEmployeesPage: React.FC = () => {
+  const canEdit = useStaffCan('corporate.classes');
+  const { clients } = useClients();
+  const [client, setClient] = useState('');
+  const [search, setSearch] = useState('');
+  const [rows, setRows] = useState<Employee[] | null>(null);
+  const [open, setOpen] = useState<Employee | null>(null);
+  const [error, setError] = useState('');
+  const load = useCallback(() => {
+    const params = new URLSearchParams({ pageSize: '200' });
+    if (client) params.set('client', client);
+    if (search.trim()) params.set('search', search.trim());
+    api.get<Paginated<Employee>>(`/staff/corporate/employees/?${params}`).then((d) => setRows(d.results)).catch((e) => setError(errorText(e)));
+  }, [client, search]);
+  useEffect(() => {
+    const t = window.setTimeout(load, 250);
+    return () => window.clearTimeout(t);
+  }, [load]);
+  return (
+    <div className="space-y-4">
+      <div className={`${card} flex flex-wrap items-center justify-between gap-3`}>
+        <div>
+          <h2 className="font-bold text-slate-900">Học viên &amp; cán bộ quản lý</h2>
+          <p className="text-xs text-slate-500">Nhân sự của từng khách hàng hiện tại: đơn vị, chức danh, CBQL. Đổi CBQL / đơn vị có ngày hiệu lực; lịch sử được giữ, thư gửi trước đó vẫn CC đúng CBQL lúc gửi.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select className={`${input} max-w-xs`} value={client} onChange={(e) => setClient(e.target.value)}>
+            <option value="">Mọi khách hàng</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{c.code} – {c.name}</option>)}
+          </select>
+          <input className={`${input} max-w-xs`} placeholder="Tìm tên, email, mã NV, CBQL…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className={`${card} p-0 overflow-x-auto`}>
+        {!rows ? <Loader2 className="w-5 h-5 m-5 animate-spin text-slate-400" /> : rows.length === 0 ? (
+          <p className="p-5 text-xs text-slate-500">Chưa có nhân sự nào. Nhân sự được tạo khi thêm học viên vào lớp hoặc nhập DSHV.</p>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 text-slate-600 text-left">
+              <tr><th className="p-2">Học viên</th><th className="p-2">KH</th><th className="p-2">Mã NV · chức danh</th><th className="p-2">Đơn vị</th><th className="p-2">CBQL</th><th className="p-2">Từ ngày</th><th className="p-2 text-right">Lớp</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((r) => (
+                <tr key={r.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setOpen(r)}>
+                  <td className="p-2"><div className="font-bold">{r.fullName}</div><div className="text-slate-500">{r.email}{r.phone ? ` · ${r.phone}` : ''}</div></td>
+                  <td className="p-2">{r.clientCode}</td>
+                  <td className="p-2">{r.employeeCode || '–'}{r.jobTitle ? ` · ${r.jobTitle}` : ''}</td>
+                  <td className="p-2">{r.unitName || r.legalEntityName}</td>
+                  <td className="p-2">{r.managerName || r.managerEmail ? <><div>{r.managerName}</div><div className="text-slate-500">{r.managerEmail}</div></> : <span className="text-amber-700">Chưa có</span>}</td>
+                  <td className="p-2">{day(r.validFrom)}</td>
+                  <td className="p-2 text-right">{r.classes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {open && <EmployeeDialog employee={open} canEdit={canEdit} onClose={() => setOpen(null)} onChanged={() => { setOpen(null); load(); }} />}
+    </div>
+  );
+};
+
+const EmployeeDialog: React.FC<{ employee: Employee; canEdit: boolean; onClose: () => void; onChanged: () => void }> = ({ employee, canEdit, onClose, onChanged }) => {
+  const { units } = useUnits(employee.client);
+  const [history, setHistory] = useState<Employee[]>([]);
+  const [form, setForm] = useState({ effectiveFrom: new Date().toISOString().slice(0, 10), managerName: employee.managerName, managerEmail: employee.managerEmail, jobTitle: employee.jobTitle, unit: employee.unit || '' });
+  const [error, setError] = useState('');
+  useEffect(() => {
+    api.get<Employee[]>(`/staff/corporate/employees/${employee.id}/history/`).then(setHistory).catch((e) => setError(errorText(e)));
+  }, [employee.id]);
+  const save = async () => {
+    setError('');
+    try {
+      await api.post(`/staff/corporate/employees/${employee.id}/change/`, { ...form, unit: form.unit || null });
+      onChanged();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  return (
+    <Modal title={`${employee.fullName} – ${employee.clientCode}`} onClose={onClose} wide>
+      <div className="space-y-1">
+        <div className="font-bold text-slate-800">Lịch sử đơn vị / CBQL</div>
+        <table className="w-full text-xs">
+          <thead className="bg-slate-50 text-slate-600 text-left"><tr><th className="p-2">Giai đoạn</th><th className="p-2">Đơn vị · chức danh</th><th className="p-2">CBQL</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">
+            {history.map((h) => (
+              <tr key={h.id}>
+                <td className="p-2 whitespace-nowrap">{day(h.validFrom)} → {h.validTo ? day(h.validTo) : 'nay'}</td>
+                <td className="p-2">{h.unitName || h.legalEntityName}{h.jobTitle ? ` · ${h.jobTitle}` : ''}</td>
+                <td className="p-2">{h.managerName} {h.managerEmail && <span className="text-slate-500">({h.managerEmail})</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {canEdit && (
+        <div className="space-y-2">
+          <div className="font-bold text-slate-800">Thay đổi từ ngày</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <label>Hiệu lực từ *<input type="date" className={input} value={form.effectiveFrom} onChange={(e) => setForm({ ...form, effectiveFrom: e.target.value })} /></label>
+            <label>Tên CBQL<input className={input} value={form.managerName} onChange={(e) => setForm({ ...form, managerName: e.target.value })} /></label>
+            <label>Email CBQL<input className={input} value={form.managerEmail} onChange={(e) => setForm({ ...form, managerEmail: e.target.value })} /></label>
+            <label>Chức danh<input className={input} value={form.jobTitle} onChange={(e) => setForm({ ...form, jobTitle: e.target.value })} /></label>
+            <label>Đơn vị
+              <select className={input} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}>
+                <option value="">– Không chọn –</option>
+                {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </label>
+          </div>
+          {error && <p className="text-red-600">{error}</p>}
+          <div className="flex justify-end"><button type="button" className={primary} disabled={!form.effectiveFrom} onClick={save}><Save className="w-4 h-4" /> Lưu thay đổi</button></div>
+        </div>
+      )}
+    </Modal>
   );
 };
 

@@ -12,6 +12,7 @@ ACTIONS = {
     "corporate.enrollment_add": "Thêm học viên",
     "corporate.enrollment_cancel": "Hủy ghi danh",
     "corporate.enrollment_transfer": "Chuyển lớp",
+    "corporate.employee_change": "Đổi CBQL / đơn vị / chức danh",
     "corporate.import_preview": "Tải file nhập (xem trước)",
     "corporate.import_confirm": "Xác nhận nhập file",
     "corporate.invitations_send": "Gửi thư mời",

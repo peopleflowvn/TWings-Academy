@@ -22,6 +22,7 @@ from .models import (
     ClientUnit,
     CommunicationBatch,
     CorporateClass,
+    CorporateEmployee,
     CorporateEnrollment,
     Expense,
     ImportBatch,
@@ -46,10 +47,12 @@ from .serializers import (
     CommunicationBatchSerializer,
     CorporateClassSerializer,
     CorporateClientSerializer,
+    CorporateEmployeeSerializer,
     CorporateEnrollmentSerializer,
     CreateAcceptanceSerializer,
     CreateBatchSerializer,
     DocumentUploadSerializer,
+    EmploymentChangeSerializer,
     ExpenseSerializer,
     ImportBatchSerializer,
     ImportTemplateSerializer,
@@ -1261,3 +1264,64 @@ class TrainingRequestViewSet(
         return Response(
             [{"id": u.pk, "name": u.name or u.email} for u in staff if has_perm_code(u, "corporate.classes")]
         )
+
+
+class CorporateEmployeeViewSet(_Scoped, viewsets.ReadOnlyModelViewSet):
+    """
+    Học viên & CBQL: the people of each client with their unit, job and line manager over time. A
+    change (new manager, unit, job) takes effect from a date: the current period closes and a new
+    one opens, so e-mails sent earlier still show who the manager was then.
+    """
+
+    serializer_class = CorporateEmployeeSerializer
+    permission_classes = [ActionPermission]
+    permission_map = {
+        "list": ["corporate.view"],
+        "retrieve": ["corporate.view"],
+        "history": ["corporate.view"],
+        "change": ["corporate.classes"],
+    }
+    filterset_fields = ["client", "unit", "legal_entity"]
+    search_fields = [
+        "learner__full_name",
+        "learner__email",
+        "employee_code",
+        "manager_name",
+        "manager_email",
+        "job_title",
+    ]
+
+    def get_queryset(self):
+        queryset = self.scoped(
+            CorporateEmployee.objects.select_related("learner", "client", "legal_entity", "unit")
+        ).annotate(classes=Count("enrollments", distinct=True))
+        if self.action == "list" and not self.request.query_params.get("all"):
+            queryset = queryset.filter(valid_to__isnull=True)  # ?all=1: past periods too
+        return queryset.order_by("learner__full_name", "-valid_from")
+
+    @action(detail=True, methods=["get"])
+    def history(self, request, pk=None):
+        """Every period of this person at this client, newest first."""
+        employee = self.get_object()
+        periods = self.get_queryset().filter(client=employee.client, learner=employee.learner)
+        return Response(self.get_serializer(periods, many=True).data)
+
+    @action(detail=True, methods=["post"])
+    def change(self, request, pk=None):
+        employee = self.get_object()
+        if employee.valid_to is not None:
+            raise serializers.ValidationError({"detail": "Chỉ thay đổi giai đoạn hiện tại."})
+        ser = EmploymentChangeSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = dict(ser.validated_data)
+        on = data.pop("effective_from")
+        if on < employee.valid_from:
+            raise serializers.ValidationError(
+                {"effectiveFrom": "Ngày hiệu lực không được trước giai đoạn hiện tại."}
+            )
+        unit = data.get("unit")
+        if unit is not None and unit.client_id != employee.client_id:
+            raise serializers.ValidationError({"unit": "Đơn vị thuộc khách hàng khác."})
+        new = services.ensure_employee(employee.client, employee.learner, on=on, **data)
+        audit(request, "corporate.employee_change", new, previous=str(employee.pk), fields=sorted(data))
+        return Response(self.get_serializer(self.get_queryset().get(pk=new.pk)).data)

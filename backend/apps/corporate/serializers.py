@@ -16,6 +16,7 @@ from .models import (
     ContractRate,
     CorporateClass,
     CorporateClient,
+    CorporateEmployee,
     CorporateEnrollment,
     CostAllocation,
     Expense,
@@ -649,3 +650,32 @@ class TrainingRequestSerializer(serializers.ModelSerializer):
         elif status in TrainingRequest.OPEN:
             attrs["resolved_at"] = None
         return attrs
+
+
+class CorporateEmployeeSerializer(serializers.ModelSerializer):
+    """One employment period of a person at a client (the current one has no valid_to)."""
+
+    full_name = serializers.CharField(source="learner.full_name", read_only=True)
+    email = serializers.CharField(source="learner.email", read_only=True)
+    phone = serializers.CharField(source="learner.phone", read_only=True)
+    learner_code = serializers.CharField(source="learner.code", read_only=True)
+    client_code = serializers.CharField(source="client.code", read_only=True)
+    legal_entity_name = serializers.CharField(source="legal_entity.name", read_only=True)
+    unit_name = serializers.CharField(source="unit.name", read_only=True, default="")
+    classes = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = CorporateEmployee
+        exclude = ["updated_at", "extra_cc"]
+
+
+class EmploymentChangeSerializer(serializers.Serializer):
+    """A change from a date: closes the current period and opens a new one (history kept)."""
+
+    effective_from = serializers.DateField()
+    manager_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    manager_email = serializers.EmailField(required=False, allow_blank=True)
+    job_title = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    unit = serializers.PrimaryKeyRelatedField(
+        queryset=ClientUnit.objects.all(), required=False, allow_null=True
+    )

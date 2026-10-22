@@ -13,6 +13,7 @@ from .views import (
     CommunicationBatchViewSet,
     CorporateClassViewSet,
     CorporateClientViewSet,
+    CorporateEmployeeViewSet,
     CorporateEnrollmentViewSet,
     DashboardView,
     ExpenseViewSet,
@@ -32,6 +33,7 @@ router.register("contracts", ServiceContractViewSet, basename="corporate-contrac
 router.register("plans", TrainingPlanViewSet, basename="corporate-plan")
 router.register("classes", CorporateClassViewSet, basename="corporate-class")
 router.register("enrollments", CorporateEnrollmentViewSet, basename="corporate-enrollment")
+router.register("employees", CorporateEmployeeViewSet, basename="corporate-employee")
 router.register("import-templates", ImportTemplateViewSet, basename="corporate-import-template")
 router.register("imports", ImportBatchViewSet, basename="corporate-import")
 router.register("attendance-adjustments", AttendanceAdjustmentViewSet, basename="corporate-adjustment")
