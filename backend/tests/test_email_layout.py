@@ -135,4 +135,3 @@ def test_deliver_email_task_background(db, settings, monkeypatch):
     log.refresh_from_db()
     assert log.status == "sent"
     assert log.resend_message_id == "async-msg-123"
-

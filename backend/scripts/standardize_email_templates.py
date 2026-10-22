@@ -1,3 +1,4 @@
+# ruff: noqa: E501, E402  (one-off generator: e-mail HTML, sys.path set before Django imports)
 """
 Standardize all Email Templates:
 1. Clean separation: Templates store ONLY the inner content body.
@@ -19,6 +20,7 @@ FRONTEND_RESEND_PATH = ROOT / "frontend" / "src" / "utils" / "resendEmail.ts"
 sys.path.insert(0, str(BACKEND))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
 import django
+
 django.setup()
 
 from apps.notifications.models import EmailTemplate
@@ -41,8 +43,15 @@ TEMPLATES = {
         "subject": "[TWings x MSB] Giấy Báo Nhập Học: Chúc mừng {{customerName}} - Khóa {{courseTitle}}",
         "description": "Gửi tự động khi học viên đăng ký hoặc được xác nhận xếp vào lớp học mới.",
         "variables": [
-            "customerName", "courseTitle", "batchCohort", "startDate",
-            "location", "pic", "customerPhone", "instructorName", "orderCode"
+            "customerName",
+            "courseTitle",
+            "batchCohort",
+            "startDate",
+            "location",
+            "pic",
+            "customerPhone",
+            "instructorName",
+            "orderCode",
         ],
         "isDefault": True,
         "title": "GIẤY BÁO NHẬP HỌC CHÍNH THỨC",
@@ -124,7 +133,6 @@ TEMPLATES = {
 </p>
 """,
     },
-
     "vietqr_tuition_invoice": {
         "id": "tmpl-invoice",
         "code": "vietqr_tuition_invoice",
@@ -133,8 +141,15 @@ TEMPLATES = {
         "subject": "[TWings Academy] Hóa Đơn Học Phí & Mã VietQR Tự Động: {{orderCode}} - {{customerName}}",
         "description": "Gửi ngay sau khi học viên bấm Đăng Ký, kèm mã VietQR chứa sẵn số tiền và nội dung chuyển khoản tự động khớp lệnh.",
         "variables": [
-            "customerName", "courseTitle", "amount", "orderCode", "bankAccount",
-            "pic", "customerPhone", "batchCohort", "qrImageUrl"
+            "customerName",
+            "courseTitle",
+            "amount",
+            "orderCode",
+            "bankAccount",
+            "pic",
+            "customerPhone",
+            "batchCohort",
+            "qrImageUrl",
         ],
         "isDefault": True,
         "title": "THÔNG TIN THANH TOÁN HỌC PHÍ",
@@ -189,7 +204,6 @@ TEMPLATES = {
 </table>
 """,
     },
-
     "payment_receipt": {
         "id": "tmpl-receipt",
         "code": "payment_receipt",
@@ -198,8 +212,19 @@ TEMPLATES = {
         "subject": "[Biên Nhận] TWings Academy xác nhận đã nhận học phí: {{orderCode}} - {{customerName}}",
         "description": "Gửi ngay sau khi hệ thống khớp lệnh thanh toán thành công qua VietQR hoặc thanh toán thủ công.",
         "variables": [
-            "customerName", "courseTitle", "amount", "orderCode", "startDate",
-            "batchCohort", "location", "pic", "total_paid", "receivable", "remaining", "receipt_number", "receipt_url"
+            "customerName",
+            "courseTitle",
+            "amount",
+            "orderCode",
+            "startDate",
+            "batchCohort",
+            "location",
+            "pic",
+            "total_paid",
+            "receivable",
+            "remaining",
+            "receipt_number",
+            "receipt_url",
         ],
         "isDefault": True,
         "title": "BIÊN NHẬN HỌC PHÍ ĐIỆN TỬ",
@@ -242,7 +267,6 @@ TEMPLATES = {
 </p>
 """,
     },
-
     "bank_tour_invite": {
         "id": "tmpl-banktour",
         "code": "bank_tour_invite",
@@ -250,7 +274,15 @@ TEMPLATES = {
         "category": "scheduling",
         "subject": "[Thư Mời] Tham Gia Bank Tour Trực Tiếp Tại Hội Sở Ngân Hàng MSB: {{customerName}}",
         "description": "Gửi mời học viên tham gia chương trình thực tế Bank Tour tại Hội sở MSB.",
-        "variables": ["customerName", "courseTitle", "batchCohort", "startDate", "location", "pic", "orderCode"],
+        "variables": [
+            "customerName",
+            "courseTitle",
+            "batchCohort",
+            "startDate",
+            "location",
+            "pic",
+            "orderCode",
+        ],
         "isDefault": True,
         "title": "THƯ MỜI TRẢI NGHIỆM BANK TOUR",
         "subtitle": "Chương trình tham quan & kiến tập thực tế tại Hội sở Ngân hàng TMCP Hàng Hải Việt Nam",
@@ -284,7 +316,6 @@ TEMPLATES = {
 </table>
 """,
     },
-
     "class_rollover_notice": {
         "id": "tmpl-rollover",
         "code": "class_rollover_notice",
@@ -292,7 +323,15 @@ TEMPLATES = {
         "category": "scheduling",
         "subject": "[Thông Báo] Cập Nhật Lịch Học & Điều Chuyển Lớp: {{customerName}} - Khóa {{courseTitle}}",
         "description": "Gửi cho học viên khi có sự thay đổi lịch học, chuyển đợt đào tạo hoặc học viên yêu cầu bảo lưu.",
-        "variables": ["customerName", "courseTitle", "batchCohort", "startDate", "location", "pic", "orderCode"],
+        "variables": [
+            "customerName",
+            "courseTitle",
+            "batchCohort",
+            "startDate",
+            "location",
+            "pic",
+            "orderCode",
+        ],
         "isDefault": True,
         "title": "THÔNG BÁO ĐIỀU CHUYỂN LỊCH ĐÀO TẠO",
         "subtitle": "Xác nhận cập nhật thông tin học phần & bảo lưu quyền lợi đào tạo",
@@ -305,7 +344,6 @@ TEMPLATES = {
 </p>
 """,
     },
-
     "placement_offer": {
         "id": "tmpl-placement",
         "code": "placement_offer",
@@ -326,7 +364,6 @@ TEMPLATES = {
 </p>
 """,
     },
-
     # ---------------------------------------------------- 2. Automated LMS Training Emails
     "lms_access": {
         "id": "tmpl-lms-access",
@@ -335,7 +372,16 @@ TEMPLATES = {
         "category": "lms",
         "subject": "Khóa học của bạn đã sẵn sàng – vào học ngay | TWings Academy",
         "description": "Gửi tự động khi học viên được mở khóa học trên TWings LMS.",
-        "variables": ["customer_name", "course", "intake", "url", "customer_email", "intake_block", "account_url", "order_code"],
+        "variables": [
+            "customer_name",
+            "course",
+            "intake",
+            "url",
+            "customer_email",
+            "intake_block",
+            "account_url",
+            "order_code",
+        ],
         "isDefault": True,
         "title": "KHÓA HỌC ĐÃ SẴN SÀNG",
         "subtitle": "Hướng dẫn đăng nhập Cổng học trực tuyến TWings LMS",
@@ -355,7 +401,6 @@ TEMPLATES = {
 <p>Mã đơn hàng: <strong>{{order_code}}</strong>. Cần hỗ trợ, vui lòng trả lời email này.</p>
 """,
     },
-
     "corporate_lms_access": {
         "id": "tmpl-corp-lms-access",
         "code": "corporate_lms_access",
@@ -363,7 +408,15 @@ TEMPLATES = {
         "category": "corporate",
         "subject": "Lớp {{course_title}} đã mở – hướng dẫn vào học",
         "description": "Gửi cho học viên thuộc chương trình đào tạo nội bộ doanh nghiệp của TNTalent.",
-        "variables": ["learner_name", "course_title", "cohort_name", "url", "email", "intake_block", "brand_name"],
+        "variables": [
+            "learner_name",
+            "course_title",
+            "cohort_name",
+            "url",
+            "email",
+            "intake_block",
+            "brand_name",
+        ],
         "isDefault": True,
         "title": "LỚP ĐÀO TẠO NỘI BỘ DOANH NGHIỆP",
         "subtitle": "Giải pháp Phát triển Nguồn Nhân lực Doanh nghiệp TNTalent",
@@ -381,7 +434,6 @@ TEMPLATES = {
 <p>Cần hỗ trợ, vui lòng trả lời email này.</p>
 """,
     },
-
     "lms_certificate": {
         "id": "tmpl-lms-certificate",
         "code": "lms_certificate",
@@ -401,7 +453,6 @@ Trang xác minh công khai (gửi cho nhà tuyển dụng): <a href="{{url}}" st
 <p>Bản chứng chỉ để in / lưu file PDF: <a href="{{url}}in/" style="color: #0056D2; font-weight: 700;">Xem và tải chứng chỉ</a></p>
 """,
     },
-
     # ---------------------------------------------------- 3. Installment & Checkout Reminders
     "installment_reminder": {
         "id": "tmpl-installment-reminder",
@@ -411,8 +462,18 @@ Trang xác minh công khai (gửi cho nhà tuyển dụng): <a href="{{url}}" st
         "subject": "Nhắc học phí kỳ {{sequence}}/{{total_installments}} – {{order_code}} | TWings Academy",
         "description": "Gửi nhắc nhở học viên thanh toán kỳ trả góp kèm mã VietQR tự động.",
         "variables": [
-            "customer_name", "sequence", "total_installments", "course_title", "due_date",
-            "amount", "bank_name", "account_number", "account_name", "transfer_content", "qr_image_url", "account_url"
+            "customer_name",
+            "sequence",
+            "total_installments",
+            "course_title",
+            "due_date",
+            "amount",
+            "bank_name",
+            "account_number",
+            "account_name",
+            "transfer_content",
+            "qr_image_url",
+            "account_url",
         ],
         "isDefault": True,
         "title": "NHẮC HẠN ĐÓNG HỌC PHÍ",
@@ -428,7 +489,6 @@ Nội dung chuyển khoản: <strong style="color: #0056D2; font-family: monospa
 <p>Hệ thống tự động xác nhận sau khi nhận tiền. Xem lịch trả góp tại <a href="{{account_url}}" style="color: #0056D2; font-weight: 700;">{{account_url}}</a>.</p>
 """,
     },
-
     "checkout_hold_reminder": {
         "id": "tmpl-checkout-hold",
         "code": "checkout_hold_reminder",
@@ -447,7 +507,6 @@ Sau thời điểm này đơn chưa thanh toán sẽ tự hủy và chỗ đư�
 {{payment_details}}
 """,
     },
-
     # ---------------------------------------------------- 4. CRM Learner Journeys
     "journey_abandoned_checkout": {
         "id": "tmpl-journey-abandoned",
@@ -456,7 +515,17 @@ Sau thời điểm này đơn chưa thanh toán sẽ tự hủy và chỗ đư�
         "category": "crm",
         "subject": "Hoàn tất đăng ký {{course_title}} – mã {{order_code}} | TWings Academy",
         "description": "Gửi tự động sau 1 ngày đăng ký nhưng chưa chuyển khoản học phí.",
-        "variables": ["customer_name", "course_title", "order_code", "amount", "bank_name", "account_number", "account_name", "transfer_content", "qr_image_url"],
+        "variables": [
+            "customer_name",
+            "course_title",
+            "order_code",
+            "amount",
+            "bank_name",
+            "account_number",
+            "account_name",
+            "transfer_content",
+            "qr_image_url",
+        ],
         "isDefault": True,
         "title": "HOÀN TẤT ĐĂNG KÝ KHÓA HỌC",
         "subtitle": "Chỗ học vẫn đang được ưu tiên giữ cho bạn",
@@ -472,7 +541,6 @@ Nội dung chuyển khoản: <strong style="color: #0056D2; font-family: monospa
 <p>Cần tư vấn thêm hoặc muốn trả góp? Trả lời email này, TWings sẽ liên hệ bạn ngay.</p>
 """,
     },
-
     "journey_intake_starting": {
         "id": "tmpl-journey-starting",
         "code": "journey_intake_starting",
@@ -480,7 +548,15 @@ Nội dung chuyển khoản: <strong style="color: #0056D2; font-family: monospa
         "category": "crm",
         "subject": "Sắp khai giảng {{cohort_name}} – {{course_title}} | TWings Academy",
         "description": "Gửi 3 ngày trước ngày khai giảng lớp học.",
-        "variables": ["customer_name", "cohort_name", "course_title", "start_date", "location_info", "customer_email", "lms_url"],
+        "variables": [
+            "customer_name",
+            "cohort_name",
+            "course_title",
+            "start_date",
+            "location_info",
+            "customer_email",
+            "lms_url",
+        ],
         "isDefault": True,
         "title": "SẮP KHAI GIẢNG LỚP HỌC",
         "subtitle": "Chuẩn bị tham gia buổi học đầu tiên",
@@ -491,7 +567,6 @@ Nội dung chuyển khoản: <strong style="color: #0056D2; font-family: monospa
 <p>Hẹn gặp bạn tại lớp học!</p>
 """,
     },
-
     "journey_not_started": {
         "id": "tmpl-journey-not-started",
         "code": "journey_not_started",
@@ -510,7 +585,6 @@ Nội dung chuyển khoản: <strong style="color: #0056D2; font-family: monospa
 <p>Gặp khó khăn khi đăng nhập hay sắp xếp thời gian? Trả lời email này để chuyên viên hỗ trợ bạn.</p>
 """,
     },
-
     "journey_completed_next": {
         "id": "tmpl-journey-completed",
         "code": "journey_completed_next",
@@ -518,7 +592,13 @@ Nội dung chuyển khoản: <strong style="color: #0056D2; font-family: monospa
         "category": "crm",
         "subject": "Chúc mừng bạn hoàn thành {{course_title}} | TWings Academy",
         "description": "Gửi sau 2 ngày hoàn thành khóa học để xin feedback và giới thiệu lộ trình nâng cao.",
-        "variables": ["customer_name", "course_title", "certificate_block", "account_url", "next_steps_block"],
+        "variables": [
+            "customer_name",
+            "course_title",
+            "certificate_block",
+            "account_url",
+            "next_steps_block",
+        ],
         "isDefault": True,
         "title": "CHÚC MỪNG TỐT NGHIỆP",
         "subtitle": "Cảm ơn bạn đã đồng hành cùng TWings Academy",
@@ -531,7 +611,6 @@ Nội dung chuyển khoản: <strong style="color: #0056D2; font-family: monospa
 {{next_steps_block}}
 """,
     },
-
     # ---------------------------------------------------- 5. CRM Appointments
     "appointment_confirmation": {
         "id": "tmpl-appt-confirm",
@@ -555,7 +634,6 @@ Nội dung chuyển khoản: <strong style="color: #0056D2; font-family: monospa
 <p>Cần thay đổi thời gian hẹn, vui lòng phản hồi email này.</p>
 """,
     },
-
     "appointment_reminder": {
         "id": "tmpl-appt-remind",
         "code": "appointment_reminder",
@@ -578,7 +656,6 @@ Nội dung chuyển khoản: <strong style="color: #0056D2; font-family: monospa
 <p>Chuyên viên TWings sẽ liên hệ đúng giờ hẹn. Hẹn gặp bạn!</p>
 """,
     },
-
     # ---------------------------------------------------- 6. Auth & Security
     "auth_otp": {
         "id": "tmpl-auth-otp",
@@ -602,7 +679,6 @@ Nội dung chuyển khoản: <strong style="color: #0056D2; font-family: monospa
 <p style="font-size: 13px; color: #64748B;">Mã có hiệu lực trong vòng 10 phút. Nếu bạn không yêu cầu đăng nhập, hãy bỏ qua email này để đảm bảo an toàn.</p>
 """,
     },
-
     "staff_password_reset": {
         "id": "tmpl-staff-pwd-reset",
         "code": "staff_password_reset",
@@ -654,24 +730,26 @@ def run():
     print(f"Database updated: {created_count} created, {updated_count} updated.")
 
     # 2. Update backend/fixtures/seed_content.json
-    with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
+    with open(FIXTURE_PATH, encoding="utf-8") as f:
         fixture_data = json.load(f)
 
     fixture_templates = []
     for code, data in TEMPLATES.items():
         body_html = clean_body(data["title"], data["subtitle"], data["content"])
-        fixture_templates.append({
-            "id": data["id"],
-            "code": code,
-            "name": data["name"],
-            "category": data["category"],
-            "subject": data["subject"],
-            "description": data["description"],
-            "variables": data["variables"],
-            "isDefault": data["isDefault"],
-            "updatedAt": "22/10/2026",
-            "body": body_html,
-        })
+        fixture_templates.append(
+            {
+                "id": data["id"],
+                "code": code,
+                "name": data["name"],
+                "category": data["category"],
+                "subject": data["subject"],
+                "description": data["description"],
+                "variables": data["variables"],
+                "isDefault": data["isDefault"],
+                "updatedAt": "22/10/2026",
+                "body": body_html,
+            }
+        )
     fixture_data["emailTemplates"] = fixture_templates
 
     with open(FIXTURE_PATH, "w", encoding="utf-8") as f:

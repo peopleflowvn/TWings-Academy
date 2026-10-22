@@ -75,7 +75,8 @@ def workspace_note_and_stage_keep_it_open(page: Page):
 def workspace_email_has_no_sample_account(page: Page):
     page.locator("button:has-text('Gửi email')").first.click()
     page.wait_for_selector("text=Gửi email cho học viên", timeout=20000)
-    page.locator("text=Thông Báo Học Phí").first.click()
+    # The tuition template (vietqr_tuition_invoice), named "Hóa Đơn & Thông Tin Chuyển Khoản Học Phí VietQR".
+    page.locator("text=Thông Tin Chuyển Khoản Học Phí").first.click()
     page.wait_for_timeout(1500)
     html = page.content() + "".join(f.content() for f in page.frames[1:])
     assert "03001010099999" not in html, "sample bank account in the tuition e-mail"

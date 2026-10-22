@@ -1,3 +1,4 @@
+# ruff: noqa: E501  (one-off generator: e-mail HTML)
 """
 Update frontend/src/utils/resendEmail.ts with:
 1. Standardized 19 templates from fixtures/seed_content.json.
@@ -12,19 +13,19 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 FIXTURE_PATH = ROOT / "backend" / "fixtures" / "seed_content.json"
 RESEND_PATH = ROOT / "frontend" / "src" / "utils" / "resendEmail.ts"
 
-with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
+with open(FIXTURE_PATH, encoding="utf-8") as f:
     fixture_data = json.load(f)
 
 templates = fixture_data.get("emailTemplates", [])
 
 # Read current resendEmail.ts
-with open(RESEND_PATH, "r", encoding="utf-8") as f:
+with open(RESEND_PATH, encoding="utf-8") as f:
     content = f.read()
 
 # Generate INITIAL_EMAIL_TEMPLATES TypeScript code
 tmpl_code = "export const INITIAL_EMAIL_TEMPLATES: EmailTemplate[] = [\n"
 for idx, t in enumerate(templates):
-    tmpl_code += f"  {{\n"
+    tmpl_code += "  {\n"
     tmpl_code += f"    id: {json.dumps(t['id'])},\n"
     tmpl_code += f"    code: {json.dumps(t['code'])},\n"
     tmpl_code += f"    name: {json.dumps(t['name'], ensure_ascii=False)},\n"
@@ -53,7 +54,7 @@ if start_idx == -1 or end_idx == -1:
 new_content = content[:start_idx] + tmpl_code + "\n" + content[end_idx:]
 
 # Now check if wrapEmailPreview is already present
-wrap_preview_code = '''/**
+wrap_preview_code = """/**
  * Wraps an inner HTML body into the master branded email frame.
  * If the HTML already contains <html> or <body>, it is returned unchanged.
  * Brands supported: 'twings' (default) and 'corporate'.
@@ -229,7 +230,7 @@ export async function testSendEmailWithBackend(params: {
     templateCode: params.code
   });
 }
-'''
+"""
 
 if "wrapEmailPreview" not in new_content:
     new_content += "\n" + wrap_preview_code + "\n"

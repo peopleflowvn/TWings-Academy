@@ -241,7 +241,9 @@ def remind_appointments(now=None) -> int:
                         "starts_at": f"{when:%H:%M ngày %d/%m/%Y}",
                         "duration": str(appt.duration_minutes),
                         "channel": appt.get_channel_display(),
-                        "course": escape(appt.order.course_title or appt.order.interested_course or "khóa học"),
+                        "course": escape(
+                            appt.order.course_title or appt.order.interested_course or "khóa học"
+                        ),
                     },
                     default_subject="Nhắc lịch tư vấn hôm nay | TWings Academy",
                     default_body=default_html,

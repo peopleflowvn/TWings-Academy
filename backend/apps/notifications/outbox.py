@@ -68,4 +68,3 @@ def send_logged(
     log.sent_at = timezone.now()
     log.save(update_fields=["status", "resend_message_id", "sent_at", "updated_at"])
     return log
-

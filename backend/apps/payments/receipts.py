@@ -121,4 +121,3 @@ def send_receipt(payment_id: str) -> None:
         )
     except ResendError:
         logger.warning("Receipt for payment %s not sent", payment_id)
-

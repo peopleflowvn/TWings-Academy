@@ -1,3 +1,4 @@
+# ruff: noqa: E501  (inline e-mail HTML and CSS)
 """
 The e-mail frame (brand bar, body, footer links), shared by every e-mail the backend sends. Two brands:
 "twings" (B2C, the default) and "corporate" (B2B corporate training, TNTalent: settings
@@ -32,8 +33,12 @@ def brand(name: str = "twings") -> dict:
         footer_links = f'<a href="{learn_url()}" style="color:{settings.CORPORATE_BRAND_COLOR};text-decoration:none;font-weight:700;">Học trực tuyến</a>'
         if contact:
             footer_links += f' · <a href="mailto:{contact}" style="color:{settings.CORPORATE_BRAND_COLOR};text-decoration:none;">{contact}</a>'
-        provider_name = settings.CORPORATE_PROVIDER.get("legal_name", "Công ty CP Quản trị Nguồn nhân lực TNTalent")
-        address_info = f"{provider_name}<br>Tòa nhà ROX Tower, số 54A Nguyễn Chí Thanh, Phường Láng Hạ, Hà Nội"
+        provider_name = settings.CORPORATE_PROVIDER.get(
+            "legal_name", "Công ty CP Quản trị Nguồn nhân lực TNTalent"
+        )
+        address_info = (
+            f"{provider_name}<br>Tòa nhà ROX Tower, số 54A Nguyễn Chí Thanh, Phường Láng Hạ, Hà Nội"
+        )
         return {
             "name": settings.CORPORATE_BRAND_NAME,
             "color": settings.CORPORATE_BRAND_COLOR,
@@ -119,8 +124,8 @@ def wrap(html: str, brand_name: str = "twings") -> str:
             <!-- Brand Monogram Logo Badge -->
             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td align="center" valign="middle" style="width:40px;height:40px;border-radius:10px;background:{b['badge_gradient']};color:#ffffff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:900;font-size:16px;text-align:center;box-shadow:0 4px 12px {b['badge_shadow']};">
-                  {b['monogram']}
+                <td align="center" valign="middle" style="width:40px;height:40px;border-radius:10px;background:{b["badge_gradient"]};color:#ffffff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:900;font-size:16px;text-align:center;box-shadow:0 4px 12px {b["badge_shadow"]};">
+                  {b["monogram"]}
                 </td>
               </tr>
             </table>
@@ -131,13 +136,13 @@ def wrap(html: str, brand_name: str = "twings") -> str:
                 <td style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:800;font-size:17px;line-height:1.2;color:#ffffff;letter-spacing:0.3px;">{b["name"]}</td>
               </tr>
             </table>
-            <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:10px;font-weight:600;color:{b['tagline_color']};letter-spacing:0.8px;text-transform:uppercase;margin-top:3px;">
-              {b['tagline']}
+            <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:10px;font-weight:600;color:{b["tagline_color"]};letter-spacing:0.8px;text-transform:uppercase;margin-top:3px;">
+              {b["tagline"]}
             </div>
           </td>
           <td align="right" valign="middle">
             <span style="display:inline-block;padding:4px 10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:20px;font-family:'Plus Jakarta Sans',Segoe UI,Arial,sans-serif;font-size:10px;font-weight:700;color:#93C5FD;letter-spacing:0.5px;">
-              {b['badge_label']}
+              {b["badge_label"]}
             </span>
           </td>
         </tr>
@@ -147,7 +152,7 @@ def wrap(html: str, brand_name: str = "twings") -> str:
 
   <!-- Brand Accent Separator Line -->
   <tr>
-    <td height="3" style="background:{b['accent_gradient']};font-size:0;line-height:0;">&nbsp;</td>
+    <td height="3" style="background:{b["accent_gradient"]};font-size:0;line-height:0;">&nbsp;</td>
   </tr>
 
   <!-- Content Body Area -->
@@ -161,10 +166,10 @@ def wrap(html: str, brand_name: str = "twings") -> str:
   <tr>
     <td class="email-footer" style="background:#F8FAFC;border-top:1px solid #E2E8F0;border-radius:0 0 16px 16px;padding:24px 30px;text-align:center;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
       <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:#475569;">
-        {b['footer_links']}
+        {b["footer_links"]}
       </div>
       <div style="font-size:11px;color:#94A3B8;line-height:1.6;margin-bottom:8px;">
-        {b['address_info']}
+        {b["address_info"]}
       </div>
       <div style="font-size:10px;color:#CBD5E1;">
         &copy; 2026 {b["name"]}. Bản quyền được bảo lưu. Email được gửi tự động từ hệ thống.

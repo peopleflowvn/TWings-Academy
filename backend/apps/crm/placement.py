@@ -372,7 +372,9 @@ def notify_learner(placement_id: str) -> bool:
             "customer_name": name,
             "employer": escape(p.employer),
             "role": role,
-            "interview_time": f"{timezone.localtime(p.interview_at):%H:%M ngày %d/%m/%Y}" if p.interview_at else "",
+            "interview_time": f"{timezone.localtime(p.interview_at):%H:%M ngày %d/%m/%Y}"
+            if p.interview_at
+            else "",
             "interview_location": escape(p.interview_location or "TWings sẽ báo sau"),
             "start_date": f"{p.start_date:%d/%m/%Y}" if p.start_date else "",
         },

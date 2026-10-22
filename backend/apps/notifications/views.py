@@ -164,7 +164,6 @@ class PreviewEmailView(APIView):
         raw_html = request.data.get("html", "")
         variables = request.data.get("variables") or {}
         brand = request.data.get("brand", "twings")
-        category_badge = request.data.get("category_badge", "")
 
         from .engine import interpolate, render_template
         from .layout import wrap
