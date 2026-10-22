@@ -82,6 +82,48 @@ def _html(request, template: str, context: dict):
     return response
 
 
+def _queued(task, *args) -> dict:
+    """
+    Queue an e-mail task for the worker. With the immediate backend (tests, the e2e stack) it has
+    already run: its counts are returned; otherwise {"queued": True} and the screens show each
+    e-mail's status as it is sent.
+    """
+    from django.tasks import TaskResultStatus
+
+    from apps.core.queue import enqueue_once
+
+    result = enqueue_once(task, *args)
+    if result is not None and result.status == TaskResultStatus.SUCCESSFUL:
+        return result.return_value
+    return {"queued": True}
+
+
+def _documents(owner, **extra):
+    docs = owner.documents.select_related("uploaded_by")
+    return Response({"documents": ClassDocumentSerializer(docs, many=True).data, **extra})
+
+
+def _upload_document(request, owner):
+    """A file for a class, contract or acceptance batch (private storage, audited)."""
+    from .documents import upload
+
+    ser = DocumentUploadSerializer(data=request.data)
+    ser.is_valid(raise_exception=True)
+    data = ser.validated_data
+    doc = _rule(
+        lambda: upload(
+            owner,
+            kind=data["kind"],
+            title=data["title"],
+            file=data["file"],
+            note=data["note"],
+            user=request.user,
+        )
+    )
+    audit(request, "corporate.document_upload", doc, kind=doc.kind, version=doc.version)
+    return Response(ClassDocumentSerializer(doc).data, status=201)
+
+
 def _rule(call):
     """Run a service call; a business rule refusal becomes a 400 with its message."""
     try:
@@ -157,7 +199,9 @@ class ServiceContractViewSet(
 ):
     serializer_class = ServiceContractSerializer
     permission_classes = [ActionPermission]
-    permission_map = perm_map("corporate.clients")
+    permission_map = perm_map(
+        "corporate.clients", documents="corporate.view", upload_document="corporate.clients"
+    )
     filterset_fields = ["client", "status"]
     search_fields = ["number", "title"]
 
@@ -176,6 +220,15 @@ class ServiceContractViewSet(
             serializer.save(),
             fields=sorted(serializer.validated_data),
         )
+
+    @action(detail=True, methods=["get"])
+    def documents(self, request, pk=None):
+        """Signed contract, annexes."""
+        return _documents(self.get_object())
+
+    @documents.mapping.post
+    def upload_document(self, request, pk=None):
+        return _upload_document(request, self.get_object())
 
 
 class TrainingPlanViewSet(
@@ -345,14 +398,15 @@ class CorporateClassViewSet(
 
     @invitations.mapping.post
     def send_invitations(self, request, pk=None):
-        from .communications import send_invitations
+        from .tasks import send_invitations
 
         corporate_class = self.get_object()
         if not corporate_class.cohort.sessions.exists():
             raise serializers.ValidationError(
                 {"detail": "Lớp chưa có lịch học: tạo lịch trước khi gửi thư mời."}
             )
-        result = send_invitations(corporate_class, sent_by=request.user, only_new=not request.data.get("all"))
+        only_new = not request.data.get("all")
+        result = _queued(send_invitations, str(corporate_class.pk), str(request.user.pk), only_new)
         audit(request, "corporate.invitations_send", corporate_class, **result)
         return Response(result)
 
@@ -444,34 +498,11 @@ class CorporateClassViewSet(
         from .documents import checklist
 
         corporate_class = self.get_object()
-        docs = corporate_class.documents.select_related("uploaded_by")
-        return Response(
-            {
-                "documents": ClassDocumentSerializer(docs, many=True).data,
-                "checklist": checklist(corporate_class),
-            }
-        )
+        return _documents(corporate_class, checklist=checklist(corporate_class))
 
     @documents.mapping.post
     def upload_document(self, request, pk=None):
-        from .documents import upload
-
-        corporate_class = self.get_object()
-        ser = DocumentUploadSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        data = ser.validated_data
-        doc = _rule(
-            lambda: upload(
-                corporate_class,
-                kind=data["kind"],
-                title=data["title"],
-                file=data["file"],
-                note=data["note"],
-                user=request.user,
-            )
-        )
-        audit(request, "corporate.document_upload", doc, kind=doc.kind, version=doc.version)
-        return Response(ClassDocumentSerializer(doc).data, status=201)
+        return _upload_document(request, self.get_object())
 
 
 class ClassDocumentViewSet(_Scoped, viewsets.GenericViewSet):
@@ -479,7 +510,6 @@ class ClassDocumentViewSet(_Scoped, viewsets.GenericViewSet):
 
     permission_classes = [ActionPermission]
     permission_map = {"download": ["corporate.view"]}
-    client_path = "corporate_class__client"
 
     def get_queryset(self):
         return self.scoped(ClassDocument.objects.all())
@@ -624,9 +654,12 @@ class CommunicationBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadO
 
     @action(detail=True, methods=["post"])
     def send(self, request, pk=None):
-        from .communications import send_batch
+        from .tasks import send_batch
 
-        result = _rule(lambda: send_batch(self.get_object(), user=request.user))
+        batch = self.get_object()
+        if batch.status not in ("approved", "sent"):
+            raise serializers.ValidationError({"detail": "Lô email cần được duyệt trước khi gửi."})
+        result = _queued(send_batch, str(batch.pk), str(request.user.pk))
         batch = self.get_queryset().get(pk=pk)
         audit(request, "corporate.batch_send", batch, **result)
         return Response({**result, "batch": self.get_serializer(batch).data})
@@ -654,6 +687,8 @@ class AcceptanceBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnly
         "eligible": ["corporate.view"],
         "export": ["corporate.view"],
         "printable": ["corporate.view"],
+        "documents": ["corporate.view"],
+        "upload_document": ["corporate.acceptance"],
         "create": ["corporate.acceptance"],
         "add_adjustment": ["corporate.acceptance"],
         "remove_line": ["corporate.acceptance"],
@@ -795,6 +830,15 @@ class AcceptanceBatchViewSet(_Scoped, mixins.CreateModelMixin, viewsets.ReadOnly
         )
         audit(request, "corporate.acceptance_export", batch)
         return response
+
+    @action(detail=True, methods=["get"])
+    def documents(self, request, pk=None):
+        """Signed acceptance record, invoice copy."""
+        return _documents(self.get_object())
+
+    @documents.mapping.post
+    def upload_document(self, request, pk=None):
+        return _upload_document(request, self.get_object())
 
     @action(detail=True, methods=["get"], url_path="print")
     def printable(self, request, pk=None):

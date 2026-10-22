@@ -1,8 +1,8 @@
 """
-Documents and checklist of corporate classes. Files go to private storage (never a public URL; staff
-download through the API, audited). The checklist says which documents a class needs for its
-acceptance and ticks the ones the system already holds (class list, published results, surveys,
-invoice number) so staff upload only what exists on paper.
+Documents of corporate classes, contracts and acceptance batches, and the class checklist. Files go
+to private storage (never a public URL; staff download through the API, audited). The checklist says
+which documents a class needs for its acceptance and ticks the ones the system already holds (class
+list, published results, surveys, invoice number) so staff upload only what exists on paper.
 """
 
 import secrets
@@ -20,19 +20,28 @@ ALLOWED = {".pdf", ".xlsx", ".xls", ".docx", ".doc", ".jpg", ".jpeg", ".png", ".
 CHECKLIST = ["roster", "attendance", "results", "survey", "acceptance_record", "invoice"]
 
 
-def upload(corporate_class, *, kind: str, title: str, file, note: str, user) -> ClassDocument:
+OWNERS = {"CorporateClass": "corporate_class", "ServiceContract": "contract", "AcceptanceBatch": "acceptance"}
+
+
+def _client_id(owner):
+    return owner.contract.client_id if type(owner).__name__ == "AcceptanceBatch" else owner.client_id
+
+
+def upload(owner, *, kind: str, title: str, file, note: str, user) -> ClassDocument:
+    """Store a file for a class, a contract or an acceptance batch (same kind + title = next version)."""
     if file.size > MAX_BYTES:
         raise CorporateError("Tệp tối đa 15 MB.")
     ext = Path(file.name or "").suffix.lower()
     if ext not in ALLOWED:
         raise CorporateError("Chỉ nhận PDF, Word, Excel, ảnh JPG/PNG hoặc ZIP.")
     title = (title or Path(file.name).stem).strip()[:300]
-    last = corporate_class.documents.filter(kind=kind, title=title).order_by("-version").first()
+    last = owner.documents.filter(kind=kind, title=title).order_by("-version").first()
     name = storages["private"].save(
-        f"corporate-documents/{corporate_class.pk}/{secrets.token_hex(8)}{ext}", ContentFile(file.read())
+        f"corporate-documents/{owner.pk}/{secrets.token_hex(8)}{ext}", ContentFile(file.read())
     )
     return ClassDocument.objects.create(
-        corporate_class=corporate_class,
+        client_id=_client_id(owner),
+        **{OWNERS[type(owner).__name__]: owner},
         kind=kind,
         title=title,
         version=(last.version + 1) if last else 1,

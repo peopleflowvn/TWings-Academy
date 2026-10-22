@@ -48,7 +48,7 @@ def two_clients(course, monkeypatch):
         ),
     }
     doc = ClassDocument.objects.create(
-        corporate_class=theirs, kind="other", title="x", file_key="k", file_name="x.pdf"
+        client=other, corporate_class=theirs, kind="other", title="x", file_key="k", file_name="x.pdf"
     )
     # Narrow every staff member's scope to "mine".
     monkeypatch.setattr(

@@ -166,6 +166,9 @@ const input = 'w-full p-2 border border-slate-300 rounded-lg text-xs';
 const card = 'bg-white rounded-2xl border border-slate-200 p-5';
 const primary = 'px-3 py-2 rounded-xl bg-[#0073C1] text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50';
 const secondary = 'px-3 py-2 rounded-xl border border-slate-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50';
+/** E-mails go out from the worker: counts when they already went, else `queued`. */
+type SendResult = { queued?: boolean; sent: number; failed: number; skipped?: number };
+const QUEUED_TEXT = 'Đang gửi trong nền: tải lại sau ít phút để xem trạng thái từng thư (bấm lại không gửi trùng).';
 const errorText = (e: unknown) => (e instanceof ApiError || e instanceof Error ? e.message : 'Thao tác thất bại.');
 const vnd = (n?: number | null) => (n == null ? '–' : `${new Intl.NumberFormat('vi-VN').format(n)} ₫`);
 const day = (value?: string | null) => value || '–'; // the API already sends dd/mm/yyyy
@@ -630,8 +633,8 @@ const InvitationDialog: React.FC<{ cls: CorpClass; onClose: () => void; onSent: 
     setBusy(true);
     setError('');
     try {
-      const res = await api.post<{ sent: number; failed: number }>(`/staff/corporate/classes/${cls.id}/invitations/`, { all });
-      setResult(`Đã gửi ${res.sent} thư${res.failed ? `, ${res.failed} thư lỗi (xem Mẫu email & lịch sử gửi)` : ''}.`);
+      const res = await api.post<SendResult>(`/staff/corporate/classes/${cls.id}/invitations/`, { all });
+      setResult(res.queued ? QUEUED_TEXT : `Đã gửi ${res.sent} thư${res.failed ? `, ${res.failed} thư lỗi (xem Mẫu email & lịch sử gửi)` : ''}.`);
       onSent();
     } catch (e) {
       setError(errorText(e));
@@ -1217,8 +1220,8 @@ const CommunicationsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
     });
   const send = (b: Batch) =>
     act(async () => {
-      const res = await api.post<{ sent: number; failed: number; skipped: number }>(`/staff/corporate/communications/${b.id}/send/`);
-      setNotice(`Đã gửi ${res.sent} thư${res.failed ? `, ${res.failed} thư lỗi (bấm Gửi lại để thử lại các thư lỗi)` : ''}.`);
+      const res = await api.post<SendResult>(`/staff/corporate/communications/${b.id}/send/`);
+      setNotice(res.queued ? QUEUED_TEXT : `Đã gửi ${res.sent} thư${res.failed ? `, ${res.failed} thư lỗi (bấm Gửi lại để thử lại các thư lỗi)` : ''}.`);
     });
 
   if (!batches) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
@@ -1327,16 +1330,21 @@ const DOCUMENT_KINDS: [string, string][] = [
   ['other', 'Khác']
 ];
 
-const DocumentsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
-  const canUpload = useStaffCan('corporate.classes');
-  const [data, setData] = useState<{ documents: ClassDocument[]; checklist: { kind: string; label: string; done: boolean; source: string }[] } | null>(null);
-  const [form, setForm] = useState({ kind: 'attendance', title: '', note: '' });
+const DocumentsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => (
+  <DocumentsPanel path={`/staff/corporate/classes/${cls.id}/documents/`} uploadPerm="corporate.classes" defaultKind="attendance" />
+);
+
+/** Documents of a class, a contract or an acceptance batch (private storage; same title = new version). */
+const DocumentsPanel: React.FC<{ path: string; uploadPerm: string; defaultKind: string; compact?: boolean }> = ({ path, uploadPerm, defaultKind, compact }) => {
+  const canUpload = useStaffCan(uploadPerm);
+  const [data, setData] = useState<{ documents: ClassDocument[]; checklist?: { kind: string; label: string; done: boolean; source: string }[] } | null>(null);
+  const [form, setForm] = useState({ kind: defaultKind, title: '', note: '' });
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const load = useCallback(() => {
-    api.get<NonNullable<typeof data>>(`/staff/corporate/classes/${cls.id}/documents/`).then(setData).catch((e) => setError(errorText(e)));
-  }, [cls.id]);
+    api.get<NonNullable<typeof data>>(path).then(setData).catch((e) => setError(errorText(e)));
+  }, [path]);
   useEffect(load, [load]);
   const upload = async () => {
     if (!file) return;
@@ -1348,7 +1356,7 @@ const DocumentsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
     setBusy(true);
     setError('');
     try {
-      await apiFetch(`/staff/corporate/classes/${cls.id}/documents/`, { method: 'POST', body });
+      await apiFetch(path, { method: 'POST', body });
       setForm({ ...form, title: '', note: '' });
       setFile(null);
       load();
@@ -1361,7 +1369,7 @@ const DocumentsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
   if (!data) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
   return (
     <div className="space-y-4">
-      <div className={`${card} space-y-2`}>
+      {data.checklist && <div className={`${card} space-y-2`}>
         <div className="font-bold text-sm text-slate-800">Checklist hồ sơ nghiệm thu</div>
         <ul className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
           {data.checklist.map((c) => (
@@ -1371,9 +1379,9 @@ const DocumentsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
             </li>
           ))}
         </ul>
-      </div>
+      </div>}
       {canUpload && (
-        <div className={`${card} space-y-3 text-xs`}>
+        <div className={`${compact ? 'border border-slate-200 rounded-xl p-3' : card} space-y-3 text-xs`}>
           <div className="font-bold text-sm text-slate-800">Tải lên tài liệu</div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
             <label>Loại
@@ -1391,7 +1399,7 @@ const DocumentsTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
           {error && <p className="text-red-600">{error}</p>}
         </div>
       )}
-      <div className={`${card} p-0 overflow-x-auto`}>
+      <div className={`${compact ? 'border border-slate-200 rounded-xl' : card} p-0 overflow-x-auto`}>
         {data.documents.length === 0 ? (
           <p className="p-5 text-xs text-slate-500">Chưa có tài liệu tải lên.</p>
         ) : (
@@ -2302,6 +2310,12 @@ const ContractEditor: React.FC<{
       <button type="button" className={secondary} onClick={() => setRates((list) => [...list, { ...EMPTY_RATE }])}><Plus className="w-4 h-4" /> Thêm đơn giá</button>
       {error && <p className="text-red-600">{error}</p>}
       <div className="flex justify-end"><button type="button" className={primary} disabled={!d.number.trim()} onClick={save}><Save className="w-4 h-4" /> Lưu hợp đồng</button></div>
+      {existing && (
+        <div className="space-y-2">
+          <div className="font-bold text-slate-800">Hồ sơ hợp đồng (bản ký, phụ lục)</div>
+          <DocumentsPanel path={`/staff/corporate/contracts/${existing.id}/documents/`} uploadPerm="corporate.clients" defaultKind="contract" compact />
+        </div>
+      )}
     </Modal>
   );
 };
@@ -2863,6 +2877,10 @@ const AcceptanceDetail: React.FC<{ id: string }> = ({ id }) => {
             <tr><td className="p-2" colSpan={4}>Tổng cộng</td><td className="p-2 text-right">{vnd(batch.totals.total)}</td><td /></tr>
           </tfoot>
         </table>
+      </div>
+      <div className={`${card} space-y-2`}>
+        <div className="font-bold text-sm text-slate-800">Hồ sơ đợt nghiệm thu (biên bản đã ký, hóa đơn)</div>
+        <DocumentsPanel path={`/staff/corporate/acceptances/${batch.id}/documents/`} uploadPerm="corporate.acceptance" defaultKind="acceptance_record" compact />
       </div>
       {adjusting && (
         <Modal title="Dòng điều chỉnh" onClose={() => setAdjusting(false)}>

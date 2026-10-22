@@ -47,9 +47,24 @@ def default_legal_entity(client: CorporateClient) -> ClientUnit:
 EMPLOYMENT_FIELDS = ("legal_entity", "unit", "employee_code", "job_title", "manager_name", "manager_email")
 
 
-def find_or_create_learner(*, full_name: str, email: str = "", phone: str = "") -> Learner:
-    """The same person as everywhere in TWings (e-mail, then phone); empty details are filled in."""
+def match_learner(*, email: str = "", phone: str = "") -> tuple[Learner | None, str]:
+    """
+    The existing learner a company listing is (e-mail, then phone), and a warning. A phone match whose
+    profile has another e-mail is NOT merged (a personal B2C profile would then receive the company's
+    e-mails and Moodle account): (None, warning) so a separate profile is made with the company e-mail.
+    """
+    email = email.strip().lower()
     learner = find_learner(email=email, phone=phone)
+    if learner is not None and email and learner.email and learner.email.lower() != email:
+        return None, (
+            f"SĐT trùng học viên {learner.code} có email khác: tạo hồ sơ riêng theo email này, không gộp"
+        )
+    return learner, ""
+
+
+def find_or_create_learner(*, full_name: str, email: str = "", phone: str = "") -> Learner:
+    """The same person as everywhere in TWings (see match_learner); empty details are filled in."""
+    learner, _ = match_learner(email=email, phone=phone)
     if learner is None:
         return Learner.objects.create(full_name=full_name, email=email.strip().lower(), phone=phone)
     fill_missing(learner, {"full_name": full_name, "email": email.strip().lower(), "phone": phone})

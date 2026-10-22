@@ -115,7 +115,7 @@ def learning_report() -> dict:
         )
         .order_by("-enrolled")
     )
-    certificates = Certificate.objects.filter(revoked=False)
+    certificates = Certificate.objects.filter(revoked=False, enrollment__order__isnull=False)  # B2C only
     return {
         "courses": [
             {

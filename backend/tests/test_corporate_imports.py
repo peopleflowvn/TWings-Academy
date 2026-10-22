@@ -107,6 +107,24 @@ def test_roster_preview_then_confirm(corp, cls):
     assert corp.post(f"{URL}{batch['id']}/confirm/").status_code == 400  # runs once
 
 
+def test_phone_of_a_personal_profile_with_another_email_is_not_merged(corp, cls):
+    personal = Learner.objects.create(
+        full_name="Phạm Dũng", email="dung.canhan@gmail.test", phone="0912000333"
+    )
+    upload = roster([1, "Phạm Dũng", "NV07", "dung@nhm.test", "0912000333", "", "", ""])
+    batch = corp.post(
+        URL, {"kind": "roster", "corporateClass": cls.pk, "file": upload}, format="multipart"
+    ).json()
+    assert batch["rows"][0]["action"] == "add"
+    assert f"SĐT trùng học viên {personal.code} có email khác" in " ".join(batch["rows"][0]["notes"])
+
+    corp.post(f"{URL}{batch['id']}/confirm/")
+    listing = CorporateEnrollment.objects.get(corporate_class=cls)
+    assert listing.learner_id != personal.pk and listing.learner.email == "dung@nhm.test"
+    personal.refresh_from_db()
+    assert personal.email == "dung.canhan@gmail.test"  # the B2C profile is untouched
+
+
 def test_same_file_twice_and_a_changed_manager(corp, cls):
     rows = [[1, "Lê Văn Cường", "NV02", "cuong@nhm.test", "", "", "Lê Quản Lý", "ql@nhm.test"]]
     content = roster(*rows).read()  # the very same file twice (a rebuilt workbook has a new timestamp)

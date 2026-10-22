@@ -21,7 +21,6 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.catalog.models import Course
-from apps.crm.learners import find_learner
 
 from . import services
 from .models import ClientUnit, CorporateEmployee, CorporateEnrollment, ImportBatch, PlanLine
@@ -246,7 +245,9 @@ def preview_roster(corporate_class, rows) -> list[dict]:
 
 
 def _roster_action(corporate_class, values: dict, notes: list) -> str:
-    learner = find_learner(email=values["email"], phone=values["phone"])
+    learner, warning = services.match_learner(email=values["email"], phone=values["phone"])
+    if warning:
+        notes.append(warning)
     if learner is None:
         return "add"
     notes.append(f"Đã có hồ sơ học viên {learner.code}")

@@ -623,8 +623,9 @@ class AcceptanceLine(BaseModel):
 
 class ClassDocument(BaseModel):
     """
-    A document of a corporate class (signed attendance sheet, acceptance record, invoice copy...), kept
-    in private storage. Uploading the same kind and title again adds a version; earlier ones stay.
+    A document of a corporate class (signed attendance sheet...), a contract (signed contract, annex) or
+    an acceptance batch (signed acceptance record, invoice copy), kept in private storage: exactly one
+    of the three owns it. Uploading the same kind and title again adds a version; earlier ones stay.
     """
 
     KIND_CHOICES = [
@@ -638,7 +639,16 @@ class ClassDocument(BaseModel):
         ("other", "Khác"),
     ]
 
-    corporate_class = models.ForeignKey(CorporateClass, on_delete=models.CASCADE, related_name="documents")
+    client = models.ForeignKey(CorporateClient, on_delete=models.PROTECT, related_name="documents")
+    corporate_class = models.ForeignKey(
+        CorporateClass, null=True, blank=True, on_delete=models.CASCADE, related_name="documents"
+    )
+    contract = models.ForeignKey(
+        "ServiceContract", null=True, blank=True, on_delete=models.CASCADE, related_name="documents"
+    )
+    acceptance = models.ForeignKey(
+        "AcceptanceBatch", null=True, blank=True, on_delete=models.CASCADE, related_name="documents"
+    )
     kind = models.CharField(max_length=30, choices=KIND_CHOICES)
     title = models.CharField(max_length=300)
     version = models.PositiveSmallIntegerField(default=1)
@@ -651,7 +661,17 @@ class ClassDocument(BaseModel):
     )
 
     class Meta:
-        ordering = ["corporate_class", "kind", "title", "-version"]
+        ordering = ["kind", "title", "-version"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    corporate_class__isnull=False, contract__isnull=True, acceptance__isnull=True
+                )
+                | models.Q(corporate_class__isnull=True, contract__isnull=False, acceptance__isnull=True)
+                | models.Q(corporate_class__isnull=True, contract__isnull=True, acceptance__isnull=False),
+                name="document_has_one_owner",
+            )
+        ]
 
 
 class Expense(BaseModel):

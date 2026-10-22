@@ -7,6 +7,7 @@ policy (only the client's e-mail domains or our own), so no learner's details re
 from datetime import UTC
 
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 from django.utils.html import escape
 
@@ -140,35 +141,47 @@ def invitation_rows(corporate_class, only_new: bool = True) -> list[dict]:
 
 
 def send_invitations(corporate_class, *, sent_by, only_new: bool = True) -> dict:
+    """Run by the worker (tasks.py). Each listing is locked while its e-mail goes out: a second run
+    at the same time (double click) skips what the first one already sent."""
+    from .models import CorporateEnrollment
+
     cohort = corporate_class.cohort
     calendar = class_calendar(corporate_class) if cohort.sessions.exists() else None
     counts = {"sent": 0, "failed": 0}
     for row in invitation_rows(corporate_class, only_new):
-        listing = row["listing"]
-        try:
-            send_logged(
-                to=row["to"],
-                cc=row["cc"],
-                subject=f"Thư mời tham gia lớp {cohort.course.title} – {cohort.name}",
-                html=invitation_html(listing),
-                attachments=[
-                    {"filename": "lich-hoc.ics", "content": calendar, "content_type": "text/calendar"}
-                ]
-                if calendar
-                else None,
-                template_code="corporate_invitation",
-                name=listing.learner.full_name,
-                sent_by=sent_by,
-                corporate_enrollment=listing,
-                brand="corporate",
-            )
-        except ResendError:
-            counts["failed"] += 1
-            continue
-        listing.invited_at = timezone.now()
-        listing.save(update_fields=["invited_at", "updated_at"])
-        counts["sent"] += 1
+        with transaction.atomic():
+            listing = CorporateEnrollment.objects.select_for_update().get(pk=row["listing"].pk)
+            if only_new and listing.invited_at:
+                continue
+            if _send_invitation(listing, row, calendar, sent_by):
+                counts["sent"] += 1
+            else:
+                counts["failed"] += 1
     return counts
+
+
+def _send_invitation(listing, row, calendar, sent_by) -> bool:
+    cohort = listing.corporate_class.cohort
+    try:
+        send_logged(
+            to=row["to"],
+            cc=row["cc"],
+            subject=f"Thư mời tham gia lớp {cohort.course.title} – {cohort.name}",
+            html=invitation_html(listing),
+            attachments=[{"filename": "lich-hoc.ics", "content": calendar, "content_type": "text/calendar"}]
+            if calendar
+            else None,
+            template_code="corporate_invitation",
+            name=listing.learner.full_name,
+            sent_by=sent_by,
+            corporate_enrollment=listing,
+            brand="corporate",
+        )
+    except ResendError:
+        return False
+    listing.invited_at = timezone.now()
+    listing.save(update_fields=["invited_at", "updated_at"])
+    return True
 
 
 # ---------------------------------------------------------------- result e-mails (batches)
@@ -307,59 +320,70 @@ Kết quả của bạn:</p>
 
 
 def send_batch(batch, *, user) -> dict:
-    """Send every not-yet-sent e-mail of an approved batch (safe to run again after a failure)."""
+    """
+    Send every not-yet-sent e-mail of an approved batch; run by the worker (tasks.py). Safe to run
+    again after a failure, and two runs at once never send one e-mail twice (its row is locked).
+    """
     from .services import CorporateError
 
     if batch.status not in ("approved", "sent"):
         raise CorporateError("Lô email cần được duyệt trước khi gửi.")
-    from apps.notifications.models import EmailLog
 
     rows = {row["enrollment"]: row for row in batch.snapshot.learners}
     template = "corporate_manager_digest" if batch.kind == "manager_digest" else "corporate_results"
     counts = {"sent": 0, "failed": 0, "skipped": 0}
-    for recipient in batch.recipients.select_related("enrollment__learner", "email_log"):
-        if recipient.email_log and recipient.email_log.status not in ("failed",):
-            counts["skipped"] += 1
-            continue
-        if batch.kind == "manager_digest":
-            staff = [rows[i] for i in recipient.learners if i in rows]
-            html = digest_html(batch, staff, recipient.name) if staff else ""
-        else:
-            row = rows.get(recipient.enrollment_id)
-            html = (
-                result_html(batch, row, recipient.name or recipient.enrollment.learner.full_name)
-                if row
-                else ""
+    for pk in batch.recipients.values_list("pk", flat=True):
+        with transaction.atomic():
+            recipient = (
+                batch.recipients.select_for_update(of=("self",))
+                .select_related("enrollment__learner", "email_log")
+                .get(pk=pk)
             )
-        if not html:
-            counts["skipped"] += 1
-            continue
-        try:
-            log = send_logged(
-                to=recipient.to,
-                cc=recipient.cc,
-                subject=batch.subject,
-                html=html,
-                template_code=template,
-                name=recipient.name,
-                sent_by=user,
-                corporate_enrollment=recipient.enrollment,
-                brand="corporate",
-            )
-        except ResendError:
-            counts["failed"] += 1
-            # send_logged kept the failed attempt: link it so the screen shows the error.
-            recipient.email_log = (
-                EmailLog.objects.filter(recipient_email=recipient.to, template_code=template, status="failed")
-                .order_by("-created_at")
-                .first()
-            )
-            recipient.save(update_fields=["email_log", "updated_at"])
-            continue
-        recipient.email_log = log
-        recipient.save(update_fields=["email_log", "updated_at"])
-        counts["sent"] += 1
+            outcome = _send_recipient(batch, recipient, rows, template, user)
+        counts[outcome] += 1
     if batch.status != "sent" and counts["failed"] == 0:
         batch.status, batch.sent_at = "sent", timezone.now()
         batch.save(update_fields=["status", "sent_at", "updated_at"])
     return counts
+
+
+def _send_recipient(batch, recipient, rows: dict, template: str, user) -> str:
+    """Send one locked recipient's e-mail: "sent", "failed" or "skipped"."""
+    from apps.notifications.models import EmailLog
+
+    if recipient.email_log and recipient.email_log.status not in ("failed",):
+        return "skipped"
+    if batch.kind == "manager_digest":
+        staff = [rows[i] for i in recipient.learners if i in rows]
+        html = digest_html(batch, staff, recipient.name) if staff else ""
+    else:
+        row = rows.get(recipient.enrollment_id)
+        html = (
+            result_html(batch, row, recipient.name or recipient.enrollment.learner.full_name) if row else ""
+        )
+    if not html:
+        return "skipped"
+    try:
+        log = send_logged(
+            to=recipient.to,
+            cc=recipient.cc,
+            subject=batch.subject,
+            html=html,
+            template_code=template,
+            name=recipient.name,
+            sent_by=user,
+            corporate_enrollment=recipient.enrollment,
+            brand="corporate",
+        )
+    except ResendError:
+        # send_logged kept the failed attempt: link it so the screen shows the error.
+        recipient.email_log = (
+            EmailLog.objects.filter(recipient_email=recipient.to, template_code=template, status="failed")
+            .order_by("-created_at")
+            .first()
+        )
+        recipient.save(update_fields=["email_log", "updated_at"])
+        return "failed"
+    recipient.email_log = log
+    recipient.save(update_fields=["email_log", "updated_at"])
+    return "sent"
