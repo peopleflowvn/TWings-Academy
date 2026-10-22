@@ -57,27 +57,63 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 
   // Size styles
   const imgHeights = {
-    sm: 'h-7 max-w-[130px]',
-    md: 'h-8 sm:h-9 max-w-[180px]',
-    lg: 'h-10 sm:h-12 max-w-[220px]',
+    sm: 'h-7 sm:h-8 max-w-[140px]',
+    md: 'h-9 sm:h-10 max-w-[200px]',
+    lg: 'h-11 sm:h-13 max-w-[260px]',
   }[size];
 
   const badgeSizes = {
-    sm: 'w-8 h-8 text-xs',
-    md: 'w-9 h-9 text-xs sm:text-sm',
-    lg: 'w-11 h-11 text-base',
+    sm: 'w-8 h-8 text-xs rounded-xl',
+    md: 'w-9.5 h-9.5 sm:w-10 sm:h-10 text-xs sm:text-sm rounded-xl',
+    lg: 'w-11 h-11 sm:w-12 sm:h-12 text-base sm:text-lg rounded-2xl shadow-sm',
+  }[size];
+
+  const badgeDotSizes = {
+    sm: 'w-2 h-2 ring-1',
+    md: 'w-2.5 h-2.5 ring-1.5',
+    lg: 'w-3 h-3 ring-2',
+  }[size];
+
+  const wordmarkStyles = {
+    sm: {
+      text: 'text-base font-black',
+      dot: 'w-1.5 h-1.5 mb-0.5',
+      capsule: 'w-1.5 h-3',
+      margin: 'mx-0.5',
+      academy: 'text-[8px] sm:text-[9px] font-black tracking-[0.24em] mt-0.5',
+    },
+    md: {
+      text: 'text-lg sm:text-xl font-black',
+      dot: 'w-1.5 h-1.5 mb-0.5',
+      capsule: 'w-1.5 h-3.5',
+      margin: 'mx-0.5',
+      academy: 'text-[9px] sm:text-[10px] font-black tracking-[0.28em] mt-0.5',
+    },
+    lg: {
+      text: 'text-2xl sm:text-[26px] font-black',
+      dot: 'w-2 h-2 mb-0.5',
+      capsule: 'w-2 h-4.5',
+      margin: 'mx-0.5 sm:mx-1',
+      academy: 'text-[10px] sm:text-[11px] font-black tracking-[0.32em] mt-1',
+    },
+  }[size];
+
+  const gapSizes = {
+    sm: 'gap-2',
+    md: 'gap-2.5 sm:gap-3',
+    lg: 'gap-3 sm:gap-3.5',
   }[size];
 
   const titleSizes = {
     sm: 'text-sm sm:text-base',
     md: 'text-base sm:text-lg',
-    lg: 'text-lg sm:text-xl',
+    lg: 'text-xl sm:text-2xl',
   }[size];
 
   const subSizes = {
     sm: 'text-[9px]',
-    md: 'text-[11px]',
-    lg: 'text-xs',
+    md: 'text-[10px] sm:text-[11px]',
+    lg: 'text-xs sm:text-[13px]',
   }[size];
 
   if (logoUrl) {
@@ -106,13 +142,13 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 
   // Exact Brand Wordmark & Mark according to Brand Identity Guidelines
   return (
-    <div className={`flex items-center gap-2.5 sm:gap-3 text-left shrink-0 select-none ${className}`}>
+    <div className={`flex items-center ${gapSizes} text-left shrink-0 select-none ${className}`}>
       {/* Brand Icon Mark */}
       <div
-        className={`${badgeSizes} rounded-xl bg-gradient-to-tr from-[#0E6BBB] via-[#0073C1] to-[#5FBEFF] flex items-center justify-center text-white font-black shadow-xs shrink-0 relative overflow-hidden`}
+        className={`${badgeSizes} bg-gradient-to-tr from-[#0E6BBB] via-[#0073C1] to-[#5FBEFF] flex items-center justify-center text-white font-black shadow-xs shrink-0 relative overflow-hidden`}
       >
         <span className="font-sans font-black tracking-tight text-white z-10">TW</span>
-        <span className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-[#EA580C] ring-1.5 ring-white z-10" />
+        <span className={`absolute bottom-1 right-1 ${badgeDotSizes} rounded-full bg-[#EA580C] ring-white z-10`} />
         <div className="absolute top-0 right-0 w-4 h-4 bg-white/20 rounded-full blur-xs" />
       </div>
 
@@ -128,14 +164,14 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
         ) : (
           <div>
             {/* TWiNGS main wordmark */}
-            <div className="flex items-center tracking-tight leading-none font-black font-sans">
+            <div className={`flex items-center tracking-tight leading-none ${wordmarkStyles.text} font-sans`}>
               <span className={dark ? 'text-white' : 'text-[#0073C1]'}>
                 TW
               </span>
               {/* Styled 'i' with cyan wing and orange center capsule */}
-              <span className="inline-flex flex-col items-center justify-center mx-0.5 relative">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#5FBEFF] mb-0.5" />
-                <span className="w-1.5 h-3.5 rounded-full bg-gradient-to-b from-[#EA580C] to-[#C23010]" />
+              <span className={`inline-flex flex-col items-center justify-center ${wordmarkStyles.margin} relative`}>
+                <span className={`${wordmarkStyles.dot} rounded-full bg-[#5FBEFF]`} />
+                <span className={`${wordmarkStyles.capsule} rounded-full bg-gradient-to-b from-[#EA580C] to-[#C23010]`} />
               </span>
               <span className={dark ? 'text-white' : 'text-[#0073C1]'}>
                 NGS
@@ -144,7 +180,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 
             {/* A C A D E M Y sub-mark */}
             <div 
-              className={`text-[9px] sm:text-[10px] font-black uppercase tracking-[0.28em] mt-0.5 ${
+              className={`${wordmarkStyles.academy} uppercase ${
                 dark ? 'text-[#5FBEFF]' : 'text-[#263060]'
               }`}
             >

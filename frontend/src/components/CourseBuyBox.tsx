@@ -206,7 +206,7 @@ export const CourseBuyBox: React.FC<CourseBuyBoxProps> = ({ course, onCheckout, 
         ) : (
           consultOpen && (
             <form onSubmit={sendConsult} noValidate className="space-y-3 pt-1 border-t border-slate-100">
-              <div className="pt-3 text-sm font-bold text-slate-900">Nhận tư vấn lộ trình & học phí</div>
+              <div className="pt-3 text-sm font-bold text-[#263060]">Nhận tư vấn lộ trình & học phí</div>
               <div>
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Họ và tên *" autoComplete="name" className={field('name')} />
                 {errors.name && <p className="text-[11px] text-red-600 mt-0.5">{errors.name}</p>}
@@ -233,9 +233,9 @@ export const CourseBuyBox: React.FC<CourseBuyBoxProps> = ({ course, onCheckout, 
               <button
                 type="submit"
                 disabled={sending}
-                className={`w-full py-3 rounded-xl font-bold text-sm cursor-pointer disabled:opacity-60 ${buyable ? 'bg-[#0073C1] hover:bg-[#005FA0] text-white' : 'bg-[#EA580C] hover:bg-[#D94F04] text-white'}`}
+                className="w-full py-3 rounded-xl font-extrabold text-sm cursor-pointer disabled:opacity-60 bg-gradient-to-r from-[#FF6B35] to-[#EA580C] hover:from-[#EA580C] hover:to-[#C23010] text-white shadow-md shadow-orange-500/20 transition-all"
               >
-                {sending ? 'Đang gửi…' : 'Gửi thông tin'}
+                {sending ? 'Đang gửi…' : 'Gửi thông tin tư vấn'}
               </button>
             </form>
           )

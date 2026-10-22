@@ -54,12 +54,8 @@ export const CourseraFooter: React.FC<CourseraFooterProps & { onSelectCourse?: (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand */}
-          <div className="space-y-3 lg:col-span-2">
-            <BrandLogo dark={true} size="md" />
-            <p className="text-xs text-slate-300 leading-relaxed max-w-sm">
-              {seo?.siteSlogan ||
-                'Học viện đào tạo thực chiến ngành Tài chính - Ngân hàng, kết hợp công nghệ AI và định hướng nghề nghiệp.'}
-            </p>
+          <div className="space-y-4 lg:col-span-2">
+            <BrandLogo dark={true} size="lg" />
             {(socials.length > 0 || zalo || seo?.email || phone) && (
               <div className="pt-2 space-y-2">
                 <div className="text-[11px] font-bold text-slate-200 uppercase tracking-wider">Kết nối với chúng tôi</div>

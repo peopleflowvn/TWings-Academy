@@ -768,7 +768,7 @@ Trí tuệ nhân tạo và Machine Learning đang định hình lại phương t
 // -------------------------------------------------------------
 export const INITIAL_SEO_SETTINGS: SiteSEOSettings = {
   siteName: 'TWINGS ACADEMY - Học Viện Đào Tạo Thực Chiến',
-  siteSlogan: 'Nâng tầm năng lực, kiến tạo tương lai',
+  siteSlogan: '',
   faviconUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=64&q=80',
   logoUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=200&q=80',
   defaultMetaTitle: 'Twings Academy - Đào Tạo Nghiệp Vụ Ngân Hàng & Khóa Học Chuyên Nghiệp',

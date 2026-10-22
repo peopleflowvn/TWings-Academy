@@ -80,7 +80,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             className="flex items-center gap-2 sm:gap-2.5 cursor-pointer focus:outline-none group text-left shrink-0"
             title="Trang Chủ TWings Academy"
           >
-            <BrandLogo dark={false} subtitle="Học Viện Thực Chiến" />
+            <BrandLogo dark={false} size="lg" />
           </a>
         </div>
 
