@@ -156,20 +156,11 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           {/* Quick Consultation CTA */}
           <button
             onClick={onOpenConsultation}
-            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 border border-[#0073C1] text-[#0073C1] hover:bg-[#D7F5FF]/50 rounded-xl font-bold transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 sm:py-2.5 bg-gradient-to-r from-[#0073C1] via-[#0E6BBB] to-[#2C93E8] hover:brightness-110 text-white rounded-xl font-bold text-xs shadow-sm hover:shadow-md hover:shadow-[#0073C1]/25 transition-all cursor-pointer group"
           >
-            <PhoneCall className="w-3.5 h-3.5" />
+            <PhoneCall className="w-3.5 h-3.5 text-[#D7F5FF] group-hover:scale-110 transition-transform" />
             <span>Đăng ký tư vấn</span>
           </button>
-
-          {/* Join / Catalog CTA button */}
-          <a
-            href={routePath('catalog')}
-            onClick={navClick('catalog')}
-            className="hidden xs:inline-flex px-3.5 sm:px-5 py-2 sm:py-2.5 bg-[#0073C1] hover:bg-[#005FA0] text-white font-bold text-xs rounded-xl transition-colors cursor-pointer whitespace-nowrap shadow-xs"
-          >
-            Khóa học
-          </a>
 
           {/* Mobile Menu Hamburger button */}
           <button

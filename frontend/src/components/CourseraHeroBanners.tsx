@@ -14,7 +14,8 @@ import {
   GraduationCap,
   Zap,
   TrendingUp,
-  CheckCircle2
+  CheckCircle2,
+  Star
 } from 'lucide-react';
 import { HeroBannerItem } from '../types';
 import { HERO_BANNERS } from '../data/courseraData';
@@ -41,36 +42,36 @@ const TRUST_STATS = [
     number: '5.000+',
     label: 'Học viên đã tốt nghiệp',
     subtext: 'Gia nhập các Ngân hàng lớn',
-    color: 'text-[#0073C1]',
-    bgColor: 'bg-[#D7F5FF]',
-    borderColor: 'border-[#94D9FF]',
+    color: 'text-[#5FBEFF]',
+    glowBg: 'bg-[#0073C1]/20',
+    borderColor: 'border-[#5FBEFF]/30',
   },
   {
     icon: Briefcase,
     number: '95%',
     label: 'Tỷ lệ có việc làm',
     subtext: 'Bảo lãnh & giới thiệu tại MSB',
-    color: 'text-emerald-600',
-    bgColor: 'bg-emerald-50',
-    borderColor: 'border-emerald-100',
+    color: 'text-emerald-400',
+    glowBg: 'bg-emerald-500/20',
+    borderColor: 'border-emerald-400/30',
   },
   {
     icon: Award,
     number: '100%',
     label: 'Giảng viên Giám đốc Khối',
     subtext: '20+ năm nghiệp vụ thực chiến',
-    color: 'text-[#EA580C]',
-    bgColor: 'bg-orange-50',
-    borderColor: 'border-orange-100',
+    color: 'text-amber-400',
+    glowBg: 'bg-amber-500/20',
+    borderColor: 'border-amber-400/30',
   },
   {
     icon: PlayCircle,
     number: 'Miễn phí',
     label: 'Học thử Video YouTube',
     subtext: 'Kiểm tra chất lượng trước khi mua',
-    color: 'text-rose-600',
-    bgColor: 'bg-rose-50',
-    borderColor: 'border-rose-100',
+    color: 'text-rose-400',
+    glowBg: 'bg-rose-500/20',
+    borderColor: 'border-rose-400/30',
   },
 ];
 
@@ -208,19 +209,21 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
 
   return (
     <section 
-      className="bg-gradient-to-b from-[#263060] via-[#1B2347] to-[#12182E] text-white pt-4 sm:pt-8 pb-10 sm:pb-16 px-3 sm:px-6 lg:px-8 relative overflow-hidden"
+      className="bg-gradient-to-b from-[#161F45] via-[#101735] to-[#0A0E22] text-white pt-6 sm:pt-10 pb-12 sm:pb-16 px-3 sm:px-6 lg:px-8 relative overflow-hidden"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Ambient decorative lighting */}
-      <div className="absolute top-0 left-1/4 w-[500px] h-[300px] bg-[#0073C1]/20 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute top-1/3 right-1/4 w-[450px] h-[250px] bg-[#5FBEFF]/15 rounded-full blur-[90px] pointer-events-none" />
+      {/* Soft gradient bridge from header */}
+      <div className="absolute top-0 inset-x-0 h-16 bg-gradient-to-b from-black/25 to-transparent pointer-events-none" />
+      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-radial from-[#0073C1]/30 via-[#2C93E8]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 -right-20 w-[500px] h-[350px] bg-[#5FBEFF]/15 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-1/4 -left-20 w-[450px] h-[300px] bg-[#0073C1]/15 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 relative z-10">
         {/* Top Header Badge & Navigation Controls */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0073C1]/20 border border-[#5FBEFF]/40 text-[#D7F5FF] text-xs font-bold uppercase tracking-wider backdrop-blur-md shadow-xs">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0073C1]/20 border border-[#5FBEFF]/40 text-[#D7F5FF] text-xs font-bold uppercase tracking-wider backdrop-blur-md shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-[#5FBEFF] animate-pulse" />
               <span>Chương trình Tuyển sinh & Khóa học 2026</span>
             </span>
@@ -274,20 +277,20 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                 <div
                   key={banner.id || index}
                   onClick={() => handleBannerAction(banner)}
-                  className="min-w-[88vw] sm:min-w-[620px] lg:min-w-[700px] snap-start rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl hover:shadow-cyan-500/10 transition-all duration-300 relative group cursor-pointer border border-white/15 bg-slate-900 shrink-0"
+                  className="w-full min-w-full snap-start rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl hover:shadow-cyan-500/10 transition-all duration-300 relative group cursor-pointer border border-white/15 bg-slate-900 shrink-0"
                 >
                   <img
                     src={banner.fullBannerImageUrl}
                     alt={banner.title}
-                    className="w-full h-[220px] sm:h-[300px] object-cover group-hover:scale-105 transition-transform duration-700"
+                    className="w-full h-[240px] sm:h-[340px] lg:h-[400px] object-cover group-hover:scale-105 transition-transform duration-700"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/30 to-transparent flex items-end p-5 sm:p-6">
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/30 to-transparent flex items-end p-6 sm:p-8">
                     <div className="flex items-center justify-between w-full text-white gap-3">
                       <div className="min-w-0">
-                        <h3 className="font-extrabold text-sm sm:text-lg drop-shadow-sm truncate">{banner.title}</h3>
-                        {banner.subtitle && <p className="text-xs sm:text-sm text-slate-300 line-clamp-1">{banner.subtitle}</p>}
+                        <h3 className="font-extrabold text-base sm:text-xl lg:text-2xl drop-shadow-sm truncate">{banner.title}</h3>
+                        {banner.subtitle && <p className="text-xs sm:text-base text-slate-300 line-clamp-1">{banner.subtitle}</p>}
                       </div>
-                      <span className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#0073C1] to-[#2C93E8] hover:brightness-110 text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-lg text-white shrink-0">
+                      <span className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0073C1] to-[#2C93E8] hover:brightness-110 text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-lg text-white shrink-0">
                         <span>{banner.buttonText || 'Khám phá ngay'}</span>
                         <ExternalLink className="w-3.5 h-3.5" />
                       </span>
@@ -301,111 +304,129 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
             return (
               <div
                 key={banner.id || index}
-                className={`min-w-[88vw] sm:min-w-[620px] lg:min-w-[700px] snap-start bg-gradient-to-br ${banner.bgGradient || 'from-[#263060] via-[#0E6BBB] to-[#0073C1]'} text-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 flex flex-col justify-between shadow-2xl relative overflow-hidden group border border-white/15 hover:border-[#5FBEFF]/40 transition-all duration-300 shrink-0`}
+                className={`w-full min-w-full snap-start bg-gradient-to-br ${banner.bgGradient || 'from-[#1A2656] via-[#0E5496] to-[#0073C1]'} text-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 flex flex-col justify-between shadow-2xl relative overflow-hidden group border border-white/20 hover:border-[#5FBEFF]/50 transition-all duration-300 shrink-0`}
               >
                 {/* Glow lights */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-[#5FBEFF]/15 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#0073C1]/15 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute top-0 right-0 w-80 h-80 bg-[#5FBEFF]/20 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#0073C1]/20 rounded-full blur-3xl pointer-events-none" />
 
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-5 sm:gap-6 items-center relative z-10">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center relative z-10">
                   {/* Left Content Column */}
-                  <div className="sm:col-span-7 space-y-3 sm:space-y-4">
+                  <div className="lg:col-span-7 xl:col-span-8 space-y-4 sm:space-y-5">
                     {/* Partner Badges */}
-                    {banner.partnerBadges && banner.partnerBadges.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {banner.partnerBadges.map((badge, bIdx) => (
-                          <span
-                            key={bIdx}
-                            className="text-[10px] sm:text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center gap-1 shadow-2xs"
-                            style={{ color: badge.color }}
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: badge.color }} />
-                            <span>{badge.name}</span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-xs font-extrabold uppercase tracking-wider shadow-xs">
+                        <span className="w-2 h-2 rounded-full bg-[#5FBEFF] animate-pulse" />
+                        <span>TWINGS ACADEMY</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EA580C]/20 backdrop-blur-md border border-[#EA580C]/40 text-[#FFA07A] text-xs font-extrabold uppercase tracking-wider shadow-xs">
+                        <span className="w-2 h-2 rounded-full bg-[#EA580C]" />
+                        <span>ĐỐI TÁC MSB BANK</span>
+                      </span>
+                      <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 backdrop-blur-md border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-wider shadow-xs">
+                        <Sparkles className="w-3 h-3 text-emerald-300" />
+                        <span>Khóa Tuyển Sinh 2026</span>
+                      </span>
+                    </div>
 
-                    <h2 className="text-lg sm:text-2xl lg:text-3xl font-black tracking-tight text-white leading-snug drop-shadow-sm">
-                      {banner.title}
+                    {/* Headline with vibrant gradient highlights */}
+                    <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.15] drop-shadow-md">
+                      {banner.title.includes('Ngân hàng') ? (
+                        <>
+                          {banner.title.split('Ngân hàng')[0]}
+                          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#5FBEFF] via-[#BEE7FF] to-white">
+                            Ngân hàng
+                          </span>
+                          {banner.title.split('Ngân hàng')[1]}
+                        </>
+                      ) : (
+                        banner.title
+                      )}
                     </h2>
 
-                    <p className="text-xs sm:text-sm text-slate-200 leading-relaxed line-clamp-2 sm:line-clamp-3">
+                    <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl font-medium">
                       {banner.subtitle}
                     </p>
 
+                    {/* Value-add highlights */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs sm:text-sm font-semibold text-slate-200">
+                      <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
+                        <CheckCircle2 className="w-4 h-4 text-[#5FBEFF] shrink-0" />
+                        <span>Cố vấn 1-1 cùng Giám đốc Khối MSB</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>Cam kết kết nối & bảo lãnh tuyển dụng</span>
+                      </div>
+                    </div>
+
                     {/* Action buttons row */}
-                    <div className="pt-2 flex flex-wrap items-center gap-2.5 sm:gap-3">
+                    <div className="pt-2 flex flex-wrap items-center gap-3 sm:gap-4">
                       {banner.buttonStyle === 'primary' ? (
                         <button
                           onClick={() => handleBannerAction(banner)}
-                          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#FF6B35] to-[#EA580C] hover:from-[#FF7A47] hover:to-[#C23010] text-white font-extrabold rounded-xl text-xs sm:text-sm shadow-lg hover:shadow-orange-500/20 transition-all cursor-pointer group-hover:scale-102"
+                          className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3.5 bg-gradient-to-r from-[#FF6B35] via-[#EA580C] to-[#C23010] hover:from-[#FF7A47] hover:to-[#B02808] text-white font-extrabold rounded-xl text-sm sm:text-base shadow-xl hover:shadow-orange-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <span>{banner.buttonText}</span>
-                          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          <span>{banner.buttonText || 'Đăng ký tư vấn trực tiếp'}</span>
+                          <ArrowRight className="w-4.5 h-4.5 transition-transform group-hover:translate-x-1" />
                         </button>
                       ) : (
                         <button
                           onClick={() => handleBannerAction(banner)}
-                          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#0073C1] hover:bg-[#2C93E8] text-white font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer group-hover:scale-102"
+                          className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3.5 bg-gradient-to-r from-[#0073C1] to-[#2C93E8] hover:brightness-110 text-white font-extrabold rounded-xl text-sm sm:text-base shadow-xl hover:shadow-cyan-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <span>{banner.buttonText}</span>
-                          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          <span>{banner.buttonText || 'Khám phá ngay'}</span>
+                          <ArrowRight className="w-4.5 h-4.5 transition-transform group-hover:translate-x-1" />
                         </button>
                       )}
 
                       <button
                         onClick={() => onOpenYouTubeTrial('sal78ACtGTc', banner.title)}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs sm:text-sm font-semibold backdrop-blur-md border border-white/20 transition-colors cursor-pointer"
-                        title="Xem thử video bài giảng miễn phí"
+                        className="inline-flex items-center gap-2 px-5 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm sm:text-base font-bold backdrop-blur-md border border-white/25 hover:border-white/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                        title="Xem thử video bài giảng miễn phí trên YouTube"
                       >
-                        <Play className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+                        <Play className="w-4 h-4 text-rose-400 fill-rose-400" />
                         <span>Học thử 0đ</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Right Graphic Column */}
-                  <div className="sm:col-span-5 flex justify-center pt-2 sm:pt-0">
-                    <div className="relative w-32 h-32 sm:w-48 sm:h-48">
-                      {/* Glow frame */}
-                      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#5FBEFF] to-[#0073C1] blur-xl opacity-30 group-hover:opacity-50 transition-opacity" />
-                      
-                      <div className="w-full h-full rounded-full overflow-hidden border-2 border-white/30 shadow-2xl bg-slate-900/80 group-hover:scale-105 transition-transform duration-500 relative">
+                  {/* Right Graphic Column: Prestigious Faculty Profile Showcase Card */}
+                  <div className="lg:col-span-5 xl:col-span-4 flex justify-center lg:justify-end pt-4 lg:pt-0">
+                    <div className="relative w-full max-w-[320px] sm:max-w-[340px] bg-gradient-to-b from-white/15 to-white/5 backdrop-blur-xl border border-white/25 rounded-3xl p-4 sm:p-5 shadow-2xl shadow-blue-950/60 transition-transform duration-500 hover:scale-[1.02]">
+                      <div className="absolute -inset-1 bg-gradient-to-r from-[#0073C1] to-[#5FBEFF] rounded-3xl blur-xl opacity-30 -z-10" />
+
+                      <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-white/20 shadow-lg bg-slate-900 mb-3.5">
                         <img
                           src={banner.imageUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80'}
                           alt={banner.title}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700"
                           loading="lazy"
                         />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                        
+                        <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-white/20 text-[11px] font-extrabold text-[#5FBEFF] flex items-center gap-1.5 shadow-md">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#EA580C]" />
+                          <span>MSB Bank</span>
+                        </span>
+
+                        <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-950/70 backdrop-blur-md border border-white/10 text-[11px] font-bold text-amber-300">
+                          <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+                          <span>4.9 / 5 (1.500+ học viên)</span>
+                        </div>
                       </div>
 
-                      {/* Floating Badges */}
-                      {banner.floatingBadges && banner.floatingBadges.map((badge, fbIdx) => {
-                        const posClass =
-                          badge.position === 'top-left'
-                            ? '-top-2 -left-2 sm:-top-3 sm:-left-3'
-                            : badge.position === 'top-right'
-                            ? '-top-2 -right-2 sm:-top-3 sm:-right-3'
-                            : badge.position === 'bottom-left'
-                            ? '-bottom-2 -left-2 sm:-bottom-3 sm:-left-3'
-                            : '-bottom-2 -right-2 sm:-bottom-3 sm:-right-3';
-
-                        return (
-                          <div
-                            key={fbIdx}
-                            className={`absolute ${posClass} bg-white/95 backdrop-blur-md text-slate-900 rounded-full px-2.5 py-1 text-[10px] sm:text-[11px] font-extrabold shadow-lg flex items-center gap-1.5 border border-white/40 select-none whitespace-nowrap`}
-                          >
-                            {badge.iconColor && (
-                              <span
-                                className="w-2 h-2 rounded-full shrink-0"
-                                style={{ backgroundColor: badge.iconColor }}
-                              />
-                            )}
-                            <span>{badge.text}</span>
-                          </div>
-                        );
-                      })}
+                      <div className="space-y-1 text-left">
+                        <div className="text-[11px] font-extrabold tracking-wider uppercase text-[#5FBEFF]">
+                          Đội Ngũ Giảng Viên Thực Chiến
+                        </div>
+                        <div className="text-base font-extrabold text-white">
+                          Giám Đốc Khối & Chuyên Gia MSB
+                        </div>
+                        <div className="text-xs text-slate-300 font-medium leading-relaxed">
+                          Đào tạo trực tiếp tại Hội sở, đánh giá năng lực và bảo lãnh tiếp nhận việc làm.
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -432,25 +453,25 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
         </div>
 
         {/* 4 Trust & Metrics Stat Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-4 sm:pt-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5 pt-6 sm:pt-8">
           {TRUST_STATS.map((stat, sIdx) => {
             const Icon = stat.icon;
             return (
               <div 
                 key={sIdx}
-                className="bg-slate-800/60 backdrop-blur-md border border-slate-700/60 rounded-2xl p-3.5 sm:p-4.5 flex items-center gap-3 hover:bg-slate-800/90 hover:border-slate-600 transition-all group"
+                className="bg-gradient-to-b from-white/[0.08] to-white/[0.02] backdrop-blur-xl border border-white/10 hover:border-[#5FBEFF]/50 rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#0073C1]/10 group cursor-default"
               >
-                <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${stat.bgColor} ${stat.color} flex items-center justify-center shrink-0 shadow-xs group-hover:scale-108 transition-transform`}>
-                  <Icon className="w-5 h-5" />
+                <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl ${stat.glowBg} ${stat.borderColor} border ${stat.color} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform`}>
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-base sm:text-xl font-black text-white tracking-tight leading-none mb-1">
+                  <div className="text-lg sm:text-2xl font-black text-white tracking-tight leading-none mb-1">
                     {stat.number}
                   </div>
-                  <div className="text-xs font-bold text-slate-200 truncate">
+                  <div className="text-xs sm:text-sm font-bold text-slate-100 group-hover:text-[#D7F5FF] transition-colors truncate">
                     {stat.label}
                   </div>
-                  <div className="text-[10px] text-slate-400 truncate hidden sm:block">
+                  <div className="text-[11px] text-slate-300 truncate hidden sm:block font-medium">
                     {stat.subtext}
                   </div>
                 </div>
@@ -460,22 +481,22 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
         </div>
 
         {/* Quick Category Navigation Rail */}
-        <div className="pt-2 sm:pt-4 border-t border-slate-800/80">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#5FBEFF]" />
+        <div className="pt-6 sm:pt-8 border-t border-white/10">
+          <div className="flex items-center justify-between gap-3 mb-3.5">
+            <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#5FBEFF]" />
               <span>Khám phá nhanh danh mục khóa học</span>
             </span>
             <button
               onClick={onBrowseCatalog}
-              className="text-xs font-bold text-[#5FBEFF] hover:text-[#94D9FF] hover:underline flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-[#5FBEFF] hover:text-[#94D9FF] hover:underline flex items-center gap-1 cursor-pointer transition-colors"
             >
               <span>Xem toàn bộ danh mục</span>
-              <ArrowRight className="w-3 h-3" />
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-3 px-3 sm:mx-0 sm:px-0">
+          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-3 px-3 sm:mx-0 sm:px-0">
             {QUICK_CATEGORIES.map((cat) => {
               const Icon = cat.icon;
               const isActive = activeCategory === cat.id;
@@ -483,17 +504,17 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                 <button
                   key={cat.id}
                   onClick={() => handleCategoryClick(cat)}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 border ${
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 border ${
                     isActive
-                      ? 'bg-[#0073C1] text-white border-[#5FBEFF] shadow-md shadow-[#0073C1]/30'
-                      : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-slate-700 hover:border-slate-600'
+                      ? 'bg-gradient-to-r from-[#0073C1] to-[#0E6BBB] text-white border-[#5FBEFF] shadow-lg shadow-[#0073C1]/30 scale-[1.02]'
+                      : 'bg-white/5 hover:bg-white/10 text-slate-200 border-white/10 hover:border-white/25 backdrop-blur-md'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-[#5FBEFF]'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#5FBEFF]'}`} />
                   <span>{cat.label}</span>
                   {cat.badge && (
-                    <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase ${
-                      isActive ? 'bg-[#263060] text-[#D7F5FF]' : 'bg-[#0073C1]/30 text-[#D7F5FF] border border-[#5FBEFF]/30'
+                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase ${
+                      isActive ? 'bg-[#263060] text-[#D7F5FF]' : 'bg-[#0073C1]/40 text-[#D7F5FF] border border-[#5FBEFF]/30'
                     }`}>
                       {cat.badge}
                     </span>
