@@ -306,7 +306,9 @@ def test_learner_can_request_a_refund_once(api, registration_payload, monkeypatc
         reason = {"reason": "Không sắp xếp được thời gian"}
         res = client.post(url, reason, format="json", HTTP_X_CSRFTOKEN=token)
         assert res.status_code == 200 and res.json()["refundRequested"]
-    assert order.followup_tasks.filter(priority="high").count() == 1
+    from apps.sso.account import REFUND_TASK_PREFIX
+
+    assert order.followup_tasks.filter(title__startswith=REFUND_TASK_PREFIX).count() == 1  # once
     other = Order.objects.create(customer_name="B", customer_email="b@example.com", course=order.course)
     res = client.post(
         f"/api/v1/public/account/orders/{other.order_code}/refund-request/",

@@ -61,6 +61,7 @@ SCHEDULE: dict[str, Every | Daily] = {
     "refresh_campaigns": Daily(hour=0, minute=20),  # campaigns past their deadline: expired
     "refresh_corporate_classes": Every(minutes=60),  # B2B class status from its schedule
     "expire_checkouts": Every(minutes=30),  # unpaid checkouts past their hold: cancelled
+    "alert_overdue_leads": Every(minutes=30),  # leads past their response deadline: remind / escalate
     "remind_installments": Daily(hour=9, minute=0),
     "run_journeys": Daily(hour=9, minute=30),  # journey e-mails
     "remind_corporate_requests": Daily(hour=8, minute=15),  # B2B requests near / past their SLA

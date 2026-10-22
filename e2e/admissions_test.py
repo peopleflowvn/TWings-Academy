@@ -43,7 +43,7 @@ def login(page: Page):
 def pipeline_counts_and_sla(page: Page):
     page.goto(f"{BASE}/app/sales/crm?view=kanban&campaignId=all")
     page.wait_for_selector("text=Nguyễn Văn An", timeout=20000)
-    assert page.locator("text=37 lead").count() >= 1, "pipeline total"
+    assert page.locator("text=38 lead").count() >= 1, "pipeline total"
     assert page.locator("text=Quá hạn").count() >= 1, "late first response badge"
 
 
@@ -104,7 +104,7 @@ def add_lead_and_table(page: Page):
     page.locator("button:has-text('Bảng chi tiết')").click()
     page.wait_for_selector("th:has-text('Tư vấn viên')", timeout=20000)
     assert page.locator("tbody tr").count() >= 6
-    assert page.locator("text=38 lead").count() >= 1, "table: 37 + the new lead"
+    assert page.locator("text=39 lead").count() >= 1, "table: 38 + the new lead"
 
 
 @step

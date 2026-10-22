@@ -142,12 +142,18 @@ def test_followup_tasks_can_be_ticked_and_removed(staff_client, course):
 
 
 def test_dashboard_sections_follow_permissions(staff_client, course):
+    from django.utils import timezone
+
     from apps.crm.models import Order
 
-    Order.objects.create(customer_name="A", course=course, amount=100, total_receivable=100)
+    # A checkout is receivable; a consultation lead with a price is not.
+    Order.objects.create(
+        customer_name="A", course=course, amount=100, total_receivable=100, terms_accepted_at=timezone.now()
+    )
+    Order.objects.create(customer_name="Lead", course=course, amount=900, total_receivable=900)
     sales = staff_client(Role.SALES_CRM).get("/api/v1/staff/dashboard/").json()
     assert "sales" in sales and "finance" not in sales and "training" in sales
-    assert sales["sales"]["leads30d"] == 1
+    assert sales["sales"]["leads30d"] == 2
     finance = staff_client(Role.FINANCE_ACCOUNTANT).get("/api/v1/staff/dashboard/").json()
     assert finance["finance"]["receivable"] == 100  # accountants also see leads (crm.view_leads)
     admin = staff_client(Role.SUPER_ADMIN).get("/api/v1/staff/dashboard/").json()

@@ -45,6 +45,8 @@ class User(AbstractUser):
     permission_overrides = models.JSONField(default=dict, blank=True)
     # Admissions consultants share new website leads (fewest open leads first); off = holiday / leave.
     receives_leads = models.BooleanField(default=True)
+    # Admissions lead: alerted when a lead finds no consultant or stays unanswered (escalation).
+    lead_manager = models.BooleanField(default=False)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name"]

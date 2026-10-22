@@ -218,6 +218,10 @@ jobs:
         run: python e2e/public_pages_test.py
         env:
           E2E_API: http://127.0.0.1:8000
+      - name: CRM follow-up (my day on a phone, stage rules, assignment)
+        run: python e2e/crm_test.py
+        env:
+          E2E_ARTIFACTS: e2e/artifacts
       - name: Screenshots and server logs (on failure)
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

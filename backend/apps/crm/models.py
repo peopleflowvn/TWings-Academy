@@ -295,6 +295,11 @@ class Order(BaseModel):
     # Step 4 – first response to a new lead (commitment: settings.LEAD_RESPONSE_HOURS).
     response_due_at = models.DateTimeField(null=True, blank=True)
     first_response_at = models.DateTimeField(null=True, blank=True)
+    # Overdue first response: the consultant was reminded / the lead managers were alerted.
+    overdue_alerted_at = models.DateTimeField(null=True, blank=True)
+    escalated_at = models.DateTimeField(null=True, blank=True)
+    # Why the registration was cancelled ('7. Đã hủy'), for the lost-reason report.
+    lost_reason = models.CharField(max_length=200, blank=True)
     # Step 5 – terms of service accepted at checkout (version of /dieu-khoan).
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
     terms_version = models.CharField(max_length=20, blank=True)
@@ -417,10 +422,21 @@ class FollowupTask(BaseModel):
     due_date = models.DateField(null=True, blank=True)
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="medium")
     is_completed = models.BooleanField(default=False)
-    assigned_to = models.CharField(max_length=100, blank=True)
+    # The staff member who has to do it (defaults to the lead's consultant); none = the lead managers.
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="crm_tasks"
+    )
+    assigned_to = models.CharField(max_length=100, blank=True)  # the owner's name, for display
 
     class Meta:
         ordering = ["is_completed", "due_date"]
+
+    def save(self, *args, **kwargs):
+        if self._state.adding and self.owner_id is None and self.order.assigned_to_id:
+            self.owner_id = self.order.assigned_to_id
+        if self.owner_id:
+            self.assigned_to = (self.owner.name or self.owner.email)[:100]
+        super().save(*args, **kwargs)
 
 
 class Appointment(BaseModel):

@@ -23,7 +23,9 @@ class DashboardView(APIView):
 
     def get(self, request):
         from apps.catalog.models import Cohort
-        from apps.crm.models import FollowupTask, Installment, Order
+        from apps.crm.assignment import my_tasks
+        from apps.crm.models import Installment, Order
+        from apps.crm.services import billed
         from apps.lms.models import LmsEnrollment
         from apps.payments.models import BankTransaction, Payment, Refund
 
@@ -39,7 +41,7 @@ class DashboardView(APIView):
                 "newLeads7d": orders.filter(created_at__gte=now - timedelta(days=7)).count(),
                 "leads30d": last30.count(),
                 "paid30d": last30.filter(status="paid").count(),
-                "tasksDueToday": FollowupTask.objects.filter(is_completed=False, due_date__lte=today).count(),
+                "tasksDueToday": my_tasks(user).filter(due_date__lte=today).count(),
                 **_lead_service(user, now),
                 "upcomingTasks": [
                     {
@@ -50,14 +52,17 @@ class DashboardView(APIView):
                         "orderId": t.order_id,
                         "customerName": t.order.customer_name,
                     }
-                    for t in FollowupTask.objects.filter(is_completed=False)
+                    for t in my_tasks(user)
                     .select_related("order")
                     .order_by(F("due_date").asc(nulls_last=True))[:8]
                 ],
             }
 
         if has_perm_code(user, "finance.transactions"):
-            pending = Order.objects.filter(status="pending").exclude(total_receivable=0)
+            # Receivable: orders the learner was asked to pay, not every consultation lead with a price.
+            pending = billed(
+                Order.objects.filter(status="pending", parent__isnull=True).exclude(total_receivable=0)
+            )
             data["finance"] = {
                 "revenueMonth": Payment.objects.filter(created_at__date__gte=month_start).aggregate(
                     s=Sum("amount")
@@ -230,10 +235,12 @@ class SystemHealthView(APIView):
 
 def _lead_service(user, now) -> dict:
     """Step 4 service level: leads past their first-response deadline, mine, today's consultations."""
-    from apps.crm.assignment import OPEN_STAGES, overdue_leads
+    from apps.crm.assignment import OPEN_STAGES, is_lead_manager, overdue_leads
     from apps.crm.models import Appointment, Order
 
     overdue = overdue_leads().select_related("assigned_to").order_by("response_due_at")
+    if not is_lead_manager(user):
+        overdue = overdue.filter(assigned_to=user)  # a consultant's own; the managers see every lead
     end_of_day = timezone.localtime(now).replace(hour=23, minute=59)
     return {
         "overdueLeads": overdue.count(),
@@ -252,6 +259,11 @@ def _lead_service(user, now) -> dict:
         ).count(),
         "appointmentsToday": Appointment.objects.filter(
             status="planned", starts_at__gte=now - timezone.timedelta(hours=1), starts_at__lte=end_of_day
+        )
+        .filter(Q() if is_lead_manager(user) else Q(order__assigned_to=user))
+        .count(),
+        "unassignedLeads": Order.objects.filter(
+            parent__isnull=True, status="pending", assigned_to__isnull=True, crm_status__in=OPEN_STAGES
         ).count(),
     }
 

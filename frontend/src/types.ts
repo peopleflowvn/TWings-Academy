@@ -457,6 +457,10 @@ export interface Order {
   /** The consultant (staff user id) in charge; pic keeps their name. */
   assignedTo?: string | null;
   pic?: string;
+  /** Why the registration was cancelled ('7. Đã hủy'). */
+  lostReason?: string;
+  /** Write-only: the call-back day when moving to '6. Chăm sóc lại'. */
+  nextContactOn?: string;
   /** The learner (one per person) this registration belongs to. */
   learnerId?: string | null;
   learnerCode?: string;

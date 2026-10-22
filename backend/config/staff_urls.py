@@ -38,6 +38,7 @@ from apps.crm.views import (
     ConsultantsView,
     InvoiceRequestViewSet,
     JourneysView,
+    MyDayView,
     OrderCvView,
     OrderViewSet,
 )
@@ -96,6 +97,7 @@ urlpatterns = [
     path("cohorts/<str:pk>/roster/", CohortRosterView.as_view(), name="staff-cohort-roster"),
     path("orders/<str:pk>/cv/", OrderCvView.as_view(), name="staff-order-cv"),
     path("consultants/", ConsultantsView.as_view(), name="staff-consultants"),
+    path("my-day/", MyDayView.as_view(), name="staff-my-day"),
     path("cohorts/<str:pk>/rollover/", CohortRolloverView.as_view(), name="staff-cohort-rollover"),
     path("lms/", include("apps.lms.urls")),
     path("corporate/", include("apps.corporate.urls")),

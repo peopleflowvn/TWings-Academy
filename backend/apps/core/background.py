@@ -27,6 +27,7 @@ JOB_LABELS = {
     "refresh_campaigns": "Chiến dịch quá hạn → Hết hạn (gỡ khỏi website)",
     "refresh_corporate_classes": "Trạng thái lớp doanh nghiệp theo lịch học",
     "expire_checkouts": "Nhắc và hủy đơn thanh toán quá hạn giữ chỗ",
+    "alert_overdue_leads": "Nhắc lead quá hạn liên hệ, báo quản lý tuyển sinh",
     "remind_installments": "Nhắc trả góp",
     "run_journeys": "Email theo hành trình",
     "remind_corporate_requests": "Nhắc hạn SLA yêu cầu doanh nghiệp",

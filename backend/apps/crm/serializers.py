@@ -28,7 +28,8 @@ class ActivitySerializer(serializers.ModelSerializer):
 class FollowupTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = FollowupTask
-        fields = ["id", "title", "due_date", "priority", "is_completed", "assigned_to"]
+        fields = ["id", "title", "due_date", "priority", "is_completed", "assigned_to", "owner"]
+        read_only_fields = ["owner"]
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -43,6 +44,8 @@ class OrderSerializer(serializers.ModelSerializer):
     )
     timeline_activities = ActivitySerializer(many=True, read_only=True)
     followup_tasks = FollowupTaskSerializer(many=True, read_only=True)
+    # Moving a lead to '6. Chăm sóc lại' needs the day to call back (a task is created for it).
+    next_contact_on = serializers.DateField(write_only=True, required=False)
     duplicate_count = serializers.SerializerMethodField()
     related_orders = serializers.SerializerMethodField()
     learner_id = serializers.PrimaryKeyRelatedField(
@@ -65,6 +68,10 @@ class OrderSerializer(serializers.ModelSerializer):
             "is_duplicate",
             "privacy_consent_at",
             "privacy_consent_version",
+            "overdue_alerted_at",
+            "escalated_at",
+            "response_due_at",
+            "first_response_at",
             "created_at",
             "updated_at",
         ]

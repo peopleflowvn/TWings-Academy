@@ -16,6 +16,7 @@ interface DashboardData {
     overdueList: { id: string; customerName: string; course: string; pic: string; dueAt: string }[];
     myOpenLeads: number;
     appointmentsToday: number;
+    unassignedLeads?: number;
     upcomingTasks: { id: string; title: string; dueDate: string | null; priority: string; orderId: string; customerName: string }[];
   };
   finance?: { revenueMonth: number; revenueToday: number; receivable: number; unmatchedTransactions: number };
@@ -29,6 +30,12 @@ interface DashboardData {
 }
 
 const vnd = (n: number) => `${n.toLocaleString('vi-VN')}đ`;
+
+/** How to greet a person: the given name of a full name ("Nguyễn Văn An" → An), else the whole name. */
+const callName = (name: string) => {
+  const parts = (name || '').trim().split(/\s+/);
+  return parts.length >= 3 ? parts[parts.length - 1] : parts.join(' ');
+};
 const STAGES = ['1. Mới', '2. Đã tiếp cận', '3. Đang tư vấn', '4. Hẹn gặp', '5. Đã đóng phí', '6. Chăm sóc lại', '7. Đã hủy'];
 
 const Stat: React.FC<{ label: string; value: string | number; icon: React.ElementType; tone?: string; to?: string }> = ({
@@ -76,7 +83,7 @@ export const DashboardPage: React.FC<{ user: AdminUser }> = ({ user }) => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black text-slate-900">
-            {greeting}, {user.name.split(' ').slice(-1)[0]}
+            {greeting}, {callName(user.name)}
           </h1>
           <p className="text-sm text-slate-500">Tổng quan hoạt động TWings Academy hôm nay.</p>
         </div>
@@ -108,8 +115,11 @@ export const DashboardPage: React.FC<{ user: AdminUser }> = ({ user }) => {
             />
           )}
           {f && <Stat label="Doanh thu tháng này" value={vnd(f.revenueMonth)} icon={Wallet} tone="text-emerald-700 bg-emerald-50" to="/finance/transactions" />}
-          {f && <Stat label="Còn phải thu" value={vnd(f.receivable)} icon={Wallet} tone="text-amber-700 bg-amber-50" to="/sales/crm" />}
-          {s && <Stat label="Việc đến hạn" value={s.tasksDueToday} icon={CheckSquare} tone="text-amber-700 bg-amber-50" />}
+          {f && <Stat label="Còn phải thu (đơn đã lập)" value={vnd(f.receivable)} icon={Wallet} tone="text-amber-700 bg-amber-50" to="/finance/transactions" />}
+          {s && <Stat label="Việc của tôi đến hạn" value={s.tasksDueToday} icon={CheckSquare} tone="text-amber-700 bg-amber-50" to="/sales/today" />}
+          {s && !!s.unassignedLeads && (
+            <Stat label="Lead chưa có tư vấn viên" value={s.unassignedLeads} icon={AlertTriangle} tone="text-red-700 bg-red-50" to="/sales/consulting" />
+          )}
           {s && (
             <Stat label="Lead quá hạn phản hồi" value={s.overdueLeads} icon={AlertTriangle}
               tone={s.overdueLeads ? 'text-red-700 bg-red-50' : 'text-slate-600 bg-slate-100'} to="/sales/consulting" />
@@ -157,7 +167,7 @@ export const DashboardPage: React.FC<{ user: AdminUser }> = ({ user }) => {
         {s && (
           <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
             <h2 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-              <CheckSquare className="w-4 h-4 text-[#0073C1]" /> Việc cần làm sắp tới
+              <CheckSquare className="w-4 h-4 text-[#0073C1]" /> Việc của tôi sắp tới
             </h2>
             {s.upcomingTasks.length === 0 && <p className="text-xs text-slate-500">Không có việc nào đang mở.</p>}
             {s.upcomingTasks.map((task) => (

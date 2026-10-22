@@ -46,6 +46,21 @@ def resolve_cohort(course: Course, preferred_label: str = "") -> tuple[Cohort | 
 CLASSROOM_FORMATS = ("offline", "hybrid")
 
 
+def billed(orders):
+    """
+    Orders the learner was asked to pay (what finance counts as receivable): a checkout, an installment
+    plan, money received or a tuition invoice e-mailed. A consultation lead with a price is not one.
+    """
+    from django.db.models import Q
+
+    return orders.filter(
+        Q(terms_accepted_at__isnull=False)
+        | Q(total_paid_amount__gt=0)
+        | Q(installments__isnull=False)
+        | Q(emails__template_code="vietqr_tuition_invoice")
+    ).distinct()
+
+
 def checkout_open(course: Course) -> bool:
     """
     Whether the course can be bought online now: an intake must take the learner. A classroom course

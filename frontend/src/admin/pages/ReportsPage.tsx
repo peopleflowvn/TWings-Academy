@@ -18,6 +18,18 @@ interface Reports {
     pipeline: Record<string, number>;
     sources: { source: string; leads: number; converted: number }[];
     items: { title: string; kind: 'course' | 'program'; orders: number; refunded: number; net: number }[];
+    /** Per consultant over the period (leads created in it). */
+    consultants?: {
+      consultant: string;
+      leads: number;
+      converted: number;
+      conversionRate: number;
+      revenue: number;
+      overdue: number;
+      lost: number;
+      medianResponseHours: number | null;
+    }[];
+    lostReasons?: { reason: string; count: number }[];
   };
   marketing?: {
     days: number;
@@ -200,11 +212,54 @@ export const ReportsPage: React.FC = () => {
               </tbody>
             </table>
           </Card>
-          <Card title="Pipeline tư vấn (toàn bộ)">
-            {Object.entries(sales.pipeline).sort().map(([k, v]) => (
-              <div key={k} className="flex justify-between text-sm border-t border-slate-100 py-1.5"><span>{k}</span><strong>{v}</strong></div>
+          <Card title="Lý do hủy đăng ký"
+            onExport={() => downloadCsv('ly-do-huy', ['Lý do', 'Số đăng ký'], (sales.lostReasons || []).map((r) => [r.reason, r.count]))}>
+            {(sales.lostReasons || []).length === 0 && <p className="text-sm text-slate-500">Chưa có đăng ký nào bị hủy trong kỳ.</p>}
+            {(sales.lostReasons || []).map((r) => (
+              <div key={r.reason} className="flex justify-between text-sm border-t border-slate-100 py-1.5"><span>{r.reason}</span><strong>{r.count}</strong></div>
             ))}
           </Card>
+          <div className="xl:col-span-2">
+            <Card title="Hiệu suất tư vấn viên (lead tạo trong kỳ)"
+              onExport={() =>
+                downloadCsv(
+                  'hieu-suat-tu-van',
+                  ['Tư vấn viên', 'Lead', 'Phản hồi đầu (giờ, trung vị)', 'Quá hạn', 'Đóng phí', 'Tỷ lệ %', 'Hủy', 'Thu thuần'],
+                  (sales.consultants || []).map((r) => [r.consultant, r.leads, r.medianResponseHours ?? '', r.overdue, r.converted, r.conversionRate, r.lost, r.revenue])
+                )
+              }>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[640px]">
+                  <thead>
+                    <tr>
+                      <th className={th}>Tư vấn viên</th><th className={`${th} text-right`}>Lead</th>
+                      <th className={`${th} text-right`}>Phản hồi đầu</th><th className={`${th} text-right`}>Đang quá hạn</th>
+                      <th className={`${th} text-right`}>Đóng phí</th><th className={`${th} text-right`}>Tỷ lệ</th>
+                      <th className={`${th} text-right`}>Hủy</th><th className={`${th} text-right`}>Thu thuần</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(sales.consultants || []).map((r) => (
+                      <tr key={r.consultant}>
+                        <td className={td}>{r.consultant}</td>
+                        <td className={`${td} text-right`}>{r.leads}</td>
+                        <td className={`${td} text-right`}>{r.medianResponseHours == null ? '–' : `${r.medianResponseHours} giờ`}</td>
+                        <td className={`${td} text-right ${r.overdue ? 'text-red-600 font-bold' : ''}`}>{r.overdue}</td>
+                        <td className={`${td} text-right`}>{r.converted}</td>
+                        <td className={`${td} text-right font-bold`}>{r.conversionRate}%</td>
+                        <td className={`${td} text-right`}>{r.lost}</td>
+                        <td className={`${td} text-right font-mono`}>{formatVND(r.revenue)}</td>
+                      </tr>
+                    ))}
+                    {(sales.consultants || []).length === 0 && (
+                      <tr><td className={td} colSpan={8}>Chưa có lead trong kỳ.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[11px] text-slate-500 pt-2">Phản hồi đầu: trung vị số giờ từ lúc lead vào đến lần liên hệ đầu (gọi, Zalo, email hoặc chuyển giai đoạn).</p>
+            </Card>
+          </div>
         </div>
       )}
 

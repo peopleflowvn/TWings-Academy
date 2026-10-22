@@ -34,8 +34,13 @@ def finance_report(start, months) -> dict:
 
     paid = _by_month(Payment.objects.filter(created_at__date__gte=start), "created_at", Sum("amount"))
     refunded = _by_month(Refund.objects.filter(created_at__date__gte=start), "created_at", Sum("amount"))
+    from apps.crm.services import billed
+
     pending = Order.objects.filter(parent__isnull=True, status="pending")
-    outstanding = pending.aggregate(s=Sum(F("total_receivable") - F("total_paid_amount")))["s"] or 0
+    outstanding = sum(
+        max(o.total_receivable - o.total_paid_amount, 0)
+        for o in billed(pending).only("total_receivable", "total_paid_amount")
+    )
     overdue = Installment.objects.filter(
         paid_at__isnull=True, due_date__lt=timezone.localdate(), order__status="pending"
     )
@@ -81,6 +86,14 @@ def sales_report(start, months) -> dict:
         .order_by("-collected")[:20]
     )
     return {
+        "consultants": consultant_report(recent),
+        "lostReasons": [
+            {"reason": r["lost_reason"] or "(không ghi lý do)", "count": r["n"]}
+            for r in recent.filter(crm_status="7. Đã hủy")
+            .values("lost_reason")
+            .annotate(n=Count("id"))
+            .order_by("-n")[:15]
+        ],
         "monthly": [{"month": m, "leads": leads.get(m, 0), "converted": converted.get(m, 0)} for m in months],
         "pipeline": dict(orders.values_list("crm_status").annotate(n=Count("id")).order_by()),
         "sources": [
@@ -98,6 +111,54 @@ def sales_report(start, months) -> dict:
             for i in items
         ],
     }
+
+
+def consultant_report(recent) -> list[dict]:
+    """Per consultant over the period: leads, first response (hours), overdue, converted, revenue."""
+    from statistics import median
+
+    from apps.crm.assignment import overdue_leads
+
+    overdue = set(overdue_leads().values_list("pk", flat=True))
+    rows: dict = {}
+    for o in recent.select_related("assigned_to").only(
+        "pk",
+        "assigned_to__name",
+        "assigned_to__email",
+        "created_at",
+        "first_response_at",
+        "learning_access",
+        "total_paid_amount",
+        "refunded_amount",
+        "crm_status",
+    ):
+        key = (o.assigned_to.name or o.assigned_to.email) if o.assigned_to_id else "(chưa phân công)"
+        row = rows.setdefault(
+            key,
+            {
+                "consultant": key,
+                "leads": 0,
+                "converted": 0,
+                "revenue": 0,
+                "overdue": 0,
+                "lost": 0,
+                "responses": [],
+            },
+        )
+        row["leads"] += 1
+        row["converted"] += o.learning_access
+        row["revenue"] += max(o.total_paid_amount - o.refunded_amount, 0)
+        row["overdue"] += o.pk in overdue
+        row["lost"] += o.crm_status == "7. Đã hủy"
+        if o.first_response_at:
+            row["responses"].append((o.first_response_at - o.created_at).total_seconds() / 3600)
+    out = []
+    for row in sorted(rows.values(), key=lambda r: -r["leads"]):
+        responses = row.pop("responses")
+        row["medianResponseHours"] = round(median(responses), 1) if responses else None
+        row["conversionRate"] = round(100 * row["converted"] / row["leads"]) if row["leads"] else 0
+        out.append(row)
+    return out
 
 
 def learning_report() -> dict:

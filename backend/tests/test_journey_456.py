@@ -57,9 +57,11 @@ def test_first_contact_stops_the_clock_and_overdue_list(api, registration_payloa
     order = _register(api, registration_payload)
     Order.objects.filter(pk=order.pk).update(response_due_at=timezone.now() - timedelta(minutes=5))
     assert list(overdue_leads()) == [order]
-    sales = staff_client(Role.SALES_CRM)
-    dash = sales.get("/api/v1/staff/dashboard/").json()["sales"]
+    # The managers see every overdue lead; another consultant does not see this one.
+    dash = staff_client(Role.SUPER_ADMIN).get("/api/v1/staff/dashboard/").json()["sales"]
     assert dash["overdueLeads"] == 1 and dash["overdueList"][0]["customerName"] == order.customer_name
+    sales = staff_client(Role.SALES_CRM)
+    assert sales.get("/api/v1/staff/dashboard/").json()["sales"]["overdueLeads"] == 0
     sales.post(
         f"/api/v1/staff/orders/{order.pk}/activities/", {"type": "call", "title": "Đã gọi"}, format="json"
     )

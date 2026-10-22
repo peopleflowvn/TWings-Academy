@@ -5,6 +5,7 @@ import { api, API_ROOT, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
 import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../../admin/catalog';
+import { useStageGate } from './StageGate';
 
 /** Leads of every campaign ('all'), of none ('none'), or of one campaign (its id). */
 export type PipelineScope = 'all' | 'none' | string;
@@ -63,6 +64,14 @@ export function inCampaign(o: Order, c: AdmissionCampaign): boolean {
   return o.campaign === c.id || (!!c.code && (o.campaignCode || '').toLowerCase() === c.code.toLowerCase());
 }
 
+const SORTS = [
+  { id: '-created_at', label: 'Mới nhất' },
+  { id: 'response_due_at', label: 'Hạn phản hồi gần nhất' },
+  { id: '-updated_at', label: 'Cập nhật gần nhất' },
+  { id: '-amount', label: 'Học phí cao nhất' },
+  { id: 'customer_name', label: 'Tên A → Z' }
+];
+
 export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   scope,
   campaigns,
@@ -89,6 +98,10 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   const [interest, setInterest] = useState('');
   const [assignee, setAssignee] = useState(''); // '' | 'mine' | 'none' | <user id>
   const [overdue, setOverdue] = useState(false);
+  // Order of the table and of each kanban column; "Hạn phản hồi" puts the leads to answer first.
+  const [sortBy, setSortBy] = useState('-created_at');
+  // Phones: the filters fold under one button so the leads are on the first screen.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<Order[]>([]);
   const [colPage, setColPage] = useState<Record<string, number>>({});
@@ -157,7 +170,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
         setSummary(sum);
         return;
       }
-      const qs = `${filters}${filters ? '&' : ''}ordering=-created_at&pageSize=${PAGE_SIZE}&page=${page}`;
+      const qs = `${filters}${filters ? '&' : ''}ordering=${sortBy}&pageSize=${PAGE_SIZE}&page=${page}`;
       const [list, sum] = await Promise.all([
         api.get<Paginated<Order>>(`/staff/orders/?${qs}`),
         api.get<Summary>(`/staff/orders/pipeline/?${filters}`)
@@ -171,13 +184,13 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     } finally {
       if (seq === request.current) setLoading(false);
     }
-  }, [filters, layout, page, stage]);
+  }, [filters, layout, page, stage, sortBy]);
 
-  // One kanban column's query: the filters, that stage, newest first.
+  // One kanban column's query: the filters, that stage, in the chosen order.
   function columnQuery(st: string, pg: number) {
     const params = new URLSearchParams(filters);
     params.set('crm_status', st);
-    params.set('ordering', '-created_at');
+    params.set('ordering', sortBy);
     params.set('pageSize', String(COLUMN_SIZE));
     params.set('page', String(pg));
     return params.toString();
@@ -212,6 +225,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
   };
 
+  const gate = useStageGate();
   const moveStage = async (o: Order, next: CRMStatus) => {
     setNotice('');
     if (next === stageOf(o)) return;
@@ -220,9 +234,12 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
       onOpenLeadDetail(o);
       return;
     }
+    // "Chăm sóc lại" needs the call-back day, "Đã hủy" the reason.
+    const extra = await gate.ask(next);
+    if (!extra) return;
     setRows((list) => list.map((r) => (r.id === o.id ? { ...r, crmStatus: next } : r)));
     try {
-      await api.patch(`/staff/orders/${o.id}/`, { crmStatus: next });
+      await api.patch(`/staff/orders/${o.id}/`, { crmStatus: next, ...extra });
     } catch (err) {
       setNotice(err instanceof Error ? err.message : 'Không đổi được giai đoạn.');
     }
@@ -273,6 +290,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
 
   return (
     <div className="space-y-4 pb-16">
+      {gate.dialog}
       <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -334,8 +352,17 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[220px]">
+        <div className="flex sm:hidden items-center gap-2">
+          <button type="button" onClick={() => setFiltersOpen((v) => !v)}
+            className={`flex-1 px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer ${anyFilter ? 'border-[#0073C1] text-[#0073C1] bg-blue-50' : 'border-slate-200 text-slate-700'}`}>
+            {filtersOpen ? 'Ẩn bộ lọc' : `Tìm & lọc${anyFilter ? ' (đang lọc)' : ''}`}
+          </button>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={`${select} flex-1 min-w-0`} aria-label="Sắp xếp">
+            {SORTS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        </div>
+        <div className={`${filtersOpen ? 'flex' : 'hidden'} sm:flex flex-wrap items-center gap-2 [&>select]:max-w-full [&>select]:min-w-0`}>
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tên, SĐT, email, mã đơn, trường, lớp…" className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-xs" />
           </div>
@@ -360,7 +387,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
           <select value={payment} onChange={(e) => setPayment(e.target.value)} className={select}>
             <option value="">Mọi trạng thái học phí</option>
             <option value="paid">Đã đóng phí</option>
-            <option value="unpaid">Chưa đóng đủ</option>
+            <option value="unpaid">Chưa đóng phí</option>
           </select>
           <select value={interest} onChange={(e) => setInterest(e.target.value)} className={select}>
             <option value="">Mọi mức quan tâm</option>
@@ -369,6 +396,9 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
           <label className={`${select} flex items-center gap-1.5 cursor-pointer ${overdue ? 'border-red-300 text-red-700' : ''}`}>
             <input type="checkbox" checked={overdue} onChange={(e) => setOverdue(e.target.checked)} /> Quá hạn phản hồi
           </label>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={`${select} hidden sm:block`} aria-label="Sắp xếp">
+            {SORTS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
           {anyFilter && (
             <button type="button" onClick={resetFilters} className="px-2.5 py-2 rounded-xl text-xs text-slate-600 hover:bg-slate-100 flex items-center gap-1 cursor-pointer">
               <X className="w-3.5 h-3.5" /> Bỏ lọc

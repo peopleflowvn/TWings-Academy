@@ -234,16 +234,28 @@ def test_merge_two_records_of_one_person(staff_client, course):
 def test_cancel_stage_cancels_an_unpaid_order_and_reopening_restores_it(staff_client, course):
     order = Order.objects.create(customer_name="A", course=course, amount=100, total_receivable=100)
     client = staff_client(Role.SALES_CRM)
-    client.patch(f"/api/v1/staff/orders/{order.pk}/", {"crmStatus": "7. Đã hủy"}, format="json")
+    client.patch(
+        f"/api/v1/staff/orders/{order.pk}/",
+        {"crmStatus": "7. Đã hủy", "lostReason": "Học phí cao"},
+        format="json",
+    )
     order.refresh_from_db()
     assert order.status == "cancelled"
-    client.patch(f"/api/v1/staff/orders/{order.pk}/", {"crmStatus": "6. Chăm sóc lại"}, format="json")
+    client.patch(
+        f"/api/v1/staff/orders/{order.pk}/",
+        {"crmStatus": "6. Chăm sóc lại", "nextContactOn": "2026-12-01"},
+        format="json",
+    )
     order.refresh_from_db()
     assert order.status == "pending"
 
     order.total_paid_amount = 50
     order.save()
-    client.patch(f"/api/v1/staff/orders/{order.pk}/", {"crmStatus": "7. Đã hủy"}, format="json")
+    client.patch(
+        f"/api/v1/staff/orders/{order.pk}/",
+        {"crmStatus": "7. Đã hủy", "lostReason": "Học phí cao"},
+        format="json",
+    )
     order.refresh_from_db()
     assert order.status == "pending"  # money received: a refund cancels it, not a stage
 

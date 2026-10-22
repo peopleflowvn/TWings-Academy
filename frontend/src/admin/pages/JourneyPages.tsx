@@ -10,8 +10,20 @@ interface Consultant {
   name: string;
   email: string;
   receivesLeads: boolean;
+  /** Alerted about leads nobody takes and long-overdue ones (escalation). */
+  leadManager: boolean;
   openLeads: number;
   overdue: number;
+}
+
+interface UnassignedLead {
+  id: string;
+  orderCode: string;
+  customerName: string;
+  customerPhone: string;
+  courseTitle: string;
+  crmStatus: string;
+  createdAt: string;
 }
 
 /** Step 4: who receives new leads, workload, overdue first responses, upcoming consultations. */
@@ -31,6 +43,15 @@ export const ConsultingPage: React.FC = () => {
   const [mine, setMine] = useState(false);
   const [appts, setAppts] = useState<Appointment[] | null>(null);
   const [error, setError] = useState('');
+  // Leads nobody owns (no consultant was taking leads): assigned by hand, several at once.
+  const [unassigned, setUnassigned] = useState<UnassignedLead[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [target, setTarget] = useState('');
+  const loadUnassigned = () =>
+    api
+      .get<Paginated<UnassignedLead>>('/staff/orders/?unassigned=1&status=pending&ordering=created_at&pageSize=100')
+      .then((r) => setUnassigned(r.results.filter((o) => !['5. Đã đóng phí', '7. Đã hủy'].includes(o.crmStatus))))
+      .catch(() => setUnassigned([]));
 
   const loadTeam = () => api.get<Consultant[]>('/staff/consultants/').then(setTeam).catch((e: Error) => setError(e.message));
   const loadAppts = () => {
@@ -41,12 +62,26 @@ export const ConsultingPage: React.FC = () => {
   };
   useEffect(() => {
     loadTeam();
+    loadUnassigned();
   }, []);
+
+  const assignPicked = async () => {
+    if (!target || !picked.length) return;
+    setError('');
+    try {
+      await api.post('/staff/orders/assign/', { ids: picked, assignedToId: target });
+      setPicked([]);
+      loadUnassigned();
+      loadTeam();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Không phân công được');
+    }
+  };
   useEffect(loadAppts, [mine]);
 
-  const toggle = async (c: Consultant) => {
+  const toggle = async (c: Consultant, field: 'receivesLeads' | 'leadManager' = 'receivesLeads') => {
     try {
-      setTeam(await api.patch<Consultant[]>('/staff/consultants/', { id: c.id, receivesLeads: !c.receivesLeads }));
+      setTeam(await api.patch<Consultant[]>('/staff/consultants/', { id: c.id, [field]: !c[field] }));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Không lưu được');
     }
@@ -68,10 +103,11 @@ export const ConsultingPage: React.FC = () => {
         <h2 className="font-bold text-slate-900 flex items-center gap-2"><Users className="w-4 h-4 text-[#0073C1]" /> Đội tư vấn & phân lead tự động</h2>
         <p className="text-xs text-slate-500">
           Lead mới từ website tự giao cho tư vấn viên đang ít lead mở nhất (người cũ của khách được ưu tiên), kèm email báo và việc
-          “Liên hệ lead mới” theo cam kết thời gian phản hồi. Tắt khi nhân viên nghỉ phép.
+          “Liên hệ lead mới” theo cam kết thời gian phản hồi. Tắt khi nhân viên nghỉ phép. Lead quá hạn: tư vấn viên được
+          nhắc qua email; quá gấp đôi thời hạn, hoặc không ai nhận lead, “Quản lý” nhận email tổng hợp (chưa chọn ai: quản trị tối cao).
         </p>
         <table className="w-full text-sm">
-          <thead className="text-xs text-slate-500 text-left"><tr><th className="py-1.5">Tư vấn viên</th><th className="text-right">Lead đang mở</th><th className="text-right">Quá hạn phản hồi</th><th className="text-right">Nhận lead mới</th></tr></thead>
+          <thead className="text-xs text-slate-500 text-left"><tr><th className="py-1.5">Tư vấn viên</th><th className="text-right">Lead đang mở</th><th className="text-right">Quá hạn phản hồi</th><th className="text-right">Nhận lead mới</th><th className="text-right">Quản lý</th></tr></thead>
           <tbody>
             {team.map((c) => (
               <tr key={c.id} className="border-t border-slate-100">
@@ -81,12 +117,65 @@ export const ConsultingPage: React.FC = () => {
                 <td className="text-right">
                   <input type="checkbox" disabled={!canAssign} checked={c.receivesLeads} onChange={() => toggle(c)} />
                 </td>
+                <td className="text-right">
+                  <input type="checkbox" disabled={!canAssign} checked={c.leadManager} onChange={() => toggle(c, 'leadManager')} aria-label="Quản lý tuyển sinh" />
+                </td>
               </tr>
             ))}
-            {team.length === 0 && <tr><td className="py-2 text-slate-500" colSpan={4}>Chưa có nhân viên vai trò Tư vấn tuyển sinh – lead mới sẽ chưa được tự giao.</td></tr>}
+            {team.length === 0 && <tr><td className="py-2 text-slate-500" colSpan={5}>Chưa có nhân viên vai trò Tư vấn tuyển sinh – lead mới sẽ chưa được tự giao.</td></tr>}
           </tbody>
         </table>
       </section>
+
+      {unassigned.length > 0 && (
+        <section className="bg-white rounded-2xl border-2 border-red-200 p-5 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-bold text-red-700">Lead chưa có tư vấn viên ({unassigned.length})</h2>
+            {canAssign && (
+              <div className="flex items-center gap-2 text-sm">
+                <select value={target} onChange={(e) => setTarget(e.target.value)} className="p-2 border border-slate-300 rounded-xl">
+                  <option value="">Giao cho…</option>
+                  {team.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.openLeads} lead{c.receivesLeads ? '' : ', đang nghỉ'})</option>
+                  ))}
+                </select>
+                <button type="button" disabled={!target || !picked.length} onClick={assignPicked}
+                  className="px-3 py-2 rounded-xl bg-[#0073C1] text-white font-bold disabled:opacity-40 cursor-pointer">
+                  Giao {picked.length || ''} lead
+                </button>
+              </div>
+            )}
+          </div>
+          <table className="w-full text-sm">
+            <thead className="text-xs text-slate-500 text-left">
+              <tr>
+                <th className="py-1.5 w-8">
+                  <input type="checkbox" aria-label="Chọn tất cả" checked={picked.length === unassigned.length}
+                    onChange={(e) => setPicked(e.target.checked ? unassigned.map((o) => o.id) : [])} />
+                </th>
+                <th>Lead</th><th>Khóa học</th><th>Giai đoạn</th><th className="text-right">Ngày tạo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {unassigned.map((o) => (
+                <tr key={o.id} className="border-t border-slate-100">
+                  <td className="py-2">
+                    <input type="checkbox" checked={picked.includes(o.id)}
+                      onChange={(e) => setPicked((p) => (e.target.checked ? [...p, o.id] : p.filter((x) => x !== o.id)))} />
+                  </td>
+                  <td>
+                    <a href={`/app/sales/crm?view=kanban&campaignId=all&orderId=${encodeURIComponent(o.id)}`} className="text-[#0073C1] font-semibold hover:underline">{o.customerName}</a>
+                    <div className="text-xs text-slate-500">{o.customerPhone}</div>
+                  </td>
+                  <td className="text-xs">{o.courseTitle || '–'}</td>
+                  <td className="text-xs">{o.crmStatus}</td>
+                  <td className="text-right text-xs">{new Date(o.createdAt).toLocaleDateString('vi-VN')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
         <div className="flex items-center justify-between">

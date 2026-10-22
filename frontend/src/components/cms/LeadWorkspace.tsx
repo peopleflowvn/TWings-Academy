@@ -37,6 +37,7 @@ import { SendResendEmailModal } from './SendResendEmailModal';
 import { LmsLearningPanel } from './LmsLearningPanel';
 import { OrderBillingPanel } from './OrderBillingPanel';
 import { LeadContactPanel } from './LeadContactPanel';
+import { useStageGate } from './StageGate';
 import { PlacementPanel } from '../../admin/pages/PlacementPages';
 import { api, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
@@ -69,8 +70,12 @@ interface LeadWorkspaceProps {
 interface Consultant { id: string; name: string }
 interface CohortOption { id: string; name: string; status: string; startDate?: string | null }
 
+/** Pending with nothing paid is "Chưa đóng phí"; "Chưa đóng đủ" means part of it was paid. */
+const paymentLabel = (o: Order) =>
+  o.status === 'pending' ? ((o.totalPaidAmount || 0) > 0 ? 'Chưa đóng đủ' : 'Chưa đóng phí') : PAYMENT_STATUS_LABEL[o.status] || o.status;
+
 const PAYMENT_STATUS_LABEL: Record<string, string> = {
-  pending: 'Chưa đóng đủ',
+  pending: 'Chưa đóng phí',
   paid: 'Đã đóng đủ',
   cancelled: 'Đã hủy',
   refunded: 'Đã hoàn tiền'
@@ -259,14 +264,17 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   };
 
   // Pipeline stage click
-  const handleStageSelect = (nextStage: CRMStatus) => {
+  const gate = useStageGate();
+  const handleStageSelect = async (nextStage: CRMStatus) => {
     // "Đã đóng phí" follows a recorded payment (bank webhook or finance confirmation), never a click.
     if (nextStage === '5. Đã đóng phí' && order.status !== 'paid') {
       setActiveTab('payment');
       return;
     }
     if (nextStage === (saved.crmStatus || '1. Mới')) return;
-    commit((o) => ({ ...o, crmStatus: nextStage }));
+    const extra = await gate.ask(nextStage); // call-back day / reason to cancel
+    if (!extra) return;
+    commit((o) => ({ ...o, crmStatus: nextStage, ...extra }));
   };
 
   // Finance confirmed the money (the payments tab asks first); the server records the payment.
@@ -336,17 +344,18 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-fadeIn overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 animate-fadeIn overflow-hidden">
+      {gate.dialog}
       <div
         className={`bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col transition-all duration-200 ${
-          isFullScreen ? 'w-full h-full rounded-none' : 'max-w-7xl w-full max-h-[96vh]'
+          isFullScreen ? 'w-full h-full rounded-none' : 'max-w-7xl w-full h-full sm:h-auto sm:max-h-[96vh] rounded-none sm:rounded-2xl'
         }`}
       >
         {/* ================================================================= */}
         {/* 1. TOP HEADER & BREADCRUMBS COMMAND BAR */}
         {/* ================================================================= */}
-        <div className="bg-white border-b border-slate-200 px-5 sm:px-6 py-3.5 flex flex-col gap-3 shrink-0 shadow-2xs">
-          <div className="flex items-center justify-between gap-4">
+        <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-col gap-3 shrink-0 shadow-2xs">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             {/* Left: Breadcrumbs & Candidate Summary */}
             <div className="flex items-center gap-3.5 min-w-0">
               {/* Avatar with Status Pulse */}
@@ -393,7 +402,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                     </span>
                   ) : (
                     <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-xs flex items-center gap-1 border border-amber-200">
-                      <Clock className="w-3.5 h-3.5" /> {PAYMENT_STATUS_LABEL[order.status] || 'Chưa đóng đủ'}
+                      <Clock className="w-3.5 h-3.5" /> {paymentLabel(order)}
                     </span>
                   )}
                 </div>
@@ -446,7 +455,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
             </div>
 
             {/* Right: Actions (Resend Email, Mark as Paid, Save, Print, Fullscreen, Close) */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowResendEmailModal(true)}
@@ -520,14 +529,14 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
             <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mb-1.5 px-0.5">
               <span className="flex items-center gap-1.5">
                 <Compass className="w-3.5 h-3.5 text-blue-600" />
-                <span>Tiến Trình Chuyển Đổi Tuyển Sinh (Pipeline Stepper):</span>
+                <span>Giai đoạn tuyển sinh</span>
               </span>
               <span className="font-bold text-slate-800">
                 Giai đoạn hiện tại: <span className="text-[#0073C1]">{currentStage}</span>
               </span>
             </div>
 
-            <div className="grid grid-cols-7 gap-1 bg-slate-100/80 p-1 rounded-xl">
+            <div className="overflow-x-auto -mx-1 px-1"><div className="grid grid-cols-7 gap-1 bg-slate-100/80 p-1 rounded-xl min-w-[640px]">
               {CRM_STAGES.map((st, index) => {
                 const isCurrent = currentStage === st.id;
                 const isPassed = CRM_STAGES.findIndex((s) => s.id === currentStage) >= index;
@@ -551,7 +560,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                   </button>
                 );
               })}
-            </div>
+            </div></div>
           </div>
 
           {/* =============================================================== */}
@@ -572,7 +581,9 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
             {/* Metric 2: interest level and source, as recorded on the lead */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Mức quan tâm · Nguồn</span>
-              <span className="font-bold text-slate-800">{order.interestLevel || '–'} · {order.source || '–'}</span>
+              <span className="font-bold text-slate-800">
+                {[order.interestLevel, order.source].filter(Boolean).join(' · ') || 'Chưa ghi nhận'}
+              </span>
             </div>
 
             {/* Metric 3: PIC selector */}

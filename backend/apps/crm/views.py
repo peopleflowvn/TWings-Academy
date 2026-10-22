@@ -1,4 +1,5 @@
 import csv
+from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import Count, F, OuterRef, Q, Subquery, Sum
@@ -19,7 +20,7 @@ from apps.catalog.models import Cohort
 from apps.core.models import audit
 
 from . import journeys
-from .models import Activity, AdmissionCampaign, Appointment, Order
+from .models import Activity, AdmissionCampaign, Appointment, FollowupTask, Order
 from .serializers import (
     ASSIGN_FIELDS,
     FINANCE_FIELDS,
@@ -53,6 +54,7 @@ class PublicRegistrationView(APIView):
 
 
 CANCELLED_STAGE = "7. Đã hủy"
+CARE_AGAIN_STAGE = "6. Chăm sóc lại"
 
 # CSV export: registrations only (identity documents and addresses stay on the learner page).
 EXPORT_FIELDS = [
@@ -102,6 +104,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         "followups": ["crm.view_leads"],
         "followup_detail": ["crm.edit_status"],
         "export": ["crm.export_excel"],
+        "assign": ["crm.assign_pic"],
         "pipeline": ["crm.view_leads"],
         "appointments": ["crm.view_leads"],  # booking also checks crm.edit_status
     }
@@ -127,7 +130,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         "learner__university",
         "batch_cohort",
     ]
-    ordering_fields = ["created_at", "amount", "crm_status"]
+    ordering_fields = ["created_at", "updated_at", "amount", "crm_status", "response_due_at", "customer_name"]
 
     def get_queryset(self):
         qs = Order.objects.select_related("course", "cohort")
@@ -222,10 +225,28 @@ class OrderViewSet(viewsets.ModelViewSet):
         self._guard_fields(serializer)
         self._sync_pic(serializer, create_staff_lead(self.request, serializer))
 
+    @staticmethod
+    def _stage_requirements(serializer):
+        """'Chăm sóc lại' needs a call-back day; 'Đã hủy' needs the reason (lost-reason report)."""
+        data, order = serializer.validated_data, serializer.instance
+        stage = data.get("crm_status")
+        if not stage or stage == order.crm_status:
+            return None
+        if stage == CARE_AGAIN_STAGE and not data.get("next_contact_on"):
+            raise serializers.ValidationError(
+                {"next_contact_on": "Chọn ngày gọi lại khi chuyển 'Chăm sóc lại'."}
+            )
+        if stage == CANCELLED_STAGE and not (data.get("lost_reason") or "").strip():
+            raise serializers.ValidationError({"lost_reason": "Ghi lý do hủy đăng ký."})
+        return stage
+
     def perform_update(self, serializer):
-        from .assignment import mark_first_response
+        from .assignment import mark_first_response, reassign
 
         self._guard_fields(serializer)
+        stage = self._stage_requirements(serializer)
+        next_contact_on = serializer.validated_data.pop("next_contact_on", None)
+        new_owner = serializer.validated_data.pop("assigned_to", serializer.instance.assigned_to)
         was_new = serializer.instance.crm_status == "1. Mới"
         was_cancelled = serializer.instance.crm_status == CANCELLED_STAGE
         data = serializer.validated_data
@@ -251,7 +272,27 @@ class OrderViewSet(viewsets.ModelViewSet):
             data.pop("course", None)
             data.pop("program", None)
         order = serializer.save()
-        self._sync_pic(serializer, order)
+        if new_owner != order.assigned_to:
+            reassign(order, new_owner, self.request.user)
+        if stage == CARE_AGAIN_STAGE and next_contact_on:
+            FollowupTask.objects.create(
+                order=order, title="Gọi lại (chăm sóc lại)", due_date=next_contact_on, priority="medium"
+            )
+            Activity.objects.create(
+                order=order,
+                type="note",
+                title=f"Chăm sóc lại: hẹn gọi lại ngày {next_contact_on:%d/%m/%Y}",
+                actor=self.request.user.name or self.request.user.email,
+                actor_user=self.request.user,
+            )
+        if stage == CANCELLED_STAGE:
+            Activity.objects.create(
+                order=order,
+                type="note",
+                title=f"Lý do hủy: {order.lost_reason}",
+                actor=self.request.user.name or self.request.user.email,
+                actor_user=self.request.user,
+            )
         if "crm_status" in serializer.validated_data:
             self._follow_cancel_stage(order, was_cancelled)
         if was_new and order.crm_status != "1. Mới":
@@ -280,6 +321,22 @@ class OrderViewSet(viewsets.ModelViewSet):
             Activity.objects.create(
                 order=order, type="note", title="Mở lại đăng ký", actor=actor, actor_user=self.request.user
             )
+
+    @action(detail=False, methods=["post"])
+    def assign(self, request):
+        """Give several leads to a consultant at once (or take them back: no consultant)."""
+        from apps.accounts.models import User
+
+        from .assignment import reassign
+
+        ids = [str(i) for i in request.data.get("ids") or []][:500]
+        target = request.data.get("assigned_to_id")
+        user = get_object_or_404(User, pk=str(target), is_active=True, is_staff=True) if target else None
+        orders = list(Order.objects.filter(pk__in=ids))
+        for order in orders:
+            reassign(order, user, request.user)
+        audit(request, "crm.bulk_assign", None, count=len(orders), assigned_to=str(user.pk) if user else "")
+        return Response({"updated": len(orders)})
 
     @action(detail=False, methods=["get"])
     def pipeline(self, request):
@@ -669,6 +726,7 @@ class ConsultantsView(APIView):
                     "name": user.name or user.email,
                     "email": user.email,
                     "receives_leads": user.receives_leads,
+                    "lead_manager": user.lead_manager,
                     "open_leads": open_qs.count(),
                     "overdue": len(overdue & set(open_qs.values_list("pk", flat=True))),
                 }
@@ -682,7 +740,88 @@ class ConsultantsView(APIView):
         from apps.accounts.models import User
 
         user = get_object_or_404(User, pk=str(request.data.get("id", "")), role="sales_crm")
-        user.receives_leads = bool(request.data.get("receives_leads"))
-        user.save(update_fields=["receives_leads"])
-        audit(request, "crm.consultant_toggle", user, receives_leads=user.receives_leads)
+        changed = [f for f in ("receives_leads", "lead_manager") if f in request.data]
+        for field in changed:
+            setattr(user, field, bool(request.data.get(field)))
+        if changed:
+            user.save(update_fields=changed)
+        audit(request, "crm.consultant_toggle", user, **{f: getattr(user, f) for f in changed})
         return Response(self._rows())
+
+
+class MyDayView(APIView):
+    """
+    A consultant's working list for today (phone first): my leads past their first-response deadline,
+    my new leads to contact, my tasks due, my appointments today; the lead managers also get the leads
+    nobody owns.
+    """
+
+    permission_classes = [require_perms("crm.view_leads")]
+
+    @staticmethod
+    def _lead(o):
+        return {
+            "id": o.pk,
+            "order_code": o.order_code,
+            "customer_name": o.customer_name,
+            "customer_phone": o.customer_phone,
+            "course": o.course_title or o.interested_course,
+            "crm_status": o.crm_status,
+            "response_due_at": o.response_due_at,
+            "pic": o.pic,
+        }
+
+    def get(self, request):
+        from .assignment import OPEN_STAGES, is_lead_manager, my_tasks, overdue_leads
+
+        user, now = request.user, timezone.now()
+        today = timezone.localdate()
+        overdue = list(overdue_leads().filter(assigned_to=user).order_by("response_due_at")[:50])
+        fresh = (
+            Order.objects.filter(
+                parent__isnull=True,
+                assigned_to=user,
+                status="pending",
+                crm_status="1. Mới",
+                first_response_at__isnull=True,
+            )
+            .exclude(pk__in=[o.pk for o in overdue])
+            .order_by("response_due_at")[:50]
+        )
+        tasks = my_tasks(user).filter(due_date__lte=today).select_related("order").order_by("due_date")[:100]
+        end = timezone.localtime(now).replace(hour=23, minute=59)
+        appointments = (
+            Appointment.objects.filter(
+                status="planned", starts_at__gte=now - timedelta(hours=1), starts_at__lte=end
+            )
+            .filter(order__assigned_to=user)
+            .select_related("order")
+            .order_by("starts_at")
+        )
+        data = {
+            "overdue": [self._lead(o) for o in overdue],
+            "new_leads": [self._lead(o) for o in fresh],
+            "tasks": [
+                {
+                    "id": t.pk,
+                    "title": t.title,
+                    "due_date": t.due_date,
+                    "priority": t.priority,
+                    "overdue": bool(t.due_date and t.due_date < today),
+                    "lead": self._lead(t.order),
+                }
+                for t in tasks
+            ],
+            "appointments": [
+                {"id": a.pk, "starts_at": a.starts_at, "channel": a.channel, "lead": self._lead(a.order)}
+                for a in appointments
+            ],
+            "is_lead_manager": is_lead_manager(user),
+        }
+        if data["is_lead_manager"]:
+            unassigned = Order.objects.filter(
+                parent__isnull=True, status="pending", assigned_to__isnull=True, crm_status__in=OPEN_STAGES
+            ).order_by("created_at")[:100]
+            data["unassigned"] = [self._lead(o) for o in unassigned]
+            data["team_overdue"] = overdue_leads().count()
+        return Response(data)
