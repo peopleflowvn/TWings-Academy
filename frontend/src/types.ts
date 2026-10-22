@@ -152,7 +152,7 @@ export interface EmailTemplate {
   id: string;
   code: string;
   name: string;
-  category: 'admission' | 'payment' | 'scheduling' | 'marketing';
+  category: 'admission' | 'payment' | 'scheduling' | 'marketing' | 'lms' | 'crm' | 'security' | 'corporate';
   subject: string;
   body: string; // HTML and template string with {{variables}}
   variables: string[];

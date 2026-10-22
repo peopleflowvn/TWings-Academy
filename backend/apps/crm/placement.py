@@ -330,6 +330,7 @@ def record_outcome(
 
 # ---------------------------------------------------------------- e-mails to the learner
 def notify_learner(placement_id: str) -> bool:
+    from apps.notifications.engine import render_template
     from apps.notifications.outbox import send_logged
     from apps.notifications.resend import ResendError
 
@@ -339,7 +340,7 @@ def notify_learner(placement_id: str) -> bool:
     name = escape(p.order.customer_name)
     role = escape(" – ".join(x for x in (p.job_title, p.unit) if x) or p.employer)
     if p.stage == "interview":
-        subject = f"Lịch phỏng vấn tại {p.employer}"
+        default_subject = f"Lịch phỏng vấn tại {p.employer}"
         body = (
             f"<p>Hồ sơ của bạn đã được {escape(p.employer)} chọn phỏng vấn cho vị trí "
             f"<strong>{role}</strong>.</p>"
@@ -348,13 +349,13 @@ def notify_learner(placement_id: str) -> bool:
             "<p>Vui lòng phản hồi email này để xác nhận tham gia. Chúc bạn phỏng vấn thành công!</p>"
         )
     elif p.stage == "offer":
-        subject = f"Chúc mừng – {p.employer} gửi đề nghị làm việc"
+        default_subject = f"Chúc mừng – {p.employer} gửi đề nghị làm việc"
         body = (
             f"<p>Chúc mừng bạn đã vượt qua vòng phỏng vấn vị trí <strong>{role}</strong> tại "
             f"{escape(p.employer)}. Bộ phận tuyển dụng sẽ liên hệ để thống nhất thư mời nhận việc.</p>"
         )
     elif p.stage == "hired":
-        subject = f"Chúc mừng bạn chính thức gia nhập {p.employer}"
+        default_subject = f"Chúc mừng bạn chính thức gia nhập {p.employer}"
         body = (
             f"<p>Chúc mừng bạn nhận việc vị trí <strong>{role}</strong> tại {escape(p.employer)}, "
             f"ngày bắt đầu {p.start_date:%d/%m/%Y}.</p>"
@@ -363,11 +364,26 @@ def notify_learner(placement_id: str) -> bool:
         )
     else:
         return False
+
+    default_html = f"<p>Chào {name},</p>{body}<p>TWings Academy</p>"
+    subject, html = render_template(
+        f"placement_{p.stage}",
+        context={
+            "customer_name": name,
+            "employer": escape(p.employer),
+            "role": role,
+            "interview_time": f"{timezone.localtime(p.interview_at):%H:%M ngày %d/%m/%Y}" if p.interview_at else "",
+            "interview_location": escape(p.interview_location or "TWings sẽ báo sau"),
+            "start_date": f"{p.start_date:%d/%m/%Y}" if p.start_date else "",
+        },
+        default_subject=default_subject,
+        default_body=default_html,
+    )
     try:
         send_logged(
             to=p.order.customer_email,
             subject=subject,
-            html=f"<p>Chào {name},</p>{body}<p>TWings Academy</p>",
+            html=html,
             order=p.order,
             template_code=f"placement_{p.stage}",
             name=p.order.customer_name,

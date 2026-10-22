@@ -1,5 +1,6 @@
 """Send an e-mail through Resend and keep it in the EmailLog (visible in the CMS, tracked by webhooks)."""
 
+from django.conf import settings
 from django.utils import timezone
 
 from .models import EmailLog
@@ -21,6 +22,7 @@ def send_logged(
     attachments: list[dict] | None = None,
     corporate_enrollment=None,
     brand: str = "twings",
+    sync: bool | None = None,
 ) -> EmailLog:
     log = EmailLog.objects.create(
         template_code=template_code,
@@ -36,6 +38,15 @@ def send_logged(
         rendered_html=html,
         sent_by=sent_by,
     )
+
+    # Use background queue if configured and not requested sync (and no binary attachments)
+    use_queue = getattr(settings, "TASKS_QUEUE", "immediate") == "database" and not sync and not attachments
+    if use_queue:
+        from .tasks import deliver_email_task
+
+        deliver_email_task.enqueue(str(log.pk))
+        return log
+
     try:
         message_id = send_email(
             to=to,
@@ -57,3 +68,4 @@ def send_logged(
     log.sent_at = timezone.now()
     log.save(update_fields=["status", "resend_message_id", "sent_at", "updated_at"])
     return log
+

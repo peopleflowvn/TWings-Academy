@@ -8,7 +8,11 @@ from apps.crm.models import Order
 class EmailTemplate(BaseModel):
     CATEGORY_CHOICES = [
         ("admission", "Tuyển sinh"),
-        ("payment", "Thanh toán"),
+        ("payment", "Thanh toán & Hóa đơn"),
+        ("lms", "Đào tạo LMS"),
+        ("crm", "Chăm sóc học viên (CRM)"),
+        ("security", "Bảo mật & Tài khoản"),
+        ("corporate", "Doanh nghiệp (B2B)"),
         ("scheduling", "Lịch học"),
         ("marketing", "Marketing"),
     ]

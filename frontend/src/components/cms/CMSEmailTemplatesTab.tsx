@@ -42,6 +42,8 @@ import {
   INITIAL_EMAIL_TEMPLATES, 
   renderEmailTemplate, 
   sendEmailWithResend,
+  testSendEmailWithBackend,
+  wrapEmailPreview,
   extractOrderEmailVariables,
   withPlaceholders,
   EMAIL_VARIABLE_LABELS,
@@ -199,17 +201,15 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
 
     setIsSending(true);
     const variables = withPlaceholders(extractOrderEmailVariables(previewOrder));
-    const renderedHtml = renderEmailTemplate(editBody, variables);
-    const renderedSubject = renderEmailTemplate(editSubject, variables);
+    const isCorp = selectedTemplate.category === 'corporate';
 
-    const result = await sendEmailWithResend({
+    const result = await testSendEmailWithBackend({
       to: testEmailTo.trim(),
-      subject: renderedSubject,
-      html: renderedHtml,
-      templateId: selectedTemplate.id,
-      templateName: selectedTemplate.name,
-      recipientName: previewOrder.customerName,
-      templateCode: selectedTemplate.code
+      code: selectedTemplate.code,
+      subject: editSubject,
+      body: editBody,
+      brand: isCorp ? 'corporate' : 'twings',
+      variables
     });
     loadSendLogs();
 
@@ -223,8 +223,8 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
     if (!live) setSendLogs(getSavedEmailSendLogs());
     showToast(
       result.status === 'simulated'
-        ? 'Chưa gửi thật: máy chủ chưa cấu hình khóa Resend (RESEND_API_KEY).'
-        : `Đã gửi thư thử tới ${testEmailTo}.`
+        ? 'Chế độ mô phỏng: máy chủ chưa cấu hình khóa Resend thật (RESEND_API_KEY).'
+        : `Đã gửi thư thử nghiệm tới ${testEmailTo} thành công!`
     );
   };
 
@@ -249,7 +249,10 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
   });
 
   const previewVariables = withPlaceholders(extractOrderEmailVariables(previewOrder));
-  const renderedPreviewBody = renderEmailTemplate(editBody, previewVariables);
+  const renderedPreviewBody = wrapEmailPreview(
+    renderEmailTemplate(editBody, previewVariables),
+    selectedTemplate.category === 'corporate' ? 'corporate' : 'twings'
+  );
   const renderedPreviewSubject = renderEmailTemplate(editSubject, previewVariables);
   const hasLiveApiKey = isLiveEmailEnabled();
   const webhookConfig = getSavedWebhookConfig();
@@ -427,9 +430,13 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
             <div className="flex flex-wrap gap-1.5 text-[11px] font-bold">
               {[
                 { id: 'all', label: 'Tất cả' },
-                { id: 'admission', label: '🎓 Nhập học' },
+                { id: 'admission', label: '🎓 Tuyển sinh' },
                 { id: 'payment', label: '💳 Học phí' },
-                { id: 'scheduling', label: '📅 Lịch học' }
+                { id: 'lms', label: '📚 Đào tạo LMS' },
+                { id: 'crm', label: '🤝 Chăm sóc CRM' },
+                { id: 'security', label: '🔐 Bảo mật' },
+                { id: 'corporate', label: '🏢 B2B' },
+                { id: 'scheduling', label: '📅 Lịch học & PV' }
               ].map((c) => (
                 <button
                   key={c.id}
@@ -498,7 +505,19 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
                     <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 font-mono">
                       <span>Cập nhật: {t.updatedAt}</span>
                       <span className="bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600 font-sans">
-                        {t.category === 'payment' ? '💳 Học phí' : t.category === 'admission' ? '🎓 Tuyển sinh' : '📅 Lịch học'}
+                        {t.category === 'payment'
+                          ? '💳 Học phí'
+                          : t.category === 'admission'
+                          ? '🎓 Tuyển sinh'
+                          : t.category === 'lms'
+                          ? '📚 LMS'
+                          : t.category === 'crm'
+                          ? '🤝 CRM'
+                          : t.category === 'security'
+                          ? '🔐 Bảo mật'
+                          : t.category === 'corporate'
+                          ? '🏢 B2B'
+                          : '📅 Lịch học'}
                       </span>
                     </div>
                   </div>

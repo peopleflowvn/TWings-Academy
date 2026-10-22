@@ -41,7 +41,13 @@ from apps.crm.views import (
     OrderCvView,
     OrderViewSet,
 )
-from apps.notifications.views import EmailLogViewSet, EmailTemplateViewSet, SendEmailView
+from apps.notifications.views import (
+    EmailLogViewSet,
+    EmailTemplateViewSet,
+    PreviewEmailView,
+    SendEmailView,
+    TestSendEmailView,
+)
 from apps.payments.views import (
     BankTransactionViewSet,
     ConfirmManualPaymentView,
@@ -74,6 +80,8 @@ router.register("audit-logs", AuditLogViewSet, basename="staff-audit-log")
 
 urlpatterns = [
     path("emails/send/", SendEmailView.as_view(), name="staff-email-send"),
+    path("emails/test-send/", TestSendEmailView.as_view(), name="staff-email-test-send"),
+    path("emails/preview/", PreviewEmailView.as_view(), name="staff-email-preview"),
     path("uploads/images/", ImageUploadView.as_view(), name="staff-image-upload"),
     path(
         "orders/<str:pk>/confirm-payment/", ConfirmManualPaymentView.as_view(), name="staff-confirm-payment"

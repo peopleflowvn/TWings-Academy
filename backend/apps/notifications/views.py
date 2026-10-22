@@ -91,6 +91,94 @@ class SendEmailView(APIView):
         )
 
 
+class TestSendEmailSerializer(serializers.Serializer):
+    to = serializers.EmailField()
+    template_code = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    subject = serializers.CharField(max_length=300, required=False, allow_blank=True)
+    html = serializers.CharField(max_length=200_000, required=False, allow_blank=True)
+    variables = serializers.DictField(required=False, default=dict)
+    brand = serializers.CharField(max_length=20, default="twings")
+
+
+class TestSendEmailView(APIView):
+    """Staff-triggered test email with sample context, immediate delivery, and [TEST] marker."""
+
+    permission_classes = [require_perms("crm.edit_status")]
+    throttle_scope = "email_send"
+
+    def post(self, request):
+        ser = TestSendEmailSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        template_code = data.get("template_code", "")
+        raw_subject = data.get("subject", "")
+        raw_html = data.get("html", "")
+        variables = data.get("variables") or {}
+        brand = data.get("brand", "twings")
+
+        from .engine import interpolate, render_template
+
+        if template_code and not (raw_subject and raw_html):
+            subj, body = render_template(template_code, variables, raw_subject, raw_html)
+        else:
+            subj = interpolate(raw_subject, variables)
+            body = interpolate(raw_html, variables)
+
+        test_subject = f"[TEST] {subj}" if not subj.startswith("[TEST]") else subj
+
+        from .outbox import send_logged
+
+        try:
+            log = send_logged(
+                to=data["to"],
+                subject=test_subject,
+                html=body,
+                template_code=f"test_{template_code}" if template_code else "test_email",
+                name=f"Test ({data['to']})",
+                sent_by=request.user,
+                brand=brand,
+                sync=True,
+            )
+        except ResendError as exc:
+            return Response({"detail": f"Gửi email thử nghiệm thất bại: {exc}"}, status=502)
+
+        return Response(
+            {
+                "id": log.pk,
+                "status": log.status,
+                "resend_message_id": log.resend_message_id,
+                "subject": test_subject,
+            },
+            status=200,
+        )
+
+
+class PreviewEmailView(APIView):
+    """Render subject and body with context and return wrapped HTML for live iframe preview."""
+
+    permission_classes = [require_perms("crm.view_leads")]
+
+    def post(self, request):
+        template_code = request.data.get("template_code", "")
+        raw_subject = request.data.get("subject", "")
+        raw_html = request.data.get("html", "")
+        variables = request.data.get("variables") or {}
+        brand = request.data.get("brand", "twings")
+        category_badge = request.data.get("category_badge", "")
+
+        from .engine import interpolate, render_template
+        from .layout import wrap
+
+        if template_code and not (raw_subject and raw_html):
+            subj, body = render_template(template_code, variables, raw_subject, raw_html)
+        else:
+            subj = interpolate(raw_subject, variables)
+            body = interpolate(raw_html, variables)
+
+        wrapped = wrap(body, brand)
+        return Response({"subject": subj, "html": wrapped})
+
+
 def _record_on_lead(request, order, log) -> None:
     """An e-mail sent from the lead workspace goes into the lead's history (a real one is a contact)."""
     from apps.crm.assignment import mark_first_response

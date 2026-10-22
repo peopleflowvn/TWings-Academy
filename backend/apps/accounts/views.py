@@ -147,11 +147,13 @@ def _send_reset_email(user):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
     # In the fragment, so the token never reaches server logs or a Referer header.
+    from apps.notifications.engine import render_template
+
     url = f"{settings.PUBLIC_SITE_URL.rstrip('/')}/app/#reset={uid}.{token}"
-    subject = "Đặt lại mật khẩu quản trị | TWings Academy"
+    default_subject = "Đặt lại mật khẩu quản trị | TWings Academy"
 
     def render(link):
-        return f"""
+        default_html = f"""
 <p>Chào {escape(user.name)},</p>
 <p>Có yêu cầu đặt lại mật khẩu cho tài khoản quản trị TWings <strong>{escape(user.email)}</strong>.</p>
 <p><a href="{link}">Đặt mật khẩu mới</a> (liên kết dùng một lần, hết hạn sau 1 giờ).</p>
@@ -159,6 +161,20 @@ def _send_reset_email(user):
 Mật khẩu hiện tại vẫn giữ nguyên.</p>
 <p>TWings Academy</p>
 """
+        subj, html = render_template(
+            "staff_password_reset",
+            context={
+                "name": escape(user.name),
+                "email": escape(user.email),
+                "reset_link": link,
+            },
+            default_subject=default_subject,
+            default_body=default_html,
+        )
+        return subj, html
+
+    subject, html_body = render(url)
+    _, html_masked = render("#liên-kết-đã-ẩn")
 
     # The CMS email log is readable by other staff, so it keeps a copy without the live link.
     log = EmailLog.objects.create(
@@ -166,10 +182,10 @@ Mật khẩu hiện tại vẫn giữ nguyên.</p>
         recipient_email=user.email,
         recipient_name=user.name,
         subject=subject,
-        rendered_html=render("#liên-kết-đã-ẩn"),
+        rendered_html=html_masked,
     )
     try:
-        message_id = send_email(to=user.email, subject=subject, html=render(url), idempotency_key=log.pk)
+        message_id = send_email(to=user.email, subject=subject, html=html_body, idempotency_key=log.pk)
     except ResendError as exc:
         log.status, log.error_message = "failed", str(exc)[:500]
         log.save(update_fields=["status", "error_message", "updated_at"])

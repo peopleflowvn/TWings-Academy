@@ -45,10 +45,12 @@ def _intake_block(cohort) -> str:
 
 
 def send_access_email(order, *, sent_by=None):
+    from apps.notifications.engine import render_template
+
     url = learn_url()
     course = escape(order.course.title if order.course else order.course_title)
     intake = f" – {escape(order.cohort.name)}" if order.cohort_id else ""
-    html = f"""
+    default_html = f"""
 <p>Chào {escape(order.customer_name)},</p>
 <p>Khóa học <strong>{course}{intake}</strong> của bạn đã được mở trên hệ thống học trực tuyến TWings LMS.</p>
 <p><strong>Cách vào học:</strong></p>
@@ -64,9 +66,24 @@ def send_access_email(order, *, sent_by=None):
 <p>Mã đơn hàng: {escape(order.order_code)}. Cần hỗ trợ, vui lòng trả lời email này.</p>
 <p>TWings Academy</p>
 """
+    subject, html = render_template(
+        "lms_access",
+        context={
+            "customer_name": escape(order.customer_name),
+            "course": course,
+            "intake": intake,
+            "url": url,
+            "customer_email": escape(order.customer_email),
+            "intake_block": _intake_block(order.cohort),
+            "account_url": account_url(),
+            "order_code": escape(order.order_code),
+        },
+        default_subject="Khóa học của bạn đã sẵn sàng – vào học ngay | TWings Academy",
+        default_body=default_html,
+    )
     return send_logged(
         to=order.customer_email,
-        subject="Khóa học của bạn đã sẵn sàng – vào học ngay | TWings Academy",
+        subject=subject,
         html=html,
         order=order,
         sent_by=sent_by,
@@ -79,10 +96,12 @@ def send_corporate_access_email(enrollment, *, sent_by=None):
     """'Your class is open' for a learner listed by their company: no fees, no order, no admission file."""
     from django.conf import settings
 
+    from apps.notifications.engine import render_template
+
     url = learn_url()
     cohort = enrollment.target_cohort
     email = enrollment.learner_email
-    html = f"""
+    default_html = f"""
 <p>Chào {escape(enrollment.learner_name)},</p>
 <p>Lớp <strong>{escape(enrollment.course_title)} – {escape(cohort.name)}</strong> mà đơn vị của bạn đăng ký
 đã được mở trên hệ thống học trực tuyến.</p>
@@ -97,9 +116,23 @@ def send_corporate_access_email(enrollment, *, sent_by=None):
 <p>Cần hỗ trợ, vui lòng trả lời email này.</p>
 <p>{escape(settings.CORPORATE_BRAND_NAME)}</p>
 """
+    subject, html = render_template(
+        "corporate_lms_access",
+        context={
+            "learner_name": escape(enrollment.learner_name),
+            "course_title": escape(enrollment.course_title),
+            "cohort_name": escape(cohort.name),
+            "url": url,
+            "email": escape(email),
+            "intake_block": _intake_block(cohort),
+            "brand_name": escape(settings.CORPORATE_BRAND_NAME),
+        },
+        default_subject=f"Lớp {enrollment.course_title} đã mở – hướng dẫn vào học",
+        default_body=default_html,
+    )
     return send_logged(
         to=email,
-        subject=f"Lớp {enrollment.course_title} đã mở – hướng dẫn vào học",
+        subject=subject,
         html=html,
         sent_by=sent_by,
         template_code="corporate_lms_access",
@@ -109,10 +142,12 @@ def send_corporate_access_email(enrollment, *, sent_by=None):
 
 
 def send_certificate_email(enrollment, certificate):
+    from apps.notifications.engine import render_template
+
     from .completion import certificate_url
 
     url = certificate_url(certificate.code)
-    html = f"""
+    default_html = f"""
 <p>Chúc mừng {escape(enrollment.learner_name)}!</p>
 <p>Bạn đã hoàn thành khóa học <strong>{escape(certificate.course_title)}</strong>
 {f"({escape(certificate.cohort_name)})" if certificate.cohort_name else ""}.</p>
@@ -121,9 +156,21 @@ Trang xác minh (có thể gửi cho nhà tuyển dụng): <a href="{url}">{url}
 <p>Bản chứng chỉ để in / lưu PDF: <a href="{url}in/">{url}in/</a></p>
 <p>TWings Academy</p>
 """
+    subject, html = render_template(
+        "lms_certificate",
+        context={
+            "learner_name": escape(enrollment.learner_name),
+            "course_title": escape(certificate.course_title),
+            "cohort_name": escape(certificate.cohort_name or ""),
+            "certificate_code": escape(certificate.code),
+            "url": url,
+        },
+        default_subject=f"Chúc mừng bạn hoàn thành khóa học – chứng chỉ {certificate.code} | TWings Academy",
+        default_body=default_html,
+    )
     return send_logged(
         to=enrollment.learner_email,
-        subject=f"Chúc mừng bạn hoàn thành khóa học – chứng chỉ {certificate.code} | TWings Academy",
+        subject=subject,
         html=html,
         order=enrollment.order,
         template_code="lms_certificate",

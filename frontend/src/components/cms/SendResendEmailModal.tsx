@@ -31,6 +31,7 @@ import {
   EmailContext,
   renderEmailTemplate,
   sendEmailWithResend,
+  wrapEmailPreview,
   isLiveEmailEnabled,
   SENDER_DISPLAY
 } from '../../utils/resendEmail';
@@ -311,7 +312,19 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
                       {tmpl.name}
                     </div>
                     <div className="text-[11px] text-slate-500 line-clamp-1 mt-1">
-                      {tmpl.category === 'payment' ? '💳 Học phí' : tmpl.category === 'admission' ? '🎓 Nhập học' : '📅 Lịch học'}
+                      {tmpl.category === 'payment'
+                        ? '💳 Học phí'
+                        : tmpl.category === 'admission'
+                        ? '🎓 Tuyển sinh'
+                        : tmpl.category === 'lms'
+                        ? '📚 LMS'
+                        : tmpl.category === 'crm'
+                        ? '🤝 CRM'
+                        : tmpl.category === 'security'
+                        ? '🔐 Bảo mật'
+                        : tmpl.category === 'corporate'
+                        ? '🏢 B2B'
+                        : '📅 Lịch học'}
                     </div>
                   </button>
                 );
@@ -393,7 +406,14 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
 
             {previewTab === 'preview' ? (
               <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 p-4 max-h-72 overflow-y-auto shadow-inner">
-                <SandboxedHtmlPreview html={htmlBody} className="rounded-xl shadow-xs" minHeight={260} />
+                <SandboxedHtmlPreview
+                  html={wrapEmailPreview(
+                    htmlBody,
+                    templateList.find((t) => t.id === selectedTemplateId)?.category === 'corporate' ? 'corporate' : 'twings'
+                  )}
+                  className="rounded-xl shadow-xs"
+                  minHeight={260}
+                />
               </div>
             ) : (
               <textarea

@@ -121,15 +121,23 @@ def login(request):
 
 
 def _send_code(email: str, code: str) -> None:
-    html = (
+    from apps.notifications.engine import render_template
+
+    default_html = (
         "<p>Xin chào,</p>"
         f"<p>Mã đăng nhập TWings Academy của bạn là: <strong style='font-size:20px'>{code}</strong></p>"
         "<p>Mã có hiệu lực trong 10 phút. Nếu bạn không yêu cầu đăng nhập, hãy bỏ qua email này.</p>"
     )
+    subject, html = render_template(
+        "auth_otp",
+        context={"code": code, "email": email},
+        default_subject=f"Mã đăng nhập TWings: {code}",
+        default_body=default_html,
+    )
     try:
         send_email(
             to=email,
-            subject=f"Mã đăng nhập TWings: {code}",
+            subject=subject,
             html=html,
             idempotency_key=f"sso-otp-{secrets.token_hex(8)}",
         )

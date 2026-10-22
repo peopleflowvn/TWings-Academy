@@ -74,6 +74,7 @@ def receipt_page(request, token: str):
 
 
 def send_receipt(payment_id: str) -> None:
+    from apps.notifications.engine import render_template
     from apps.notifications.outbox import send_logged
     from apps.notifications.resend import ResendError
 
@@ -83,7 +84,7 @@ def send_receipt(payment_id: str) -> None:
     ctx = _context(payment)
     order = payment.order
     vnd = _vnd
-    html = f"""
+    default_html = f"""
 <p>Chào {escape(order.customer_name)},</p>
 <p>TWings Academy đã nhận <strong>{vnd(payment.amount)}</strong> cho đơn
 <strong>{escape(order.order_code)}</strong> ({escape(order.course_title)}).</p>
@@ -93,10 +94,26 @@ def send_receipt(payment_id: str) -> None:
 <p>Cần hóa đơn VAT? Gửi yêu cầu trong Tài khoản học viên hoặc trả lời email này.</p>
 <p>TWings Academy</p>
 """
+    subject, html = render_template(
+        "payment_receipt",
+        context={
+            "customer_name": escape(order.customer_name),
+            "amount": vnd(payment.amount),
+            "order_code": escape(order.order_code),
+            "course_title": escape(order.course_title),
+            "total_paid": vnd(ctx["total_paid"]),
+            "receivable": vnd(ctx["receivable"]),
+            "remaining": vnd(ctx["remaining"]),
+            "receipt_number": ctx["number"],
+            "receipt_url": receipt_url(payment),
+        },
+        default_subject=f"Biên nhận học phí {ctx['number']} – {order.order_code} | TWings Academy",
+        default_body=default_html,
+    )
     try:
         send_logged(
             to=order.customer_email,
-            subject=f"Biên nhận học phí {ctx['number']} – {order.order_code} | TWings Academy",
+            subject=subject,
             html=html,
             order=order,
             template_code="payment_receipt",
@@ -104,3 +121,4 @@ def send_receipt(payment_id: str) -> None:
         )
     except ResendError:
         logger.warning("Receipt for payment %s not sent", payment_id)
+

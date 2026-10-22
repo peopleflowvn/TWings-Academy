@@ -91,6 +91,8 @@ def test_costs_advances_and_settlements(world, staff_client):
     # Costs = expense 2.000.000 + settlement 800.000; the advance itself is not a cost.
     assert (row["acceptedAmount"], row["costs"], row["margin"]) == (6_000_000, 2_800_000, 3_200_000)
     assert data["finance"]["contractValue"] == 100_000_000 and data["finance"]["margin"] == 3_200_000
+    assert data["activity"]["learnerEnrolments"] == 0 and data["finance"]["costPerLearner"] is None  # no ÷ 0
+    assert "costPerLearner" in data["kpiDictionary"]
 
 
 def test_overview_kpis_alerts_and_access(world, staff_client):

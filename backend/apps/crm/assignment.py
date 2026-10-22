@@ -185,16 +185,31 @@ def _appointment_html(appt: Appointment, intro: str) -> str:
 
 
 def send_appointment_confirmation(appt: Appointment) -> None:
+    from apps.notifications.engine import render_template
     from apps.notifications.outbox import send_logged
     from apps.notifications.resend import ResendError
 
     if not appt.order.customer_email:
         return
+    when = timezone.localtime(appt.starts_at)
+    default_html = _appointment_html(appt, "TWings Academy xác nhận lịch tư vấn với bạn:")
+    subject, html = render_template(
+        "appointment_confirmation",
+        context={
+            "customer_name": escape(appt.order.customer_name),
+            "starts_at": f"{when:%H:%M ngày %d/%m/%Y}",
+            "duration": str(appt.duration_minutes),
+            "channel": appt.get_channel_display(),
+            "course": escape(appt.order.course_title or appt.order.interested_course or "khóa học"),
+        },
+        default_subject="Xác nhận lịch tư vấn | TWings Academy",
+        default_body=default_html,
+    )
     try:
         send_logged(
             to=appt.order.customer_email,
-            subject="Xác nhận lịch tư vấn | TWings Academy",
-            html=_appointment_html(appt, "TWings Academy xác nhận lịch tư vấn với bạn:"),
+            subject=subject,
+            html=html,
             order=appt.order,
             template_code="appointment_confirmation",
             name=appt.order.customer_name,
@@ -205,6 +220,7 @@ def send_appointment_confirmation(appt: Appointment) -> None:
 
 def remind_appointments(now=None) -> int:
     """Reminder ~2 hours before planned appointments (learner and consultant). Run hourly."""
+    from apps.notifications.engine import render_template
     from apps.notifications.outbox import send_logged
     from apps.notifications.resend import ResendError, send_email
 
@@ -216,10 +232,24 @@ def remind_appointments(now=None) -> int:
     for appt in due:
         try:
             if appt.order.customer_email:
+                when = timezone.localtime(appt.starts_at)
+                default_html = _appointment_html(appt, "Nhắc bạn lịch tư vấn sắp tới với TWings Academy:")
+                subject, html = render_template(
+                    "appointment_reminder",
+                    context={
+                        "customer_name": escape(appt.order.customer_name),
+                        "starts_at": f"{when:%H:%M ngày %d/%m/%Y}",
+                        "duration": str(appt.duration_minutes),
+                        "channel": appt.get_channel_display(),
+                        "course": escape(appt.order.course_title or appt.order.interested_course or "khóa học"),
+                    },
+                    default_subject="Nhắc lịch tư vấn hôm nay | TWings Academy",
+                    default_body=default_html,
+                )
                 send_logged(
                     to=appt.order.customer_email,
-                    subject="Nhắc lịch tư vấn hôm nay | TWings Academy",
-                    html=_appointment_html(appt, "Nhắc bạn lịch tư vấn sắp tới với TWings Academy:"),
+                    subject=subject,
+                    html=html,
                     order=appt.order,
                     template_code="appointment_reminder",
                     name=appt.order.customer_name,

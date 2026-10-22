@@ -42,6 +42,7 @@ KPI_DICTIONARY = {
     ),
     "costs": "Chi phí: chi phí và quyết toán tạm ứng đã ghi nhận (tạm ứng chưa quyết toán không tính).",
     "margin": "Biên đóng góp: giá trị nghiệm thu − chi phí của lớp (số quản trị, không phải sổ kế toán).",
+    "cost_per_learner": "Chi phí / lượt học viên: tổng chi phí các lớp / số lượt học viên của các lớp đó.",
     "request_on_time_rate": (
         "Yêu cầu đúng hạn: yêu cầu xong trong 90 ngày qua có thời điểm xong ≤ hạn SLA / tổng số đã xong."
         " Hạn = lúc nhận + số giờ làm việc theo mức ưu tiên (thứ 2–6)."
@@ -79,6 +80,7 @@ def _class_rows(classes) -> list[dict]:
                 "completion_rate": k.get("completion_rate"),
                 "attendance_rate": k.get("attendance_rate"),
                 "satisfaction": k.get("satisfaction"),
+                "survey_response_rate": k.get("survey_response_rate"),
                 "accepted_amount": acc,
                 "costs": cost,
                 "margin": acc - cost if acc or cost else None,
@@ -206,6 +208,7 @@ def overview(clients, *, client=None) -> dict:
     listings = CorporateEnrollment.objects.filter(
         corporate_class__in=classes, status__in=CorporateEnrollment.STUDYING
     )
+    enrolments = listings.count()
     contracts = ServiceContract.objects.filter(client__in=clients, status="active")
     if client:
         contracts = contracts.filter(client=client)
@@ -233,7 +236,7 @@ def overview(clients, *, client=None) -> dict:
         "activity": {
             "classes": len(classes),
             "classes_running": sum(1 for c in classes if c.status == "running"),
-            "learner_enrolments": listings.count(),
+            "learner_enrolments": enrolments,
             "unique_learners": listings.values("learner").distinct().count(),
             "sessions_held": sum(c.sessions_past for c in classes),
         },
@@ -241,6 +244,7 @@ def overview(clients, *, client=None) -> dict:
             "completion_rate": _avg(r["completion_rate"] for r in rows),
             "attendance_rate": _avg(r["attendance_rate"] for r in rows),
             "satisfaction": _avg(r["satisfaction"] for r in rows),
+            "survey_response_rate": _avg(r["survey_response_rate"] for r in rows),
         },
         "finance": {
             "contract_value": contracts.aggregate(v=Sum("value"))["v"] or 0,
@@ -248,6 +252,7 @@ def overview(clients, *, client=None) -> dict:
             "awaiting_acceptance": awaiting.aggregate(v=Sum("amount"))["v"] or 0,
             "costs": costs_total,
             "margin": accepted_total - costs_total,
+            "cost_per_learner": round(costs_total / enrolments) if enrolments else None,
             "collected": receivable["paid"],
             "outstanding": receivable["outstanding"],
             "overdue": receivable["overdue"],
