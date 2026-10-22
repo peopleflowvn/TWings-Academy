@@ -21,45 +21,53 @@ export const CourseraFAQ: React.FC<CourseraFAQProps> = ({ config }) => {
   };
 
   return (
-    <section className="bg-white py-8 sm:py-16 border-b border-slate-200">
-      <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[#0056D2] uppercase tracking-wider bg-blue-50 px-2.5 sm:px-3 py-1 rounded-full border border-blue-100">
-            <HelpCircle className="w-3.5 h-3.5" />
+    <section className="bg-white py-10 sm:py-20 border-b border-slate-200/80">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
+        <div className="text-center space-y-2.5">
+          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold text-[#0050D8] uppercase tracking-wider bg-blue-50 px-3 py-1 rounded-full border border-blue-200/80 shadow-2xs">
+            <HelpCircle className="w-3.5 h-3.5 text-[#0050D8]" />
             <span>Giải Đáp Thắc Mắc</span>
           </div>
-          <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
             {title}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
+          <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
             {subtitle}
           </p>
         </div>
 
-        <div className="space-y-2.5 sm:space-y-3">
+        <div className="space-y-3 sm:space-y-4">
           {displayItems.map((item) => {
             const isOpen = openIds.includes(item.id);
             return (
               <div
                 key={item.id}
-                className="border border-slate-200 rounded-xl overflow-hidden bg-white transition-colors"
+                className={`border rounded-2xl overflow-hidden transition-all duration-200 ${
+                  isOpen 
+                    ? 'border-blue-300 shadow-md bg-white' 
+                    : 'border-slate-200/90 hover:border-slate-300 bg-white shadow-2xs'
+                }`}
               >
                 <button
                   onClick={() => toggle(item.id)}
-                  className="w-full px-4 py-3.5 sm:px-5 sm:py-4 text-left flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors cursor-pointer"
+                  className="w-full px-5 py-4 sm:px-6 sm:py-4.5 text-left flex items-center justify-between gap-4 hover:bg-slate-50/80 transition-colors cursor-pointer"
                 >
-                  <span className="text-xs sm:text-base font-bold text-slate-900 leading-snug">
+                  <span className="text-sm sm:text-base font-extrabold text-slate-900 leading-snug">
                     {item.question}
                   </span>
-                  <ChevronDown
-                    className={`w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200 ${
-                      isOpen ? 'rotate-180 text-[#0056D2]' : ''
-                    }`}
-                  />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                    isOpen ? 'bg-blue-50 text-[#0050D8]' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform duration-200 ${
+                        isOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </div>
                 </button>
 
                 {isOpen && (
-                  <div className="px-4 pb-4 pt-1 sm:px-5 sm:pb-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100/80 bg-slate-50/50">
+                  <div className="px-5 pb-5 pt-1 sm:px-6 sm:pb-6 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 bg-slate-50/40">
                     {item.answer}
                   </div>
                 )}

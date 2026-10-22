@@ -3018,7 +3018,7 @@ interface OverviewRow {
 interface Overview {
   activity: Record<string, number>;
   quality: Record<string, number | null>;
-  finance: Record<string, number>;
+  finance: Record<string, number | null>;
   classes: OverviewRow[];
   alerts: { level: 'error' | 'warning' | 'info'; text: string; class?: string; acceptance?: string; request?: string }[];
   kpiDictionary: Record<string, string>;
@@ -3064,11 +3064,13 @@ export const CorporateOverviewPage: React.FC = () => {
         <Tile label="Hoàn thành TB" value={pct(data.quality.completionRate)} hint={k.completionRate} />
         <Tile label="Chuyên cần TB" value={pct(data.quality.attendanceRate)} hint={k.attendanceRate} />
         <Tile label="Hài lòng TB" value={pct(data.quality.satisfaction)} hint={k.satisfaction} />
+        <Tile label="Phản hồi khảo sát TB" value={pct(data.quality.surveyResponseRate)} hint={k.surveyResponseRate} />
         <Tile label="Giá trị HĐ hiệu lực" value={vnd(data.finance.contractValue)} hint={k.contractValue} />
         <Tile label="Đã nghiệm thu" value={vnd(data.finance.acceptedAmount)} hint={k.acceptedAmount} />
         <Tile label="Chờ nghiệm thu" value={vnd(data.finance.awaitingAcceptance)} />
         <Tile label="Chi phí" value={vnd(data.finance.costs)} hint={k.costs} />
         <Tile label="Biên đóng góp" value={vnd(data.finance.margin)} hint={k.margin} />
+        <Tile label="Chi phí / lượt HV" value={vnd(data.finance.costPerLearner)} hint={k.costPerLearner} />
         <Tile label="Đã thu" value={vnd(data.finance.collected)} />
         <Tile label="Còn phải thu" value={vnd(data.finance.outstanding)} />
         <Tile label="Quá hạn" value={<span className={data.finance.overdue ? 'text-red-600' : ''}>{vnd(data.finance.overdue)}</span>} />

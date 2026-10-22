@@ -34,8 +34,7 @@ interface Card {
 
 /**
  * Home page "what learners say": the testimonials staff enter in /app (Nội dung trang chủ > Cảm nhận học
- * viên, from TWings' own surveys), then approved reviews written from learner accounts. No built-in
- * samples: the section is hidden while both are empty.
+ * viên, from TWings' own surveys), then approved reviews written from learner accounts.
  */
 export const CourseraTestimonials: React.FC<CourseraTestimonialsProps> = ({ config }) => {
   const [reviews, setReviews] = useState<LearnerReview[]>([]);
@@ -69,44 +68,50 @@ export const CourseraTestimonials: React.FC<CourseraTestimonialsProps> = ({ conf
   const title = config?.title || 'Cảm nhận của học viên TWings Academy';
 
   return (
-    <section className="bg-slate-50 py-8 sm:py-16 border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-10">
-        <div className="text-center space-y-2 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[#0056D2] uppercase tracking-wider bg-blue-50 px-2.5 sm:px-3 py-1 rounded-full border border-blue-100">
-            <TrendingUp className="w-3.5 h-3.5" />
+    <section className="bg-gradient-to-b from-slate-50 via-white to-slate-50 py-10 sm:py-20 border-b border-slate-200/80">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
+        <div className="text-center space-y-2.5 max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold text-[#0050D8] uppercase tracking-wider bg-blue-50 px-3 py-1 rounded-full border border-blue-200/80 shadow-2xs">
+            <TrendingUp className="w-3.5 h-3.5 text-[#0050D8]" />
             <span>Học viên nói gì</span>
           </div>
-          <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">{title}</h2>
-          {config?.subtitle && <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{config.subtitle}</p>}
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+            {title}
+          </h2>
+          {config?.subtitle && (
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              {config.subtitle}
+            </p>
+          )}
         </div>
 
         {/* Testimonials: Swipeable rail on mobile (< md), grid on tablet/desktop */}
-        <div className="flex overflow-x-auto -mx-4 px-4 gap-3.5 pb-2 no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-4 md:mx-0 md:px-0 md:gap-6">
+        <div className="flex overflow-x-auto -mx-4 px-4 gap-4 pb-3 no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-4 md:mx-0 md:px-0 md:gap-6">
           {cards.map((c) => (
             <div
               key={c.id}
-              className="w-[80vw] max-w-[300px] shrink-0 snap-start md:w-auto md:shrink bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between hover:shadow-md transition-shadow relative select-none"
+              className="w-[82vw] max-w-[310px] shrink-0 snap-start md:w-auto md:shrink bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-xs hover:shadow-xl hover:border-blue-400/50 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative select-none"
             >
               <div className="space-y-3 sm:space-y-4">
-                <Quote className="w-7 h-7 sm:w-8 sm:h-8 text-blue-200/80" />
-                {c.rating !== undefined && (
-                  <div className="flex gap-0.5" aria-label={`${c.rating}/5 sao`}>
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-3.5 h-3.5 ${i < c.rating! ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`}
-                      />
-                    ))}
-                  </div>
-                )}
-                <p className="text-xs text-slate-700 leading-relaxed italic line-clamp-4">“{c.quote}”</p>
+                <div className="flex items-center justify-between">
+                  <Quote className="w-8 h-8 text-blue-300/70" />
+                  {c.rating !== undefined && (
+                    <div className="flex gap-1 items-center bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/80" aria-label={`${c.rating}/5 sao`}>
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                      <span className="text-xs font-black text-amber-700">{c.rating.toFixed(1)}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed italic line-clamp-4">
+                  “{c.quote}”
+                </p>
               </div>
 
-              <div className="pt-4 sm:pt-6 border-t border-slate-100 mt-4 sm:mt-6 space-y-2.5 sm:space-y-3">
+              <div className="pt-4 sm:pt-6 border-t border-slate-100 mt-4 sm:mt-6 space-y-3">
                 {c.outcome && (
                   <a
                     href={c.link}
-                    className={`bg-emerald-50 text-emerald-800 text-[10px] sm:text-[11px] font-semibold p-2 sm:p-2.5 rounded-lg border border-emerald-100 flex items-start gap-1.5 ${
+                    className={`bg-emerald-50 text-emerald-800 text-[10px] sm:text-[11px] font-bold p-2 sm:p-2.5 rounded-xl border border-emerald-200/80 flex items-start gap-1.5 transition-colors ${
                       c.link ? 'hover:bg-emerald-100' : 'pointer-events-none'
                     }`}
                   >
@@ -114,11 +119,11 @@ export const CourseraTestimonials: React.FC<CourseraTestimonialsProps> = ({ conf
                     <span className="line-clamp-1">{c.outcome}</span>
                   </a>
                 )}
-                <div className="flex items-center gap-2.5 sm:gap-3">
-                  <Avatar src={c.avatar} name={c.name} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-slate-200 shrink-0" />
+                <div className="flex items-center gap-3">
+                  <Avatar src={c.avatar} name={c.name} className="w-10 h-10 rounded-full border border-slate-200 shrink-0 shadow-2xs" />
                   <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-900 truncate">{c.name}</div>
-                    {c.role && <div className="text-[10px] sm:text-[11px] text-slate-500 truncate">{c.role}</div>}
+                    <div className="text-xs font-black text-slate-900 truncate">{c.name}</div>
+                    {c.role && <div className="text-[11px] text-slate-500 truncate">{c.role}</div>}
                   </div>
                 </div>
               </div>

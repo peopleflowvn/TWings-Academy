@@ -449,6 +449,10 @@ export default function App() {
               onBrowseCatalog={() => handleNavigate('catalog')}
               onOpenConsultation={(bannerTitle) => handleOpenRegistration()}
               onOpenYouTubeTrial={(videoId, title) => handleOpenYouTubeTrial(videoId, title)}
+              onScrollToShelf={(shelfId) => {
+                const el = document.getElementById(shelfId);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
             />
           )}
 
