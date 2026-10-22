@@ -23,7 +23,10 @@ failed=0
 fail() { echo "FAIL: $*"; failed=1; }
 
 # fetch <prefix> <file>: newest <prefix>-<stamp>.age (R2, or /var/backups/twings) -> <file>, encrypted.
-# The object name goes to stderr, captured into <file>.name.
+# The object name goes to stderr (line "OBJECT <name>", among rclone notices) in <file>.name.
+# object <file>: the object name fetch recorded (or its last stderr line, the error, when it failed).
+object() { grep -m1 '^OBJECT ' "$1.name" | cut -c8- || tail -1 "$1.name"; }
+
 fetch() {
   ssh vps "sudo bash -s -- $1" > "$2" 2> "$2.name" <<'REMOTE'
 set -euo pipefail
@@ -33,12 +36,12 @@ dir="${1%/*}" base="${1##*/}"
 if [[ -n "${RCLONE_CONFIG_R2_ACCESS_KEY_ID:-}" ]]; then
   name="$(rclone lsf "$BACKUP_REMOTE/$dir/" --include "$base-*.age" | sort | tail -1)"
   [[ -n "$name" ]] || { echo "no $1 backup found" >&2; exit 3; }
-  echo "$dir/$name" >&2
+  echo "OBJECT $dir/$name" >&2
   rclone cat "$BACKUP_REMOTE/$dir/$name"
 else
   file="$(ls /var/backups/twings/"$dir"/"$base"-*.age 2>/dev/null | sort | tail -1)"
   [[ -n "$file" ]] || { echo "no $1 backup found" >&2; exit 3; }
-  echo "$file" >&2
+  echo "OBJECT $file" >&2
   cat "$file"
 fi
 REMOTE
@@ -71,9 +74,9 @@ restore_db() { # restore_db <db> <prefix> <min tables>
   local db="$1" prefix="$2" min="$3" t0 tables rc=0
   echo "=== $db <- $prefix"
   t0=$(date +%s)
-  fetch "$prefix" "$work/$db.age" || { fail "cannot fetch $prefix: $(tail -1 "$work/$db.age.name")"; return; }
-  echo "  object: $(tail -1 "$work/$db.age.name") ($(stat -c %s "$work/$db.age") bytes encrypted)"
-  check_age "$(tail -1 "$work/$db.age.name")"
+  fetch "$prefix" "$work/$db.age" || { fail "cannot fetch $prefix: $(object "$work/$db.age")"; return; }
+  echo "  object: $(object "$work/$db.age") ($(stat -c %s "$work/$db.age") bytes encrypted)"
+  check_age "$(object "$work/$db.age")"
   psql_drill -c "create database $db"
   # --no-owner/--no-privileges: production roles do not exist in the throwaway server.
   age -d -i "$work/key.txt" "$work/$db.age" \
@@ -99,8 +102,8 @@ psql_drill -d moodle -c "select (select count(*) from mdl_user where deleted = 0
 
 echo "=== moodledata <- moodle/files"
 if fetch moodle/files "$work/files.age"; then
-  echo "  object: $(tail -1 "$work/files.age.name") ($(stat -c %s "$work/files.age") bytes encrypted)"
-  check_age "$(tail -1 "$work/files.age.name")"
+  echo "  object: $(object "$work/files.age") ($(stat -c %s "$work/files.age") bytes encrypted)"
+  check_age "$(object "$work/files.age")"
   mkdir "$work/moodledata"
   if age -d -i "$work/key.txt" "$work/files.age" | tar -C "$work/moodledata" -xf -; then
     echo "  files: $(find "$work/moodledata" -type f | wc -l), size: $(du -sh "$work/moodledata" | cut -f1)"
@@ -110,7 +113,7 @@ if fetch moodle/files "$work/files.age"; then
   fi
   rm -rf "$work/files.age" "$work/moodledata"
 else
-  fail "cannot fetch moodle/files: $(tail -1 "$work/files.age.name")"
+  fail "cannot fetch moodle/files: $(object "$work/files.age")"
 fi
 
 echo "=== total restore time: $(( $(date +%s) - start ))s"
