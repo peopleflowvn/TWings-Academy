@@ -38,7 +38,7 @@ import { CourseraArticleDetailPage } from './components/CourseraArticleDetailPag
 import { CourseraAboutPage } from './components/CourseraAboutPage';
 import { CourseraCheckoutModal, CheckoutPrefill } from './components/CourseraCheckoutModal';
 import { RegistrationModal } from './components/RegistrationModal';
-import { CampaignDetailPage, CampaignsPage, CampaignsStrip } from './components/CampaignPages';
+import { CampaignDetailPage, CampaignsStrip } from './components/CampaignPages';
 import { YouTubeTrialModal } from './components/YouTubeTrialModal';
 import { FloatingContact } from './components/FloatingContact';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -82,7 +82,8 @@ export default function App() {
   const [selectedArticle, setSelectedArticle] = useState<Article>(INITIAL_ARTICLES[0]);
 
   // Search State
-  const [searchQuery, setSearchQuery] = useState('');
+  // One search for the header and the catalogue, kept in the address (?q=) so it can be shared.
+  const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
   const [searchCategory, setSearchCategory] = useState('Tất cả');
 
   // Modals State
@@ -163,12 +164,24 @@ export default function App() {
   // ---- Routing: state <-> URL ----
   const go = (view: View, slug?: string) => {
     startPageLoading();
-    const path = routePath(view, slug);
-    if (path !== window.location.pathname) window.history.pushState(null, '', path);
+    const query = view === 'catalog' && searchQuery.trim() ? `?q=${encodeURIComponent(searchQuery.trim())}` : '';
+    const path = routePath(view, slug) + query;
+    if (path !== window.location.pathname + window.location.search) window.history.pushState(null, '', path);
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => donePageLoading(), 150);
   };
+
+  // /tuyen-sinh (the old campaigns list) is the catalogue now; the search follows the address.
+  useEffect(() => {
+    if (/^\/tuyen-sinh\/?$/.test(window.location.pathname)) window.history.replaceState(null, '', '/khoa-hoc');
+  }, []);
+  useEffect(() => {
+    if (currentView !== 'catalog') return;
+    const q = searchQuery.trim();
+    const url = `/khoa-hoc${q ? `?q=${encodeURIComponent(q)}` : ''}`;
+    if (url !== window.location.pathname + window.location.search) window.history.replaceState(null, '', url);
+  }, [currentView, searchQuery]);
 
   // Browser back / forward.
   useEffect(() => {
@@ -256,8 +269,6 @@ export default function App() {
       fallback = `${selectedCourse.title} | TWings Academy`;
     } else if (currentView === 'about') {
       fallback = 'Về chúng tôi | TWings Academy';
-    } else if (currentView === 'campaigns') {
-      fallback = 'Tuyển sinh | TWings Academy';
     }
 
     applyPageMeta(window.location.pathname, fallback);
@@ -327,6 +338,8 @@ export default function App() {
         onSearchChange={setSearchQuery}
         onSearchSubmit={() => handleNavigate('catalog')}
         onOpenConsultation={() => handleOpenRegistration()}
+        courses={courses}
+        onOpenCourse={handleSelectCourse}
       />
 
       {/* 2. Subpage: Course Catalog */}
@@ -334,8 +347,11 @@ export default function App() {
         <CourseraCatalogPage
           courses={courses}
           enrolledCourseIds={enrolledCourseIds}
-          initialSearchQuery={searchQuery}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
           initialCategory={searchCategory}
+          onOpenCampaign={openCampaign}
+          onOpenConsultation={() => handleOpenRegistration()}
           onSelectCourse={handleSelectCourse}
           onEnrollCourse={handleBuy}
         />
@@ -403,11 +419,10 @@ export default function App() {
       )}
 
       {/* Admission campaigns (like job postings): what the server lists as recruiting now */}
-      {currentView === 'campaigns' && <CampaignsPage onOpen={openCampaign} onBrowseCourses={() => handleNavigate('catalog')} />}
       {currentView === 'campaign-detail' && campaignSlug && (
         <CampaignDetailPage
           slug={campaignSlug}
-          onBack={() => handleNavigate('campaigns')}
+          onBack={() => handleNavigate('catalog')}
           onOpenCourse={(slug) => {
             const found = courses.find((c) => c.slug === slug);
             if (found) handleSelectCourse(found);
@@ -438,7 +453,7 @@ export default function App() {
           )}
 
           {/* Campaigns recruiting now (nothing shown when none is open) */}
-          <CampaignsStrip onOpen={openCampaign} onSeeAll={() => handleNavigate('campaigns')} />
+          <CampaignsStrip onOpen={openCampaign} onSeeAll={() => handleNavigate('catalog')} />
 
           {/* Institutional Partners Bar (Managed in CMS) */}
           {cmsSections.partners.enabled && (

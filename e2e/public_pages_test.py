@@ -25,6 +25,32 @@ def get(path):
     return data.get("results", data) if isinstance(data, dict) else data
 
 
+def search_works(page) -> list[str]:
+    """Header search: suggestions while typing (shorthand, no accents), Enter opens the catalogue."""
+    problems = []
+    page.goto(BASE + "/", wait_until="load")
+    box = page.locator("header input[type=search]").first
+    box.click()
+    box.fill("rm doanh ngh")
+    try:
+        page.wait_for_selector("[role=listbox] >> text=E2E RM Doanh nghiệp", timeout=10000)
+        box.press("ArrowDown")
+        box.press("Enter")
+        page.wait_for_url("**/khoa-hoc/e2e-rm", timeout=10000)
+    except Exception as exc:  # noqa: BLE001
+        problems.append(f"suggestion did not open the course: {exc}")
+    page.goto(BASE + "/", wait_until="load")
+    box = page.locator("header input[type=search]").first
+    box.fill("tin dung")
+    box.press("Enter")
+    try:
+        page.wait_for_url("**/khoa-hoc?q=tin*", timeout=10000)
+        page.wait_for_selector("text=khóa học phù hợp", timeout=10000)
+    except Exception as exc:  # noqa: BLE001
+        problems.append(f"Enter did not open the filtered catalogue: {exc}")
+    return problems
+
+
 def main() -> int:
     paths = ["/", "/khoa-hoc", "/tin-tuc", "/ve-chung-toi", "/tuyen-sinh", "/chuong-trinh", "/dieu-khoan", "/chinh-sach-bao-mat"]
     paths += [f"/khoa-hoc/{c['slug']}" for c in get("/api/v1/public/courses/")]
@@ -33,6 +59,11 @@ def main() -> int:
     failures = 0
     with sync_playwright() as p:
         browser = p.chromium.launch(channel=os.environ.get("E2E_CHANNEL") or None, headless=True)
+        search_page = browser.new_page(viewport={"width": 1440, "height": 900}, locale="vi-VN")
+        search_problems = search_works(search_page)
+        search_page.close()
+        print(f"{'FAIL' if search_problems else 'OK  '} search {'; '.join(search_problems)}")
+        failures += bool(search_problems)
         for device, viewport in (("desktop", {"width": 1440, "height": 900}), ("phone", {"width": 390, "height": 844})):
             ctx = browser.new_context(viewport=viewport, locale="vi-VN", is_mobile=device == "phone", has_touch=device == "phone")
             for path in paths:

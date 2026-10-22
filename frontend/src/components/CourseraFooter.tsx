@@ -95,8 +95,7 @@ export const CourseraFooter: React.FC<CourseraFooterProps & { onSelectCourse?: (
             <ul className="space-y-2">
               <li><NavLink view="home" onNavigate={onNavigate}>Trang chủ</NavLink></li>
               <li><NavLink view="about" onNavigate={onNavigate}>Giới thiệu về chúng tôi</NavLink></li>
-              <li><NavLink view="catalog" onNavigate={onNavigate}>Khóa học & chương trình</NavLink></li>
-              <li><NavLink view="campaigns" onNavigate={onNavigate}>Tuyển sinh</NavLink></li>
+              <li><NavLink view="catalog" onNavigate={onNavigate}>Khóa học & tuyển sinh</NavLink></li>
               <li><NavLink view="articles" onNavigate={onNavigate}>Tin tức & Cẩm nang</NavLink></li>
               <li><a href="/learn/" className="hover:text-white transition-colors text-blue-400 font-semibold">Cổng học viên (LMS)</a></li>
               <li><a href="/learn/user/profile.php" className="hover:text-white transition-colors">Học phí & hồ sơ</a></li>

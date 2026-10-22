@@ -15,20 +15,23 @@ import { canBuy, openIntakes, priceFor } from '../lib/selling';
 import { Course, CourseLevel, CourseType } from '../types';
 import { CourseraCourseCard } from './CourseraCourseCard';
 import { ProgramsStrip } from './ProgramsStrip';
+import { CampaignsStrip } from './CampaignPages';
+import { courseFields, rank } from '../lib/search';
 
 interface CourseraCatalogPageProps {
   courses: Course[];
   enrolledCourseIds: string[];
-  initialSearchQuery?: string;
+  /** Shared with the header's search box (and ?q= in the address). */
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
   initialCategory?: string;
+  /** Admission campaigns open now are listed first; a campaign has its own page. */
+  onOpenCampaign: (slug: string) => void;
+  onOpenConsultation: () => void;
   onSelectCourse: (course: Course) => void;
   onEnrollCourse: (course: Course) => void;
   onOpenYouTubeTrial?: (course: Course) => void;
 }
-
-/** Lower case without Vietnamese accents (đ → d), for search. */
-const fold = (text: string) =>
-  text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim();
 
 /** Sort key: days to the next intake; open courses without intakes after, consultations last. */
 const startKey = (course: Course) => {
@@ -40,13 +43,15 @@ const startKey = (course: Course) => {
 export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
   courses,
   enrolledCourseIds,
-  initialSearchQuery = '',
+  searchQuery,
+  onSearchChange: setSearchQuery,
   initialCategory = 'Tất cả',
+  onOpenCampaign,
+  onOpenConsultation,
   onSelectCourse,
   onEnrollCourse,
   onOpenYouTubeTrial,
 }) => {
-  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedLevel, setSelectedLevel] = useState<string>('Tất cả');
   const [selectedType, setSelectedType] = useState<string>('Tất cả');
@@ -98,18 +103,8 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
 
   // Filter & sort logic
   const filteredCourses = useMemo(() => {
-    return courses
+    const sorted = courses
       .filter((course) => {
-        // Search filter
-        if (searchQuery.trim()) {
-          // Accent-insensitive: "tin dung" finds "Tín dụng".
-          const q = fold(searchQuery);
-          const haystack = fold(
-            [course.title, course.subtitle, course.partner?.name, course.level, course.category, ...(course.skills || [])].join(' ')
-          );
-          if (!q.split(/\s+/).every((word) => haystack.includes(word))) return false;
-        }
-
         // Category filter
         if (selectedCategory !== 'Tất cả' && course.category !== selectedCategory) {
           return false;
@@ -143,6 +138,8 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
         // Soonest intake first; courses open now before those without an intake.
         return startKey(a) - startKey(b);
       });
+    // A search ranks by relevance (the chosen order breaks ties): see lib/search.
+    return searchQuery.trim() ? rank(sorted, searchQuery, courseFields) : sorted;
   }, [courses, searchQuery, selectedCategory, selectedLevel, selectedType, selectedFormat, selectedPartner, sortBy]);
 
   const resetFilters = () => {
@@ -184,7 +181,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm kỹ năng, khóa học, đối tác..."
+                placeholder="Tìm khóa học: QHKH, tín dụng, giao dịch viên…"
                 className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-[#0056D2] focus:ring-2 focus:ring-blue-100 bg-white"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -218,7 +215,8 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
         </div>
       </div>
 
-      {/* Programs (bundles) first, then the course grid */}
+      {/* Open admission campaigns, then programs (bundles), then the course grid */}
+      <CampaignsStrip onOpen={onOpenCampaign} />
       <ProgramsStrip />
 
       {/* Main Content: Left Filter Sidebar + Right Course Grid */}
@@ -326,17 +324,25 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
               <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 space-y-4">
                 <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
                 <h3 className="text-base font-bold text-slate-800">
-                  Không tìm thấy khóa học nào phù hợp với bộ lọc hiện tại
+                  {searchQuery.trim() ? `Chưa có khóa học nào cho “${searchQuery.trim()}”` : 'Không có khóa học nào với bộ lọc này'}
                 </h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Hãy thử điều chỉnh từ khóa tìm kiếm hoặc bấm nút "Đặt lại bộ lọc" để khám phá thêm nhiều lựa chọn khác.
+                  Thử từ khóa ngắn hơn (VD: “tín dụng”, “QHKH”, “giao dịch viên”), bỏ bớt bộ lọc, hoặc để lại thông tin để tư vấn viên gợi ý lộ trình phù hợp.
                 </p>
-                <button
-                  onClick={resetFilters}
-                  className="px-5 py-2 bg-[#0056D2] hover:bg-[#00419E] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
-                >
-                  Đặt lại toàn bộ bộ lọc
-                </button>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <button
+                    onClick={resetFilters}
+                    className="px-5 py-2 border border-slate-300 hover:border-[#0056D2] text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                  >
+                    Xem tất cả khóa học
+                  </button>
+                  <button
+                    onClick={onOpenConsultation}
+                    className="px-5 py-2 bg-[#0056D2] hover:bg-[#00419E] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                  >
+                    Nhận tư vấn lộ trình
+                  </button>
+                </div>
               </div>
             ) : (
               /* Grid of Cards */

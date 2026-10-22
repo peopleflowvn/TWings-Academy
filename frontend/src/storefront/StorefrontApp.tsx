@@ -44,8 +44,11 @@ const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNod
         onNavigate={go}
         searchQuery={search}
         onSearchChange={setSearch}
-        onSearchSubmit={() => go('catalog')}
+        onSearchSubmit={() => {
+          window.location.href = `/khoa-hoc${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ''}`;
+        }}
         onOpenConsultation={() => setConsult(true)}
+        courses={courses}
       />
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
       <FloatingContact />

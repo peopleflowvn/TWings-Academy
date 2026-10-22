@@ -18,6 +18,8 @@ import {
 import { useSiteSeo, phoneDigits, zaloLink } from '../lib/siteSeo';
 import { routePath, View } from '../lib/routes';
 import { BrandLogo } from './BrandLogo';
+import { SiteSearch } from './SiteSearch';
+import { Course } from '../types';
 
 interface CourseraHeaderProps {
   currentView: View;
@@ -26,6 +28,9 @@ interface CourseraHeaderProps {
   onSearchChange: (query: string) => void;
   onSearchSubmit: () => void;
   onOpenConsultation: () => void;
+  /** Published courses, for search suggestions. */
+  courses?: Course[];
+  onOpenCourse?: (course: Course) => void;
 }
 
 export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
@@ -35,6 +40,8 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
   onSearchChange,
   onSearchSubmit,
   onOpenConsultation,
+  courses = [],
+  onOpenCourse,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -79,28 +86,14 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
 
         {/* Center: Search Bar (Desktop / Tablet) */}
         <div className="flex-1 max-w-md hidden md:block">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              onSearchSubmit();
-            }}
-            className="relative flex items-center"
-          >
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Bạn muốn học gì? (VD: QHKH Doanh nghiệp, AI, Python...)"
-              className="w-full pl-4 pr-11 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-full focus:outline-none focus:border-[#0073C1] focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400 text-slate-800"
-            />
-            <button
-              type="submit"
-              className="absolute right-1.5 p-2 bg-[#0073C1] hover:bg-[#005FA0] text-white rounded-full transition-colors cursor-pointer"
-              title="Tìm kiếm"
-            >
-              <Search className="w-3.5 h-3.5" />
-            </button>
-          </form>
+          <SiteSearch
+            value={searchQuery}
+            onChange={onSearchChange}
+            onSubmit={onSearchSubmit}
+            courses={courses}
+            onOpenCourse={onOpenCourse}
+            onOpenConsultation={onOpenConsultation}
+          />
         </div>
 
         {/* Right Navigation */}
@@ -119,21 +112,12 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             href={routePath('catalog')}
             onClick={navClick('catalog')}
             className={`hidden lg:inline hover:text-[#0073C1] transition-colors cursor-pointer ${
-              currentView === 'catalog' ? 'text-[#0073C1] font-bold' : ''
+              currentView === 'catalog' || currentView === 'campaign-detail' ? 'text-[#0073C1] font-bold' : ''
             }`}
           >
             Khóa học
           </a>
 
-          <a
-            href={routePath('campaigns')}
-            onClick={navClick('campaigns')}
-            className={`hidden lg:inline hover:text-[#0073C1] transition-colors cursor-pointer ${
-              currentView === 'campaigns' || currentView === 'campaign-detail' ? 'text-[#0073C1] font-bold' : ''
-            }`}
-          >
-            Tuyển sinh
-          </a>
 
           <a
             href={routePath('about')}
@@ -201,30 +185,17 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
       {/* Mobile Inline Search Bar (Toggled by Search icon on mobile) */}
       {mobileSearchOpen && (
         <div className="md:hidden bg-slate-50 border-t border-slate-200 p-3 animate-fadeIn">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setMobileSearchOpen(false);
-              onSearchSubmit();
-            }}
-            className="relative flex items-center"
-          >
-            <input
-              type="text"
-              autoFocus
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Bạn muốn học gì? (VD: QHKH Doanh nghiệp...)"
-              className="w-full pl-3.5 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-[#0073C1] shadow-2xs text-slate-800"
-            />
-            <button
-              type="submit"
-              className="absolute right-1.5 p-1.5 bg-[#0073C1] text-white rounded-lg transition-colors"
-              title="Tìm kiếm"
-            >
-              <Search className="w-3.5 h-3.5" />
-            </button>
-          </form>
+          <SiteSearch
+            value={searchQuery}
+            onChange={onSearchChange}
+            onSubmit={onSearchSubmit}
+            courses={courses}
+            onOpenCourse={onOpenCourse}
+            onOpenConsultation={onOpenConsultation}
+            autoFocus
+            placeholder="Bạn muốn học gì? (VD: QHKH, tín dụng…)"
+            onDone={() => setMobileSearchOpen(false)}
+          />
         </div>
       )}
 
@@ -312,19 +283,6 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-300" />
                 </a>
 
-                <a
-                  href={routePath('campaigns')}
-                  onClick={navClick('campaigns', true)}
-                  className={`flex items-center justify-between p-3 rounded-xl transition-colors ${
-                    currentView === 'campaigns' || currentView === 'campaign-detail' ? 'bg-blue-50 text-[#0073C1] font-bold' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Megaphone className="w-4 h-4 text-[#0073C1]" />
-                    <span>Tuyển Sinh</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-300" />
-                </a>
 
                 <a
                   href={routePath('about')}

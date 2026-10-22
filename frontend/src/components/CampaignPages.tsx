@@ -103,31 +103,6 @@ const Card: React.FC<{ c: CampaignCard; onOpen: (slug: string) => void }> = ({ c
   </button>
 );
 
-/** /tuyen-sinh */
-export const CampaignsPage: React.FC<{ onOpen: (slug: string) => void; onBrowseCourses: () => void }> = ({ onOpen, onBrowseCourses }) => {
-  const campaigns = useLiveCampaigns();
-  return (
-    <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-10 space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Đang tuyển sinh</h1>
-        <p className="text-slate-600 mt-1">Các đợt tuyển sinh đang nhận hồ sơ: khóa học, hạn nộp và số suất.</p>
-      </div>
-      {campaigns === null && <p className="text-slate-500">Đang tải…</p>}
-      {campaigns?.length === 0 && (
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-slate-600 space-y-3">
-          <p>Hiện chưa có đợt tuyển sinh nào đang mở. Bạn vẫn có thể xem các khóa học và đăng ký tư vấn.</p>
-          <button type="button" onClick={onBrowseCourses} className="px-4 py-2 rounded-xl bg-[#0073C1] text-white font-bold text-sm cursor-pointer">
-            Xem khóa học
-          </button>
-        </div>
-      )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {campaigns?.map((c) => <Card key={c.slug} c={c} onOpen={onOpen} />)}
-      </div>
-    </main>
-  );
-};
-
 /** /tuyen-sinh/<slug> */
 export const CampaignDetailPage: React.FC<{
   slug: string;
@@ -155,7 +130,7 @@ export const CampaignDetailPage: React.FC<{
         <h1 className="text-xl font-bold text-slate-900">Đợt tuyển sinh không còn mở</h1>
         <p className="text-sm">Đợt này đã kết thúc hoặc tạm dừng nhận hồ sơ.</p>
         <button type="button" onClick={onBack} className="px-4 py-2 rounded-xl bg-[#0073C1] text-white text-sm font-bold cursor-pointer">
-          Xem các đợt đang tuyển sinh
+          Xem khóa học & đợt tuyển sinh
         </button>
       </main>
     );
@@ -167,7 +142,7 @@ export const CampaignDetailPage: React.FC<{
       <div className="bg-gradient-to-r from-[#00467a] to-[#0073C1] text-white">
         <div className="max-w-6xl mx-auto px-4 py-10 space-y-3">
           <button type="button" onClick={onBack} className="text-sm text-blue-100 hover:text-white inline-flex items-center gap-1 cursor-pointer">
-            <ArrowLeft className="w-4 h-4" /> Tất cả đợt tuyển sinh
+            <ArrowLeft className="w-4 h-4" /> Khóa học & tuyển sinh
           </button>
           <div className="flex flex-wrap gap-2">
             {camp.isFeatured && <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/15 inline-flex items-center gap-1"><Flame className="w-3.5 h-3.5" /> Nổi bật</span>}
@@ -227,20 +202,28 @@ export const CampaignDetailPage: React.FC<{
   );
 };
 
-/** Homepage: the campaigns recruiting now (nothing when none is open). */
-export const CampaignsStrip: React.FC<{ onOpen: (slug: string) => void; onSeeAll: () => void }> = ({ onOpen, onSeeAll }) => {
+/**
+ * The campaigns recruiting now (nothing when none is open): on the course catalogue (all of them) and
+ * on the homepage (the first three, "Xem tất cả" goes to the catalogue).
+ */
+export const CampaignsStrip: React.FC<{ onOpen: (slug: string) => void; onSeeAll?: () => void }> = ({ onOpen, onSeeAll }) => {
   const campaigns = useLiveCampaigns();
   if (!campaigns?.length) return null;
   return (
-    <section className="max-w-7xl mx-auto w-full px-4 py-8 space-y-4">
+    <section id="tuyen-sinh" className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-4 scroll-mt-24">
       <div className="flex items-end justify-between gap-3">
-        <h2 className="text-xl sm:text-2xl font-black text-slate-900">Đang tuyển sinh</h2>
-        <button type="button" onClick={onSeeAll} className="text-sm font-bold text-[#0073C1] hover:underline cursor-pointer">
-          Xem tất cả
-        </button>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900">Đang tuyển sinh</h2>
+          <p className="text-xs sm:text-sm text-slate-500">Đợt tuyển sinh đang nhận hồ sơ: khóa học, hạn nộp và số suất.</p>
+        </div>
+        {onSeeAll && campaigns.length > 3 && (
+          <button type="button" onClick={onSeeAll} className="text-sm font-bold text-[#0073C1] hover:underline cursor-pointer">
+            Xem tất cả
+          </button>
+        )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {campaigns.slice(0, 3).map((c) => <Card key={c.slug} c={c} onOpen={onOpen} />)}
+        {(onSeeAll ? campaigns.slice(0, 3) : campaigns).map((c) => <Card key={c.slug} c={c} onOpen={onOpen} />)}
       </div>
     </section>
   );

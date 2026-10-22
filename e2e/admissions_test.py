@@ -160,7 +160,10 @@ def campaign_quota_and_new_campaign(page: Page):
 
 @step
 def campaign_on_the_website_like_a_job_posting(page: Page):
+    # Campaigns are listed on the course catalogue (/tuyen-sinh shows it too).
     page.goto(f"{BASE}/tuyen-sinh")
+    page.wait_for_selector("h2:has-text('Đang tuyển sinh')", timeout=20000)
+    assert page.url.endswith("/khoa-hoc"), page.url
     page.wait_for_selector("text=Chiến dịch E2E", timeout=20000)
     assert page.locator("text=Còn 10/10 suất").count() >= 1, "places left on the card"
     page.locator("text=Chiến dịch E2E").first.click()

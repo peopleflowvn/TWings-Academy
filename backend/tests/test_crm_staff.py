@@ -405,6 +405,12 @@ def test_campaign_on_the_website_like_a_job_posting(api, course):
     assert detail["courses"][0]["title"] == course.title and detail["courses"][0]["placesLeft"] == 10
     camp.refresh_from_db()
     assert camp.view_count == 1
+    # Campaigns are listed on the course catalogue; the old list address shows it (canonical /khoa-hoc).
+    catalog = api.get("/_seo/tuyen-sinh").content.decode()
+    assert 'rel="canonical" href="https://tuyensinh.twings.edu.vn/khoa-hoc"' in catalog
+    assert "/tuyen-sinh/tuyen-sinh-da-nang" in catalog
+    sitemap = api.get("/sitemap.xml").content.decode()
+    assert "/tuyen-sinh/tuyen-sinh-da-nang</loc>" in sitemap and "/tuyen-sinh</loc>" not in sitemap
 
     camp.show_quota = False
     camp.save()
