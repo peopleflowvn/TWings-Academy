@@ -9,6 +9,7 @@ from apps.core.models import AuditLog
 ACTIONS = {
     "corporate.class_create": "Tạo lớp",
     "corporate.class_update": "Sửa thông tin lớp",
+    "corporate.class_cancel": "Hủy lớp (hủy ghi danh, thu quyền Moodle)",
     "corporate.enrollment_add": "Thêm học viên",
     "corporate.enrollment_cancel": "Hủy ghi danh",
     "corporate.enrollment_transfer": "Chuyển lớp",

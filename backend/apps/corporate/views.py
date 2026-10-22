@@ -349,9 +349,13 @@ class CorporateClassViewSet(
             setattr(cohort, field, value)
         if cohort_fields:
             cohort.save()
+        was_cancelled = corporate_class.status == "cancelled"
         for field, value in data.items():
             setattr(corporate_class, field, value)
         corporate_class.save()
+        if corporate_class.status == "cancelled" and not was_cancelled:
+            cancelled = services.cancel_class_listings(corporate_class)
+            audit(self.request, "corporate.class_cancel", corporate_class, listings_cancelled=cancelled)
         audit(self.request, "corporate.class_update", corporate_class, fields=sorted([*cohort_fields, *data]))
 
     @action(detail=True, methods=["get"])

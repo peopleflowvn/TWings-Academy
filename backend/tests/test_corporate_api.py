@@ -303,3 +303,15 @@ def test_class_status_follows_the_schedule(course):
     cls.refresh_from_db()
     hand.refresh_from_db()
     assert (cls.status, hand.status) == ("finished", "cancelled")  # a cancelled class is left alone
+
+
+def test_cancelling_a_class_cancels_its_listings(course, staff_client):
+    client = services.create_client(name="Ngân hàng Hủy", code="NHH")
+    cls = services.create_class(client=client, course=course, name="NHH – Lớp 1", cohort_fields={})
+    listing = services.list_learner(cls, Learner.objects.create(full_name="An", email="an@nhh.test"))
+    corp = staff_client(Role.CORPORATE_TRAINING)
+    res = corp.patch(f"/api/v1/staff/corporate/classes/{cls.pk}/", {"status": "cancelled"}, format="json")
+    assert res.status_code == 200, res.content
+    listing.refresh_from_db()
+    assert listing.status == "cancelled" and not listing.may_study  # Moodle / SSO access ends
+    assert "Lớp đã hủy" in listing.note

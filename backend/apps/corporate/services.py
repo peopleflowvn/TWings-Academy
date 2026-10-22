@@ -185,6 +185,16 @@ def cancel_listing(listing: CorporateEnrollment, note: str = "") -> CorporateEnr
     return listing
 
 
+def cancel_class_listings(corporate_class: CorporateClass) -> int:
+    """A cancelled class: every learner still listed is cancelled too, so Moodle and SSO access end."""
+    listings = corporate_class.enrollments.filter(status__in=CorporateEnrollment.STUDYING)
+    count = 0
+    for listing in listings:
+        cancel_listing(listing, "Lớp đã hủy")  # one save each: the signal revokes Moodle access
+        count += 1
+    return count
+
+
 def transfer_listing(listing: CorporateEnrollment, target: CorporateClass) -> CorporateEnrollment:
     """Move a learner to another class of the same client: the old listing stays as history."""
     if target.pk == listing.corporate_class_id:
