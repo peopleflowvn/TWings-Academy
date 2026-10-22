@@ -25,7 +25,7 @@ Làm cùng AI agent nên nhanh hơn nhiều so với dự kiến 8 tuần. Đã 
 | 5. Kết quả & truyền thông | ✅ | `ResultSnapshot`, lô thư kết quả có duyệt, đính chính |
 | 6. Nghiệm thu & hồ sơ | ✅ (mẫu chuẩn) | Biên bản nghiệm thu chuẩn mặc định (Excel + bản in / PDF, số tiền bằng chữ); chỉnh theo mẫu MSB/ROX khi có file |
 | 7. Dashboard & chi phí | ✅ | Tổng quan B2B, cảnh báo đối soát, từ điển KPI, chi phí / tạm ứng, link báo cáo khách hàng |
-| 8. E2E & hardening | 🔄 | E2E 21 bước B2B trong CI; diễn tập khôi phục backup (Ops `restore-drill`, hằng tháng; cần đặt secret khóa); còn: đo tải QR, UAT với dữ liệu thật |
+| 8. E2E & hardening | 🔄 | E2E 21 bước B2B trong CI; diễn tập khôi phục backup đạt 22/10/2026 (Ops `restore-drill`, hằng tháng: 3 phần backup khôi phục trong 48 giây); còn: đo tải QR, UAT với dữ liệu thật |
 
 **Giai đoạn 2 đã làm:** công nợ (tiền về, hạn thanh toán, tuổi nợ, cảnh báo quá hạn), thực hiện kế hoạch / ngân
 sách theo dòng, phân bổ chi phí dùng chung, báo cáo cho CBQL (mỗi CBQL một thư), kiểm thử cô lập giữa khách hàng,
