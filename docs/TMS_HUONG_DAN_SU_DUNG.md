@@ -72,7 +72,8 @@ Ngưỡng đổi bằng biến `CORPORATE_SECOND_APPROVAL_ACCEPTANCE` / `_EXPENS
     cầu* (khách hàng, nội dung, người yêu cầu, kênh, **ưu tiên**, người xử lý). Hạn xử lý tự tính theo giờ làm việc
     thứ 2–6 (8h–17h): **Khẩn 4 giờ, Cao 1 ngày, Thường 3 ngày, Thấp 5 ngày**; ngày lễ thì sửa hạn bằng tay. Xong thì
     chọn trạng thái *Đã xong* + ghi kết quả. Mỗi sáng ngày làm việc (8h15) người xử lý nhận email các yêu cầu quá hạn
-    / sắp đến hạn; yêu cầu chưa giao người gửi về email liên hệ chung (`CORPORATE_CONTACT_EMAIL`).
+    / sắp đến hạn; yêu cầu chưa giao người gửi về email liên hệ chung (`CORPORATE_CONTACT_EMAIL`), chưa đặt thì gửi
+    mọi người có quyền quản lý lớp doanh nghiệp.
 
 ## 3. Theo dõi
 

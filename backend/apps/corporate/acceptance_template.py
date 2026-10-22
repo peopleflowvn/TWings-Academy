@@ -145,6 +145,7 @@ def document(batch) -> dict:
                 "title": "BÊN B (Bên cung cấp dịch vụ)",
                 "name": provider["legal_name"],
                 "address": provider["address"] or BLANK,
+                "phone": provider.get("phone", ""),
                 "tax_code": provider["tax_code"] or BLANK,
                 "representative": provider["representative"] or BLANK,
                 "rep_title": provider["title"] or BLANK,
@@ -220,6 +221,8 @@ def export_xlsx(batch) -> bytes:
     for party in doc["parties"]:
         line(f"{party['title']}: {party['name']}", font=bold)
         line(f"Địa chỉ: {party['address']}")
+        if party.get("phone"):
+            line(f"Điện thoại: {party['phone']}")
         line(f"Mã số thuế: {party['tax_code']}")
         line(f"Đại diện: {party['representative']}        Chức vụ: {party['rep_title']}")
     line("Hai bên thống nhất nghiệm thu dịch vụ đào tạo với các nội dung sau:")

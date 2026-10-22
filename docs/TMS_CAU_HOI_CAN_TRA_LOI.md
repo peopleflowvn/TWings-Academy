@@ -34,9 +34,9 @@ hướng dẫn: [TMS_HUONG_DAN_SU_DUNG.md](TMS_HUONG_DAN_SU_DUNG.md).
 
 | # | Nội dung | Đang chạy | TT |
 |---|---|---|---|
-| C1 | Tên miền nội bộ được nhận CC | Biến `CORPORATE_INTERNAL_EMAIL_DOMAINS` (đang trống = chỉ tên miền gửi thư). Khi có danh sách (ví dụ tntalent.vn) thì điền vào `.env` | ⏳ |
+| C1 | Tên miền nội bộ được nhận CC | Biến `CORPORATE_INTERNAL_EMAIL_DOMAINS` (đang trống = chỉ tên miền gửi thư). Giữ trống cho an toàn: CC ra ngoài tên miền khách hàng bị loại. Cần CC nhân sự TNTalent thì điền tên miền email thật (ví dụ tntalent.vn) | ✅ (mặc định an toàn) |
 | C2 | Thương hiệu / địa chỉ gửi thư B2B | **TNTalent** cho mọi thư, trang và tài liệu B2B; người gửi "TNTalent &lt;địa chỉ gửi hiện có&gt;". Muốn gửi từ tên miền TNTalent: xác minh tên miền trên Resend rồi đặt `CORPORATE_FROM_EMAIL` | ✅ (tên miền riêng ⏳) |
-| C3 | Thông tin pháp nhân TNTalent in lên biên bản | Biến `CORPORATE_PROVIDER_*` (tên, địa chỉ, MST, người đại diện, chức vụ); đang trống thì in dòng chấm để điền tay. Màu thương hiệu `CORPORATE_BRAND_COLOR` | ⏳ (cần thông tin) |
+| C3 | Thông tin pháp nhân TNTalent in lên biên bản | Đã điền: Công ty Cổ phần Quản trị Nguồn nhân lực TNTalent, Tòa nhà ROX Tower, 54A Nguyễn Chí Thanh, P. Láng Hạ, Hà Nội, ĐT 024 7301 6363. **Mã số thuế, người đại diện, chức vụ** chưa có: in dòng chấm để điền tay; khi có thì đặt `CORPORATE_PROVIDER_TAX_CODE` / `_REPRESENTATIVE` / `_TITLE` | ✅ (MST, người đại diện ⏳) |
 | C4 | Staging | Thử nghiệm bằng dữ liệu giả trong CI (e2e trên trình duyệt, Moodle thật cho phần tích hợp) | ✅ |
 | C5 | Tải thí điểm | Thiết kế cho lớp tới ~100 người quét QR trong vài phút; đo khi chạy lớp thật đầu tiên | ✅ |
 | C6, C9 | Khảo sát chuẩn | Nhân viên tạo hoạt động Feedback trong khóa mẫu Moodle (ẩn danh hoặc ghi tên); hệ thống đọc mọi khảo sát | ✅ |
@@ -44,4 +44,4 @@ hướng dẫn: [TMS_HUONG_DAN_SU_DUNG.md](TMS_HUONG_DAN_SU_DUNG.md).
 | C8 | Diễn tập khôi phục backup | Đã được đồng ý | ✅ |
 
 ---
-*Cập nhật: 21/10/2026, sau quyết định của lãnh đạo.*
+*Cập nhật: 22/10/2026: thông tin pháp nhân TNTalent.*

@@ -318,9 +318,12 @@ for p in Program.objects.all():
     ;;
 
   create-admin)
+    # A fresh random password per run, shown only in the encrypted output (never in the repo or the log).
+    pw="$(openssl rand -base64 18 | tr -d '/+=')"
     remote "cd $APP && \
-      sudo docker compose exec -T backend python manage.py ensure_admin --email '$ARG' --password 'bQy2TD6XJZJ1XmcWvzAXtucD' --reset-password && \
-      sudo docker compose exec -T backend python manage.py axes_reset && echo \"admin account '$ARG' configured with initial password.\""
+      sudo docker compose exec -T backend python manage.py ensure_admin --email '$ARG' --password '$pw' --reset-password && \
+      sudo docker compose exec -T backend python manage.py axes_reset && echo \"admin account '$ARG' configured.\""
+    echo "initial password for $ARG: $pw (change it after the first login)"
     ;;
 
   restart)

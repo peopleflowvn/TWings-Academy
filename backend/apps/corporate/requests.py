@@ -99,10 +99,19 @@ def attention(requests, now: datetime | None = None):
     )
 
 
+def _handlers() -> list[str]:
+    from apps.accounts.models import User
+    from apps.accounts.rbac import has_perm_code
+
+    staff = User.objects.filter(is_staff=True, is_active=True)
+    return [u.email for u in staff if has_perm_code(u, "corporate.classes")]
+
+
 def remind_owners(now: datetime | None = None) -> int:
     """
     One e-mail per owner listing their requests overdue or due soon (weekdays, run each morning).
-    Requests nobody owns go to CORPORATE_CONTACT_EMAIL when set. Returns the number of e-mails sent.
+    Requests nobody owns go to CORPORATE_CONTACT_EMAIL, or when it is empty to every active staff member
+    who may handle requests (corporate.classes). Returns the number of e-mails sent.
     """
     import logging
     from collections import defaultdict
@@ -115,10 +124,18 @@ def remind_owners(now: datetime | None = None) -> int:
     if now.astimezone(VN).weekday() >= 5:
         return 0
     groups = defaultdict(list)
+    unowned = None
     for req in attention(TrainingRequest.objects.all(), now):
-        to = req.owner.email if req.owner_id else settings.CORPORATE_CONTACT_EMAIL
-        if to:
-            groups[to].append(req)
+        if req.owner_id:
+            recipients = [req.owner.email]
+        else:
+            if unowned is None:
+                contact = settings.CORPORATE_CONTACT_EMAIL
+                unowned = [contact] if contact else _handlers()
+            recipients = unowned
+        for to in recipients:
+            if to:
+                groups[to].append(req)
     sent = 0
     for to, reqs in groups.items():
         rows = "".join(

@@ -283,12 +283,16 @@ CORPORATE_SECOND_APPROVAL_FROM = {
     "acceptance": env.int("CORPORATE_SECOND_APPROVAL_ACCEPTANCE", default=100_000_000),
     "expense": env.int("CORPORATE_SECOND_APPROVAL_EXPENSE", default=20_000_000),
 }
-CORPORATE_PROVIDER = {
-    "legal_name": env("CORPORATE_PROVIDER_LEGAL_NAME", default="TNTalent"),
-    "address": env("CORPORATE_PROVIDER_ADDRESS", default=""),
-    "tax_code": env("CORPORATE_PROVIDER_TAX_CODE", default=""),
-    "representative": env("CORPORATE_PROVIDER_REPRESENTATIVE", default=""),
-    "title": env("CORPORATE_PROVIDER_TITLE", default=""),
+CORPORATE_PROVIDER = {  # party B on acceptance records; an empty variable keeps the default
+    key: env(f"CORPORATE_PROVIDER_{key.upper()}", default="") or default
+    for key, default in {
+        "legal_name": "Công ty Cổ phần Quản trị Nguồn nhân lực TNTalent",
+        "address": "Tòa nhà ROX Tower, số 54A Nguyễn Chí Thanh, Phường Láng Hạ, Hà Nội",
+        "phone": "024 7301 6363",
+        "tax_code": "",  # unknown yet: printed as a blank to fill in
+        "representative": "",
+        "title": "",
+    }.items()
 }
 RESEND_WEBHOOK_SECRET = env("RESEND_WEBHOOK_SECRET", default="")
 

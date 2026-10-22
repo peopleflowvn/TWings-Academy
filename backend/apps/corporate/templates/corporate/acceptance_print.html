@@ -47,6 +47,7 @@ td.num{text-align:right;white-space:nowrap}td.c{text-align:center}
   {% for p in parties %}
   <p><b>{{ p.title }}: {{ p.name }}</b></p>
   <p>Địa chỉ: {{ p.address }}</p>
+  {% if p.phone %}<p>Điện thoại: {{ p.phone }}</p>{% endif %}
   <p>Mã số thuế: {{ p.tax_code }}</p>
   <p>Đại diện: {{ p.representative }} &nbsp;&nbsp; Chức vụ: {{ p.rep_title }}</p>
   {% endfor %}

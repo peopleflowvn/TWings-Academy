@@ -127,3 +127,10 @@ def test_remind_owners(client_co, monkeypatch, settings):
     )
     assert "Chưa giao" in by_to["daotao@tntalent.test"]["html"]
     assert sla.remind_owners(vn(2026, 10, 25, 8, 15)) == 0  # Sunday
+
+    # No contact address: unowned requests go to everyone who may handle requests.
+    settings.CORPORATE_CONTACT_EMAIL = ""
+    sent.clear()
+    sla.remind_owners(monday + timedelta(days=1))
+    to_owner = next(m for m in sent if m["to"] == owner.email)
+    assert "Chưa giao" in to_owner["html"] and "daotao@tntalent.test" not in {m["to"] for m in sent}
