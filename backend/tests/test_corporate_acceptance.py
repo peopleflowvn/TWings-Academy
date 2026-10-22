@@ -176,3 +176,20 @@ def test_receivables_payments_and_aging(setup, staff_client):
         staff_client(Role.FINANCE_ACCOUNTANT).get("/api/v1/staff/corporate/receivables/").json()["paid"]
         == 10_000_000
     )
+
+
+def test_class_tabs_acceptance_and_history(setup, staff_client):
+    contract, cls = setup
+    corp = staff_client(Role.CORPORATE_TRAINING)
+    batch = corp.post(URL, {"contract": contract.pk, "title": "Đợt 1"}, format="json").json()
+    corp.post(f"{URL}{batch['id']}/submit/")
+    base = f"/api/v1/staff/corporate/classes/{cls.pk}/"
+
+    lines = corp.get(f"{base}acceptance/").json()
+    assert {line["unit"] for line in lines} == {"học viên", "buổi"}
+    assert lines[0]["batchTitle"] == "Đợt 1" and lines[0]["statusLabel"] == "Chờ duyệt nội bộ"
+
+    history = corp.get(f"{base}history/").json()
+    assert [h["action"] for h in history][:2] == ["Gửi duyệt nghiệm thu", "Lập đợt nghiệm thu"]
+    assert history[0]["actor"] == "corporate_training"
+    assert staff_client(Role.SALES_CRM).get(f"{base}history/").status_code == 403

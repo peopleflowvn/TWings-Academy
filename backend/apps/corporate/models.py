@@ -808,7 +808,8 @@ class CostAllocation(BaseModel):
 class TrainingRequest(BaseModel):
     """
     A request from a client (new class, schedule / list change, report, document...), with a deadline
-    from its priority counted in working hours (requests.py). Met = resolved by the deadline.
+    from its priority counted in working hours (requests.py), or an internal task of a PIC (kind
+    "internal", deadline usually set by hand). Met = resolved by the deadline; owners are reminded.
     """
 
     KIND_CHOICES = [
@@ -816,6 +817,7 @@ class TrainingRequest(BaseModel):
         ("change", "Thay đổi lịch / học viên"),
         ("report", "Báo cáo, số liệu"),
         ("document", "Hồ sơ, chứng từ"),
+        ("internal", "Việc nội bộ (PIC)"),
         ("other", "Khác"),
     ]
     PRIORITY_CHOICES = [("urgent", "Khẩn"), ("high", "Cao"), ("normal", "Thường"), ("low", "Thấp")]

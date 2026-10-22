@@ -1423,6 +1423,81 @@ const DocumentsPanel: React.FC<{ path: string; uploadPerm: string; defaultKind: 
   );
 };
 
+// ---------------------------------------------------------------- acceptance and history of a class
+interface ClassAcceptanceLine {
+  batch: string;
+  batchTitle: string;
+  status: string;
+  statusLabel: string;
+  description: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  vatAmount: number;
+  invoiceNumber: string;
+}
+
+const ClassAcceptanceTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
+  const [rows, setRows] = useState<ClassAcceptanceLine[] | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    api.get<ClassAcceptanceLine[]>(`/staff/corporate/classes/${cls.id}/acceptance/`).then(setRows).catch((e) => setError(errorText(e)));
+  }, [cls.id]);
+  if (!rows) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
+  return (
+    <div className={`${card} p-0 overflow-x-auto`}>
+      {rows.length === 0 ? (
+        <p className="p-5 text-xs text-slate-500">Lớp chưa nằm trong đợt nghiệm thu nào. Lập đợt ở mục Nghiệm thu khi lớp đã phát hành kết quả.</p>
+      ) : (
+        <table className="w-full text-xs">
+          <thead className="bg-slate-50 text-slate-600 text-left"><tr><th className="p-2">Đợt</th><th className="p-2">Nội dung</th><th className="p-2 text-right">Khối lượng</th><th className="p-2 text-right">Đơn giá</th><th className="p-2 text-right">Thành tiền</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((r, i) => (
+              <tr key={i} className="hover:bg-slate-50 cursor-pointer" onClick={() => navigate(`/corporate/acceptance?id=${r.batch}`)}>
+                <td className="p-2"><div className="font-bold">{r.batchTitle}</div><div className="text-slate-500">{r.statusLabel}{r.invoiceNumber ? ` · HĐ ${r.invoiceNumber}` : ''}</div></td>
+                <td className="p-2">{r.description}</td>
+                <td className="p-2 text-right">{r.quantity} {r.unit}</td>
+                <td className="p-2 text-right">{vnd(r.unitPrice)}</td>
+                <td className="p-2 text-right font-bold">{vnd(r.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+};
+
+const HistoryTab: React.FC<{ cls: CorpClass }> = ({ cls }) => {
+  const [rows, setRows] = useState<{ at: string; actor: string; action: string }[] | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    api.get<NonNullable<typeof rows>>(`/staff/corporate/classes/${cls.id}/history/`).then(setRows).catch((e) => setError(errorText(e)));
+  }, [cls.id]);
+  if (!rows) return error ? <p className="text-xs text-red-600">{error}</p> : <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
+  return (
+    <div className={`${card} p-0 overflow-x-auto`}>
+      {rows.length === 0 ? (
+        <p className="p-5 text-xs text-slate-500">Chưa có thao tác nào được ghi nhận.</p>
+      ) : (
+        <table className="w-full text-xs">
+          <thead className="bg-slate-50 text-slate-600 text-left"><tr><th className="p-2">Lúc</th><th className="p-2">Người làm</th><th className="p-2">Thao tác</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((r, i) => (
+              <tr key={i}>
+                <td className="p-2 whitespace-nowrap">{new Date(r.at).toLocaleString('vi-VN')}</td>
+                <td className="p-2">{r.actor}</td>
+                <td className="p-2">{r.action}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+};
+
 // ---------------------------------------------------------------- costs
 /** Two-level approval (from a money threshold): levels needed and the first approver so far. */
 interface Approval {
@@ -1585,7 +1660,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
   const { clients } = useClients();
   const [cls, setCls] = useState<CorpClass | null>(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'learners' | 'attendance' | 'surveys' | 'results' | 'communications' | 'documents' | 'costs' | 'overview'>('learners');
+  const [tab, setTab] = useState<'learners' | 'attendance' | 'surveys' | 'results' | 'communications' | 'documents' | 'costs' | 'acceptance' | 'history' | 'overview'>('learners');
   const [editing, setEditing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
 
@@ -1628,7 +1703,7 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         )}
       </div>
       <div className="flex gap-1 border-b border-slate-200">
-        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['surveys', 'Khảo sát'], ['results', 'Kết quả'], ['communications', 'Truyền thông'], ['documents', 'Hồ sơ'], ['costs', 'Chi phí'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
+        {([['learners', 'Học viên'], ['attendance', 'Điểm danh'], ['surveys', 'Khảo sát'], ['results', 'Kết quả'], ['communications', 'Truyền thông'], ['documents', 'Hồ sơ'], ['costs', 'Chi phí'], ['acceptance', 'Nghiệm thu'], ['history', 'Lịch sử'], ['overview', 'Tổng quan']] as const).map(([key, label]) => (
           <button key={key} type="button" onClick={() => setTab(key)}
             className={`px-4 py-2 text-xs font-bold cursor-pointer border-b-2 ${tab === key ? 'border-[#0073C1] text-[#0073C1]' : 'border-transparent text-slate-500'}`}>
             {label}
@@ -1649,6 +1724,10 @@ const ClassWorkspace: React.FC<{ id: string; courses: CourseOption[] }> = ({ id,
         <DocumentsTab cls={cls} />
       ) : tab === 'costs' ? (
         <CostsTab cls={cls} />
+      ) : tab === 'acceptance' ? (
+        <ClassAcceptanceTab cls={cls} />
+      ) : tab === 'history' ? (
+        <HistoryTab cls={cls} />
       ) : (
         <div className={`${card} text-xs space-y-2`}>
           <p><strong>Chứng chỉ TWings:</strong> {cls.issueCertificate ? 'Có cấp khi hoàn thành' : 'Không cấp (theo hợp đồng)'}</p>
@@ -3065,7 +3144,7 @@ interface RequestSummary {
   onTimeRate: number | null;
 }
 
-const REQUEST_KINDS: [string, string][] = [['new_class', 'Mở lớp mới'], ['change', 'Thay đổi lịch / học viên'], ['report', 'Báo cáo, số liệu'], ['document', 'Hồ sơ, chứng từ'], ['other', 'Khác']];
+const REQUEST_KINDS: [string, string][] = [['new_class', 'Mở lớp mới'], ['change', 'Thay đổi lịch / học viên'], ['report', 'Báo cáo, số liệu'], ['document', 'Hồ sơ, chứng từ'], ['internal', 'Việc nội bộ (PIC)'], ['other', 'Khác']];
 const REQUEST_PRIORITIES: [string, string][] = [['urgent', 'Khẩn – 4 giờ làm việc'], ['high', 'Cao – 1 ngày làm việc'], ['normal', 'Thường – 3 ngày làm việc'], ['low', 'Thấp – 5 ngày làm việc']];
 const REQUEST_STATUSES: [string, string][] = [['open', 'Mới'], ['in_progress', 'Đang xử lý'], ['done', 'Đã xong'], ['cancelled', 'Đã hủy']];
 const REQUEST_CHANNELS: [string, string][] = [['email', 'Email'], ['phone', 'Điện thoại'], ['meeting', 'Họp'], ['other', 'Khác']];
@@ -3123,7 +3202,7 @@ export const CorporateRequestsPage: React.FC = () => {
     setError('');
     const { dueAt, ...rest } = form;
     const body: Record<string, unknown> = { ...rest, owner: form.owner || null, receivedAt: fromLocalInput(form.receivedAt) };
-    if (editing !== 'new' && dueAt !== toLocalInput(editing.dueAt)) body.dueAt = fromLocalInput(dueAt); // moved by hand (holiday)
+    if (editing === 'new' ? dueAt : dueAt !== toLocalInput(editing.dueAt)) body.dueAt = fromLocalInput(dueAt); // set by hand (holiday, internal task)
     try {
       if (editing === 'new') await api.post('/staff/corporate/requests/', body);
       else await api.patch(`/staff/corporate/requests/${editing.id}/`, body);
@@ -3138,8 +3217,8 @@ export const CorporateRequestsPage: React.FC = () => {
     <div className="space-y-4">
       <div className={`${card} flex flex-wrap items-center justify-between gap-3`}>
         <div>
-          <h2 className="font-bold text-slate-900">Yêu cầu của khách hàng</h2>
-          <p className="text-xs text-slate-500">Hạn xử lý (SLA) tính theo giờ làm việc thứ 2–6 từ lúc nhận: Khẩn 4 giờ, Cao 1 ngày, Thường 3 ngày, Thấp 5 ngày. Ngày lễ thì sửa hạn bằng tay. Người xử lý nhận email nhắc mỗi sáng.</p>
+          <h2 className="font-bold text-slate-900">Yêu cầu của khách hàng &amp; việc nội bộ</h2>
+          <p className="text-xs text-slate-500">Hạn xử lý (SLA) tính theo giờ làm việc thứ 2–6 từ lúc nhận: Khẩn 4 giờ, Cao 1 ngày, Thường 3 ngày, Thấp 5 ngày. Ngày lễ thì sửa hạn bằng tay. Việc nội bộ của PIC: chọn loại "Việc nội bộ" và đặt hạn. Người xử lý nhận email nhắc mỗi sáng.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select className={`${input} max-w-xs`} value={client} onChange={(e) => setClient(e.target.value)}>
@@ -3193,7 +3272,7 @@ export const CorporateRequestsPage: React.FC = () => {
             <label>Kênh<select className={input} value={form.channel} onChange={(e) => set({ channel: e.target.value })}>{REQUEST_CHANNELS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
             <label>Ưu tiên<select className={input} value={form.priority} onChange={(e) => set({ priority: e.target.value })}>{REQUEST_PRIORITIES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
             <label>Nhận lúc<input type="datetime-local" className={input} value={form.receivedAt} onChange={(e) => set({ receivedAt: e.target.value })} /></label>
-            {editing !== 'new' && <label>Hạn SLA (tự tính; sửa khi có ngày lễ)<input type="datetime-local" className={input} value={form.dueAt} onChange={(e) => set({ dueAt: e.target.value })} /></label>}
+            <label>{editing === 'new' ? 'Hạn (để trống: tự tính theo ưu tiên)' : 'Hạn (tự tính; sửa khi có ngày lễ)'}<input type="datetime-local" className={input} value={form.dueAt} onChange={(e) => set({ dueAt: e.target.value })} /></label>
             <label>Người xử lý<select className={input} value={form.owner} onChange={(e) => set({ owner: e.target.value })}><option value="">– Chưa giao –</option>{owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
             {editing !== 'new' && <label>Trạng thái<select className={input} value={form.status} onChange={(e) => set({ status: e.target.value })}>{REQUEST_STATUSES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>}
             {editing !== 'new' && <label className="md:col-span-2">Kết quả xử lý<textarea className={input} rows={2} value={form.resolution} onChange={(e) => set({ resolution: e.target.value })} /></label>}

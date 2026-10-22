@@ -298,6 +298,8 @@ class CorporateClassViewSet(
         reopen="corporate.results_publish",
         adjust_attendance="corporate.attendance_adjust",
         selfmark="corporate.classes",
+        history="corporate.view",
+        acceptance="corporate.view",
     )
     filterset_fields = ["client", "status", "contract", "plan_line"]
     search_fields = ["cohort__name", "cohort__course__title"]
@@ -503,6 +505,20 @@ class CorporateClassViewSet(
     @documents.mapping.post
     def upload_document(self, request, pk=None):
         return _upload_document(request, self.get_object())
+
+    @action(detail=True, methods=["get"])
+    def history(self, request, pk=None):
+        """Everything done on the class and what belongs to it (audit log, newest first)."""
+        from .history import class_history
+
+        return Response(class_history(self.get_object()))
+
+    @action(detail=True, methods=["get"])
+    def acceptance(self, request, pk=None):
+        """The acceptance lines billing this class."""
+        from .history import class_acceptance
+
+        return Response(class_acceptance(self.get_object()))
 
 
 class ClassDocumentViewSet(_Scoped, viewsets.GenericViewSet):

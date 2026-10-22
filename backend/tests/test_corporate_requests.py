@@ -134,3 +134,14 @@ def test_remind_owners(client_co, monkeypatch, settings):
     sla.remind_owners(monday + timedelta(days=1))
     to_owner = next(m for m in sent if m["to"] == owner.email)
     assert "Chưa giao" in to_owner["html"] and "daotao@tntalent.test" not in {m["to"] for m in sent}
+
+
+def test_internal_task_keeps_its_own_deadline(client_co, staff_client):
+    corp = staff_client(Role.CORPORATE_TRAINING)
+    due = vn(2026, 11, 3, 17, 0)
+    task = corp.post(
+        URL,
+        {"client": client_co.pk, "kind": "internal", "title": "In tài liệu lớp", "dueAt": due.isoformat()},
+        format="json",
+    ).json()
+    assert task["kindLabel"] == "Việc nội bộ (PIC)" and datetime.fromisoformat(task["dueAt"]) == due
