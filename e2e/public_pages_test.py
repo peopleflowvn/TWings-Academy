@@ -38,17 +38,20 @@ def search_works(page) -> list[str]:
     box.click()
     box.fill(query)
     try:
-        page.locator("[role=listbox] a", has_text=course["title"]).first.click(timeout=10000)
-        page.wait_for_url(f"**/khoa-hoc/{course['slug']}", timeout=10000)
+        page.locator("[role=listbox] a", has_text=course["title"]).first.click(timeout=15000)
+        page.wait_for_url(lambda url: url.rstrip("/").endswith(f"/khoa-hoc/{course['slug']}"), timeout=20000)
     except Exception as exc:  # noqa: BLE001
         problems.append(f"suggestion for {query!r} did not open {course['slug']}: {exc}")
     page.goto(BASE + "/", wait_until="load")
     box = page.locator("header input[type=search]").first
+    box.click()
     box.fill(query)
-    box.press("Enter")
     try:
-        page.wait_for_url("**/khoa-hoc?q=*", timeout=10000)
-        page.wait_for_selector("text=khóa học phù hợp", timeout=10000)
+        # Suggestions shown = the page has the query (slow CI runners: Enter must not race the typing).
+        page.wait_for_selector("[role=listbox]", timeout=15000)
+        box.press("Enter")
+        page.wait_for_url(lambda url: "/khoa-hoc" in url and "q=" in url, timeout=20000)
+        page.wait_for_selector("text=khóa học phù hợp", timeout=15000)
     except Exception as exc:  # noqa: BLE001
         problems.append(f"Enter did not open the filtered catalogue: {exc}")
     return problems

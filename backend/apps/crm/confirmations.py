@@ -34,9 +34,11 @@ def send_order_received(order_id) -> None:
         )
         code = "checkout_received"
         default_subject = f"Thông tin chuyển khoản {order.order_code} – {order.course_title} | TWings Academy"
-        default_body = f"""
-<div style="font-size: 20px; font-weight: 800; color: #002D62; margin-bottom: 6px; letter-spacing: -0.3px;">THÔNG TIN THANH TOÁN ĐĂNG KÝ HỌC</div>
-<div style="font-size: 13px; color: #64748B; margin-bottom: 22px;">Xác nhận tiếp nhận hồ sơ đăng ký khóa học</div>
+        default_body = """\
+<div style="font-size: 20px; font-weight: 800; color: #002D62; margin-bottom: 6px;">\
+THÔNG TIN THANH TOÁN ĐĂNG KÝ HỌC</div>
+<div style="font-size: 13px; color: #64748B; margin-bottom: 22px;">\
+Xác nhận tiếp nhận hồ sơ đăng ký khóa học</div>
 <p>Chào <strong>{{customer_name}}</strong>,</p>
 <p>TWings Academy đã nhận đăng ký <strong>{{course_title}}</strong>{{cohort}}.
 Chỗ học và học phí được giữ đến <strong>{{hold_until}}</strong>.</p>
@@ -53,16 +55,21 @@ Chỗ học và học phí được giữ đến <strong>{{hold_until}}</strong>
             "plan": plan_str,
             "payment_details": payment_details_html(order),
         }
-        subject, html = render_template(code, context, default_subject=default_subject, default_body=default_body)
+        subject, html = render_template(
+            code, context, default_subject=default_subject, default_body=default_body
+        )
     else:
         code = "consultation_received"
         default_subject = f"TWings đã nhận đăng ký tư vấn {order.course_title}"
-        default_body = f"""
-<div style="font-size: 20px; font-weight: 800; color: #002D62; margin-bottom: 6px; letter-spacing: -0.3px;">XÁC NHẬN ĐĂNG KÝ TƯ VẤN</div>
-<div style="font-size: 13px; color: #64748B; margin-bottom: 22px;">Chuyên viên TWings sẽ liên hệ hỗ trợ bạn trong giờ làm việc</div>
+        default_body = """\
+<div style="font-size: 20px; font-weight: 800; color: #002D62; margin-bottom: 6px;">\
+XÁC NHẬN ĐĂNG KÝ TƯ VẤN</div>
+<div style="font-size: 13px; color: #64748B; margin-bottom: 22px;">\
+Chuyên viên TWings sẽ liên hệ hỗ trợ bạn trong giờ làm việc</div>
 <p>Chào <strong>{{customer_name}}</strong>,</p>
 <p>TWings Academy đã nhận đăng ký tư vấn khóa học <strong>{{course_title}}</strong>.</p>
-<p>Tư vấn viên sẽ gọi cho bạn qua số <strong>{{customer_phone}}</strong> trong giờ làm việc để giới thiệu chi tiết lịch khai giảng, học phí và các hình thức hỗ trợ tài chính.</p>
+<p>Tư vấn viên sẽ gọi cho bạn qua số <strong>{{customer_phone}}</strong> trong giờ làm việc để giới thiệu \
+chi tiết lịch khai giảng, học phí và các hình thức hỗ trợ tài chính.</p>
 <p>Cần hỗ trợ ngay, vui lòng liên hệ hotline <strong>1900 633 898</strong> hoặc phản hồi email này.</p>
 """
         context = {
@@ -70,7 +77,9 @@ Chỗ học và học phí được giữ đến <strong>{{hold_until}}</strong>
             "course_title": title,
             "customer_phone": escape(order.customer_phone),
         }
-        subject, html = render_template(code, context, default_subject=default_subject, default_body=default_body)
+        subject, html = render_template(
+            code, context, default_subject=default_subject, default_body=default_body
+        )
 
     try:
         send_logged(

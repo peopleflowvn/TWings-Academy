@@ -171,6 +171,11 @@ export const SiteSearch: React.FC<SiteSearchProps> = ({
     } else if (e.key === 'Enter' && active >= 0 && suggestions[active]) {
       e.preventDefault();
       openSuggestion(suggestions[active]);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      setOpen(false);
+      onSubmit();
+      onDone?.();
     }
   };
 
