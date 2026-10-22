@@ -220,47 +220,38 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
       <div className="absolute bottom-1/4 -left-20 w-[450px] h-[300px] bg-[#0073C1]/15 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 relative z-10">
-        {/* Top Header Badge & Navigation Controls */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0073C1]/20 border border-[#5FBEFF]/40 text-[#D7F5FF] text-xs font-bold uppercase tracking-wider backdrop-blur-md shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-[#5FBEFF] animate-pulse" />
-              <span>Chương trình Tuyển sinh & Khóa học 2026</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-400 hidden sm:inline-block">
-              {String(activeIndex + 1).padStart(2, '0')} / {String(displayBanners.length).padStart(2, '0')}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => scroll('left')}
-                disabled={!canScrollLeft}
-                className={`p-2 rounded-full border transition-all cursor-pointer backdrop-blur-md ${
-                  canScrollLeft
-                    ? 'bg-white/10 hover:bg-white/20 text-white border-white/20 shadow-xs'
-                    : 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed opacity-40'
-                }`}
-                title="Chương trình trước"
-                aria-label="Chương trình trước"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => scroll('right')}
-                disabled={!canScrollRight}
-                className={`p-2 rounded-full border transition-all cursor-pointer backdrop-blur-md ${
-                  canScrollRight
-                    ? 'bg-white/10 hover:bg-white/20 text-white border-white/20 shadow-xs'
-                    : 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed opacity-40'
-                }`}
-                title="Chương trình tiếp theo"
-                aria-label="Chương trình tiếp theo"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+        {/* Top Header Navigation Controls */}
+        <div className="flex items-center justify-end gap-3">
+          <span className="text-xs font-semibold text-slate-400">
+            {String(activeIndex + 1).padStart(2, '0')} / {String(displayBanners.length).padStart(2, '0')}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => scroll('left')}
+              disabled={!canScrollLeft}
+              className={`p-2 rounded-full border transition-all cursor-pointer backdrop-blur-md ${
+                canScrollLeft
+                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/20 shadow-xs'
+                  : 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed opacity-40'
+              }`}
+              title="Chương trình trước"
+              aria-label="Chương trình trước"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => scroll('right')}
+              disabled={!canScrollRight}
+              className={`p-2 rounded-full border transition-all cursor-pointer backdrop-blur-md ${
+                canScrollRight
+                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/20 shadow-xs'
+                  : 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed opacity-40'
+              }`}
+              title="Chương trình tiếp theo"
+              aria-label="Chương trình tiếp theo"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -271,31 +262,56 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
           className="flex gap-4 sm:gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0"
         >
           {displayBanners.map((banner, index) => {
-            // Mode 1: Full-Image Banner
-            if (banner.displayType === 'image_only' && banner.fullBannerImageUrl) {
+            // Mode 1: Full-Image Banner with Hyperlink Support
+            if (banner.displayType === 'image_only' && (banner.fullBannerImageUrl || banner.imageUrl)) {
+              const img = banner.fullBannerImageUrl || banner.imageUrl;
               return (
                 <div
                   key={banner.id || index}
                   onClick={() => handleBannerAction(banner)}
-                  className="w-full min-w-full snap-start rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl hover:shadow-cyan-500/10 transition-all duration-300 relative group cursor-pointer border border-white/15 bg-slate-900 shrink-0"
+                  className="w-full min-w-full snap-start rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl hover:shadow-cyan-500/20 transition-all duration-300 relative group cursor-pointer border border-white/15 bg-slate-900 shrink-0 select-none"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      handleBannerAction(banner);
+                    }
+                  }}
+                  title={banner.linkUrl ? `Đi tới: ${banner.linkUrl}` : banner.title}
                 >
                   <img
-                    src={banner.fullBannerImageUrl}
-                    alt={banner.title}
-                    className="w-full h-[240px] sm:h-[340px] lg:h-[400px] object-cover group-hover:scale-105 transition-transform duration-700"
+                    src={img}
+                    alt={banner.title || 'TWings Banner'}
+                    className="w-full h-[220px] sm:h-[340px] lg:h-[420px] object-cover group-hover:scale-[1.015] transition-transform duration-700"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/30 to-transparent flex items-end p-6 sm:p-8">
-                    <div className="flex items-center justify-between w-full text-white gap-3">
-                      <div className="min-w-0">
-                        <h3 className="font-extrabold text-base sm:text-xl lg:text-2xl drop-shadow-sm truncate">{banner.title}</h3>
-                        {banner.subtitle && <p className="text-xs sm:text-base text-slate-300 line-clamp-1">{banner.subtitle}</p>}
-                      </div>
-                      <span className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0073C1] to-[#2C93E8] hover:brightness-110 text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-lg text-white shrink-0">
-                        <span>{banner.buttonText || 'Khám phá ngay'}</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </span>
+                  {/* Subtle hyperlink indicator on hover if linkUrl exists */}
+                  {banner.linkUrl && (
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-md border border-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
+                      <span>Mở liên kết</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
                     </div>
-                  </div>
+                  )}
+                  {/* Optional title overlay only if title is specified */}
+                  {banner.title && banner.title !== 'Banner' && banner.title.trim().length > 0 && (
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 via-slate-900/40 to-transparent p-4 sm:p-6 flex items-end justify-between gap-4">
+                      <div className="min-w-0">
+                        <h3 className="font-extrabold text-base sm:text-xl lg:text-2xl text-white drop-shadow-md truncate">
+                          {banner.title}
+                        </h3>
+                        {banner.subtitle && (
+                          <p className="text-xs sm:text-sm text-slate-300 line-clamp-1">
+                            {banner.subtitle}
+                          </p>
+                        )}
+                      </div>
+                      {banner.buttonText && (
+                        <span className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0073C1] to-[#2C93E8] text-xs sm:text-sm font-bold flex items-center gap-1.5 text-white shadow-lg shrink-0 group-hover:brightness-110">
+                          <span>{banner.buttonText}</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             }
@@ -315,18 +331,28 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                   <div className="lg:col-span-7 xl:col-span-8 space-y-4 sm:space-y-5">
                     {/* Partner Badges */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-xs font-extrabold uppercase tracking-wider shadow-xs">
-                        <span className="w-2 h-2 rounded-full bg-[#5FBEFF] animate-pulse" />
-                        <span>TWINGS ACADEMY</span>
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EA580C]/20 backdrop-blur-md border border-[#EA580C]/40 text-[#FFA07A] text-xs font-extrabold uppercase tracking-wider shadow-xs">
-                        <span className="w-2 h-2 rounded-full bg-[#EA580C]" />
-                        <span>ĐỐI TÁC MSB BANK</span>
-                      </span>
-                      <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 backdrop-blur-md border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-wider shadow-xs">
-                        <Sparkles className="w-3 h-3 text-emerald-300" />
-                        <span>Khóa Tuyển Sinh 2026</span>
-                      </span>
+                      {banner.partnerBadges && banner.partnerBadges.length > 0 ? (
+                        banner.partnerBadges.map((badge, bIdx) => (
+                          <span
+                            key={bIdx}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-xs font-extrabold uppercase tracking-wider shadow-xs"
+                          >
+                            <span className="w-2 h-2 rounded-full bg-[#5FBEFF] animate-pulse" />
+                            <span>{badge.name}</span>
+                          </span>
+                        ))
+                      ) : (
+                        <>
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-xs font-extrabold uppercase tracking-wider shadow-xs">
+                            <span className="w-2 h-2 rounded-full bg-[#5FBEFF] animate-pulse" />
+                            <span>TWINGS ACADEMY</span>
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EA580C]/20 backdrop-blur-md border border-[#EA580C]/40 text-[#FFA07A] text-xs font-extrabold uppercase tracking-wider shadow-xs">
+                            <span className="w-2 h-2 rounded-full bg-[#EA580C]" />
+                            <span>ĐỐI TÁC MSB BANK</span>
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     {/* Headline with vibrant gradient highlights */}
@@ -344,20 +370,40 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                       )}
                     </h2>
 
-                    <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl font-medium">
-                      {banner.subtitle}
-                    </p>
+                    {banner.subtitle && (
+                      <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl font-medium">
+                        {banner.subtitle}
+                      </p>
+                    )}
 
-                    {/* Value-add highlights */}
+                    {/* Value-add highlights (Taglines) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs sm:text-sm font-semibold text-slate-200">
-                      <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
-                        <CheckCircle2 className="w-4 h-4 text-[#5FBEFF] shrink-0" />
-                        <span>Cố vấn 1-1 cùng Giám đốc Khối MSB</span>
-                      </div>
-                      <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>Cam kết kết nối & bảo lãnh tuyển dụng</span>
-                      </div>
+                      {banner.floatingBadges && banner.floatingBadges.length > 0 ? (
+                        banner.floatingBadges.map((badge, bIdx) => (
+                          <div
+                            key={bIdx}
+                            className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md"
+                          >
+                            <CheckCircle2
+                              className={`w-4 h-4 shrink-0 ${
+                                bIdx % 2 === 0 ? 'text-[#5FBEFF]' : 'text-emerald-400'
+                              }`}
+                            />
+                            <span>{badge.text}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
+                            <CheckCircle2 className="w-4 h-4 text-[#5FBEFF] shrink-0" />
+                            <span>Cố vấn 1-1 cùng Giám đốc Khối MSB</span>
+                          </div>
+                          <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span>Cam kết kết nối & bảo lãnh tuyển dụng</span>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Action buttons row */}
