@@ -1,5 +1,6 @@
 import React from 'react';
-import { Star, Clock, CheckCircle2, Sparkles, BookOpen, ArrowRight, Play, MapPin, Building2, Laptop } from 'lucide-react';
+import { Star, CheckCircle2, Sparkles, Play, Building2, Laptop, CalendarDays } from 'lucide-react';
+import { canBuy, installmentLine, openIntakes, priceFor, startLine, vnd } from '../lib/selling';
 import { Course } from '../types';
 
 interface CourseraCourseCardProps {
@@ -17,11 +18,10 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
   onOpenYouTubeTrial,
   isEnrolled = false,
 }) => {
-  const formatVND = (num: number) => {
-    return new Intl.NumberFormat('vi-VN').format(num) + ' ₫';
-  };
+  // Today's price of the next intake (early bird included).
+  const price = priceFor(course, openIntakes(course)[0]);
 
-  const partnerName = course.partner?.name || 'Twings Partner';
+  const partnerName = course.partner?.name || 'TWings Academy';
   const partnerLogoText = course.partner?.logoText || partnerName;
   const partnerColor = course.partner?.logoColor || '#0073C1';
 
@@ -58,14 +58,19 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
       {/* Thumbnail with overlay & badge */}
       <div 
         onClick={() => onSelectCourse(course)}
-        className="relative aspect-video w-full overflow-hidden bg-slate-100 cursor-pointer"
+        className="relative aspect-video w-full overflow-hidden bg-gradient-to-tr from-[#00388A] to-[#0073C1] cursor-pointer"
       >
-        <img
-          src={course.thumbnail}
-          alt={course.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          loading="lazy"
-        />
+        {course.thumbnail ? (
+          <img
+            src={course.thumbnail}
+            alt={course.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'; // broken image: the gradient below shows
+            }}
+          />
+        ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
         {/* Partner Logo Badge in top left corner */}
@@ -146,40 +151,35 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
           </div>
         </div>
 
-        {/* Footer: Price & Actions */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-          <div>
-            <div className="text-[11px] text-slate-400">Học phí:</div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-base font-black text-slate-900 font-mono">
-                {formatVND(course.price)}
-              </span>
+        {/* Footer: when it starts, price (installments), actions */}
+        <div className="pt-3 border-t border-slate-100 space-y-3">
+          {startLine(course) && (
+            <div className={`flex items-center gap-1.5 text-xs font-semibold ${canBuy(course) ? 'text-emerald-700' : 'text-slate-500'}`}>
+              <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate" title={startLine(course)}>{startLine(course)}</span>
             </div>
+          )}
+          <div>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-lg font-black text-slate-900 whitespace-nowrap">{vnd(price)}</span>
+              {course.originalPrice > price && (
+                <span className="text-xs text-slate-400 line-through whitespace-nowrap">{vnd(course.originalPrice)}</span>
+              )}
+            </div>
+            {installmentLine(course, price) && <div className="text-[11px] text-slate-500">{installmentLine(course, price)}</div>}
           </div>
-
-          <div className="flex items-center gap-1.5">
-            {course.youtubeVideoId && onOpenYouTubeTrial && (
-              <button
-                onClick={() => onOpenYouTubeTrial(course)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                title="Học thử qua YouTube"
-              >
-                <Play className="w-4 h-4 fill-current" />
-              </button>
-            )}
-
+          <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => onSelectCourse(course)}
-              className="px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:text-[#0073C1] hover:bg-blue-50/80 rounded-lg transition-colors cursor-pointer"
+              className="py-2 text-xs font-bold text-slate-700 border border-slate-200 hover:border-[#0073C1] hover:text-[#0073C1] rounded-lg transition-colors cursor-pointer"
             >
-              Chi tiết
+              Xem chi tiết
             </button>
-
             <button
               onClick={() => onEnrollCourse(course)}
-              className="px-3 py-1.5 bg-[#0073C1] hover:bg-[#005FA0] text-white text-xs font-bold rounded-lg transition-colors shadow-xs cursor-pointer whitespace-nowrap"
+              className="py-2 bg-[#0073C1] hover:bg-[#005FA0] text-white text-xs font-bold rounded-lg transition-colors shadow-xs cursor-pointer whitespace-nowrap"
             >
-              Đăng ký
+              {canBuy(course) ? 'Đăng ký học' : 'Nhận tư vấn'}
             </button>
           </div>
         </div>

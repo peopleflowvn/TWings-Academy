@@ -106,6 +106,8 @@ def candidates(key: str, now=None):
             amount__gt=0,
             created_at__lte=now - timedelta(days=1),
             created_at__gte=now - timedelta(days=7),
+            # Checkouts holding a seat get the confirmation and the hold reminder instead.
+            hold_expires_at__isnull=True,
         )
     elif key == "intake_starting":
         qs = base.filter(

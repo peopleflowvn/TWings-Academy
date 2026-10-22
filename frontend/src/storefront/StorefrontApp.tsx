@@ -16,45 +16,49 @@ import { FloatingContact } from '../components/FloatingContact';
 import { applyPageMeta } from '../lib/siteSeo';
 import { trackView } from '../lib/attribution';
 
-import { BrandLogo } from '../components/BrandLogo';
 import { TopLoadingBar } from '../components/TopLoadingBar';
+import { CourseraHeader } from '../components/CourseraHeader';
+import { CourseraFooter } from '../components/CourseraFooter';
+import { RegistrationModal } from '../components/RegistrationModal';
+import { api } from '../lib/api';
+import { routePath, View } from '../lib/routes';
+import { Course } from '../types';
 
+/** The website's own header and footer, so programs and legal pages look like the rest of the site. */
 const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNode }> = ({ active, children }) => {
-  const link = (href: string, label: string, on: boolean) => (
-    <a href={href} className={`px-3 py-2 rounded-xl text-sm font-bold ${on ? 'text-[#0056D2] bg-blue-50' : 'text-slate-600 hover:text-slate-900'}`}>
-      {label}
-    </a>
-  );
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [search, setSearch] = useState('');
+  const [consult, setConsult] = useState(false);
+  useEffect(() => {
+    if (isBackendEnabled()) api.get<Course[]>('/public/courses/').then(setCourses).catch(() => undefined);
+  }, []);
+  // These pages are outside the homepage app: links load the page.
+  const go = (view: View) => {
+    window.location.href = routePath(view);
+  };
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
       <TopLoadingBar />
-      <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
-          <a href="/" className="flex items-center gap-2.5" title="Trang Chủ TWings Academy">
-            <BrandLogo dark={false} size="sm" />
-          </a>
-          <nav className="flex items-center gap-1">
-            {link('/khoa-hoc', 'Khóa học', active === 'programs')}
-            <a href="/learn/" className="ml-1 px-3 py-2 rounded-xl text-sm font-bold bg-[#0056D2] text-white hover:bg-[#00419E]">
-              Vào học
-            </a>
-          </nav>
-        </div>
-      </header>
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-8">{children}</main>
+      <CourseraHeader
+        currentView={active === 'programs' ? 'catalog' : 'about'}
+        onNavigate={go}
+        searchQuery={search}
+        onSearchChange={setSearch}
+        onSearchSubmit={() => go('catalog')}
+        onOpenConsultation={() => setConsult(true)}
+      />
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
       <FloatingContact />
-      <footer className="border-t border-slate-200 bg-white text-xs text-slate-500">
-        <div className="max-w-6xl mx-auto px-4 py-5 flex flex-wrap gap-4 justify-between">
-          <span>© TWings Academy</span>
-          <span className="flex gap-4">
-            <a href="/khoa-hoc" className="hover:text-slate-800">Khóa học & chương trình</a>
-            <a href="/learn/" className="hover:text-slate-800 font-medium text-[#0056D2]">Cổng học viên (LMS)</a>
-            <a href="/learn/user/profile.php" className="hover:text-slate-800">Hồ sơ & Tài khoản</a>
-            <a href="/dieu-khoan" className="hover:text-slate-800">Điều khoản</a>
-            <a href="/chinh-sach-bao-mat" className="hover:text-slate-800">Chính sách bảo mật</a>
-          </span>
-        </div>
-      </footer>
+      <CourseraFooter
+        onNavigate={go}
+        courses={courses}
+        onSelectCourse={(c) => {
+          window.location.href = routePath('course-detail', c.slug);
+        }}
+      />
+      {consult && (
+        <RegistrationModal course={null} allCourses={courses} onClose={() => setConsult(false)} onSubmitSuccess={() => undefined} />
+      )}
     </div>
   );
 };
@@ -189,14 +193,14 @@ const ProgramDetail: React.FC<{ slug: string }> = ({ slug }) => {
         <div className="space-y-3">
           <h2 className="font-bold text-slate-900">Các khóa học trong chương trình</h2>
           {program.courses.map((c, i) => (
-            <div key={c.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex gap-4 items-center">
+            <a key={c.id} href={routePath('course-detail', c.slug)} className="bg-white border border-slate-200 rounded-2xl p-4 flex gap-4 items-center hover:border-[#0056D2] transition-colors">
               <div className="w-8 h-8 rounded-full bg-blue-50 text-[#0056D2] font-black flex items-center justify-center shrink-0">{i + 1}</div>
               <div className="min-w-0 flex-1">
                 <div className="font-bold text-slate-900">{c.title}</div>
                 <div className="text-xs text-slate-500">{[c.level, c.duration].filter(Boolean).join(' · ')}</div>
               </div>
               <div className="text-xs text-slate-400 line-through shrink-0">{formatVND(c.price)}</div>
-            </div>
+            </a>
           ))}
         </div>
       </div>
@@ -219,7 +223,7 @@ const ProgramDetail: React.FC<{ slug: string }> = ({ slug }) => {
           Đăng ký chương trình <ArrowRight className="w-4 h-4" />
         </button>
         <ul className="text-xs text-slate-600 space-y-1.5">
-          <li className="flex gap-2"><BookOpen className="w-4 h-4 text-[#0056D2]" /> Mở tất cả {program.courses.length} khóa trên TWings LMS</li>
+          <li className="flex gap-2"><BookOpen className="w-4 h-4 text-[#0056D2]" /> Ghi danh cả {program.courses.length} khóa của chương trình; khóa theo đợt học theo lịch khai giảng</li>
           <li className="flex gap-2"><UserRound className="w-4 h-4 text-[#0056D2]" /> Theo dõi học phí, tiến độ, chứng chỉ trong Tài khoản</li>
         </ul>
       </aside>

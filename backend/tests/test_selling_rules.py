@@ -199,3 +199,84 @@ def test_backfill_holds_old_checkouts_and_lowers_coupon_counts(course):
     lead.refresh_from_db()
     assert checkout.hold_expires_at is not None and lead.hold_expires_at is None
     assert Coupon.objects.get(code="OLD").usage_count == 0
+
+
+def test_classroom_course_without_intake_takes_consultations_only(api, registration_payload, course):
+    course.delivery_format = "offline"
+    course.save()
+    assert _public(api, course)["checkoutOpen"] is False
+    res = api.post("/api/v1/public/checkout/", registration_payload, format="json")
+    assert res.status_code == 400 and "chưa có đợt khai giảng" in res.json()["detail"]
+    # a consultation is still taken
+    assert api.post("/api/v1/public/registrations/", registration_payload, format="json").status_code == 201
+
+    Cohort.objects.create(course=course, name="K1", status="opening")
+    assert _public(api, course)["checkoutOpen"] is True
+    course.delivery_format = "online_external_lms"
+    course.save()
+    Cohort.objects.all().delete()
+    assert _public(api, course)["checkoutOpen"] is True  # self-paced online: no intake needed
+
+
+def test_promotion_end_date_is_public_only_while_it_runs(api, course):
+    assert _public(api, course)["promotionEndsOn"] is None
+    course.sale_ends_on = timezone.localdate() + timedelta(days=2)
+    course.save()
+    assert _public(api, course)["promotionEndsOn"] == course.sale_ends_on.isoformat()
+
+
+def test_visitor_gets_an_e_mail_right_after_the_form(
+    api, registration_payload, django_capture_on_commit_callbacks
+):
+    from apps.notifications.models import EmailLog
+
+    with django_capture_on_commit_callbacks(execute=True):
+        body, order = _checkout(api, registration_payload)
+    log = EmailLog.objects.get(template_code="checkout_received")
+    assert order.order_code in log.subject and body["transferContent"] in log.rendered_html
+
+    with django_capture_on_commit_callbacks(execute=True):
+        res = api.post(
+            "/api/v1/public/registrations/",
+            {**registration_payload, "customerEmail": "tuvan@example.com"},
+            format="json",
+        )
+    assert res.status_code == 201
+    assert EmailLog.objects.filter(
+        template_code="consultation_received", recipient_email="tuvan@example.com"
+    ).exists()
+
+
+def test_unwatchable_trial_video_is_hidden_and_flagged(api, course, settings, monkeypatch):
+    from django.core.cache import cache
+
+    from apps.catalog import youtube
+    from apps.catalog.publishing import readiness
+
+    settings.YOUTUBE_CHECK = True
+    cache.clear()
+    calls = []
+
+    class Res:
+        def __init__(self, code):
+            self.status_code = code
+
+    monkeypatch.setattr(
+        youtube.requests,
+        "get",
+        lambda url, params, timeout: calls.append(params) or Res(404 if "gone" in params["url"] else 200),
+    )
+    course.youtube_video_id, course.youtube_trial_url = (
+        "gone1234567",
+        "https://www.youtube.com/watch?v=gone1234567",
+    )
+    course.save()
+    body = _public(api, course)
+    assert body["youtubeVideoId"] == "" and body["youtubeTrialUrl"] == ""
+    assert not next(i for i in readiness(course) if i["key"] == "video")["ok"]
+    _public(api, course)
+    assert len(calls) == 1  # cached
+
+    course.youtube_video_id = "fine1234567"
+    course.save()
+    assert _public(api, course)["youtubeVideoId"] == "fine1234567"

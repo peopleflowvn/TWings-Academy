@@ -13,6 +13,7 @@ import {
 } from './data/courseraData';
 import { DEFAULT_CMS_SECTIONS } from './data/coursesData';
 import { api, isBackendEnabled, Paginated } from './lib/api';
+import { canBuy } from './lib/selling';
 import { parseRoute, routePath, View } from './lib/routes';
 import { applyPageMeta } from './lib/siteSeo';
 import { trackView } from './lib/attribution';
@@ -139,6 +140,25 @@ export default function App() {
   const trendingAICourses = courses.filter((c) => c.category === 'Trí tuệ nhân tạo (AI)' || c.badgeSection === 'trending_ai');
   const professionalCertificates = courses.filter((c) => c.type === 'Chứng chỉ Chuyên môn');
   const degreePrograms = courses.filter((c) => c.type === 'Bằng cấp Trực tuyến' || c.badgeSection === 'hot_new');
+  // A shelf shows when it has courses that an earlier shelf did not already show as a whole.
+  const visibleShelves: Record<string, number> = {};
+  {
+    const seen = new Set<string>();
+    (
+      [
+        ['popular-shelf', mostPopularCourses, cmsSections.bestsellers.enabled],
+        ['ai-shelf', trendingAICourses, cmsSections.trendingAI?.enabled !== false],
+        ['certificates-shelf', professionalCertificates, cmsSections.certificates?.enabled !== false],
+        ['degrees-shelf', degreePrograms, cmsSections.degrees?.enabled !== false]
+      ] as [string, Course[], boolean][]
+    ).forEach(([id, list, enabled]) => {
+      const key = list.map((c) => c.id).sort().join(',');
+      if (enabled && list.length && !seen.has(key)) {
+        seen.add(key);
+        visibleShelves[id] = list.length;
+      }
+    });
+  }
 
   // ---- Routing: state <-> URL ----
   const go = (view: View, slug?: string) => {
@@ -263,6 +283,14 @@ export default function App() {
     go('campaign-detail', slug);
   };
 
+  /** "Đăng ký học": straight to payment when the course is on sale, else the consultation form. */
+  const handleBuy = (course: Course) => {
+    if (LIVE && canBuy(course)) {
+      setCheckoutPrefill(undefined);
+      setCheckoutCourse(course);
+    } else handleOpenRegistration(course);
+  };
+
   const handleOpenRegistration = (course?: Course, campaignCode = '') => {
     setRegistrationCampaign(campaignCode);
     setRegistrationCourse(course || selectedCourse || courses[0]);
@@ -309,7 +337,7 @@ export default function App() {
           initialSearchQuery={searchQuery}
           initialCategory={searchCategory}
           onSelectCourse={handleSelectCourse}
-          onEnrollCourse={(c) => handleOpenRegistration(c)}
+          onEnrollCourse={handleBuy}
         />
       )}
 
@@ -325,7 +353,7 @@ export default function App() {
           course={selectedCourse}
           isEnrolled={enrolledCourseIds.includes(selectedCourse.id)}
           onBack={() => handleNavigate('catalog')}
-          onEnrollCourse={(c) => handleOpenRegistration(c)}
+          onEnrollCourse={handleBuy}
           onCheckout={(c, prefill) => {
             setCheckoutPrefill(prefill);
             setCheckoutCourse(c);
@@ -424,6 +452,7 @@ export default function App() {
           {cmsSections.intro?.enabled !== false && (
             <IntroSection 
               introData={cmsSections.intro}
+              shelfCounts={visibleShelves}
               onScrollToSection={(id) => {
                 const el = document.getElementById(id);
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -432,23 +461,23 @@ export default function App() {
           )}
 
           {/* Shelf 1: Most Popular Courses */}
-          {cmsSections.bestsellers.enabled && (
+          {!!visibleShelves['popular-shelf'] && (
             <CourseraShelf
               id="popular-shelf"
               badgeTag="Khóa học & Chứng chỉ hàng đầu"
               title={cmsSections.bestsellers.title || 'Các khóa học và Chứng chỉ phổ biến nhất'}
-              subtitle="Khám phá các chương trình được hàng triệu học viên trên toàn cầu đăng ký nhiều nhất."
+              subtitle="Khóa học thực chiến nổi bật của TWings Academy, có lịch khai giảng và hỗ trợ trả góp."
               courses={mostPopularCourses}
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
-              onEnrollCourse={(c) => handleOpenRegistration(c)}
+              onEnrollCourse={handleBuy}
               onOpenYouTubeTrial={(c) => (c.youtubeVideoId ? handleOpenYouTubeTrial(c.youtubeVideoId, c.title, c) : handleOpenRegistration(c))}
               onViewAll={() => handleNavigate('catalog')}
             />
           )}
 
           {/* Shelf 2: Trending AI & Generative AI */}
-          {cmsSections.trendingAI?.enabled !== false && (
+          {!!visibleShelves['ai-shelf'] && (
             <CourseraShelf
               id="ai-shelf"
               badgeTag="Đột phá công nghệ 2026"
@@ -457,7 +486,7 @@ export default function App() {
               courses={trendingAICourses}
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
-              onEnrollCourse={(c) => handleOpenRegistration(c)}
+              onEnrollCourse={handleBuy}
               onOpenYouTubeTrial={(c) => (c.youtubeVideoId ? handleOpenYouTubeTrial(c.youtubeVideoId, c.title, c) : handleOpenRegistration(c))}
               onViewAll={() => {
                 setSearchCategory('Trí tuệ nhân tạo (AI)');
@@ -467,7 +496,7 @@ export default function App() {
           )}
 
           {/* Shelf 3: Professional Certificates */}
-          {cmsSections.certificates?.enabled !== false && (
+          {!!visibleShelves['certificates-shelf'] && (
             <CourseraShelf
               id="certificates-shelf"
               badgeTag="Khởi đầu sự nghiệp mới"
@@ -476,7 +505,7 @@ export default function App() {
               courses={professionalCertificates}
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
-              onEnrollCourse={(c) => handleOpenRegistration(c)}
+              onEnrollCourse={handleBuy}
               onOpenYouTubeTrial={(c) => (c.youtubeVideoId ? handleOpenYouTubeTrial(c.youtubeVideoId, c.title, c) : handleOpenRegistration(c))}
               onViewAll={() => handleNavigate('catalog')}
             />
@@ -491,7 +520,7 @@ export default function App() {
           )}
 
           {/* Shelf 4: Degrees & Online Master's */}
-          {cmsSections.degrees?.enabled !== false && (
+          {!!visibleShelves['degrees-shelf'] && (
             <CourseraShelf
               id="degrees-shelf"
               badgeTag="Bằng cấp trực tuyến 100%"
@@ -500,7 +529,7 @@ export default function App() {
               courses={degreePrograms}
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
-              onEnrollCourse={(c) => handleOpenRegistration(c)}
+              onEnrollCourse={handleBuy}
               onOpenYouTubeTrial={(c) => (c.youtubeVideoId ? handleOpenYouTubeTrial(c.youtubeVideoId, c.title, c) : handleOpenRegistration(c))}
               onViewAll={() => handleNavigate('catalog')}
             />
@@ -529,12 +558,13 @@ export default function App() {
 
       {/* Global Footer */}
       <CourseraFooter onNavigate={handleNavigate} courses={courses} onSelectCourse={handleSelectCourse} />
-      <FloatingContact />
-      <MobileBottomNav
+      <FloatingContact raised={currentView === 'course-detail'} />
+      {/* The course page has its own buy bar at the bottom on phones. */}
+      {currentView !== 'course-detail' && <MobileBottomNav
         currentView={currentView}
         onNavigate={handleNavigate}
         onOpenConsultation={() => handleOpenRegistration()}
-      />
+      />}
 
       {/* Comprehensive Personal Info Registration Modal */}
       {showRegistrationModal && (

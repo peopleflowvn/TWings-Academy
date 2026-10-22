@@ -31,3 +31,4 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
     "login": "10000/min",
     "track": "10000/min",
 }
+YOUTUBE_CHECK = False  # no calls to YouTube from tests (tests patch catalog.youtube)

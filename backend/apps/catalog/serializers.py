@@ -139,6 +139,10 @@ class PublicCourseSerializer(serializers.ModelSerializer):
     original_price = serializers.SerializerMethodField()
     instructors = PublicInstructorSerializer(many=True, read_only=True)
     upcoming_cohorts = serializers.SerializerMethodField()
+    checkout_open = serializers.SerializerMethodField()
+    youtube_video_id = serializers.SerializerMethodField()
+    youtube_trial_url = serializers.SerializerMethodField()
+    promotion_ends_on = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
     instructor = serializers.SerializerMethodField()
     partner = PartnerSerializer(read_only=True)
@@ -151,6 +155,25 @@ class PublicCourseSerializer(serializers.ModelSerializer):
 
     def get_upcoming_cohorts(self, obj):
         return upcoming_cohorts(obj)
+
+    def get_youtube_video_id(self, obj):
+        """Hidden when YouTube says the video cannot be watched (no "Video unavailable" box)."""
+        from .youtube import video_playable
+
+        return obj.youtube_video_id if video_playable(obj.youtube_video_id) is not False else ""
+
+    def get_youtube_trial_url(self, obj):
+        return obj.youtube_trial_url if self.get_youtube_video_id(obj) else ""
+
+    def get_checkout_open(self, obj):
+        """False: the page offers a consultation instead of payment (see crm.services.checkout_open)."""
+        from apps.crm.services import checkout_open
+
+        return checkout_open(obj)
+
+    def get_promotion_ends_on(self, obj):
+        """Last day of the struck-through price, only while it is shown."""
+        return obj.sale_ends_on.isoformat() if obj.list_price() != obj.price else None
 
     def get_reviews(self, obj):
         """Approved reviews of learners who took the course (nothing written by staff)."""

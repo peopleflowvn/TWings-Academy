@@ -16,6 +16,8 @@ from django.core import signing
 from django.utils import timezone
 from django.utils.html import strip_tags
 
+from .youtube import video_playable
+
 PREVIEW_SALT = "course-preview"
 PREVIEW_MAX_AGE = 7 * 24 * 3600
 PRICE_FIELDS = (
@@ -108,7 +110,15 @@ def readiness(course, *, moodle_template: bool | None = None) -> list[dict]:
             bool(course.guarantees),
             "Chỉ ghi điều có văn bản",
         ),
-        ("video", "Video học thử", False, bool(course.youtube_video_id), ""),
+        (
+            "video",
+            "Video học thử xem được",
+            False,
+            bool(course.youtube_video_id) and video_playable(course.youtube_video_id) is not False,
+            "Video riêng tư, đã xóa hoặc chặn nhúng: website ẩn khung video"
+            if course.youtube_video_id
+            else "",
+        ),
     ]
     if moodle_template is not None:
         items.append(

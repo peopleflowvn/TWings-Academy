@@ -105,17 +105,16 @@ def remind_due_installments() -> dict:
 HOLD_REMIND_HOURS = 24
 
 
-def send_hold_email(order) -> None:
-    """The checkout is still unpaid and its hold ends soon: the same QR, and when it ends."""
+def hold_until(order) -> str:
+    return timezone.localtime(order.hold_expires_at).strftime("%H:%M ngày %d/%m/%Y")
+
+
+def payment_details_html(order) -> str:
+    """Amount, account, memo and QR of an unpaid order, plus where to follow it (e-mails)."""
     from apps.lms.emails import account_url
 
     qr = vietqr_payload(order)
-    until = timezone.localtime(order.hold_expires_at).strftime("%H:%M ngày %d/%m/%Y")
-    html = f"""
-<p>Chào {escape(order.customer_name)},</p>
-<p>TWings Academy đang giữ chỗ và học phí ưu đãi của bạn cho
-<strong>{escape(order.course_title)}</strong> đến <strong>{until}</strong>.
-Sau thời điểm này đơn chưa thanh toán sẽ tự hủy và chỗ được nhường cho học viên khác.</p>
+    return f"""
 <p>Số tiền cần chuyển: <strong>{_vnd(qr["amount"])}</strong><br>
 Ngân hàng: {escape(qr["bank_name"])}<br>
 Số tài khoản: <strong>{escape(qr["account_number"])}</strong> – {escape(qr["account_name"])}<br>
@@ -123,6 +122,18 @@ Nội dung chuyển khoản: <strong>{escape(qr["transfer_content"])}</strong></
 <p><img src="{qr["qr_image_url"]}" alt="VietQR" width="220"></p>
 <p>Hệ thống tự xác nhận sau khi nhận tiền. Theo dõi đơn tại
 <a href="{account_url()}">{account_url()}</a>.</p>
+"""
+
+
+def send_hold_email(order) -> None:
+    """The checkout is still unpaid and its hold ends soon: the same QR, and when it ends."""
+    until = hold_until(order)
+    html = f"""
+<p>Chào {escape(order.customer_name)},</p>
+<p>TWings Academy đang giữ chỗ và học phí ưu đãi của bạn cho
+<strong>{escape(order.course_title)}</strong> đến <strong>{until}</strong>.
+Sau thời điểm này đơn chưa thanh toán sẽ tự hủy và chỗ được nhường cho học viên khác.</p>
+{payment_details_html(order)}
 <p>TWings Academy</p>
 """
     send_logged(

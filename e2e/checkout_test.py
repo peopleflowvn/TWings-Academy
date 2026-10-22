@@ -31,7 +31,10 @@ def step(fn):
 @step
 def checkout_shows_the_hold(page: Page):
     page.goto(f"{BASE}/khoa-hoc/e2e-rm")
-    page.locator("button:has-text('Hoặc thanh toán ngay bằng VietQR')").first.click()
+    box = page.locator("#dang-ky")
+    box.wait_for(timeout=20000)
+    assert box.locator("input[type=radio]").count() >= 1, "intakes to choose on the course page"
+    box.locator("button:has-text('Đăng ký học')").click()
     form = page.locator("form:has(button:has-text('Tạo Mã Thanh Toán VietQR'))")
     form.locator("input[placeholder='Họ và tên *']").fill("Học Viên Thanh Toán")
     form.locator("input[placeholder='Email *']").fill("thanhtoan@example.com")

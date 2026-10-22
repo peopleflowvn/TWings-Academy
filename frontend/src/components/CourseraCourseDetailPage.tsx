@@ -25,7 +25,9 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { ShareButtons } from './ShareButtons';
-import confetti from 'canvas-confetti';
+import { CourseBuyBar, CourseBuyBox } from './CourseBuyBox';
+import type { CheckoutPrefill } from './CourseraCheckoutModal';
+import { openIntakes } from '../lib/selling';
 import { Course, Module, Lesson, Order, Instructor, CourseReview } from '../types';
 import { api, ApiError, isBackendEnabled } from '../lib/api';
 import { getAttribution } from '../lib/attribution';
@@ -39,7 +41,7 @@ interface CourseraCourseDetailPageProps {
   onNavigateClassroom: (course: Course) => void;
   onQuickRegisterSuccess?: (newOrder: Order) => void;
   /** Pay now by VietQR (checkout modal), prefilled with what the visitor typed. */
-  onCheckout?: (course: Course, prefill: { customerName?: string; customerEmail?: string; customerPhone?: string }) => void;
+  onCheckout?: (course: Course, prefill: CheckoutPrefill) => void;
 }
 
 export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> = ({
@@ -67,95 +69,13 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
     chapters.map((m) => m.id)
   );
 
-  // Embedded Registration Form State (PDF page 1)
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [area, setArea] = useState('Hà Nội');
-  const [cohortName, setCohortName] = useState('');
-  const [privacyConsent, setPrivacyConsent] = useState(false);
-  const [honeypot, setHoneypot] = useState('');
-  const [serverError, setServerError] = useState('');
-  const [consultNote, setConsultNote] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [registeredSuccess, setRegisteredSuccess] = useState(false);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
   const toggleModule = (id: string) => {
     setOpenModuleIds((prev) =>
       prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]
     );
   };
 
-  const formatVND = (num: number) => {
-    return new Intl.NumberFormat('vi-VN').format(num) + ' ₫';
-  };
-
   const totalLessons = chapters.reduce((acc, ch) => acc + ch.lessons.length, 0);
-
-  const validateForm = () => {
-    const errs: Record<string, string> = {};
-    if (!fullName.trim()) errs.fullName = 'Vui lòng nhập họ và tên';
-    if (!email.trim() || !email.includes('@')) errs.email = 'Vui lòng nhập email hợp lệ';
-    if (!phone.trim() || phone.length < 9) errs.phone = 'Vui lòng nhập số điện thoại chính xác';
-    if (birthDate.trim() && !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(birthDate.trim())) errs.birthDate = 'Ngày sinh theo dạng dd/mm/yyyy';
-    if (!privacyConsent) errs.privacyConsent = 'Vui lòng đồng ý với chính sách xử lý dữ liệu cá nhân';
-    setFormErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleEmbeddedSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setServerError('');
-    if (!validateForm()) return;
-
-    let registrationCode = `REG-${Date.now().toString(36).toUpperCase()}`;
-    if (isBackendEnabled()) {
-      setIsSubmitting(true);
-      try {
-        const res = await api.post<{ registrationCode: string }>('/public/registrations/', {
-          courseId: course.id,
-          customerName: fullName.trim(),
-          customerEmail: email.trim(),
-          customerPhone: phone.trim(),
-          birthDate: birthDate.trim() || null,
-          area,
-          batchCohort: cohortName,
-          consultNeed: consultNote,
-          source: 'Form Chi Tiết Khóa Học',
-          privacyConsent,
-          attribution: getAttribution(),
-          website: honeypot
-        });
-        registrationCode = res.registrationCode;
-      } catch (err) {
-        setServerError(err instanceof ApiError ? err.message : 'Không gửi được đăng ký, vui lòng thử lại.');
-        return;
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
-
-    const newOrder: Order = {
-      id: registrationCode,
-      orderCode: registrationCode,
-      courseId: course.id,
-      courseTitle: course.title,
-      amount: course.price,
-      originalAmount: course.originalPrice,
-      status: 'pending',
-      paymentMethod: 'vietqr',
-      createdAt: new Date().toISOString(),
-      customerName: fullName,
-      customerPhone: phone,
-      customerEmail: email,
-      crmStatus: '1. Mới'
-    } as Order;
-    setRegisteredSuccess(true);
-    onQuickRegisterSuccess?.(newOrder);
-    confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
-  };
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
@@ -172,8 +92,12 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
               <span>Quay lại Khóa học</span>
             </button>
             <span>/</span>
-            <span className="text-blue-300">{course.category}</span>
-            <span>/</span>
+            {course.category && (
+              <>
+                <span className="text-blue-300">{course.category}</span>
+                <span>/</span>
+              </>
+            )}
             <span className="text-white font-semibold truncate max-w-xs sm:max-w-md">{course.title}</span>
           </div>
 
@@ -207,11 +131,15 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                   <span>·</span>
                 </>
               )}
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                <span>{course.duration}</span>
-              </span>
-              <span>·</span>
+              {course.duration && (
+                <>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    <span>{course.duration}</span>
+                  </span>
+                  <span>·</span>
+                </>
+              )}
               <span className="px-2 py-0.5 rounded bg-blue-900/60 border border-blue-400/40 text-blue-200 font-medium">
                 {course.level}
               </span>
@@ -239,7 +167,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                   <span className="p-1 rounded-md bg-red-600 text-white">
                     <Play className="w-3.5 h-3.5 fill-current" />
                   </span>
-                  <span className="font-bold">Trải Nghiệm Bài Giảng Mẫu (YouTube Embed)</span>
+                  <span className="font-bold">Xem thử bài giảng</span>
                 </div>
                 <span className="text-slate-400 text-[11px]">Học thử miễn phí</span>
               </div>
@@ -296,7 +224,8 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
             </section>
             )}
 
-            {/* 3. Detailed Curriculum Syllabus */}
+            {/* 3. Detailed Curriculum Syllabus (only when there is one) */}
+            {chapters.length > 0 && (
             <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
                 <div>
@@ -379,6 +308,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                 })}
               </div>
             </section>
+            )}
 
             {/* 4. Đội ngũ Giảng viên thực chiến (Multi-Instructor Team) */}
             {instructorList.length > 0 && (
@@ -503,269 +433,68 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
 
             )}
 
-            {/* 6. Notice regarding LMS delivery */}
-            <div className="bg-purple-50 p-5 rounded-3xl border border-purple-200 text-xs text-purple-900 space-y-1.5">
-              <div className="font-bold flex items-center gap-1.5 text-sm">
-                <ShieldCheck className="w-4 h-4 text-purple-600" />
-                <span>Quy trình đào tạo & bàn giao tài khoản học tập:</span>
-              </div>
-              <p className="text-xs text-purple-800 leading-relaxed">
-                Sau khi thanh toán (hoặc đóng kỳ trả góp đầu), hệ thống tự tạo tài khoản trên TWings LMS và gửi email hướng dẫn vào học. Với khóa học theo đợt, bạn được xếp vào lớp của đợt khai giảng đã chọn. Lịch học, học phí và chứng chỉ luôn xem được trong Tài khoản học viên.
-              </p>
-            </div>
+            {/* 6. Fees & payment: what a buyer asks before paying */}
+            <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-[#0073C1]" />
+                <span>Học phí & đăng ký</span>
+              </h2>
+              {[
+                {
+                  q: 'Thanh toán thế nào?',
+                  a: `Chuyển khoản qua mã VietQR (mọi app ngân hàng). Hệ thống tự xác nhận khi tiền về và gửi biên nhận qua email.${
+                    (course.installmentCount || 1) > 1 ? ` Có thể trả góp ${course.installmentCount} kỳ, đóng kỳ đầu là vào học.` : ''
+                  }`
+                },
+                {
+                  q: 'Sau khi đăng ký, chỗ học được giữ bao lâu?',
+                  a: 'Chỗ học và học phí được giữ trong thời gian chờ chuyển khoản (ghi rõ trên màn hình thanh toán và trong email). Quá hạn chưa chuyển, đơn tự hủy để nhường chỗ.'
+                },
+                {
+                  q: 'Sau khi thanh toán thì sao?',
+                  a: 'Hệ thống tự tạo tài khoản trên TWings LMS và gửi email hướng dẫn vào học. Khóa học theo đợt: bạn được xếp vào lớp của đợt khai giảng đã chọn. Lịch học, học phí và chứng chỉ xem trong Tài khoản học viên.'
+                },
+                {
+                  q: 'Công ty cần xuất hóa đơn?',
+                  a: 'Chọn "Xuất hóa đơn VAT cho công ty" ở bước thanh toán và nhập thông tin công ty.'
+                },
+                {
+                  q: 'Đổi đợt học hoặc hoàn học phí?',
+                  a: 'Theo Điều khoản dịch vụ của TWings Academy; tư vấn viên hỗ trợ đổi đợt khi lớp còn chỗ.'
+                }
+              ].map((f) => (
+                <details key={f.q} className="group border border-slate-200 rounded-2xl px-4 py-3 open:bg-slate-50/60">
+                  <summary className="cursor-pointer list-none flex items-center justify-between gap-3 text-sm font-bold text-slate-900">
+                    {f.q}
+                    <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    {f.a}
+                    {f.q.startsWith('Đổi') && (
+                      <>
+                        {' '}
+                        <a href="/dieu-khoan" target="_blank" rel="noopener" className="text-[#0073C1] underline">Xem điều khoản</a>
+                      </>
+                    )}
+                  </p>
+                </details>
+              ))}
+            </section>
           </div>
 
-          {/* RIGHT COLUMN (4-5 COLS, STICKY): DIRECT "ĐĂNG KÝ TƯ VẤN KHÓA HỌC" FORM */}
-          <div className="lg:col-span-5 xl:col-span-4 sticky top-24 space-y-6">
-            <div className="bg-white rounded-3xl border-2 border-[#0073C1] shadow-xl overflow-hidden">
-              {/* Form Header (Matching PDF Page 1) */}
-              <div className="bg-gradient-to-r from-[#0056D2] to-[#0073C1] text-white p-5 space-y-1 text-center">
-                <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">
-                  TWINGS ACADEMY
-                </span>
-                <h3 className="text-lg sm:text-xl font-black tracking-tight">
-                  ĐĂNG KÝ TƯ VẤN KHÓA HỌC
-                </h3>
-                <p className="text-[11px] text-blue-100">
-                  Nhận lộ trình thực chiến & ưu đãi học phí độc quyền
-                </p>
-              </div>
-
-              {/* Form Body */}
-              <div className="p-5 sm:p-6">
-                {registeredSuccess ? (
-                  <div className="text-center py-6 space-y-3 animate-fadeIn">
-                    <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
-                      <CheckCircle2 className="w-8 h-8" />
-                    </div>
-                    <h4 className="text-base font-bold text-slate-900">
-                      Đăng Ký Thành Công!
-                    </h4>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      Cảm ơn <strong>{fullName}</strong>. Ban tuyển sinh TWings Academy sẽ liên hệ qua SĐT <strong>{phone}</strong> trong giờ làm việc để tư vấn chi tiết khóa học.
-                    </p>
-                    <button
-                      onClick={() => setRegisteredSuccess(false)}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-                    >
-                      Đăng ký khóa khác
-                    </button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleEmbeddedSubmit} className="space-y-3.5 text-xs">
-                    {/* Course Pricing preview */}
-                    <div className="p-3 bg-blue-50/70 rounded-2xl border border-blue-100 flex items-center justify-between">
-                      <div>
-                        <div className="text-[10px] text-slate-500 uppercase font-bold">Học phí trọn gói</div>
-                        <div className="text-lg font-black text-slate-900 font-mono">{formatVND(course.price)}</div>
-                      </div>
-                      {course.originalPrice > course.price && (
-                        <div className="text-right">
-                          <span className="text-[11px] text-slate-400 line-through font-mono block">
-                            {formatVND(course.originalPrice)}
-                          </span>
-                          <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold">
-                            Tiết kiệm {formatVND(course.originalPrice - course.price)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Họ và tên *</label>
-                      <input
-                        type="text"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Nhập họ và tên đầy đủ"
-                        className={`w-full p-2.5 border rounded-xl bg-slate-50 focus:bg-white text-xs ${
-                          formErrors.fullName ? 'border-red-500' : 'border-slate-300'
-                        }`}
-                      />
-                      {formErrors.fullName && <p className="text-[10px] text-red-500 mt-0.5">{formErrors.fullName}</p>}
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Email *</label>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="email@example.com"
-                        className={`w-full p-2.5 border rounded-xl bg-slate-50 focus:bg-white text-xs ${
-                          formErrors.email ? 'border-red-500' : 'border-slate-300'
-                        }`}
-                      />
-                      {formErrors.email && <p className="text-[10px] text-red-500 mt-0.5">{formErrors.email}</p>}
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Số điện thoại *</label>
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="VD: 0988112233"
-                        className={`w-full p-2.5 border rounded-xl bg-slate-50 focus:bg-white text-xs font-mono ${
-                          formErrors.phone ? 'border-red-500' : 'border-slate-300'
-                        }`}
-                      />
-                      {formErrors.phone && <p className="text-[10px] text-red-500 mt-0.5">{formErrors.phone}</p>}
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Ngày sinh (không bắt buộc, dd/mm/yyyy)</label>
-                      <input
-                        type="text"
-                        value={birthDate}
-                        onChange={(e) => setBirthDate(e.target.value)}
-                        placeholder="15/08/2004"
-                        className={`w-full p-2.5 border rounded-xl bg-slate-50 focus:bg-white text-xs ${
-                          formErrors.birthDate ? 'border-red-500' : 'border-slate-300'
-                        }`}
-                      />
-                      {formErrors.birthDate && <p className="text-[10px] text-red-500 mt-0.5">{formErrors.birthDate}</p>}
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Khu vực *</label>
-                      <select
-                        value={area}
-                        onChange={(e) => setArea(e.target.value)}
-                        className="w-full p-2.5 border border-slate-300 rounded-xl bg-slate-50 text-xs font-semibold"
-                      >
-                        <option value="Hà Nội">Hà Nội (Trụ sở ROX Tower, 54A Nguyễn Chí Thanh)</option>
-                        <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
-                        <option value="Đà Nẵng">Đà Nẵng</option>
-                        <option value="Online LMS">Online qua hệ thống LMS riêng</option>
-                      </select>
-                    </div>
-
-                    {upcoming.length > 0 && (
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Đợt khai giảng mong muốn</label>
-                        <select
-                          value={cohortName}
-                          onChange={(e) => setCohortName(e.target.value)}
-                          className="w-full p-2.5 border border-slate-300 rounded-xl bg-slate-50 text-xs font-semibold"
-                        >
-                          <option value="">Chưa chọn – cần tư vấn</option>
-                          {upcoming.map((c) => (
-                            <option key={c.name} value={c.name}>
-                              {c.name}{c.startDate ? ` – ${new Date(`${c.startDate}T00:00:00`).toLocaleDateString('vi-VN')}` : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Khóa học quan tâm *</label>
-                      <input
-                        type="text"
-                        disabled
-                        value={course.title}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold cursor-not-allowed"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Nhu cầu / Nguyện vọng nghề nghiệp</label>
-                      <textarea
-                        rows={2}
-                        value={consultNote}
-                        onChange={(e) => setConsultNote(e.target.value)}
-                        placeholder="VD: Muốn học buổi tối, cần tư vấn trả góp..."
-                        className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 text-xs"
-                      />
-                    </div>
-
-                    {/* Honeypot: hidden from people, filled in by bots */}
-                    <input type="text" name="website" value={honeypot} onChange={(e) => setHoneypot(e.target.value)}
-                      tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
-
-                    <label className="flex items-start gap-2 text-[11px] text-slate-600 cursor-pointer">
-                      <input type="checkbox" checked={privacyConsent} onChange={(e) => setPrivacyConsent(e.target.checked)} className="mt-0.5" />
-                      <span>
-                        Tôi đồng ý để TWings Academy xử lý dữ liệu cá nhân nhằm tư vấn và ghi danh theo{' '}
-                        <a href="/chinh-sach-bao-mat" target="_blank" rel="noopener" className="text-[#0073C1] underline">Chính sách bảo mật</a>.
-                      </span>
-                    </label>
-                    {formErrors.privacyConsent && <p className="text-[10px] text-red-500 -mt-2">{formErrors.privacyConsent}</p>}
-                    {serverError && <p className="text-[11px] text-red-600 font-semibold">{serverError}</p>}
-
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full py-3 px-4 bg-[#EA580C] hover:bg-[#D94F04] text-white font-extrabold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                    >
-                      <Send className="w-4 h-4" />
-                      <span>{isSubmitting ? 'Đang gửi thông tin...' : 'Gửi thông tin đăng ký'}</span>
-                    </button>
-
-                    <div className="text-center pt-1">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onCheckout
-                            ? onCheckout(course, { customerName: fullName, customerEmail: email, customerPhone: phone })
-                            : onEnrollCourse(course)
-                        }
-                        className="text-[11px] text-[#0073C1] font-bold hover:underline cursor-pointer"
-                      >
-                        Hoặc thanh toán ngay bằng VietQR →
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            </div>
-
-            {/* Upcoming intakes */}
-            {upcoming.length > 0 && (
-              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3 text-xs">
-                <div className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-[#0073C1]" /> Lịch khai giảng
-                </div>
-                {upcoming.map((c) => (
-                  <div key={c.name} className="flex items-start justify-between gap-3 border-t border-slate-100 pt-2">
-                    <div>
-                      <div className="font-bold text-slate-900">{c.name}</div>
-                      <div className="text-slate-500">
-                        {c.startDate ? new Date(`${c.startDate}T00:00:00`).toLocaleDateString('vi-VN') : 'Sắp công bố ngày'}
-                        {c.location ? ` · ${c.location}` : ''}
-                      </div>
-                      {c.scheduleText && <div className="text-slate-500">{c.scheduleText}</div>}
-                      {c.earlyBirdDeadline && c.price !== undefined && c.price < course.price && (
-                        <div className="text-emerald-700 font-bold">
-                          Ưu đãi đăng ký sớm {formatVND(c.price)} tới {new Date(`${c.earlyBirdDeadline}T00:00:00`).toLocaleDateString('vi-VN')}
-                        </div>
-                      )}
-                    </div>
-                    <span className={`shrink-0 font-bold ${c.seatsLeft <= 5 ? 'text-red-600' : 'text-emerald-700'}`}>
-                      {c.status === 'upcoming' ? 'Sắp mở · ' : ''}
-                      {c.seatsLeft > 0 ? `Còn ${c.seatsLeft} chỗ` : 'Hết chỗ'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* What the course itself guarantees (edited per course in /app) */}
-            {(course.guarantees?.length ?? 0) > 0 && (
-              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3 text-xs text-slate-600">
-                {course.guarantees!.map((g) => (
-                  <div key={g} className="flex items-center gap-2.5">
-                    <ShieldCheck className="w-4 h-4 text-[#0073C1] shrink-0" />
-                    <span>{g}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* RIGHT COLUMN (sticky on desktop): price, intake, "Đăng ký học", consultation */}
+          <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-24 space-y-6">
+            <CourseBuyBox
+              course={course}
+              onCheckout={(c, prefill) => (onCheckout ? onCheckout(c, prefill) : onEnrollCourse(c))}
+              onConsultSent={onQuickRegisterSuccess}
+            />
           </div>
 
         </div>
       </div>
+
+      <CourseBuyBar course={course} onBuy={() => (onCheckout ? onCheckout(course, { intakeName: openIntakes(course)[0]?.name }) : onEnrollCourse(course))} />
     </div>
   );
 };

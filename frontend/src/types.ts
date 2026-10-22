@@ -264,6 +264,10 @@ export interface Course {
   originalPrice: number;
   /** Staff: last day of the promotion; without it no struck-through price is shown. */
   saleEndsOn?: string | null;
+  /** Public API: last day of the struck-through price while it is shown. */
+  promotionEndsOn?: string | null;
+  /** Public API: false when no intake takes learners (the page offers a consultation instead). */
+  checkoutOpen?: boolean;
   /** Pay-in-installments plan offered at checkout (1 = pay in full only). */
   installmentCount?: number;
   installmentIntervalDays?: number;

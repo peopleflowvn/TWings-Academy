@@ -43,6 +43,21 @@ def resolve_cohort(course: Course, preferred_label: str = "") -> tuple[Cohort | 
     return None, preferred is not None
 
 
+CLASSROOM_FORMATS = ("offline", "hybrid")
+
+
+def checkout_open(course: Course) -> bool:
+    """
+    Whether the course can be bought online now: an intake must take the learner. A classroom course
+    without any intake has no date or place to sell, so visitors leave their details instead.
+    """
+    if resolve_cohort(course)[0] is not None:
+        return True
+    if course.cohorts.public().exists():
+        return False  # every intake is full, closed or started
+    return course.delivery_format not in CLASSROOM_FORMATS
+
+
 @transaction.atomic
 def price_with_coupon(
     item: Course | Program, coupon_code: str, base: int | None = None
@@ -122,10 +137,9 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
         raise CheckoutError("Vui lòng chọn khóa học hoặc chương trình.")
 
     cohort, rerouted = resolve_cohort(course, preferred_cohort) if course else (None, False)
-    if with_payment and course is not None and cohort is None and course.cohorts.public().exists():
+    if with_payment and course is not None and cohort is None and not checkout_open(course):
         raise CheckoutError(
-            "Các đợt khai giảng của khóa này đã đủ chỗ hoặc đã đóng. "
-            "Vui lòng để lại thông tin để được tư vấn đợt sau."
+            "Khóa này chưa có đợt khai giảng nhận học viên. Vui lòng để lại thông tin để được báo khi mở lớp."
         )
     # The intake decides the price (early bird until its deadline), then the coupon applies.
     list_price = cohort.price() if cohort else item.price
@@ -191,6 +205,9 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     from .assignment import assign_new_lead
 
     assign_new_lead(order)  # step 4: a consultant and a response deadline right away
+    from .confirmations import send_order_received
+
+    transaction.on_commit(lambda: send_order_received(order.pk))  # payment details / next steps by e-mail
     return order
 
 

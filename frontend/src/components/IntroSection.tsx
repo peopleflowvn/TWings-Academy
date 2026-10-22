@@ -5,9 +5,11 @@ import { CMSSectionsConfig } from '../types';
 interface IntroSectionProps {
   introData?: CMSSectionsConfig['intro'];
   onScrollToSection: (sectionId: string) => void;
+  /** Course count of each shelf shown on the page; a tile without its shelf is not shown. */
+  shelfCounts?: Record<string, number>;
 }
 
-export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollToSection }) => {
+export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollToSection, shelfCounts = {} }) => {
   const eyebrow = introData?.eyebrow || 'TWINGS ACADEMY';
   const headline = introData?.headline || 'NÂNG TẦM NĂNG LỰC, KIẾN TẠO TƯƠNG LAI';
   const description = introData?.description || 'TWings Academy giúp bạn phát triển nhanh những năng lực thực tiễn, thích ứng với thị trường lao động không ngừng thay đổi và chủ động tiến xa trên hành trình sự nghiệp.';
@@ -18,7 +20,7 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
       badge: 'Bán chạy nhất',
       title: 'Khóa Học Bán Chạy Nhất',
       subtitle: 'Nghiệp vụ tín dụng, thẩm định CIC và kỹ năng quan hệ khách hàng cá nhân & SME.',
-      coursesCount: '12+ khóa học',
+      coursesCount: '',
       icon: TrendingUp,
       accentColor: 'from-blue-600 to-indigo-600',
       tagColor: 'bg-blue-50 text-[#0073C1] border-blue-200',
@@ -29,7 +31,7 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
       badge: 'Xu hướng 2026',
       title: 'Đột Phá Công Nghệ & AI',
       subtitle: 'Khai mở Generative AI, AI Agents và tự động hóa quy trình nghiệp vụ ngân hàng hiện đại.',
-      coursesCount: '8+ chương trình',
+      coursesCount: '',
       icon: Sparkles,
       accentColor: 'from-purple-600 to-blue-600',
       tagColor: 'bg-purple-50 text-purple-700 border-purple-200',
@@ -40,7 +42,7 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
       badge: 'Bảo lãnh việc làm',
       title: 'Chứng Chỉ Nghề Nghiệp',
       subtitle: 'Chứng chỉ chính thức được ngân hàng đối tác MSB và các tổ chức tài chính ưu tiên tuyển dụng.',
-      coursesCount: '15+ chứng chỉ',
+      coursesCount: '',
       icon: ShieldCheck,
       accentColor: 'from-emerald-600 to-teal-600',
       tagColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -51,13 +53,18 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
       badge: 'Lộ trình chuyên sâu',
       title: 'Bằng Cấp & Nâng Cao',
       subtitle: 'Lộ trình chuẩn hóa theo khung năng lực quản trị từ cấp Chuyên viên đến Giám đốc Chi nhánh.',
-      coursesCount: '6+ lộ trình',
+      coursesCount: '',
       icon: GraduationCap,
       accentColor: 'from-amber-600 to-orange-600',
       tagColor: 'bg-amber-50 text-amber-700 border-amber-200',
       image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80',
     }
   ];
+
+  // Only tiles whose shelf is on the page, with its real number of courses.
+  const tiles = categoryTiles
+    .filter((t) => shelfCounts[t.id])
+    .map((t) => ({ ...t, coursesCount: `${shelfCounts[t.id]} khóa học` }));
 
   return (
     <section className="bg-gradient-to-b from-slate-50 via-white to-slate-50 py-10 sm:py-20 px-4 sm:px-6 lg:px-8 border-b border-slate-200 relative overflow-hidden">
@@ -84,15 +91,19 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
           </p>
 
           {/* Mobile Swipe Hint */}
+          {tiles.length > 1 && (
           <div className="sm:hidden pt-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-[#0073C1]">
-            <span>Vuốt ngang để xem 4 lộ trình</span>
+            <span>Vuốt ngang để xem {tiles.length} nhóm khóa học</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </div>
+          )}
         </div>
 
         {/* 4 Premium Category Cards: Swipeable rail on mobile, Grid on tablet/desktop */}
+        {/* A single group would only point at the shelf right below: no tiles then. */}
+        {tiles.length > 1 && (
         <div className="flex overflow-x-auto -mx-4 px-4 gap-3.5 no-scrollbar snap-x snap-mandatory sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:mx-0 sm:px-0 sm:gap-6 pb-2">
-          {categoryTiles.map((tile) => {
+          {tiles.map((tile) => {
             const IconComponent = tile.icon;
             return (
               <div
@@ -148,6 +159,7 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
             );
           })}
         </div>
+        )}
       </div>
     </section>
   );

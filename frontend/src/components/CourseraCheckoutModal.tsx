@@ -24,6 +24,8 @@ export interface CheckoutPrefill {
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
+  /** Intake chosen on the course page. */
+  intakeName?: string;
 }
 
 interface CourseraCheckoutModalProps {
@@ -90,7 +92,9 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
   const [payInInstallments, setPayInInstallments] = useState(false);
   // Course sold in intakes: the learner picks one, open or announced (early-bird price until the deadline).
   const intakes = (course?.upcomingCohorts || []).filter((c) => c.seatsLeft > 0);
-  const [intakeName, setIntakeName] = useState(intakes[0]?.name || '');
+  const [intakeName, setIntakeName] = useState(
+    intakes.some((c) => c.name === prefill?.intakeName) ? prefill!.intakeName! : intakes[0]?.name || ''
+  );
   const chosenIntake = intakes.find((c) => c.name === intakeName);
   if (chosenIntake?.price !== undefined) item.price = chosenIntake.price;
   const [customerName, setCustomerName] = useState(prefill?.customerName || '');
@@ -102,7 +106,10 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
   const [wantInvoice, setWantInvoice] = useState(false);
   const [invoice, setInvoice] = useState({ companyName: '', taxCode: '', address: '', email: '' });
   const [honeypot, setHoneypot] = useState('');
+  const inputCls = 'w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:border-[#0056D2]';
   const [formError, setFormError] = useState('');
+  // Per-field messages, shown under each field.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -113,16 +120,15 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    if (!customerName.trim() || !customerEmail.includes('@') || customerPhone.trim().length < 9) {
-      setFormError('Vui lòng nhập đầy đủ họ tên, email và số điện thoại hợp lệ.');
-      return;
-    }
-    if (liveMode && !termsAccepted) {
-      setFormError('Bạn cần đồng ý Điều khoản sử dụng dịch vụ để thanh toán.');
-      return;
-    }
-    if (!privacyConsent) {
-      setFormError('Bạn cần đồng ý với chính sách xử lý dữ liệu cá nhân để tiếp tục.');
+    const errs: Record<string, string> = {};
+    if (!customerName.trim()) errs.name = 'Nhập họ và tên';
+    if (!/^\S+@\S+\.\S+$/.test(customerEmail.trim())) errs.email = 'Email chưa đúng';
+    if (!/^\+?[0-9 .-]{9,20}$/.test(customerPhone.trim())) errs.phone = 'Số điện thoại chưa đúng';
+    if (!privacyConsent) errs.privacy = 'Cần đồng ý để TWings ghi danh và liên hệ';
+    if (liveMode && !termsAccepted) errs.terms = 'Cần đồng ý Điều khoản dịch vụ để thanh toán';
+    setFieldErrors(errs);
+    if (Object.keys(errs).length) {
+      setFormError('Kiểm tra lại các ô được đánh dấu đỏ.');
       return;
     }
 
@@ -354,33 +360,44 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                 /* Step 1: applicant details; the order is created and priced server-side */
                 <form onSubmit={handleCreateOrder} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <input
-                      type="text"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Họ và tên *"
-                      autoComplete="name"
-                      maxLength={200}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:border-[#0056D2]"
-                    />
-                    <input
-                      type="email"
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
-                      placeholder="Email *"
-                      autoComplete="email"
-                      maxLength={254}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:border-[#0056D2]"
-                    />
-                    <input
-                      type="tel"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      placeholder="Số điện thoại *"
-                      autoComplete="tel"
-                      maxLength={20}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:border-[#0056D2]"
-                    />
+                    <div>
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="Họ và tên *"
+                        autoComplete="name"
+                        maxLength={200}
+                        className={`${inputCls} ${fieldErrors.name ? 'border-red-500' : 'border-slate-300'}`}
+                      />
+                      {fieldErrors.name && <p className="text-[11px] text-red-600 mt-0.5">{fieldErrors.name}</p>}
+                    </div>
+                    <div>
+                      <input
+                        type="email"
+                        inputMode="email"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        placeholder="Email *"
+                        autoComplete="email"
+                        maxLength={254}
+                        className={`${inputCls} ${fieldErrors.email ? 'border-red-500' : 'border-slate-300'}`}
+                      />
+                      {fieldErrors.email && <p className="text-[11px] text-red-600 mt-0.5">{fieldErrors.email}</p>}
+                    </div>
+                    <div>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="Số điện thoại *"
+                        autoComplete="tel"
+                        maxLength={20}
+                        className={`${inputCls} ${fieldErrors.phone ? 'border-red-500' : 'border-slate-300'}`}
+                      />
+                      {fieldErrors.phone && <p className="text-[11px] text-red-600 mt-0.5">{fieldErrors.phone}</p>}
+                    </div>
                   </div>
                   <div className="relative">
                     <input
@@ -482,6 +499,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       thanh toán và tư vấn khóa học theo{' '}<a href="/chinh-sach-bao-mat" target="_blank" rel="noopener" className="text-[#0056D2] underline">Chính sách bảo mật</a>.
                     </span>
                   </label>
+                  {fieldErrors.privacy && <p className="text-[11px] text-red-600 -mt-2 pl-5">{fieldErrors.privacy}</p>}
                   {liveMode && (
                     <label className="flex items-start gap-2 text-[11px] text-slate-600 cursor-pointer">
                       <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-0.5" />
@@ -492,6 +510,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       </span>
                     </label>
                   )}
+                  {fieldErrors.terms && <p className="text-[11px] text-red-600 -mt-2 pl-5">{fieldErrors.terms}</p>}
                   {formError && <div className="text-xs text-red-600 font-medium">{formError}</div>}
                   <button
                     type="submit"
@@ -541,6 +560,16 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       Quét bằng App Ngân Hàng bất kỳ
                     </div>
                   </div>
+                  {/* Paying on this phone: the QR cannot be scanned by the same phone */}
+                  <div className="sm:hidden w-full max-w-[290px] text-[11px] text-slate-600 bg-blue-50 border border-blue-100 rounded-xl p-2.5 text-center space-y-1.5">
+                    <div>
+                      Đang dùng điện thoại? <b>Nhấn giữ mã QR → Lưu ảnh</b>, rồi trong app ngân hàng chọn Quét QR → chọn ảnh vừa lưu.
+                      Hoặc chép số tài khoản, số tiền, nội dung bên dưới.
+                    </div>
+                    <a href={checkout.qrImageUrl} target="_blank" rel="noopener" className="inline-block font-bold text-[#0056D2] underline">
+                      Mở ảnh QR
+                    </a>
+                  </div>
                   {checkout.holdExpiresAt && (
                     <div className="text-[11px] text-slate-600 text-center">
                       Giữ chỗ và giá đến{' '}
@@ -578,7 +607,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
 
                   <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                     <span className="text-slate-500">Chủ tài khoản:</span>
-                    <strong className="text-slate-900 text-right truncate max-w-[180px]">{checkout.accountName}</strong>
+                    <strong className="text-slate-900 text-right max-w-[200px]">{checkout.accountName}</strong>
                   </div>
 
                   <div className="flex items-center justify-between pb-2 border-b border-slate-200">
@@ -594,9 +623,14 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
 
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-slate-700 font-bold">Số tiền thanh toán:</span>
-                    <span className="text-lg font-black text-[#0056D2] font-mono">
-                      {formatVND(checkout.amount)}
-                    </span>
+                    <button
+                      onClick={() => copyToClipboard(String(checkout.amount), 'amount')}
+                      title="Chép số tiền"
+                      className="flex items-center gap-1 text-lg font-black text-[#0056D2] cursor-pointer"
+                    >
+                      <span>{formatVND(checkout.amount)}</span>
+                      <Copy className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
                   </div>
 
                   {copiedField && (

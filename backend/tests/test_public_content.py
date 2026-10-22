@@ -207,3 +207,11 @@ def test_demo_banners_hidden_again_and_coursera_wording_removed():
     _migration("core", "0006_drop_coursera_keyword_stored_key").drop_keyword(django_apps, None)
     stored = SiteConfig.objects.get(key=SiteConfig.KEY_SITE_SEO).data
     assert stored == {"default_keywords": ["Twings Academy"], "site_name": "TWings"}
+
+
+def test_demo_banners_are_deleted_for_good():
+    demo = HeroBanner.objects.create(title="Learn AI from the companies building it", is_active=True)
+    real = HeroBanner.objects.create(title="Đột phá Sự nghiệp Ngân hàng Thực chiến", is_active=True)
+    _migration("cms", "0005_delete_demo_banners").delete_demo_banners(django_apps, None)
+    assert not HeroBanner.objects.filter(pk=demo.pk).exists()
+    assert HeroBanner.objects.get(pk=real.pk).is_active

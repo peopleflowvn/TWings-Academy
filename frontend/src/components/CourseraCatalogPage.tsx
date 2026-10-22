@@ -11,6 +11,7 @@ import {
   Check, 
   RotateCcw 
 } from 'lucide-react';
+import { canBuy, openIntakes, priceFor } from '../lib/selling';
 import { Course, CourseLevel, CourseType } from '../types';
 import { CourseraCourseCard } from './CourseraCourseCard';
 import { ProgramsStrip } from './ProgramsStrip';
@@ -24,6 +25,17 @@ interface CourseraCatalogPageProps {
   onEnrollCourse: (course: Course) => void;
   onOpenYouTubeTrial?: (course: Course) => void;
 }
+
+/** Lower case without Vietnamese accents (đ → d), for search. */
+const fold = (text: string) =>
+  text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim();
+
+/** Sort key: days to the next intake; open courses without intakes after, consultations last. */
+const startKey = (course: Course) => {
+  const next = openIntakes(course)[0];
+  if (next) return next.startDate ? new Date(next.startDate).getTime() : 8e15;
+  return canBuy(course) ? 9e15 : 9.5e15;
+};
 
 export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
   courses,
@@ -40,7 +52,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
   const [selectedType, setSelectedType] = useState<string>('Tất cả');
   const [selectedFormat, setSelectedFormat] = useState<string>('Tất cả');
   const [selectedPartner, setSelectedPartner] = useState<string>('Tất cả');
-  const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'price-asc' | 'price-desc'>('popular');
+  const [sortBy, setSortBy] = useState<'start' | 'price-asc' | 'price-desc'>('start');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   // Extract unique categories & partners
@@ -60,14 +72,29 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
     return ['Tất cả', ...Array.from(set)];
   }, [courses]);
 
-  const levels = ['Tất cả', 'Người mới bắt đầu', 'Trung cấp', 'Nâng cao'];
-  const types = ['Tất cả', 'Chứng chỉ Chuyên môn', 'Chuyên ngành', 'Khóa học', 'Bằng cấp Trực tuyến'];
-  const formats = [
-    { id: 'Tất cả', label: 'Tất cả hình thức' },
-    { id: 'offline', label: 'Trực tiếp (Offline)' },
-    { id: 'hybrid', label: 'Kết hợp (Hybrid)' },
-    { id: 'online_external_lms', label: 'Online (LMS riêng)' },
-  ];
+  // Filters only offer values the catalogue has (no option that always gives zero results).
+  const distinct = (values: (string | undefined)[]) => ['Tất cả', ...Array.from(new Set(values.filter((v): v is string => !!v)))];
+  const levels = useMemo(() => distinct(courses.map((c) => c.level)), [courses]);
+  const types = useMemo(() => distinct(courses.map((c) => c.type)), [courses]);
+  const FORMAT_LABEL: Record<string, string> = {
+    offline: 'Trực tiếp (Offline)',
+    hybrid: 'Kết hợp (Hybrid)',
+    online_external_lms: 'Online (LMS riêng)'
+  };
+  const formats = useMemo(() => distinct(courses.map((c) => c.deliveryFormat)), [courses]);
+  const groups = [
+    { key: 'type', label: 'Loại chương trình', options: types, value: selectedType, set: setSelectedType, show: (v: string) => v },
+    { key: 'level', label: 'Cấp độ', options: levels, value: selectedLevel, set: setSelectedLevel, show: (v: string) => v },
+    {
+      key: 'format',
+      label: 'Hình thức học',
+      options: formats,
+      value: selectedFormat,
+      set: setSelectedFormat,
+      show: (v: string) => (v === 'Tất cả' ? v : FORMAT_LABEL[v] || v)
+    },
+    { key: 'partner', label: 'Đối tác đào tạo', options: partners, value: selectedPartner, set: setSelectedPartner, show: (v: string) => v }
+  ].filter((g) => g.options.length > 2); // a single value is not a choice
 
   // Filter & sort logic
   const filteredCourses = useMemo(() => {
@@ -75,12 +102,12 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
       .filter((course) => {
         // Search filter
         if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchTitle = course.title.toLowerCase().includes(q);
-          const matchSub = course.subtitle.toLowerCase().includes(q);
-          const matchPartner = course.partner?.name.toLowerCase().includes(q);
-          const matchSkills = course.skills?.some((s) => s.toLowerCase().includes(q));
-          if (!matchTitle && !matchSub && !matchPartner && !matchSkills) return false;
+          // Accent-insensitive: "tin dung" finds "Tín dụng".
+          const q = fold(searchQuery);
+          const haystack = fold(
+            [course.title, course.subtitle, course.partner?.name, course.level, course.category, ...(course.skills || [])].join(' ')
+          );
+          if (!q.split(/\s+/).every((word) => haystack.includes(word))) return false;
         }
 
         // Category filter
@@ -111,10 +138,10 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
         return true;
       })
       .sort((a, b) => {
-        if (sortBy === 'rating') return b.rating - a.rating;
-        if (sortBy === 'price-asc') return a.price - b.price;
-        if (sortBy === 'price-desc') return b.price - a.price;
-        return b.reviewsCount - a.reviewsCount;
+        if (sortBy === 'price-asc') return priceFor(a, openIntakes(a)[0]) - priceFor(b, openIntakes(b)[0]);
+        if (sortBy === 'price-desc') return priceFor(b, openIntakes(b)[0]) - priceFor(a, openIntakes(a)[0]);
+        // Soonest intake first; courses open now before those without an intake.
+        return startKey(a) - startKey(b);
       });
   }, [courses, searchQuery, selectedCategory, selectedLevel, selectedType, selectedFormat, selectedPartner, sortBy]);
 
@@ -125,7 +152,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
     setSelectedType('Tất cả');
     setSelectedFormat('Tất cả');
     setSelectedPartner('Tất cả');
-    setSortBy('popular');
+    setSortBy('start');
   };
 
   const hasActiveFilters =
@@ -198,6 +225,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Sidebar Filter (Desktop) */}
+          {groups.length > 0 && (
           <aside className="hidden lg:block lg:col-span-3 bg-white p-6 rounded-2xl border border-slate-200 space-y-6 sticky top-24">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="font-bold text-sm text-slate-900 flex items-center gap-2">
@@ -215,78 +243,30 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
               )}
             </div>
 
-            {/* Filter 1: Product Type */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
-                Loại Chương Trình
-              </label>
-              <div className="space-y-1.5">
-                {types.map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setSelectedType(type)}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
-                      selectedType === type
-                        ? 'bg-blue-50 text-[#0056D2] font-bold'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span>{type}</span>
-                    {selectedType === type && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                ))}
+            {groups.map((g, i) => (
+              <div key={g.key} className={`space-y-2.5 ${i ? 'pt-4 border-t border-slate-100' : ''}`}>
+                <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block">{g.label}</label>
+                <div className="space-y-1.5">
+                  {g.options.map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => g.set(opt)}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
+                        g.value === opt ? 'bg-blue-50 text-[#0056D2] font-bold' : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="truncate">{g.show(opt)}</span>
+                      {g.value === opt && <Check className="w-3.5 h-3.5 shrink-0" />}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-
-            {/* Filter 2: Level */}
-            <div className="space-y-2.5 pt-4 border-t border-slate-100">
-              <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
-                Cấp Độ Người Học
-              </label>
-              <div className="space-y-1.5">
-                {levels.map((lvl) => (
-                  <button
-                    key={lvl}
-                    onClick={() => setSelectedLevel(lvl)}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
-                      selectedLevel === lvl
-                        ? 'bg-blue-50 text-[#0056D2] font-bold'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span>{lvl}</span>
-                    {selectedLevel === lvl && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Filter 3: Partner */}
-            <div className="space-y-2.5 pt-4 border-t border-slate-100">
-              <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
-                Đối Tác Đào Tạo
-              </label>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {partners.map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setSelectedPartner(p)}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
-                      selectedPartner === p
-                        ? 'bg-blue-50 text-[#0056D2] font-bold'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className="truncate">{p}</span>
-                    {selectedPartner === p && <Check className="w-3.5 h-3.5 shrink-0" />}
-                  </button>
-                ))}
-              </div>
-            </div>
+            ))}
           </aside>
+          )}
 
           {/* Right Courses Grid */}
-          <main className="lg:col-span-9 space-y-6">
+          <main className={`${groups.length > 0 ? 'lg:col-span-9' : 'lg:col-span-12'} space-y-6`}>
             {/* Results bar & Sorting */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200">
               <div className="text-xs sm:text-sm font-semibold text-slate-700">
@@ -301,20 +281,19 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
                   onChange={(e) => setSortBy(e.target.value as any)}
                   className="px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-[#0056D2] cursor-pointer"
                 >
-                  <option value="popular">Phổ biến nhất</option>
-                  <option value="rating">Đánh giá cao nhất</option>
+                  <option value="start">Khai giảng sớm nhất</option>
                   <option value="price-asc">Học phí: Thấp đến Cao</option>
                   <option value="price-desc">Học phí: Cao đến Thấp</option>
                 </select>
 
                 {/* Mobile Filter Button */}
-                <button
+                {groups.length > 0 && <button
                   onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
                   className="lg:hidden p-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1"
                 >
                   <Filter className="w-3.5 h-3.5" />
                   <span>Lọc</span>
-                </button>
+                </button>}
               </div>
             </div>
 
@@ -328,30 +307,16 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Cấp độ</label>
-                    <select
-                      value={selectedLevel}
-                      onChange={(e) => setSelectedLevel(e.target.value)}
-                      className="w-full p-2 border rounded-lg"
-                    >
-                      {levels.map((l) => (
-                        <option key={l} value={l}>{l}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Loại chương trình</label>
-                    <select
-                      value={selectedType}
-                      onChange={(e) => setSelectedType(e.target.value)}
-                      className="w-full p-2 border rounded-lg"
-                    >
-                      {types.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {groups.map((g) => (
+                    <div key={g.key}>
+                      <label className="font-bold text-slate-700 block mb-1">{g.label}</label>
+                      <select value={g.value} onChange={(e) => g.set(e.target.value)} className="w-full p-2 border rounded-lg">
+                        {g.options.map((opt) => (
+                          <option key={opt} value={opt}>{g.show(opt)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
