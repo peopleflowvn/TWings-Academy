@@ -80,7 +80,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
       {/* 1. Header Banner & Breadcrumbs */}
-      <div className="bg-[#00255A] text-white pt-6 pb-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <div className="bg-[#263060] text-white pt-6 pb-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         <div className="max-w-7xl mx-auto space-y-4">
           {/* Breadcrumbs */}
           <div className="flex items-center gap-2 text-xs text-blue-200">
@@ -254,7 +254,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                         className="w-full p-4 flex items-center justify-between gap-3 text-left hover:bg-slate-50/80 transition-colors cursor-pointer"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="w-6 h-6 rounded-full bg-blue-50 text-[#0073C1] font-bold text-xs flex items-center justify-center shrink-0">
+                          <span className="w-6 h-6 rounded-full bg-[#D7F5FF] text-[#0073C1] font-bold text-xs flex items-center justify-center shrink-0">
                             {modIdx + 1}
                           </span>
                           <div>
@@ -337,7 +337,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-bold text-base text-slate-900">{inst.name}</h3>
                         {inst.credential && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-[#0073C1] font-bold">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#D7F5FF] text-[#0073C1] font-bold">
                             {inst.credential}
                           </span>
                         )}

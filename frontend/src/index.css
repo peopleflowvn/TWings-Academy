@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+:root {
+  --color-twings-primary: #0073C1;
+  --color-twings-sky: #5FBEFF;
+  --color-twings-azure: #2C93E8;
+  --color-twings-navy: #263060;
+  --color-twings-ice: #D7F5FF;
+  --color-twings-cyan: #94D9FF;
+  --color-twings-charcoal: #424242;
+  --color-twings-grey-light: #E1E6EA;
+  --color-twings-grey: #BBC1C4;
+}
+
 @layer utilities {
   .perspective-1000 {
     perspective: 1000px;
@@ -11,6 +23,44 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+}
+
+/* TWings Brand Colors & Gradients from Brand Identity */
+.bg-twings-primary { background-color: #0073C1; }
+.text-twings-primary { color: #0073C1; }
+.border-twings-primary { border-color: #0073C1; }
+
+.bg-twings-navy { background-color: #263060; }
+.text-twings-navy { color: #263060; }
+.border-twings-navy { border-color: #263060; }
+
+.bg-twings-sky { background-color: #5FBEFF; }
+.text-twings-sky { color: #5FBEFF; }
+
+.bg-twings-azure { background-color: #2C93E8; }
+.text-twings-azure { color: #2C93E8; }
+
+.bg-twings-ice { background-color: #D7F5FF; }
+.text-twings-ice { color: #D7F5FF; }
+
+.bg-twings-cyan { background-color: #94D9FF; }
+.text-twings-cyan { color: #94D9FF; }
+
+.text-twings-charcoal { color: #424242; }
+.border-twings-light { border-color: #E1E6EA; }
+.border-twings-grey { border-color: #BBC1C4; }
+
+/* Official Brand Gradients */
+.bg-twings-blue-gradient {
+  background: linear-gradient(135deg, #5FBEFF 0%, #2C93E8 35%, #0073C1 70%, #0E6BBB 100%);
+}
+
+.bg-twings-warm-gradient {
+  background: linear-gradient(135deg, #FF6B35 0%, #EA580C 50%, #C23010 100%);
+}
+
+.bg-twings-hero-gradient {
+  background: linear-gradient(180deg, #182046 0%, #263060 50%, #151B3B 100%);
 }
 
 @keyframes fadeIn {
@@ -46,6 +96,6 @@
 
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: #424242;
   -webkit-tap-highlight-color: transparent;
 }
-

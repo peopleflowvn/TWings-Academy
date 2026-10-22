@@ -68,14 +68,14 @@ export const CourseraTestimonials: React.FC<CourseraTestimonialsProps> = ({ conf
   const title = config?.title || 'Cảm nhận của học viên TWings Academy';
 
   return (
-    <section className="bg-gradient-to-b from-slate-50 via-white to-slate-50 py-10 sm:py-20 border-b border-slate-200/80">
+    <section className="bg-gradient-to-b from-slate-50 via-white to-slate-50 py-10 sm:py-20 border-b border-[#E1E6EA]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
         <div className="text-center space-y-2.5 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold text-[#0050D8] uppercase tracking-wider bg-blue-50 px-3 py-1 rounded-full border border-blue-200/80 shadow-2xs">
-            <TrendingUp className="w-3.5 h-3.5 text-[#0050D8]" />
+          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold text-[#0073C1] uppercase tracking-wider bg-[#D7F5FF] px-3 py-1 rounded-full border border-[#94D9FF] shadow-2xs">
+            <TrendingUp className="w-3.5 h-3.5 text-[#0073C1]" />
             <span>Học viên nói gì</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#263060] tracking-tight leading-tight">
             {title}
           </h2>
           {config?.subtitle && (
@@ -90,11 +90,11 @@ export const CourseraTestimonials: React.FC<CourseraTestimonialsProps> = ({ conf
           {cards.map((c) => (
             <div
               key={c.id}
-              className="w-[82vw] max-w-[310px] shrink-0 snap-start md:w-auto md:shrink bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-xs hover:shadow-xl hover:border-blue-400/50 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative select-none"
+              className="w-[82vw] max-w-[310px] shrink-0 snap-start md:w-auto md:shrink bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-[#E1E6EA] shadow-xs hover:shadow-xl hover:border-[#5FBEFF] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative select-none"
             >
               <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between">
-                  <Quote className="w-8 h-8 text-blue-300/70" />
+                  <Quote className="w-8 h-8 text-[#94D9FF]" />
                   {c.rating !== undefined && (
                     <div className="flex gap-1 items-center bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/80" aria-label={`${c.rating}/5 sao`}>
                       <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />

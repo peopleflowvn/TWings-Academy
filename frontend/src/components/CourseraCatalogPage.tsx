@@ -182,7 +182,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm khóa học: QHKH, tín dụng, giao dịch viên…"
-                className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-[#0056D2] focus:ring-2 focus:ring-blue-100 bg-white"
+                className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-[#0073C1] focus:ring-2 focus:ring-[#D7F5FF] bg-white"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               {searchQuery && (
@@ -204,7 +204,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer border ${
                   selectedCategory === cat
-                    ? 'bg-[#0056D2] text-white border-[#0056D2] shadow-xs'
+                    ? 'bg-[#0073C1] text-white border-[#0073C1] shadow-xs'
                     : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
                 }`}
               >
@@ -227,7 +227,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
           <aside className="hidden lg:block lg:col-span-3 bg-white p-6 rounded-2xl border border-slate-200 space-y-6 sticky top-24">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                <Filter className="w-4 h-4 text-[#0056D2]" />
+                <Filter className="w-4 h-4 text-[#0073C1]" />
                 <span>Bộ Lọc Khóa Học</span>
               </div>
               {hasActiveFilters && (
@@ -250,7 +250,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
                       key={opt}
                       onClick={() => g.set(opt)}
                       className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
-                        g.value === opt ? 'bg-blue-50 text-[#0056D2] font-bold' : 'text-slate-600 hover:bg-slate-50'
+                        g.value === opt ? 'bg-[#D7F5FF] text-[#0073C1] font-bold' : 'text-slate-600 hover:bg-slate-50'
                       }`}
                     >
                       <span className="truncate">{g.show(opt)}</span>
@@ -268,7 +268,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
             {/* Results bar & Sorting */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200">
               <div className="text-xs sm:text-sm font-semibold text-slate-700">
-                Hiển thị <span className="font-bold text-[#0056D2]">{filteredCourses.length}</span> khóa học phù hợp
+                Hiển thị <span className="font-bold text-[#0073C1]">{filteredCourses.length}</span> khóa học phù hợp
                 {hasActiveFilters && <span className="text-slate-400"> (đã áp dụng bộ lọc)</span>}
               </div>
 
@@ -277,7 +277,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-[#0056D2] cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-[#0073C1] cursor-pointer"
                 >
                   <option value="start">Khai giảng sớm nhất</option>
                   <option value="price-asc">Học phí: Thấp đến Cao</option>
@@ -332,13 +332,13 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
                 <div className="flex flex-wrap justify-center gap-2">
                   <button
                     onClick={resetFilters}
-                    className="px-5 py-2 border border-slate-300 hover:border-[#0056D2] text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    className="px-5 py-2 border border-slate-300 hover:border-[#0073C1] text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
                   >
                     Xem tất cả khóa học
                   </button>
                   <button
                     onClick={onOpenConsultation}
-                    className="px-5 py-2 bg-[#0056D2] hover:bg-[#00419E] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    className="px-5 py-2 bg-[#0073C1] hover:bg-[#2C93E8] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
                   >
                     Nhận tư vấn lộ trình
                   </button>

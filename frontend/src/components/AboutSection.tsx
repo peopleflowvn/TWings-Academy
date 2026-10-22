@@ -37,18 +37,18 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
   ];
 
   return (
-    <section id="about-twings" className="py-12 sm:py-20 bg-slate-50 border-t border-b border-slate-200/80">
+    <section id="about-twings" className="py-12 sm:py-20 bg-slate-50 border-t border-b border-[#E1E6EA]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-gradient-to-br from-[#001D4A] via-[#00388A] to-[#005FA0] text-white rounded-3xl p-6 sm:p-12 lg:p-16 shadow-2xl relative overflow-hidden border border-blue-400/20">
+        <div className="bg-gradient-to-br from-[#263060] via-[#0E6BBB] to-[#0073C1] text-white rounded-3xl p-6 sm:p-12 lg:p-16 shadow-2xl relative overflow-hidden border border-[#5FBEFF]/30">
           {/* Subtle background glow */}
-          <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-80 h-80 bg-cyan-400/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-80 h-80 bg-blue-400/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-80 h-80 bg-[#5FBEFF]/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-80 h-80 bg-[#0073C1]/20 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 lg:gap-14 items-center">
             {/* Left Column: Brand Story & Call to Action */}
             <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-400/20 border border-blue-300/30 text-amber-300 text-xs font-extrabold uppercase tracking-widest backdrop-blur-md">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0073C1]/25 border border-[#5FBEFF]/40 text-[#D7F5FF] text-xs font-extrabold uppercase tracking-widest backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5 text-[#5FBEFF] animate-pulse" />
                 <span>{title}</span>
               </div>
 
@@ -63,7 +63,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
                 <button
                   onClick={onNavigateToAbout}
-                  className="px-6 py-3 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg hover:shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer hover:scale-102"
+                  className="px-6 py-3 bg-gradient-to-r from-[#FF6B35] to-[#EA580C] hover:from-[#FF7A47] hover:to-[#C23010] text-white font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg hover:shadow-orange-500/20 flex items-center justify-center gap-2 cursor-pointer hover:scale-102"
                 >
                   <span>Tìm hiểu về TWings Academy</span>
                   <ArrowRight className="w-4 h-4" />
@@ -87,7 +87,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
                     key={idx}
                     className="p-4 sm:p-5 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md flex items-start gap-3.5 sm:gap-4 hover:bg-white/15 hover:border-white/25 transition-all group"
                   >
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-400/20 border border-amber-300/40 text-amber-300 flex items-center justify-center shrink-0 shadow-xs group-hover:scale-108 transition-transform">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#5FBEFF]/20 border border-[#5FBEFF]/40 text-[#5FBEFF] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-108 transition-transform">
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>

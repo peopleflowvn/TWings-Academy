@@ -67,11 +67,11 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
   };
 
   return (
-    <div className="group bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 overflow-hidden hover:border-[#0073C1] hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full select-none">
+    <div className="group bg-white rounded-2xl sm:rounded-3xl border border-[#E1E6EA] overflow-hidden hover:border-[#0073C1] hover:shadow-xl hover:shadow-[#0073C1]/10 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full select-none">
       {/* Thumbnail with overlay & badge */}
       <div 
         onClick={() => onSelectCourse(course)}
-        className="relative aspect-video w-full overflow-hidden bg-gradient-to-tr from-[#002255] via-[#00388A] to-[#0073C1] cursor-pointer"
+        className="relative aspect-video w-full overflow-hidden bg-gradient-to-tr from-[#263060] via-[#0E6BBB] to-[#0073C1] cursor-pointer"
       >
         {course.thumbnail ? (
           <img
@@ -100,7 +100,7 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
 
         {/* Discount tag top right */}
         {discountPercent > 0 && (
-          <div className="absolute top-3 right-3 bg-rose-600 text-white text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-0.5">
+          <div className="absolute top-3 right-3 bg-[#EA580C] text-white text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-0.5">
             <Flame className="w-3 h-3 fill-amber-300 text-amber-300" />
             <span>-{discountPercent}%</span>
           </div>
@@ -113,7 +113,7 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
               e.stopPropagation();
               onOpenYouTubeTrial(course);
             }}
-            className="absolute bottom-2.5 right-2.5 bg-rose-600/95 hover:bg-rose-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-md flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer backdrop-blur-xs"
+            className="absolute bottom-2.5 right-2.5 bg-[#EA580C]/95 hover:bg-[#EA580C] text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-md flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer backdrop-blur-xs"
             title="Xem thử video YouTube miễn phí"
           >
             <Play className="w-3 h-3 fill-white" />
@@ -135,7 +135,7 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
         <div className="space-y-2">
           {/* Format badge & partner name */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-[11px] font-extrabold text-slate-500 tracking-wider uppercase">
+            <span className="text-[11px] font-extrabold text-[#263060]/70 tracking-wider uppercase">
               {partnerName}
             </span>
             {renderDeliveryBadge()}
@@ -144,7 +144,7 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
           {/* Course Title */}
           <h3
             onClick={() => onSelectCourse(course)}
-            className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-[#0050D8] transition-colors leading-snug cursor-pointer line-clamp-2 min-h-[2.6rem]"
+            className="text-sm sm:text-base font-extrabold text-[#263060] group-hover:text-[#0073C1] transition-colors leading-snug cursor-pointer line-clamp-2 min-h-[2.6rem]"
             title={course.title}
           >
             {course.title}
@@ -156,7 +156,7 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
               {course.skills.slice(0, 3).map((skill, sIdx) => (
                 <span
                   key={sIdx}
-                  className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md"
+                  className="text-[10px] font-medium bg-[#D7F5FF]/60 text-[#0073C1] px-2 py-0.5 rounded-md border border-[#94D9FF]/40"
                 >
                   {skill}
                 </span>
@@ -179,7 +179,7 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
         </div>
 
         {/* Footer: when it starts, price (installments), actions */}
-        <div className="pt-3 border-t border-slate-100 space-y-3 mt-auto">
+        <div className="pt-3 border-t border-[#E1E6EA] space-y-3 mt-auto">
           {startLine(course) && (
             <div className={`flex items-center gap-1.5 text-xs font-semibold ${canBuy(course) ? 'text-emerald-700' : 'text-slate-500'}`}>
               <CalendarDays className="w-3.5 h-3.5 shrink-0" />
@@ -189,13 +189,13 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
           
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="text-lg sm:text-xl font-black text-slate-950 whitespace-nowrap">{vnd(price)}</span>
+              <span className="text-lg sm:text-xl font-black text-[#263060] whitespace-nowrap">{vnd(price)}</span>
               {course.originalPrice > price && (
                 <span className="text-xs text-slate-400 line-through whitespace-nowrap">{vnd(course.originalPrice)}</span>
               )}
             </div>
             {installmentLine(course, price) && (
-              <div className="text-[11px] font-semibold text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-md inline-block border border-emerald-100/60 mt-1">
+              <div className="text-[11px] font-semibold text-[#0073C1] bg-[#D7F5FF] px-2 py-0.5 rounded-md inline-block border border-[#94D9FF]/60 mt-1">
                 {installmentLine(course, price)}
               </div>
             )}
@@ -204,13 +204,13 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
           <div className="grid grid-cols-2 gap-2 pt-0.5">
             <button
               onClick={() => onSelectCourse(course)}
-              className="py-2.5 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/90 rounded-xl transition-all cursor-pointer text-center"
+              className="py-2.5 text-xs font-bold text-[#424242] bg-slate-50 hover:bg-[#D7F5FF]/50 hover:text-[#0073C1] border border-[#E1E6EA] rounded-xl transition-all cursor-pointer text-center"
             >
               Xem chi tiết
             </button>
             <button
               onClick={() => onEnrollCourse(course)}
-              className="py-2.5 bg-gradient-to-r from-[#00388A] via-[#0050D8] to-[#0073C1] hover:brightness-110 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-blue-500/15 cursor-pointer whitespace-nowrap text-center flex items-center justify-center gap-1"
+              className="py-2.5 bg-gradient-to-r from-[#5FBEFF] via-[#0073C1] to-[#0E6BBB] hover:brightness-110 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-[#0073C1]/20 cursor-pointer whitespace-nowrap text-center flex items-center justify-center gap-1"
             >
               <span>{canBuy(course) ? 'Đăng ký học' : 'Nhận tư vấn'}</span>
               <ArrowRight className="w-3.5 h-3.5" />

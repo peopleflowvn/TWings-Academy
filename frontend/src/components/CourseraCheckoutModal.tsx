@@ -106,7 +106,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
   const [wantInvoice, setWantInvoice] = useState(false);
   const [invoice, setInvoice] = useState({ companyName: '', taxCode: '', address: '', email: '' });
   const [honeypot, setHoneypot] = useState('');
-  const inputCls = 'w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:border-[#0056D2]';
+  const inputCls = 'w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:border-[#0073C1]';
   const [formError, setFormError] = useState('');
   // Per-field messages, shown under each field.
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -250,7 +250,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
       <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden relative my-6">
         {/* Modal Header */}
-        <div className="bg-[#00255A] text-white p-5 sm:p-6 flex items-center justify-between">
+        <div className="bg-[#263060] text-white p-5 sm:p-6 flex items-center justify-between">
           <div className="space-y-1">
             <div className="text-[11px] font-bold uppercase tracking-wider text-blue-200 flex items-center gap-1.5">
               <QrCode className="w-4 h-4 text-amber-300" />
@@ -291,7 +291,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       {(checkout?.installments?.length ?? 0) > 1 && (
                         <>
                           {' '}Lịch đóng các kỳ tiếp theo và mã QR luôn có trong{' '}
-                          <a href="/learn/tai-khoan" className="text-[#0056D2] font-bold hover:underline">Học phí & hồ sơ</a>.
+                          <a href="/learn/tai-khoan" className="text-[#0073C1] font-bold hover:underline">Học phí & hồ sơ</a>.
                         </>
                       )}
                     </>
@@ -311,7 +311,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                   <>
                     <a
                       href="/learn/"
-                      className="w-full sm:w-auto px-6 py-3 bg-[#0056D2] hover:bg-[#00419E] text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto px-6 py-3 bg-[#0073C1] hover:bg-[#2C93E8] text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
                     >
                       <span>Vào Học Ngay (TWings LMS)</span>
                       <ArrowRight className="w-4 h-4" />
@@ -326,7 +326,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                 ) : (
                   <button
                     onClick={onClose}
-                    className="w-full sm:w-auto px-6 py-3 bg-[#0056D2] hover:bg-[#00419E] text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full sm:w-auto px-6 py-3 bg-[#0073C1] hover:bg-[#2C93E8] text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Vào Bàn Học Của Tôi Ngay</span>
                     <ArrowRight className="w-4 h-4" />
@@ -346,7 +346,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                   />
                 )}
                 <div className="space-y-1 min-w-0 flex-1">
-                  <div className="text-[11px] font-bold text-[#0056D2]">{item.caption}</div>
+                  <div className="text-[11px] font-bold text-[#0073C1]">{item.caption}</div>
                   <h4 className="font-bold text-sm text-slate-900 line-clamp-1">
                     {item.title}
                   </h4>
@@ -406,7 +406,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       onChange={(e) => setCouponCode(e.target.value)}
                       placeholder="Mã ưu đãi (nếu có)"
                       maxLength={50}
-                      className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:border-[#0056D2] uppercase font-mono"
+                      className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:border-[#0073C1] uppercase font-mono"
                     />
                     <Tag className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   </div>
@@ -434,7 +434,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                         <label
                           key={String(split)}
                           className={`p-3 rounded-xl border cursor-pointer ${
-                            payInInstallments === split ? 'border-[#0056D2] bg-blue-50' : 'border-slate-200'
+                            payInInstallments === split ? 'border-[#0073C1] bg-[#D7F5FF]' : 'border-slate-200'
                           }`}
                         >
                           <input
@@ -496,7 +496,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                     />
                     <span>
                       Tôi đồng ý để TWings Academy xử lý dữ liệu cá nhân (họ tên, email, số điện thoại) nhằm ghi danh,
-                      thanh toán và tư vấn khóa học theo{' '}<a href="/chinh-sach-bao-mat" target="_blank" rel="noopener" className="text-[#0056D2] underline">Chính sách bảo mật</a>.
+                      thanh toán và tư vấn khóa học theo{' '}<a href="/chinh-sach-bao-mat" target="_blank" rel="noopener" className="text-[#0073C1] underline">Chính sách bảo mật</a>.
                     </span>
                   </label>
                   {fieldErrors.privacy && <p className="text-[11px] text-red-600 -mt-2 pl-5">{fieldErrors.privacy}</p>}
@@ -505,7 +505,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-0.5" />
                       <span>
                         Tôi đã đọc và đồng ý{' '}
-                        <a href="/dieu-khoan" target="_blank" rel="noopener" className="text-[#0056D2] underline">Điều khoản sử dụng dịch vụ</a>
+                        <a href="/dieu-khoan" target="_blank" rel="noopener" className="text-[#0073C1] underline">Điều khoản sử dụng dịch vụ</a>
                         {' '}(học phí, trả góp, hoàn học phí).
                       </span>
                     </label>
@@ -515,7 +515,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full py-3 px-4 bg-[#0056D2] hover:bg-[#00419E] disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-3 px-4 bg-[#0073C1] hover:bg-[#2C93E8] disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
                     <span>Tạo Mã Thanh Toán VietQR</span>
@@ -525,7 +525,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
               <>
               {(checkout.installments?.length ?? 0) > 1 && (
                 <div className="p-3 bg-blue-50 text-slate-700 text-xs rounded-xl border border-blue-200 space-y-1">
-                  <div className="font-bold text-[#0056D2]">
+                  <div className="font-bold text-[#0073C1]">
                     Trả góp {checkout.installments!.length} kỳ – tổng {formatVND(checkout.totalAmount ?? checkout.amount)}
                   </div>
                   {checkout.installments!.map((i) => (
@@ -550,7 +550,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center pt-2">
                 {/* VietQR Image */}
                 <div className="sm:col-span-5 flex flex-col items-center space-y-2">
-                  <div className="p-3 bg-white border-2 border-[#0056D2] rounded-2xl shadow-md w-full max-w-[210px] text-center">
+                  <div className="p-3 bg-white border-2 border-[#0073C1] rounded-2xl shadow-md w-full max-w-[210px] text-center">
                     <img
                       src={checkout.qrImageUrl}
                       alt={`VietQR ${checkout.bankName}`}
@@ -566,7 +566,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       Đang dùng điện thoại? <b>Nhấn giữ mã QR → Lưu ảnh</b>, rồi trong app ngân hàng chọn Quét QR → chọn ảnh vừa lưu.
                       Hoặc chép số tài khoản, số tiền, nội dung bên dưới.
                     </div>
-                    <a href={checkout.qrImageUrl} target="_blank" rel="noopener" className="inline-block font-bold text-[#0056D2] underline">
+                    <a href={checkout.qrImageUrl} target="_blank" rel="noopener" className="inline-block font-bold text-[#0073C1] underline">
                       Mở ảnh QR
                     </a>
                   </div>
@@ -626,7 +626,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                     <button
                       onClick={() => copyToClipboard(String(checkout.amount), 'amount')}
                       title="Chép số tiền"
-                      className="flex items-center gap-1 text-lg font-black text-[#0056D2] cursor-pointer"
+                      className="flex items-center gap-1 text-lg font-black text-[#0073C1] cursor-pointer"
                     >
                       <span>{formatVND(checkout.amount)}</span>
                       <Copy className="w-3.5 h-3.5 text-slate-400" />
@@ -643,7 +643,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
 
               {liveMode ? (
                 <div className="pt-2 text-xs text-slate-600 flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#0056D2]" />
+                  <Loader2 className="w-4 h-4 animate-spin text-[#0073C1]" />
                   <span>Đang chờ ngân hàng xác nhận – trang sẽ tự cập nhật sau khi bạn chuyển khoản.</span>
                 </div>
               ) : (

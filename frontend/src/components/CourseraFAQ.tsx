@@ -21,14 +21,14 @@ export const CourseraFAQ: React.FC<CourseraFAQProps> = ({ config }) => {
   };
 
   return (
-    <section className="bg-white py-10 sm:py-20 border-b border-slate-200/80">
+    <section className="bg-white py-10 sm:py-20 border-b border-[#E1E6EA]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
         <div className="text-center space-y-2.5">
-          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold text-[#0050D8] uppercase tracking-wider bg-blue-50 px-3 py-1 rounded-full border border-blue-200/80 shadow-2xs">
-            <HelpCircle className="w-3.5 h-3.5 text-[#0050D8]" />
+          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold text-[#0073C1] uppercase tracking-wider bg-[#D7F5FF] px-3 py-1 rounded-full border border-[#94D9FF] shadow-2xs">
+            <HelpCircle className="w-3.5 h-3.5 text-[#0073C1]" />
             <span>Giải Đáp Thắc Mắc</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#263060] tracking-tight leading-tight">
             {title}
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
@@ -44,19 +44,19 @@ export const CourseraFAQ: React.FC<CourseraFAQProps> = ({ config }) => {
                 key={item.id}
                 className={`border rounded-2xl overflow-hidden transition-all duration-200 ${
                   isOpen 
-                    ? 'border-blue-300 shadow-md bg-white' 
-                    : 'border-slate-200/90 hover:border-slate-300 bg-white shadow-2xs'
+                    ? 'border-[#5FBEFF] shadow-md bg-white' 
+                    : 'border-[#E1E6EA] hover:border-slate-300 bg-white shadow-2xs'
                 }`}
               >
                 <button
                   onClick={() => toggle(item.id)}
                   className="w-full px-5 py-4 sm:px-6 sm:py-4.5 text-left flex items-center justify-between gap-4 hover:bg-slate-50/80 transition-colors cursor-pointer"
                 >
-                  <span className="text-sm sm:text-base font-extrabold text-slate-900 leading-snug">
+                  <span className="text-sm sm:text-base font-extrabold text-[#263060] leading-snug">
                     {item.question}
                   </span>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                    isOpen ? 'bg-blue-50 text-[#0050D8]' : 'bg-slate-100 text-slate-500'
+                    isOpen ? 'bg-[#D7F5FF] text-[#0073C1]' : 'bg-slate-100 text-slate-500'
                   }`}>
                     <ChevronDown
                       className={`w-4 h-4 transition-transform duration-200 ${

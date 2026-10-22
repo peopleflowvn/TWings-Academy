@@ -46,8 +46,9 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
             style={dark ? { filter: 'brightness(0) invert(1)' } : undefined}
           />
         ) : (
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00388A] via-[#0050D8] to-[#0073C1] flex items-center justify-center text-white font-black text-xs shadow-xs">
-            TW
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0073C1] via-[#2C93E8] to-[#5FBEFF] flex items-center justify-center text-white font-black text-xs shadow-xs relative overflow-hidden">
+            <span className="font-sans font-black text-white">TW</span>
+            <span className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-[#EA580C] ring-1 ring-white" />
           </div>
         )}
       </div>
@@ -74,8 +75,8 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   }[size];
 
   const subSizes = {
-    sm: 'text-[10px]',
-    md: 'text-xs',
+    sm: 'text-[9px]',
+    md: 'text-[11px]',
     lg: 'text-xs',
   }[size];
 
@@ -93,7 +94,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
         {subtitle && (
           <div
             className={`font-semibold tracking-wider uppercase mt-1 leading-none ${subSizes} ${
-              dark ? 'text-slate-400' : 'text-slate-500'
+              dark ? 'text-slate-400' : 'text-[#424242]'
             }`}
           >
             {subtitle}
@@ -103,45 +104,59 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     );
   }
 
-  // Fallback typography & badge mark
+  // Exact Brand Wordmark & Mark according to Brand Identity Guidelines
   return (
-    <div className={`flex items-center gap-2.5 sm:gap-3 text-left shrink-0 ${className}`}>
+    <div className={`flex items-center gap-2.5 sm:gap-3 text-left shrink-0 select-none ${className}`}>
+      {/* Brand Icon Mark */}
       <div
-        className={`${badgeSizes} rounded-xl bg-gradient-to-tr from-[#00388A] via-[#0050D8] to-[#0073C1] flex items-center justify-center text-white font-black shadow-xs shrink-0`}
+        className={`${badgeSizes} rounded-xl bg-gradient-to-tr from-[#0E6BBB] via-[#0073C1] to-[#5FBEFF] flex items-center justify-center text-white font-black shadow-xs shrink-0 relative overflow-hidden`}
       >
-        TW
+        <span className="font-sans font-black tracking-tight text-white z-10">TW</span>
+        <span className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-[#EA580C] ring-1.5 ring-white z-10" />
+        <div className="absolute top-0 right-0 w-4 h-4 bg-white/20 rounded-full blur-xs" />
       </div>
-      <div className="truncate">
+
+      <div className="truncate flex flex-col justify-center">
         {title ? (
           <div
             className={`font-black tracking-tight leading-tight ${titleSizes} ${
-              dark ? 'text-white' : 'text-slate-900'
+              dark ? 'text-white' : 'text-[#263060]'
             }`}
           >
             {title}
           </div>
         ) : (
-          <div className="flex items-center gap-1 sm:gap-1.5 leading-none">
-            <span
-              className={`font-black tracking-tight font-sans uppercase ${titleSizes} ${
-                dark ? 'text-white' : 'text-[#00388A]'
-              }`}
-            >
-              TWINGS
-            </span>
-            <span
-              className={`font-black tracking-tight font-sans uppercase ${titleSizes} ${
-                dark ? 'text-[#38BDF8]' : 'text-[#0073C1]'
+          <div>
+            {/* TWiNGS main wordmark */}
+            <div className="flex items-center tracking-tight leading-none font-black font-sans">
+              <span className={dark ? 'text-white' : 'text-[#0073C1]'}>
+                TW
+              </span>
+              {/* Styled 'i' with cyan wing and orange center capsule */}
+              <span className="inline-flex flex-col items-center justify-center mx-0.5 relative">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#5FBEFF] mb-0.5" />
+                <span className="w-1.5 h-3.5 rounded-full bg-gradient-to-b from-[#EA580C] to-[#C23010]" />
+              </span>
+              <span className={dark ? 'text-white' : 'text-[#0073C1]'}>
+                NGS
+              </span>
+            </div>
+
+            {/* A C A D E M Y sub-mark */}
+            <div 
+              className={`text-[9px] sm:text-[10px] font-black uppercase tracking-[0.28em] mt-0.5 ${
+                dark ? 'text-[#5FBEFF]' : 'text-[#263060]'
               }`}
             >
               ACADEMY
-            </span>
+            </div>
           </div>
         )}
+
         {subtitle && (
           <div
-            className={`font-medium tracking-wide leading-tight mt-1 truncate ${subSizes} ${
-              dark ? 'text-slate-400' : 'text-slate-500'
+            className={`font-semibold tracking-wide leading-tight mt-1 truncate ${subSizes} ${
+              dark ? 'text-slate-400' : 'text-[#424242]'
             }`}
           >
             {subtitle}

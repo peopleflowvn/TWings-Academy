@@ -22,8 +22,8 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
       subtitle: 'Nghiệp vụ tín dụng, thẩm định CIC và kỹ năng quan hệ khách hàng cá nhân & SME.',
       coursesCount: '',
       icon: TrendingUp,
-      accentColor: 'from-blue-600 to-indigo-600',
-      tagColor: 'bg-blue-50 text-[#0050D8] border-blue-200',
+      accentColor: 'from-[#0073C1] to-[#0E6BBB]',
+      tagColor: 'bg-[#D7F5FF] text-[#0073C1] border-[#94D9FF]',
       image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80',
     },
     {
@@ -33,7 +33,7 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
       subtitle: 'Khai mở Generative AI, AI Agents và tự động hóa quy trình nghiệp vụ ngân hàng hiện đại.',
       coursesCount: '',
       icon: Sparkles,
-      accentColor: 'from-purple-600 to-blue-600',
+      accentColor: 'from-purple-600 to-[#0073C1]',
       tagColor: 'bg-purple-50 text-purple-700 border-purple-200',
       image: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80',
     },
@@ -67,32 +67,32 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
     .map((t) => ({ ...t, coursesCount: `${shelfCounts[t.id]} khóa học đang tuyển` }));
 
   return (
-    <section className="bg-gradient-to-b from-slate-50 via-white to-slate-50 py-10 sm:py-20 px-4 sm:px-6 lg:px-8 border-b border-slate-200/80 relative overflow-hidden">
+    <section className="bg-gradient-to-b from-slate-50 via-white to-slate-50 py-10 sm:py-20 px-4 sm:px-6 lg:px-8 border-b border-[#E1E6EA] relative overflow-hidden">
       {/* Subtle ambient background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[850px] h-[380px] bg-blue-100/40 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[850px] h-[380px] bg-[#D7F5FF]/50 rounded-full blur-3xl pointer-events-none -z-10" />
 
       <div className="max-w-7xl mx-auto space-y-8 sm:space-y-12 relative z-10">
         {/* Section Heading */}
         <div className="text-center space-y-2.5 sm:space-y-3.5 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-[#0050D8] text-[11px] sm:text-xs font-extrabold uppercase tracking-widest shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-[#0050D8] animate-pulse" />
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 rounded-full bg-[#D7F5FF] border border-[#94D9FF]/60 text-[#0073C1] text-[11px] sm:text-xs font-extrabold uppercase tracking-widest shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-[#0073C1] animate-pulse" />
             <span>{eyebrow}</span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#263060] tracking-tight leading-tight">
             NÂNG TẦM NĂNG LỰC,{' '}
-            <span className="bg-gradient-to-r from-[#00388A] via-[#0050D8] to-[#0073C1] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#5FBEFF] via-[#0073C1] to-[#0E6BBB] bg-clip-text text-transparent">
               KIẾN TẠO TƯƠNG LAI
             </span>
           </h2>
 
-          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl mx-auto">
+          <p className="text-xs sm:text-sm text-[#424242]/90 leading-relaxed max-w-2xl mx-auto">
             {description}
           </p>
 
           {/* Mobile Swipe Hint */}
           {tiles.length > 1 && (
-            <div className="sm:hidden pt-1 flex items-center justify-center gap-1.5 text-xs font-bold text-[#0050D8]">
+            <div className="sm:hidden pt-1 flex items-center justify-center gap-1.5 text-xs font-bold text-[#0073C1]">
               <span>Vuốt ngang để xem {tiles.length} nhóm chương trình</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </div>
@@ -108,7 +108,7 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
                 <div
                   key={tile.id}
                   onClick={() => onScrollToSection(tile.id)}
-                  className="w-[78vw] max-w-[290px] shrink-0 snap-start sm:w-auto sm:shrink group bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/90 shadow-xs hover:shadow-2xl hover:shadow-blue-500/10 hover:border-[#0050D8] transition-all duration-300 flex flex-col justify-between cursor-pointer transform hover:-translate-y-1.5 select-none"
+                  className="w-[78vw] max-w-[290px] shrink-0 snap-start sm:w-auto sm:shrink group bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-[#E1E6EA] shadow-xs hover:shadow-2xl hover:shadow-[#0073C1]/10 hover:border-[#0073C1] transition-all duration-300 flex flex-col justify-between cursor-pointer transform hover:-translate-y-1.5 select-none"
                 >
                   {/* Image Banner */}
                   <div className="h-40 sm:h-48 overflow-hidden bg-slate-900 relative">
@@ -128,7 +128,7 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
                     </div>
 
                     {/* Icon badge floating at bottom right */}
-                    <div className="absolute bottom-3 right-3 w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/95 backdrop-blur-md text-slate-900 flex items-center justify-center shadow-md group-hover:bg-[#0050D8] group-hover:text-white transition-all duration-300">
+                    <div className="absolute bottom-3 right-3 w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/95 backdrop-blur-md text-[#263060] flex items-center justify-center shadow-md group-hover:bg-[#0073C1] group-hover:text-white transition-all duration-300">
                       <IconComponent className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                   </div>
@@ -136,19 +136,19 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
                   {/* Card Content Body */}
                   <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3 sm:space-y-4">
                     <div className="space-y-1.5">
-                      <div className="text-[10px] sm:text-[11px] font-extrabold text-[#0050D8] uppercase tracking-wider">
+                      <div className="text-[10px] sm:text-[11px] font-extrabold text-[#0073C1] uppercase tracking-wider">
                         {tile.coursesCount}
                       </div>
-                      <h3 className="text-base font-extrabold text-slate-900 group-hover:text-[#0050D8] transition-colors leading-snug">
+                      <h3 className="text-base font-extrabold text-[#263060] group-hover:text-[#0073C1] transition-colors leading-snug">
                         {tile.title}
                       </h3>
-                      <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                      <p className="text-xs text-[#424242]/80 leading-relaxed line-clamp-2">
                         {tile.subtitle}
                       </p>
                     </div>
 
                     {/* Bottom Action Link */}
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#0050D8]">
+                    <div className="pt-2 border-t border-[#E1E6EA] flex items-center justify-between text-xs font-bold text-[#0073C1]">
                       <span>Xem các khóa học</span>
                       <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1.5" />
                     </div>

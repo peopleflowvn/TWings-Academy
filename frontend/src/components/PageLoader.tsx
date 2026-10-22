@@ -45,7 +45,7 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
           {/* Subtle glowing ring */}
           <div
             className={`absolute -inset-1 rounded-2xl blur-md -z-10 opacity-60 animate-pulse ${
-              dark ? 'bg-[#0073C1]/30' : 'bg-blue-400/20'
+              dark ? 'bg-[#0073C1]/30' : 'bg-[#5FBEFF]/20'
             }`}
           />
         </div>
@@ -57,7 +57,7 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
               dark ? 'bg-slate-800' : 'bg-slate-200/80'
             }`}
           >
-            <div className="h-full w-full bg-gradient-to-r from-[#00388A] via-[#0073C1] to-[#38BDF8] rounded-full animate-indeterminate-bar" />
+            <div className="h-full w-full bg-gradient-to-r from-[#263060] via-[#0073C1] to-[#5FBEFF] rounded-full animate-indeterminate-bar" />
           </div>
 
           <p

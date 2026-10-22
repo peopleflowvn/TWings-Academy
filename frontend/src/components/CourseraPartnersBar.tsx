@@ -15,13 +15,13 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
   if (displayPartners.length === 0) return null;
 
   return (
-    <section className="bg-white py-6 sm:py-9 border-b border-slate-200/80">
+    <section className="bg-white py-6 sm:py-9 border-b border-[#E1E6EA]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
         <h2 className="text-center text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">
           {title || (
             <>
               Đối tác chiến lược đào tạo & kết nối tuyển dụng cùng{' '}
-              <span className="font-extrabold text-[#0050D8]">TWINGS ACADEMY</span>
+              <span className="font-extrabold text-[#0073C1]">TWINGS ACADEMY</span>
             </>
           )}
         </h2>
@@ -34,13 +34,13 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
               onClick={() => {
                 if (p.websiteUrl) window.open(p.websiteUrl, '_blank');
               }}
-              className={`flex items-center gap-2.5 p-2 sm:p-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 hover:border-blue-300 transition-all shrink-0 select-none shadow-2xs hover:shadow-sm ${
+              className={`flex items-center gap-2.5 p-2 sm:p-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-[#E1E6EA] hover:border-[#5FBEFF] transition-all shrink-0 select-none shadow-2xs hover:shadow-sm ${
                 p.websiteUrl ? 'cursor-pointer group' : 'cursor-default'
               }`}
               title={p.slogan || p.name}
             >
               {p.logoUrl ? (
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden border border-slate-200 bg-white p-1 shrink-0 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden border border-[#E1E6EA] bg-white p-1 shrink-0 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
                   <img 
                     loading="lazy" 
                     decoding="async"
@@ -53,14 +53,14 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
                   />
                 </div>
               ) : (
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-[#0050D8] flex items-center justify-center font-bold text-xs shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#D7F5FF] text-[#0073C1] flex items-center justify-center font-bold text-xs shrink-0">
                   <Building2 className="w-4 h-4" />
                 </div>
               )}
 
               <div className="text-left pr-1.5 sm:pr-2">
                 <div
-                  className="text-xs sm:text-sm font-extrabold tracking-tight select-none leading-none group-hover:text-[#0050D8] transition-colors whitespace-nowrap"
+                  className="text-xs sm:text-sm font-extrabold tracking-tight select-none leading-none group-hover:text-[#0073C1] transition-colors whitespace-nowrap"
                   style={{ color: p.logoColor || '#1e293b' }}
                 >
                   {p.logoText || p.name}

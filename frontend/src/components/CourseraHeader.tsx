@@ -147,7 +147,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             title="Cổng học viên"
             className="hidden sm:flex items-center gap-1.5 hover:text-[#0073C1] transition-colors"
           >
-            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+            <BookOpen className="w-3.5 h-3.5 text-[#0073C1]" />
             <span className="lg:hidden xl:inline">Cổng học viên</span>
           </a>
 
@@ -156,7 +156,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           {/* Quick Consultation CTA */}
           <button
             onClick={onOpenConsultation}
-            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 border border-[#0073C1] text-[#0073C1] hover:bg-blue-50/80 rounded-xl font-bold transition-colors cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 border border-[#0073C1] text-[#0073C1] hover:bg-[#D7F5FF]/50 rounded-xl font-bold transition-colors cursor-pointer"
           >
             <PhoneCall className="w-3.5 h-3.5" />
             <span>Đăng ký tư vấn</span>
@@ -216,10 +216,10 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             <div>
               <div className="p-4 border-b border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#00388A] to-[#0073C1] text-white flex items-center justify-center font-black text-xs">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#263060] to-[#0073C1] text-white flex items-center justify-center font-black text-xs">
                     TW
                   </div>
-                  <span className="font-black text-sm text-[#00388A]">TWINGS ACADEMY</span>
+                  <span className="font-black text-sm text-[#263060]">TWINGS ACADEMY</span>
                 </div>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
@@ -259,7 +259,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
                   href={routePath('home')}
                   onClick={navClick('home', true)}
                   className={`flex items-center justify-between p-3 rounded-xl transition-colors ${
-                    currentView === 'home' ? 'bg-blue-50 text-[#0073C1] font-bold' : 'hover:bg-slate-50'
+                    currentView === 'home' ? 'bg-[#D7F5FF] text-[#0073C1] font-bold' : 'hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -273,7 +273,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
                   href={routePath('catalog')}
                   onClick={navClick('catalog', true)}
                   className={`flex items-center justify-between p-3 rounded-xl transition-colors ${
-                    currentView === 'catalog' ? 'bg-blue-50 text-[#0073C1] font-bold' : 'hover:bg-slate-50'
+                    currentView === 'catalog' ? 'bg-[#D7F5FF] text-[#0073C1] font-bold' : 'hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -288,7 +288,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
                   href={routePath('about')}
                   onClick={navClick('about', true)}
                   className={`flex items-center justify-between p-3 rounded-xl transition-colors ${
-                    currentView === 'about' ? 'bg-blue-50 text-[#0073C1] font-bold' : 'hover:bg-slate-50'
+                    currentView === 'about' ? 'bg-[#D7F5FF] text-[#0073C1] font-bold' : 'hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -302,7 +302,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
                   href={routePath('articles')}
                   onClick={navClick('articles', true)}
                   className={`flex items-center justify-between p-3 rounded-xl transition-colors ${
-                    currentView === 'articles' ? 'bg-blue-50 text-[#0073C1] font-bold' : 'hover:bg-slate-50'
+                    currentView === 'articles' ? 'bg-[#D7F5FF] text-[#0073C1] font-bold' : 'hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -314,13 +314,13 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
 
                 <a
                   href="/learn/"
-                  className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors text-blue-700 font-bold"
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors text-[#0073C1] font-bold"
                 >
                   <div className="flex items-center gap-3">
-                    <BookOpen className="w-4 h-4 text-blue-600" />
+                    <BookOpen className="w-4 h-4 text-[#0073C1]" />
                     <span>Cổng Học Viên (LMS)</span>
                   </div>
-                  <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">
+                  <span className="text-[10px] bg-[#D7F5FF] text-[#0073C1] px-2 py-0.5 rounded-full font-bold">
                     Truy cập
                   </span>
                 </a>
@@ -356,9 +356,9 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
                       href={zalo}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+                      className="flex-1 py-2 px-3 bg-[#D7F5FF]/60 hover:bg-[#D7F5FF] text-[#0073C1] border border-[#94D9FF] rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors"
                     >
-                      <MessageCircle className="w-3.5 h-3.5 text-blue-600" />
+                      <MessageCircle className="w-3.5 h-3.5 text-[#0073C1]" />
                       <span>Chat Zalo</span>
                     </a>
                   )}

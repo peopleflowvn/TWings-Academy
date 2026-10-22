@@ -45,11 +45,11 @@ const SignIn: React.FC<{ onDone: () => void }> = ({ onDone }) => {
     }
   };
 
-  const input = 'w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-[#0056D2]';
+  const input = 'w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-[#0073C1]';
   return (
-    <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
+    <div className="max-w-md mx-auto bg-white border border-[#E1E6EA] rounded-2xl p-6 space-y-4 shadow-sm">
       <div>
-        <h1 className="text-xl font-black text-slate-900">Cổng học viên TWings</h1>
+        <h1 className="text-xl font-black text-[#263060]">Cổng học viên TWings</h1>
         <p className="text-xs text-slate-600 mt-1">
           Đăng nhập bằng email bạn đã dùng khi đăng ký khóa học. Chúng tôi gửi mã 6 chữ số, không cần mật khẩu.
         </p>
@@ -57,7 +57,7 @@ const SignIn: React.FC<{ onDone: () => void }> = ({ onDone }) => {
       {step === 'email' ? (
         <form onSubmit={send} className="space-y-3">
           <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email của bạn" className={input} />
-          <button type="submit" disabled={busy} className="w-full py-2.5 rounded-xl bg-[#0056D2] hover:bg-[#00419E] text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
+          <button type="submit" disabled={busy} className="w-full py-2.5 rounded-xl bg-[#0073C1] hover:bg-[#2C93E8] text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />} Gửi mã đăng nhập
           </button>
         </form>
@@ -67,7 +67,7 @@ const SignIn: React.FC<{ onDone: () => void }> = ({ onDone }) => {
             Nếu <strong>{email}</strong> đã đăng ký tại TWings, mã đã được gửi tới hộp thư (kiểm tra cả Spam). Mã có hiệu lực 10 phút.
           </p>
           <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="Mã 6 chữ số" className={`${input} font-mono tracking-[0.4em] text-center text-lg`} />
-          <button type="submit" disabled={busy || code.length !== 6} className="w-full py-2.5 rounded-xl bg-[#0056D2] hover:bg-[#00419E] text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
+          <button type="submit" disabled={busy || code.length !== 6} className="w-full py-2.5 rounded-xl bg-[#0073C1] hover:bg-[#2C93E8] text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
             {busy && <Loader2 className="w-4 h-4 animate-spin" />} Đăng nhập
           </button>
           <button type="button" onClick={() => setStep('email')} className="w-full text-xs text-slate-500 hover:text-slate-800 cursor-pointer">
@@ -90,10 +90,10 @@ const PaymentBox: React.FC<{ order: AccountOrder }> = ({ order }) => {
     setTimeout(() => setCopied(''), 1500);
   };
   return (
-    <div className="flex flex-col sm:flex-row gap-4 items-center bg-blue-50 border border-blue-200 rounded-xl p-4">
+    <div className="flex flex-col sm:flex-row gap-4 items-center bg-[#D7F5FF]/50 border border-[#94D9FF] rounded-xl p-4">
       <img src={p.qrImageUrl} alt="VietQR" className="w-36 h-36 bg-white rounded-lg border border-slate-200" />
       <div className="text-xs space-y-1.5 flex-1 w-full">
-        <div className="font-bold text-[#0056D2] text-sm">Cần thanh toán: {formatVND(p.amount)}</div>
+        <div className="font-bold text-[#0073C1] text-sm">Cần thanh toán: {formatVND(p.amount)}</div>
         <div>Ngân hàng: <strong>{p.bankName}</strong></div>
         <div className="flex items-center gap-2">
           Số tài khoản: <strong className="font-mono">{p.accountNumber}</strong>
@@ -168,7 +168,7 @@ const ReviewBox: React.FC<{ course: AccountCourse; learnerName: string }> = ({ c
   if (!course.canReview) return null;
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="text-xs text-[#0056D2] font-bold hover:underline cursor-pointer">
+      <button type="button" onClick={() => setOpen(true)} className="text-xs text-[#0073C1] font-bold hover:underline cursor-pointer">
         {review ? `Đánh giá của bạn: ${review.rating}★ (${{ pending: 'chờ duyệt', approved: 'đã đăng', rejected: 'không đăng' }[review.status]}) – sửa` : 'Viết đánh giá khóa học'}
       </button>
     );
@@ -207,7 +207,7 @@ const ReviewBox: React.FC<{ course: AccountCourse; learnerName: string }> = ({ c
       {error && <p className="text-red-600">{error}</p>}
       <div className="flex gap-2">
         <button type="button" disabled={busy || comment.trim().length < 20 || !name.trim() || !consent} onClick={submit}
-          className="px-3 py-1.5 rounded-xl bg-[#0056D2] text-white font-bold cursor-pointer disabled:opacity-50">Gửi đánh giá</button>
+          className="px-3 py-1.5 rounded-xl bg-[#0073C1] text-white font-bold cursor-pointer disabled:opacity-50">Gửi đánh giá</button>
         <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-slate-500 cursor-pointer">Hủy</button>
       </div>
     </div>
@@ -298,8 +298,8 @@ const DossierBox: React.FC<{ order: AccountOrder }> = ({ order }) => {
             {f('contactPersonPhone', 'SĐT người liên hệ')}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <button type="button" disabled={busy} onClick={save} className="px-3 py-1.5 rounded-xl bg-[#0056D2] text-white font-bold cursor-pointer disabled:opacity-50">Lưu hồ sơ</button>
-            <label className="cursor-pointer text-[#0056D2] font-bold">
+            <button type="button" disabled={busy} onClick={save} className="px-3 py-1.5 rounded-xl bg-[#0073C1] text-white font-bold cursor-pointer disabled:opacity-50">Lưu hồ sơ</button>
+            <label className="cursor-pointer text-[#0073C1] font-bold">
               {data.hasCv ? 'Thay CV (PDF/DOCX)' : 'Tải CV lên (PDF/DOCX, ≤ 5 MB)'}
               <input type="file" accept=".pdf,.docx" className="hidden" onChange={(e) => upload(e.target.files?.[0])} />
             </label>
@@ -365,7 +365,7 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: 
   <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-5 shadow-xs hover:shadow-md transition-shadow">
     <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-slate-100">
       <div>
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[#0056D2] uppercase tracking-wider mb-1.5">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#D7F5FF] text-[#0073C1] uppercase tracking-wider mb-1.5">
           {order.kind === 'program' ? 'Chương trình trọn gói' : 'Khóa học thực chiến'} · Đơn #{order.orderCode}
         </div>
         <h2 className="font-extrabold text-slate-900 text-lg sm:text-xl tracking-tight">{order.title}</h2>
@@ -423,7 +423,7 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: 
     {/* Course List inside Order */}
     <div className="space-y-3 pt-2">
       <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-        <BookOpen className="w-3.5 h-3.5 text-[#0056D2]" /> Các khóa học trong đơn
+        <BookOpen className="w-3.5 h-3.5 text-[#0073C1]" /> Các khóa học trong đơn
       </div>
       <div className="grid grid-cols-1 gap-3">
         {order.courses.map((c, idx) => (
@@ -444,7 +444,7 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: 
               {c.lmsStatus === 'done' && (
                 <a
                   href={learnUrl}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0056D2] to-[#0073C1] hover:from-[#00419E] hover:to-[#0056D2] text-white text-xs font-bold shadow-xs hover:shadow-sm inline-flex items-center gap-1.5 transition-all"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0073C1] to-[#2C93E8] hover:from-[#0E6BBB] hover:to-[#0073C1] text-white text-xs font-bold shadow-xs hover:shadow-sm inline-flex items-center gap-1.5 transition-all"
                 >
                   Vào học LMS <ArrowRight className="w-3.5 h-3.5" />
                 </a>
@@ -455,11 +455,11 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: 
               <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-600 font-medium text-[11px]">Tiến độ học tập</span>
-                  <span className="font-mono font-bold text-[#0056D2]">{c.progress}%</span>
+                  <span className="font-mono font-bold text-[#0073C1]">{c.progress}%</span>
                 </div>
                 <div className="h-2 bg-slate-200/80 rounded-full overflow-hidden">
                   <div
-                    className={`h-full transition-all duration-500 ${c.completedAt ? 'bg-emerald-500' : 'bg-gradient-to-r from-[#0073C1] to-[#0056D2]'}`}
+                    className={`h-full transition-all duration-500 ${c.completedAt ? 'bg-emerald-500' : 'bg-gradient-to-r from-[#0073C1] to-[#2C93E8]'}`}
                     style={{ width: `${c.progress}%` }}
                   />
                 </div>
@@ -479,7 +479,7 @@ const OrderCard: React.FC<{ order: AccountOrder; learnUrl: string; learnerName: 
                   href={c.certificate.url}
                   target="_blank"
                   rel="noopener"
-                  className="text-xs text-[#0056D2] font-bold inline-flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="text-xs text-[#0073C1] font-bold inline-flex items-center gap-1.5 bg-[#D7F5FF] px-3 py-1.5 rounded-lg hover:bg-[#D7F5FF]/80 transition-colors"
                 >
                   <Award className="w-4 h-4" /> Xem chứng chỉ {c.certificate.code}
                 </a>
@@ -575,7 +575,7 @@ export const AccountPage: React.FC = () => {
       <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#00388A] via-[#0050D8] to-[#0073C1] flex items-center justify-center text-white font-extrabold text-xl shadow-md shrink-0">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#263060] via-[#0E6BBB] to-[#0073C1] flex items-center justify-center text-white font-extrabold text-xl shadow-md shrink-0">
               {initials}
             </div>
             <div className="min-w-0">
@@ -602,7 +602,7 @@ export const AccountPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <a
               href={account.learnUrl || '/learn/my/'}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0056D2] to-[#0073C1] hover:from-[#00419E] hover:to-[#0056D2] text-white text-xs font-bold shadow-xs hover:shadow-sm inline-flex items-center gap-1.5 transition-all"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0073C1] to-[#2C93E8] hover:from-[#0E6BBB] hover:to-[#0073C1] text-white text-xs font-bold shadow-xs hover:shadow-sm inline-flex items-center gap-1.5 transition-all"
             >
               <GraduationCap className="w-4 h-4" /> Vào học LMS
             </a>
@@ -622,25 +622,25 @@ export const AccountPage: React.FC = () => {
             <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider mr-1">Tiện ích LMS:</span>
             <a
               href="/learn/grade/report/overview/index.php"
-              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-[#0056D2] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-[#D7F5FF]/50 text-slate-700 hover:text-[#0073C1] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
             >
               <Award className="w-3.5 h-3.5 text-[#0073C1]" /> Bảng điểm & Kết quả
             </a>
             <a
               href="/learn/calendar/view.php?view=upcoming"
-              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-[#0056D2] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-[#D7F5FF]/50 text-slate-700 hover:text-[#0073C1] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
             >
               <BookOpen className="w-3.5 h-3.5 text-[#0073C1]" /> Lịch học sắp tới
             </a>
             <a
               href="/learn/login/change_password.php"
-              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-[#0056D2] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-[#D7F5FF]/50 text-slate-700 hover:text-[#0073C1] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
             >
               <KeyRound className="w-3.5 h-3.5 text-[#0073C1]" /> Đổi mật khẩu LMS
             </a>
             <a
               href="/learn/user/preferences.php"
-              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-[#0056D2] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-[#D7F5FF]/50 text-slate-700 hover:text-[#0073C1] border border-slate-200/70 inline-flex items-center gap-1.5 font-medium transition-colors"
             >
               <Settings className="w-3.5 h-3.5 text-[#0073C1]" /> Tùy chọn tài khoản
             </a>
@@ -660,7 +660,7 @@ export const AccountPage: React.FC = () => {
           <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-3">
             <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
             <p className="text-sm text-slate-600">Chưa có đơn đăng ký nào với email này.</p>
-            <a href="/khoa-hoc" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0056D2] text-white text-xs font-bold hover:bg-[#00419E]">
+            <a href="/khoa-hoc" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0073C1] text-white text-xs font-bold hover:bg-[#2C93E8]">
               Xem các khóa học <ArrowRight className="w-3.5 h-3.5" />
             </a>
           </div>

@@ -88,10 +88,10 @@ export const TopLoadingBar: React.FC<TopLoadingBarProps> = ({ active }) => {
       aria-hidden="true"
     >
       <div
-        className="h-[3px] bg-gradient-to-r from-[#00388A] via-[#0073C1] to-[#38BDF8] shadow-md shadow-[#0073C1]/50 transition-all duration-300 ease-out"
+        className="h-[3px] bg-gradient-to-r from-[#263060] via-[#0073C1] to-[#5FBEFF] shadow-md shadow-[#0073C1]/50 transition-all duration-300 ease-out"
         style={{
           width: `${progress}%`,
-          boxShadow: '0 0 10px rgba(0, 115, 193, 0.7), 0 0 4px rgba(56, 189, 248, 0.6)',
+          boxShadow: '0 0 10px rgba(0, 115, 193, 0.7), 0 0 4px rgba(95, 190, 255, 0.6)',
         }}
       />
     </div>

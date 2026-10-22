@@ -243,7 +243,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         <button
           type="submit"
           disabled={submitting}
-          className="w-full mt-2 py-3.5 bg-gradient-to-r from-[#0056D2] to-[#0073C1] hover:from-[#00419E] hover:to-[#005fb3] active:scale-[0.99] disabled:opacity-60 text-white font-bold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 cursor-pointer transition-all"
+          className="w-full mt-2 py-3.5 bg-gradient-to-r from-[#0073C1] to-[#2C93E8] hover:from-[#0E6BBB] hover:to-[#0073C1] active:scale-[0.99] disabled:opacity-60 text-white font-bold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-[#0073C1]/20 cursor-pointer transition-all"
         >
           {submitting ? (
             <>

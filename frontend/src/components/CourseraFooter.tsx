@@ -47,22 +47,22 @@ export const CourseraFooter: React.FC<CourseraFooterProps & { onSelectCourse?: (
     { href: safeUrl(seo?.linkedinUrl), label: 'LinkedIn', icon: Linkedin, hover: 'hover:bg-[#0A66C2]' }
   ].filter((s) => s.href);
   const featured = courses.slice(0, 5);
-  const iconBtn = 'w-8 h-8 rounded-xl bg-slate-800 text-white flex items-center justify-center transition-colors shadow-2xs';
+  const iconBtn = 'w-8 h-8 rounded-xl bg-[#263060] hover:bg-[#0073C1] text-white flex items-center justify-center transition-colors shadow-2xs';
 
   return (
-    <footer className="bg-slate-950 text-slate-400 text-xs pt-12 pb-20 sm:pb-8 border-t border-slate-800">
+    <footer className="bg-[#181E3D] text-slate-300 text-xs pt-12 pb-20 sm:pb-8 border-t border-[#263060]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand */}
           <div className="space-y-3 lg:col-span-2">
             <BrandLogo dark={true} size="md" />
-            <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
+            <p className="text-xs text-slate-300 leading-relaxed max-w-sm">
               {seo?.siteSlogan ||
                 'Học viện đào tạo thực chiến ngành Tài chính - Ngân hàng, kết hợp công nghệ AI và định hướng nghề nghiệp.'}
             </p>
             {(socials.length > 0 || zalo || seo?.email || phone) && (
               <div className="pt-2 space-y-2">
-                <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Kết nối với chúng tôi</div>
+                <div className="text-[11px] font-bold text-slate-200 uppercase tracking-wider">Kết nối với chúng tôi</div>
                 <div className="flex items-center gap-2.5">
                   {socials.map((s) => (
                     <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" title={s.label} className={`${iconBtn} ${s.hover}`}>
@@ -97,7 +97,7 @@ export const CourseraFooter: React.FC<CourseraFooterProps & { onSelectCourse?: (
               <li><NavLink view="about" onNavigate={onNavigate}>Giới thiệu về chúng tôi</NavLink></li>
               <li><NavLink view="catalog" onNavigate={onNavigate}>Khóa học & tuyển sinh</NavLink></li>
               <li><NavLink view="articles" onNavigate={onNavigate}>Tin tức & Cẩm nang</NavLink></li>
-              <li><a href="/learn/" className="hover:text-white transition-colors text-blue-400 font-semibold">Cổng học viên (LMS)</a></li>
+              <li><a href="/learn/" className="hover:text-white transition-colors text-[#5FBEFF] font-semibold">Cổng học viên (LMS)</a></li>
               <li><a href="/learn/user/profile.php" className="hover:text-white transition-colors">Học phí & hồ sơ</a></li>
             </ul>
           </div>

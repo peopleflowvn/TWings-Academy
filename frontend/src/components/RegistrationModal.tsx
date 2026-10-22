@@ -374,7 +374,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 />
                 <span>
                   Tôi đồng ý để TWings Academy xử lý dữ liệu cá nhân đã cung cấp nhằm tư vấn, xét tuyển và ghi danh
-                  khóa học theo{' '}<a href="/chinh-sach-bao-mat" target="_blank" rel="noopener" className="text-[#0056D2] underline">Chính sách bảo mật</a>. Tôi có thể yêu cầu xem, sửa hoặc xóa dữ liệu bất kỳ lúc nào.
+                  khóa học theo{' '}<a href="/chinh-sach-bao-mat" target="_blank" rel="noopener" className="text-[#0073C1] underline">Chính sách bảo mật</a>. Tôi có thể yêu cầu xem, sửa hoặc xóa dữ liệu bất kỳ lúc nào.
                 </span>
               </label>
               {errors.privacyConsent && <p className="text-[11px] text-red-600">{errors.privacyConsent}</p>}

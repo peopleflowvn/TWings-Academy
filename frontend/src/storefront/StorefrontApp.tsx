@@ -69,7 +69,7 @@ const Shell: React.FC<{ active: 'programs' | 'account'; children: React.ReactNod
 /** The learner portal's frame, matching Moodle's navigation (local_twings adds the same entry there). */
 const PortalShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const tab = (href: string, label: string, on: boolean) => (
-    <a href={href} className={`px-3 py-2 rounded-xl text-sm font-bold whitespace-nowrap ${on ? 'text-[#0056D2] bg-blue-50' : 'text-slate-600 hover:text-slate-900'}`}>
+    <a href={href} className={`px-3 py-2 rounded-xl text-sm font-bold whitespace-nowrap ${on ? 'text-[#0073C1] bg-[#D7F5FF]' : 'text-slate-600 hover:text-slate-900'}`}>
       {label}
     </a>
   );
@@ -78,10 +78,10 @@ const PortalShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
           <a href="/learn/my/" className="flex items-center gap-2.5" title="Cổng học viên TWings">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00388A] via-[#0050D8] to-[#0073C1] flex items-center justify-center text-white font-black text-sm">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#263060] via-[#0E6BBB] to-[#0073C1] flex items-center justify-center text-white font-black text-sm">
               TW
             </div>
-            <span className="hidden sm:inline text-base font-black tracking-tight text-[#00388A]">Cổng học viên</span>
+            <span className="hidden sm:inline text-base font-black tracking-tight text-[#263060]">Cổng học viên</span>
           </a>
           <nav className="flex items-center gap-1 overflow-x-auto">
             {tab('/learn/my/', 'Khóa học của tôi', false)}
@@ -132,13 +132,13 @@ const ProgramsList: React.FC = () => {
             {p.thumbnail ? (
               <img src={p.thumbnail} alt={p.title} className="h-40 w-full object-cover" />
             ) : (
-              <div className="h-40 bg-gradient-to-tr from-[#00388A] to-[#0073C1] flex items-center justify-center">
+              <div className="h-40 bg-gradient-to-tr from-[#263060] to-[#0073C1] flex items-center justify-center">
                 <Layers className="w-10 h-10 text-white/80" />
               </div>
             )}
             <div className="p-4 flex-1 flex flex-col gap-2">
-              <div className="text-[11px] font-bold text-[#0056D2] uppercase">Chương trình · {p.courses.length} khóa học</div>
-              <h2 className="font-bold text-slate-900">{p.title}</h2>
+              <div className="text-[11px] font-bold text-[#0073C1] uppercase">Chương trình · {p.courses.length} khóa học</div>
+              <h2 className="font-bold text-[#263060]">{p.title}</h2>
               <p className="text-xs text-slate-600 line-clamp-2">{p.subtitle}</p>
               <div className="mt-auto pt-2 flex items-end justify-between">
                 <div>
@@ -175,15 +175,15 @@ const ProgramDetail: React.FC<{ slug: string }> = ({ slug }) => {
       .catch(() => setError('Không tìm thấy chương trình.'));
   }, [slug]);
 
-  if (error) return <p className="text-sm text-slate-600">{error} <a href="/chuong-trinh" className="text-[#0056D2] font-bold">Xem các chương trình</a></p>;
+  if (error) return <p className="text-sm text-slate-600">{error} <a href="/chuong-trinh" className="text-[#0073C1] font-bold">Xem các chương trình</a></p>;
   if (!program) return <Loading />;
   const firstInstallment = installmentPreview(program.price, program.installmentCount)[0];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-5">
-        <a href="/khoa-hoc" className="text-xs font-bold text-[#0056D2]">← Khóa học & chương trình</a>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{program.title}</h1>
+        <a href="/khoa-hoc" className="text-xs font-bold text-[#0073C1]">← Khóa học & chương trình</a>
+        <h1 className="text-2xl sm:text-3xl font-black text-[#263060]">{program.title}</h1>
         {program.subtitle && <p className="text-slate-600">{program.subtitle}</p>}
         {program.description && <p className="text-sm text-slate-700 whitespace-pre-line">{program.description}</p>}
         {program.highlights.length > 0 && (
@@ -196,8 +196,8 @@ const ProgramDetail: React.FC<{ slug: string }> = ({ slug }) => {
         <div className="space-y-3">
           <h2 className="font-bold text-slate-900">Các khóa học trong chương trình</h2>
           {program.courses.map((c, i) => (
-            <a key={c.id} href={routePath('course-detail', c.slug)} className="bg-white border border-slate-200 rounded-2xl p-4 flex gap-4 items-center hover:border-[#0056D2] transition-colors">
-              <div className="w-8 h-8 rounded-full bg-blue-50 text-[#0056D2] font-black flex items-center justify-center shrink-0">{i + 1}</div>
+            <a key={c.id} href={routePath('course-detail', c.slug)} className="bg-white border border-[#E1E6EA] rounded-2xl p-4 flex gap-4 items-center hover:border-[#0073C1] transition-colors">
+              <div className="w-8 h-8 rounded-full bg-[#D7F5FF] text-[#0073C1] font-black flex items-center justify-center shrink-0">{i + 1}</div>
               <div className="min-w-0 flex-1">
                 <div className="font-bold text-slate-900">{c.title}</div>
                 <div className="text-xs text-slate-500">{[c.level, c.duration].filter(Boolean).join(' · ')}</div>
@@ -222,12 +222,12 @@ const ProgramDetail: React.FC<{ slug: string }> = ({ slug }) => {
           </div>
         )}
         <button type="button" onClick={() => setBuying(true)} disabled={!isBackendEnabled()}
-          className="w-full py-3 rounded-xl bg-[#0056D2] hover:bg-[#00419E] text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
+          className="w-full py-3 rounded-xl bg-[#0073C1] hover:bg-[#2C93E8] text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
           Đăng ký chương trình <ArrowRight className="w-4 h-4" />
         </button>
         <ul className="text-xs text-slate-600 space-y-1.5">
-          <li className="flex gap-2"><BookOpen className="w-4 h-4 text-[#0056D2]" /> Ghi danh cả {program.courses.length} khóa của chương trình; khóa theo đợt học theo lịch khai giảng</li>
-          <li className="flex gap-2"><UserRound className="w-4 h-4 text-[#0056D2]" /> Theo dõi học phí, tiến độ, chứng chỉ trong Tài khoản</li>
+          <li className="flex gap-2"><BookOpen className="w-4 h-4 text-[#0073C1]" /> Ghi danh cả {program.courses.length} khóa của chương trình; khóa theo đợt học theo lịch khai giảng</li>
+          <li className="flex gap-2"><UserRound className="w-4 h-4 text-[#0073C1]" /> Theo dõi học phí, tiến độ, chứng chỉ trong Tài khoản</li>
         </ul>
       </aside>
       {buying && (
