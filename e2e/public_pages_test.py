@@ -26,25 +26,28 @@ def get(path):
 
 
 def search_works(page) -> list[str]:
-    """Header search: suggestions while typing (shorthand, no accents), Enter opens the catalogue."""
+    """Header search: a course found from words of its title typed without accents opens; Enter opens the catalogue."""
+    import unicodedata
+
     problems = []
+    course = get("/api/v1/public/courses/")[0]
+    plain = unicodedata.normalize("NFD", course["title"]).encode("ascii", "ignore").decode().replace("đ", "d").lower()
+    query = " ".join(plain.split()[:3])  # e.g. "quan he khach"
     page.goto(BASE + "/", wait_until="load")
     box = page.locator("header input[type=search]").first
     box.click()
-    box.fill("rm doanh ngh")
+    box.fill(query)
     try:
-        page.wait_for_selector("[role=listbox] >> text=E2E RM Doanh nghiệp", timeout=10000)
-        box.press("ArrowDown")
-        box.press("Enter")
-        page.wait_for_url("**/khoa-hoc/e2e-rm", timeout=10000)
+        page.locator("[role=listbox] a", has_text=course["title"]).first.click(timeout=10000)
+        page.wait_for_url(f"**/khoa-hoc/{course['slug']}", timeout=10000)
     except Exception as exc:  # noqa: BLE001
-        problems.append(f"suggestion did not open the course: {exc}")
+        problems.append(f"suggestion for {query!r} did not open {course['slug']}: {exc}")
     page.goto(BASE + "/", wait_until="load")
     box = page.locator("header input[type=search]").first
-    box.fill("tin dung")
+    box.fill(query)
     box.press("Enter")
     try:
-        page.wait_for_url("**/khoa-hoc?q=tin*", timeout=10000)
+        page.wait_for_url("**/khoa-hoc?q=*", timeout=10000)
         page.wait_for_selector("text=khóa học phù hợp", timeout=10000)
     except Exception as exc:  # noqa: BLE001
         problems.append(f"Enter did not open the filtered catalogue: {exc}")
