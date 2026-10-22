@@ -30,6 +30,7 @@ import {
   Briefcase,
   CalendarDays,
   Headset,
+  CalendarCheck,
   UserRound,
   FileSpreadsheet,
   Link2,
@@ -74,6 +75,7 @@ import { LearnersPage } from './pages/LearnersPage';
 import { AdmissionsPage } from './pages/AdmissionsPage';
 import { CampaignLinksPage, ReviewsPage } from './pages/MarketingPages';
 import { ConsultingPage, InvoicesPage } from './pages/JourneyPages';
+import { MyDayPage } from './pages/MyDayPage';
 import { LearningSupportPage } from './pages/LearningPages';
 import { JobOutcomesPage, JobsPage } from './pages/PlacementPages';
 import {
@@ -112,6 +114,8 @@ const NAV: { title: string; items: NavItem[] }[] = [
   {
     title: 'Tuyển sinh & Bán hàng',
     items: [
+      // A consultant's list for today (overdue leads, new leads, tasks, appointments), phone first.
+      { path: '/sales/today', label: 'Hôm nay của tôi', icon: CalendarCheck, perms: ['crm.view_leads'] },
       {
         // Campaigns, the lead pipeline (kanban / detailed table, all leads or one campaign) and new campaigns.
         path: '/sales/crm',
@@ -299,6 +303,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <LearnersPage courses={courses.courses} />;
       case '/sales/consulting':
         return <ConsultingPage />;
+      case '/sales/today':
+        return <MyDayPage />;
       case '/finance/invoices':
         return <InvoicesPage />;
       case '/sales/intakes':
@@ -352,7 +358,19 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
       case '/content/banners':
         return <BannersRoute />;
       case '/content/partners':
-        return waitHomepage || <CMSPartnersTab partners={homepage.sections.partners.items || []} onUpdatePartners={updatePartners} />;
+        return waitHomepage || (
+          <CMSPartnersTab
+            partners={homepage.sections.partners.items || []}
+            onUpdatePartners={updatePartners}
+            sectionTitle={homepage.sections.partners.title}
+            onUpdateTitle={(title: string) =>
+              updateSections({
+                ...homepage.sections,
+                partners: { ...homepage.sections.partners, title },
+              })
+            }
+          />
+        );
       case '/content/layout':
         return waitHomepage || <LayoutPage sectionsState={homepage.sections} handleToggleSection={toggleSection} />;
       case '/content/articles':
