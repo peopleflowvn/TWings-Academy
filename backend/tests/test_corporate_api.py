@@ -278,3 +278,28 @@ def test_plan_execution_against_actual(corp, client_id, course):
         30.0,
     )  # advance not a cost
     assert data["total"]["learners"] == 2
+
+
+def test_class_status_follows_the_schedule(course):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.catalog.models import CohortSession
+    from apps.corporate.services import refresh_class_statuses
+
+    client = services.create_client(name="Ngân hàng Lịch", code="NHL")
+    now = timezone.now()
+    cls = services.create_class(client=client, course=course, name="NHL – Lớp 1", cohort_fields={})
+    hand = services.create_class(client=client, course=course, name="NHL – Lớp hủy", cohort_fields={})
+    hand.status = "cancelled"
+    hand.save()
+    for c, days in ((cls, -1), (cls, 2), (hand, -1)):
+        start = now + timedelta(days=days)
+        CohortSession.objects.create(cohort=c.cohort, starts_at=start, ends_at=start + timedelta(hours=2))
+
+    assert refresh_class_statuses(now) == {"running": 1, "finished": 0}
+    assert refresh_class_statuses(now + timedelta(days=3)) == {"running": 0, "finished": 1}
+    cls.refresh_from_db()
+    hand.refresh_from_db()
+    assert (cls.status, hand.status) == ("finished", "cancelled")  # a cancelled class is left alone

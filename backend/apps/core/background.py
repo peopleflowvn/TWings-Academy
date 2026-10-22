@@ -25,6 +25,7 @@ JOB_LABELS = {
     "sync_lms_completion": "Đồng bộ tiến độ, chuyên cần, điểm, chứng chỉ",
     "refresh_intakes": "Cập nhật trạng thái đợt khai giảng",
     "refresh_campaigns": "Chiến dịch quá hạn → Hết hạn (gỡ khỏi website)",
+    "refresh_corporate_classes": "Trạng thái lớp doanh nghiệp theo lịch học",
     "expire_checkouts": "Nhắc và hủy đơn thanh toán quá hạn giữ chỗ",
     "remind_installments": "Nhắc trả góp",
     "run_journeys": "Email theo hành trình",

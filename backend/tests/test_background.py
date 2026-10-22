@@ -45,7 +45,7 @@ def test_failed_tasks_are_listed_masked_and_can_be_retried(db_queue, staff_clien
     [failed] = data["failed"]
     assert failed["label"] == "Đồng bộ tài khoản Moodle" and failed["args"] == ["lea***@example.vn"]
     assert failed["error"].endswith("Moodle trả lỗi HTTP 502")
-    assert len(data["schedule"]) == 10 and all(job["nextRun"] for job in data["schedule"])
+    assert len(data["schedule"]) == 11 and all(job["nextRun"] for job in data["schedule"])
 
     assert admin.post(f"/api/v1/staff/system/tasks/{row.id}/retry/").status_code == 200
     assert admin.get("/api/v1/staff/system/tasks/").json()["failed"] == []  # superseded by the new run

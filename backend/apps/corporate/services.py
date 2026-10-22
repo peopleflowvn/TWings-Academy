@@ -113,6 +113,32 @@ def employment_on(client: CorporateClient, learner: Learner, day: date) -> Corpo
 
 
 # ---------------------------------------------------------------- classes
+def refresh_class_statuses(now=None) -> dict:
+    """
+    Move classes forward from their schedule (daily job): planned -> running once a session has
+    started, running -> finished once every session has ended. Never backwards, never out of
+    closed / cancelled, so a status set by hand is kept unless the schedule has moved past it.
+    """
+    from django.db.models import Max, Min
+
+    now = now or timezone.now()
+    changes = {"running": 0, "finished": 0}
+    classes = CorporateClass.objects.filter(status__in=("planned", "running")).annotate(
+        first=Min("cohort__sessions__starts_at"), last=Max("cohort__sessions__ends_at")
+    )
+    for c in classes:
+        new = c.status
+        if c.last and c.last <= now:
+            new = "finished"
+        elif c.first and c.first <= now:
+            new = "running"
+        if new != c.status:
+            c.status = new
+            c.save(update_fields=["status", "updated_at"])
+            changes[new] += 1
+    return changes
+
+
 def create_class(*, client: CorporateClient, course, name: str, cohort_fields: dict, **class_fields):
     """A corporate class: a private intake (Cohort, audience=corporate) plus its B2B side."""
     if Cohort.objects.filter(course=course, name=name).exists():
