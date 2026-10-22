@@ -161,13 +161,31 @@ def send_invitations(corporate_class, *, sent_by, only_new: bool = True) -> dict
 
 
 def _send_invitation(listing, row, calendar, sent_by) -> bool:
+    from apps.notifications.engine import render_template
+
     cohort = listing.corporate_class.cohort
+    default_subject = f"Thư mời tham gia lớp {cohort.course.title} – {cohort.name}"
+    default_body = invitation_html(listing)
+    context = {
+        "learner_name": listing.learner.full_name,
+        "course_title": cohort.course.title,
+        "cohort_name": cohort.name,
+        "location": cohort.location or "",
+        "learn_url": learn_url(),
+        "learner_email": listing.learner.email,
+    }
+    subject, html = render_template(
+        "corporate_invitation",
+        context,
+        default_subject=default_subject,
+        default_body=default_body,
+    )
     try:
         send_logged(
             to=row["to"],
             cc=row["cc"],
-            subject=f"Thư mời tham gia lớp {cohort.course.title} – {cohort.name}",
-            html=invitation_html(listing),
+            subject=subject,
+            html=html,
             attachments=[{"filename": "lich-hoc.ics", "content": calendar, "content_type": "text/calendar"}]
             if calendar
             else None,

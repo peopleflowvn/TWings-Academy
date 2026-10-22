@@ -701,6 +701,79 @@ Nội dung chuyển khoản: <strong style="color: #0056D2; font-family: monospa
 <p style="font-size: 13px; color: #64748B;">Liên kết có hiệu lực trong 1 giờ. Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email và liên hệ quản trị viên.</p>
 """,
     },
+    "checkout_received": {
+        "id": "tmpl-checkout-recv",
+        "code": "checkout_received",
+        "name": "Xác Nhận Đăng Ký Khóa Học (Thanh Toán VietQR)",
+        "category": "payment",
+        "subject": "Thông tin chuyển khoản {{order_code}} – {{course_title}} | TWings Academy",
+        "description": "Gửi tự động ngay sau khi học viên bấm Đăng ký & Thanh toán trên website.",
+        "variables": [
+            "customer_name",
+            "course_title",
+            "order_code",
+            "cohort",
+            "hold_until",
+            "plan",
+            "payment_details",
+        ],
+        "isDefault": True,
+        "title": "THÔNG TIN THANH TOÁN ĐĂNG KÝ HỌC",
+        "subtitle": "Xác nhận tiếp nhận hồ sơ đăng ký khóa học",
+        "content": """
+<p>Chào <strong>{{customer_name}}</strong>,</p>
+<p>TWings Academy đã nhận đăng ký khóa học <strong>{{course_title}}</strong>{{cohort}}.
+Chỗ học và học phí được giữ đến <strong>{{hold_until}}</strong>.</p>
+{{plan}}
+{{payment_details}}
+<p>Cần hỗ trợ? Trả lời email này hoặc gọi tư vấn viên của TWings qua hotline <strong>1900 633 898</strong>.</p>
+""",
+    },
+    "consultation_received": {
+        "id": "tmpl-consult-recv",
+        "code": "consultation_received",
+        "name": "Xác Nhận Đăng Ký Tư Vấn Khóa Học",
+        "category": "admission",
+        "subject": "TWings đã nhận đăng ký tư vấn {{course_title}}",
+        "description": "Gửi tự động ngay khi khách hàng để lại thông tin cần tư vấn khóa học trên website.",
+        "variables": ["customer_name", "course_title", "customer_phone"],
+        "isDefault": True,
+        "title": "XÁC NHẬN ĐĂNG KÝ TƯ VẤN",
+        "subtitle": "Chuyên viên TWings sẽ liên hệ hỗ trợ bạn trong giờ làm việc",
+        "content": """
+<p>Chào <strong>{{customer_name}}</strong>,</p>
+<p>TWings Academy đã nhận đăng ký tư vấn khóa học <strong>{{course_title}}</strong>.</p>
+<p>Tư vấn viên sẽ gọi cho bạn qua số <strong>{{customer_phone}}</strong> trong giờ làm việc để giới thiệu chi tiết lịch khai giảng, học phí và các hình thức hỗ trợ tài chính.</p>
+<p>Cần hỗ trợ ngay, vui lòng liên hệ hotline <strong>1900 633 898</strong> hoặc phản hồi email này.</p>
+""",
+    },
+    "corporate_invitation": {
+        "id": "tmpl-corp-invite",
+        "code": "corporate_invitation",
+        "name": "Thư Mời Tham Gia Lớp Đào Tạo Doanh Nghiệp (TNTalent)",
+        "category": "corporate",
+        "subject": "Thư mời tham gia lớp {{course_title}} – {{cohort_name}}",
+        "description": "Gửi thư mời chính thức kèm tệp lịch học .ics tới nhân viên doanh nghiệp.",
+        "variables": [
+            "learner_name",
+            "course_title",
+            "cohort_name",
+            "location",
+            "learn_url",
+            "learner_email",
+        ],
+        "isDefault": True,
+        "title": "THƯ MỜI THAM GIA LỚP ĐÀO TẠO",
+        "subtitle": "Chương trình phát triển nhân lực doanh nghiệp TNTalent",
+        "content": """
+<p>Chào <strong>{{learner_name}}</strong>,</p>
+<p>Đơn vị của bạn đã đăng ký cho bạn tham gia lớp đào tạo <strong>{{course_title}} – {{cohort_name}}</strong>.</p>
+<p>Lịch học chi tiết được đính kèm trong tệp <code>lich-hoc.ics</code> (mở tệp để thêm tự động vào Outlook / Google Calendar / điện thoại).</p>
+<p><strong>Vào học trực tuyến:</strong> mở <a href="{{learn_url}}">{{learn_url}}</a>, bấm “Đăng nhập bằng TWings”, nhập email <strong>{{learner_email}}</strong> và mã xác thực 6 chữ số được gửi tới hộp thư.</p>
+<p>Ở mỗi buổi học trực tiếp hoặc trực tuyến, vui lòng điểm danh bằng cách quét mã QR giảng viên trình chiếu.</p>
+<p>Cần hỗ trợ, vui lòng phản hồi email này.</p>
+""",
+    },
 }
 
 
