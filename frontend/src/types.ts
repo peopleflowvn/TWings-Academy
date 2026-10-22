@@ -548,8 +548,10 @@ export interface Article {
   // SEO Fields
   metaTitle: string;
   metaDescription: string;
+  /** Staff only: the public API leaves it out (public pages must not rely on it). */
   focusKeyword: string;
   canonicalUrl?: string;
+  /** Staff only (not in the public API). */
   seoScore: number; // 0 - 100
   seoChecks: {
     titleLength: boolean;

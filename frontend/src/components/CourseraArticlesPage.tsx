@@ -4,6 +4,7 @@ import {
   Tag, 
   Calendar, 
   Eye, 
+  Clock,
   User, 
   ArrowRight, 
   Sparkles, 
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Article, Course } from '../types';
 import { routePath } from '../lib/routes';
+import { articleDate, readingMinutes } from '../lib/articles';
 
 interface CourseraArticlesPageProps {
   articles: Article[];
@@ -37,7 +39,7 @@ export const CourseraArticlesPage: React.FC<CourseraArticlesPageProps> = ({
     const matchesSearch = 
       art.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       art.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      art.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      (art.tags || []).some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = selectedCategory === 'Tất cả' || art.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -77,10 +79,6 @@ export const CourseraArticlesPage: React.FC<CourseraArticlesPageProps> = ({
                 <span className="absolute top-4 left-4 px-3 py-1 bg-[#0073C1] text-white text-xs font-bold rounded-full shadow-md">
                   {featuredArticle.category}
                 </span>
-                <span className="absolute bottom-4 left-4 px-3 py-1 bg-black/75 backdrop-blur-md text-white text-[11px] font-mono rounded-xl flex items-center gap-1.5 border border-white/20">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Điểm SEO: {featuredArticle.seoScore}/100</span>
-                </span>
               </div>
 
               <div className="lg:col-span-5 p-6 sm:p-8 flex flex-col justify-between space-y-4">
@@ -93,12 +91,12 @@ export const CourseraArticlesPage: React.FC<CourseraArticlesPageProps> = ({
                     <span>·</span>
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
-                      {featuredArticle.publishedAt}
+                      {articleDate(featuredArticle.publishedAt)}
                     </span>
                     <span>·</span>
                     <span className="flex items-center gap-1">
-                      <Eye className="w-3.5 h-3.5" />
-                      {featuredArticle.viewsCount.toLocaleString()} lượt đọc
+                      <Clock className="w-3.5 h-3.5" />
+                      {readingMinutes(featuredArticle)} phút đọc
                     </span>
                   </div>
 
@@ -198,9 +196,6 @@ export const CourseraArticlesPage: React.FC<CourseraArticlesPageProps> = ({
                 <span className="absolute top-3 left-3 px-2.5 py-0.5 bg-[#0073C1] text-white text-[10px] font-bold rounded-full">
                   {art.category}
                 </span>
-                <span className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/75 backdrop-blur-xs text-white text-[10px] font-mono rounded">
-                  SEO {art.seoScore}/100
-                </span>
               </div>
 
               <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
@@ -208,7 +203,7 @@ export const CourseraArticlesPage: React.FC<CourseraArticlesPageProps> = ({
                   <div className="flex items-center gap-2 text-[11px] text-slate-500">
                     <span>{art.author}</span>
                     <span>·</span>
-                    <span>{art.publishedAt}</span>
+                    <span>{articleDate(art.publishedAt)}</span>
                   </div>
 
                   <h3
@@ -224,9 +219,9 @@ export const CourseraArticlesPage: React.FC<CourseraArticlesPageProps> = ({
                 </div>
 
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1 text-[11px] text-slate-500 font-mono">
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>{art.viewsCount.toLocaleString()}</span>
+                  <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{readingMinutes(art)} phút đọc</span>
                   </div>
 
                   <a

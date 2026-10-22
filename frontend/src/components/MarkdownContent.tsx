@@ -13,8 +13,23 @@ interface MarkdownContentProps {
 export const MarkdownContent: React.FC<MarkdownContentProps> = ({ content, className = '' }) => {
   if (!content) return null;
 
-  // Split into paragraphs / blocks by double newline
-  const blocks = content.split(/\n\s*\n/);
+  // Split into blocks by blank lines. Editors often write a heading or a paragraph right next to a
+  // list without a blank line: a heading is always its own block, and a list is a block of its own.
+  const LIST_LINE = /^\s*(?:[-*] |\d+\.\s)/;
+  const lines = content.replace(/\r\n/g, '\n').split('\n');
+  const separated: string[] = [];
+  lines.forEach((line, i) => {
+    const prev = lines[i - 1];
+    const heading = /^#{2,4} /.test(line);
+    const boundary =
+      i > 0 &&
+      prev.trim() !== '' &&
+      line.trim() !== '' &&
+      (heading || /^#{2,4} /.test(prev) || LIST_LINE.test(line) !== LIST_LINE.test(prev));
+    if (boundary) separated.push('');
+    separated.push(line);
+  });
+  const blocks = separated.join('\n').split(/\n\s*\n/);
 
   const renderInline = (text: string): React.ReactNode => {
     // Regex for inline elements: bold, italic, link, code

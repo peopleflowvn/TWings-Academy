@@ -19,6 +19,7 @@ import { ShareButtons } from './ShareButtons';
 import { MarkdownContent } from './MarkdownContent';
 import { Article, Course } from '../types';
 import { routePath } from '../lib/routes';
+import { articleDate, readingMinutes } from '../lib/articles';
 
 interface CourseraArticleDetailPageProps {
   article: Article;
@@ -36,12 +37,16 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
   onOpenConsultation,
 }) => {
 
-  // Find relevant courses matching the article's category or keywords
+  // Courses related to the article (category or tags). The public API has no focus keyword and
+  // fields may be empty: never assume a value is there (a crash here blanked the whole page).
+  const low = (v?: string | null) => (v || '').toLowerCase().trim();
+  const tags = (article.tags || []).map(low).filter(Boolean);
   const relevantCourses = allCourses.filter((c) => {
+    const title = low(c.title);
     return (
-      c.category.toLowerCase().includes(article.category.toLowerCase()) ||
-      article.tags.some((t) => c.title.toLowerCase().includes(t.toLowerCase())) ||
-      c.title.toLowerCase().includes(article.focusKeyword.toLowerCase())
+      (!!low(article.category) && !!low(c.category) && low(c.category).includes(low(article.category))) ||
+      tags.some((t) => title.includes(t)) ||
+      (!!low(article.focusKeyword) && title.includes(low(article.focusKeyword)))
     );
   }).slice(0, 3);
 
@@ -80,10 +85,6 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
             <span className="px-3 py-1 bg-blue-50 text-[#0073C1] text-xs font-bold rounded-full border border-blue-200">
               {article.category}
             </span>
-            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 text-xs font-mono font-bold rounded-lg border border-emerald-200 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Điểm SEO On-Page: {article.seoScore}/100</span>
-            </span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
@@ -99,19 +100,15 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
               <span>·</span>
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-slate-400" />
-                <span>{article.publishedAt}</span>
+                <span>{articleDate(article.publishedAt)}</span>
               </div>
               <span>·</span>
               <div className="flex items-center gap-1.5">
                 <Clock className="w-4 h-4 text-slate-400" />
-                <span>5 phút đọc</span>
+                <span>{readingMinutes(article)} phút đọc</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 font-mono text-slate-500">
-              <Eye className="w-4 h-4 text-slate-400" />
-              <span>{article.viewsCount.toLocaleString()} lượt xem</span>
-            </div>
           </div>
         </div>
 
@@ -140,7 +137,7 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
             <Tag className="w-3.5 h-3.5" />
             <span>Thẻ từ khóa:</span>
           </span>
-          {article.tags.map((tag) => (
+          {(article.tags || []).map((tag) => (
             <span
               key={tag}
               className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-xs font-medium cursor-pointer transition-colors"
