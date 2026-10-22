@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Search, 
   Menu, 
@@ -11,15 +12,16 @@ import {
   Home,
   Phone,
   MessageCircle,
-  ChevronRight
+  ChevronRight,
+  Megaphone
 } from 'lucide-react';
 import { useSiteSeo, phoneDigits, zaloLink } from '../lib/siteSeo';
-import { routePath } from '../lib/routes';
+import { routePath, View } from '../lib/routes';
 import { BrandLogo } from './BrandLogo';
 
 interface CourseraHeaderProps {
-  currentView: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about';
-  onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about') => void;
+  currentView: View;
+  onNavigate: (view: View) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onSearchSubmit: () => void;
@@ -124,6 +126,16 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           </a>
 
           <a
+            href={routePath('campaigns')}
+            onClick={navClick('campaigns')}
+            className={`hidden lg:inline hover:text-[#0073C1] transition-colors cursor-pointer ${
+              currentView === 'campaigns' || currentView === 'campaign-detail' ? 'text-[#0073C1] font-bold' : ''
+            }`}
+          >
+            Tuyển sinh
+          </a>
+
+          <a
             href={routePath('about')}
             onClick={navClick('about')}
             className={`hidden lg:inline hover:text-[#0073C1] transition-colors cursor-pointer ${
@@ -141,16 +153,18 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             }`}
           >
             <Newspaper className="w-3.5 h-3.5" />
-            <span>Tin tức & Cẩm nang</span>
+            <span className="xl:hidden">Tin tức</span>
+            <span className="hidden xl:inline">Tin tức & Cẩm nang</span>
           </a>
 
           {/* Learners Portal - Hidden on mobile to avoid overcrowding, available in drawer and bottom bar */}
           <a
             href="/learn/"
+            title="Cổng học viên"
             className="hidden sm:flex items-center gap-1.5 hover:text-[#0073C1] transition-colors"
           >
             <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-            <span>Cổng học viên</span>
+            <span className="lg:hidden xl:inline">Cổng học viên</span>
           </a>
 
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
@@ -176,7 +190,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
           {/* Mobile Menu Hamburger button */}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="md:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
             aria-label="Mở menu"
           >
             <Menu className="w-5 h-5" />
@@ -215,8 +229,10 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
       )}
 
       {/* Native-style Slide-Over Mobile Drawer Overlay */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden animate-fadeIn">
+      {/* Rendered in <body>: the header's backdrop blur would otherwise confine a fixed panel to its own height. */}
+      {mobileMenuOpen &&
+        createPortal(
+        <div className="fixed inset-0 z-50 lg:hidden animate-fadeIn">
           {/* Backdrop Blur */}
           <div
             onClick={() => setMobileMenuOpen(false)}
@@ -292,6 +308,20 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
                   <div className="flex items-center gap-3">
                     <GraduationCap className="w-4 h-4 text-[#0073C1]" />
                     <span>Khóa Học & Chương Trình</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-300" />
+                </a>
+
+                <a
+                  href={routePath('campaigns')}
+                  onClick={navClick('campaigns', true)}
+                  className={`flex items-center justify-between p-3 rounded-xl transition-colors ${
+                    currentView === 'campaigns' || currentView === 'campaign-detail' ? 'bg-blue-50 text-[#0073C1] font-bold' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Megaphone className="w-4 h-4 text-[#0073C1]" />
+                    <span>Tuyển Sinh</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-300" />
                 </a>
@@ -378,8 +408,9 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
               )}
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </header>
   );
 };

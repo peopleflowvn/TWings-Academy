@@ -293,7 +293,7 @@ export default function App() {
       <TopLoadingBar />
       {/* 1. Global Coursera Top Header */}
       <CourseraHeader
-        currentView={currentView === 'campaigns' || currentView === 'campaign-detail' ? 'home' : currentView}
+        currentView={currentView}
         onNavigate={handleNavigate}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
