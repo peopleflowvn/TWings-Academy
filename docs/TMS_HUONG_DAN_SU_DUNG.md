@@ -36,7 +36,9 @@ Ngưỡng đổi bằng biến `CORPORATE_SECOND_APPROVAL_ACCEPTANCE` / `_EXPENS
    Moodle ngay**, đăng nhập `/learn` bằng email + mã 6 số.
 5. **Lịch học**: nút *Lịch học* → tạo nhanh theo mẫu → *Lưu lịch* (đưa lên lịch Moodle; mỗi buổi một phiên điểm danh).
 6. **Thư mời**: nút *Gửi thư mời* → xem trước người nhận (To, CC, CC bị loại do sai tên miền) → gửi. Mỗi học viên
-   một thư, kèm tệp lịch `.ics`.
+   một thư, kèm tệp lịch `.ics`. Thư được gửi trong nền (lớp đông không phải chờ); bấm lại không gửi trùng.
+   Trạng thái lớp (Lên kế hoạch → Đang học → Đã học xong) tự đổi theo lịch học; hủy lớp thì mọi học viên bị hủy
+   ghi danh và mất quyền vào Moodle.
 7. **Điểm danh** (tab *Điểm danh*): ở đầu buổi, giảng viên / PIC bấm **Mở QR** của buổi đó (trang Moodle hiện mã QR
    xoay vòng), học viên quét bằng điện thoại. Có mặt / đi muộn theo giờ quét. Sai sót (quên quét, vắng có phép, học bù):
    bấm vào ô của học viên → *Gửi đề nghị* có lý do; **chỉ tính khi được duyệt**.
@@ -51,7 +53,9 @@ Ngưỡng đổi bằng biến `CORPORATE_SECOND_APPROVAL_ACCEPTANCE` / `_EXPENS
     Loại thư **Báo cáo cho cán bộ quản lý**: mỗi CBQL một thư tổng hợp kết quả các nhân viên của mình
     (CBQL ngoài tên miền được phép thì không gửi).
 11. **Hồ sơ** (tab *Hồ sơ*): checklist tự đánh dấu mục hệ thống đã có; tải lên bản ký (điểm danh, biên bản…),
-    tải lại cùng tiêu đề = phiên bản mới.
+    tải lại cùng tiêu đề = phiên bản mới. Hợp đồng đã ký / phụ lục tải ở cửa sổ hợp đồng; biên bản nghiệm thu đã ký,
+    hóa đơn tải ở trang đợt nghiệm thu. Tab *Nghiệm thu* của lớp: các dòng lớp đã được nghiệm thu; tab *Lịch sử*:
+    ai làm gì, lúc nào trên lớp.
 12. **Chi phí** (tab *Chi phí*): ghi nhận chi phí theo hạng mục; **tạm ứng** chỉ tính vào chi phí khi có
     **quyết toán**. Khoản đã duyệt không sửa / xóa.
 13. **Nghiệm thu** → *Lập đợt nghiệm thu* (khách hàng, hợp đồng, kỳ, cơ sở tính học viên) → các lớp đã phát hành
@@ -76,6 +80,10 @@ Ngưỡng đổi bằng biến `CORPORATE_SECOND_APPROVAL_ACCEPTANCE` / `_EXPENS
     mọi người có quyền quản lý lớp doanh nghiệp.
 
 ## 3. Theo dõi
+
+- **Học viên & CBQL**: nhân sự hiện tại của từng khách hàng (đơn vị, chức danh, CBQL, số lớp đã học). Bấm một người
+  để xem lịch sử và **đổi CBQL / đơn vị / chức danh từ một ngày**; thư gửi trước ngày đó vẫn CC CBQL cũ. Khi nhập
+  DSHV, người có SĐT trùng hồ sơ cá nhân nhưng email khác được tạo hồ sơ riêng (có cảnh báo ở bước xem trước).
 
 - **Tổng quan B2B**: lớp, lượt / học viên duy nhất, buổi đã học; hoàn thành, chuyên cần, hài lòng; giá trị HĐ, đã /
   chờ nghiệm thu, chi phí, **biên đóng góp theo lớp**. Rê chuột lên ô số để xem định nghĩa.

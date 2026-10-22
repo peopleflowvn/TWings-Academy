@@ -12,7 +12,7 @@ học, lớp/buổi, Moodle, email, báo cáo và CI/CD. Không dựng hệ TMS 
 > nghiệm thu MSB/ROX). Các nghiệp vụ tài chính sâu (ngân sách, tạm ứng, mua sắm, phân bổ, công nợ) làm ở **giai đoạn
 > 2 (4–6 tuần)**. Trong 08 tuần, các nghiệp vụ này được ghi nhận thủ công có nhật ký, ghi rõ trong biên bản.
 
-## TIẾN ĐỘ THỰC HIỆN (cập nhật 21/10/2026)
+## TIẾN ĐỘ THỰC HIỆN (cập nhật 22/10/2026, sau audit)
 
 Làm cùng AI agent nên nhanh hơn nhiều so với dự kiến 8 tuần. Đã có trên `main` (CI xanh, đã deploy):
 
@@ -25,7 +25,7 @@ Làm cùng AI agent nên nhanh hơn nhiều so với dự kiến 8 tuần. Đã 
 | 5. Kết quả & truyền thông | ✅ | `ResultSnapshot`, lô thư kết quả có duyệt, đính chính |
 | 6. Nghiệm thu & hồ sơ | ✅ (mẫu chuẩn) | Biên bản nghiệm thu chuẩn mặc định (Excel + bản in / PDF, số tiền bằng chữ); chỉnh theo mẫu MSB/ROX khi có file |
 | 7. Dashboard & chi phí | ✅ | Tổng quan B2B, cảnh báo đối soát, từ điển KPI, chi phí / tạm ứng, link báo cáo khách hàng |
-| 8. E2E & hardening | 🔄 | E2E 21 bước B2B trong CI; diễn tập khôi phục backup đạt 22/10/2026 (Ops `restore-drill`, hằng tháng: 3 phần backup khôi phục trong 48 giây); còn: đo tải QR, UAT với dữ liệu thật |
+| 8. E2E & hardening | 🔄 | E2E 22 bước B2B trong CI; diễn tập khôi phục backup đạt 22/10/2026 (Ops `restore-drill`, hằng tháng: 3 phần backup khôi phục trong 48 giây); còn: đo tải QR, UAT với dữ liệu thật |
 
 **Giai đoạn 2 đã làm:** công nợ (tiền về, hạn thanh toán, tuổi nợ, cảnh báo quá hạn), thực hiện kế hoạch / ngân
 sách theo dòng, phân bổ chi phí dùng chung, báo cáo cho CBQL (mỗi CBQL một thư), kiểm thử cô lập giữa khách hàng,
@@ -34,6 +34,39 @@ in / PDF (biên bản nghiệm thu, báo cáo kết quả lớp, link khách hà
 
 Còn mở: các câu ở [TMS_CAU_HOI_CAN_TRA_LOI.md](TMS_CAU_HOI_CAN_TRA_LOI.md) (mỗi câu có mặc định đang chạy);
 mẫu nghiệm thu MSB/ROX (chỉnh khi có file), lịch Outlook 2 chiều, AI.
+
+### Audit đối chiếu kế hoạch (22/10/2026)
+
+**Lỗi / thiếu đã sửa:**
+
+| Mục kế hoạch | Phát hiện | Đã sửa |
+|---|---|---|
+| 6.1 Ghép người học | DSHV có email công ty mà SĐT trùng hồ sơ B2C có email khác thì tự gộp: thư mời và tài khoản Moodle đi vào email cá nhân | Không gộp: tạo hồ sơ riêng theo email công ty, xem trước có cảnh báo (`services.match_learner`) |
+| 6.4 Gửi trong worker | Thư mời và lô thư kết quả gửi trong request web (gunicorn cắt sau 30 giây; lớp đông gửi dở); bấm hai lần có thể gửi trùng | Gửi qua worker (`corporate/tasks.py`), khóa từng người nhận, chạy lại không gửi trùng |
+| 3.2 Thu quyền khi hủy | Hủy cả lớp không hủy ghi danh: học viên vẫn vào Moodle / `/learn` | Hủy lớp hủy mọi ghi danh còn hiệu lực, thu quyền Moodle |
+| 3.3 Trạng thái lớp B2B | Chỉ đổi khi sửa tay: "Lớp đang học" luôn 0 | Job hằng giờ `refresh_corporate_classes` theo lịch học (chỉ tiến) |
+| 5.1 `ClassDocument` | Chỉ gắn được lớp | Gắn lớp / hợp đồng / đợt nghiệm thu (bản ký hợp đồng, biên bản đã ký, hóa đơn) |
+| 5.1 `TrainingTask`, nhóm 04 | Chưa có việc nội bộ có hạn, nhắc | Loại "Việc nội bộ (PIC)" trên trang Yêu cầu, đặt hạn, nhắc hằng sáng |
+| 8 Menu, Class Workspace | Thiếu trang "Học viên & CBQL", tab "Nghiệm thu", "Lịch sử" | Trang nhân sự + đổi CBQL theo ngày hiệu lực; 2 tab mới |
+| 6.3 Từ điển KPI | Tỷ lệ phản hồi khảo sát không hiện; chưa có chi phí / học viên | Thêm vào tổng quan |
+| 3.2 Báo cáo B2C | Số chứng chỉ B2C tính cả chứng chỉ lớp doanh nghiệp | Chỉ đếm chứng chỉ có đơn B2C |
+
+**Khác kế hoạch, giữ nguyên có chủ ý:**
+
+| Kế hoạch | Cách làm thực tế | Lý do |
+|---|---|---|
+| `ApprovalRequest` dùng chung (5.1, nhóm 19) | Duyệt ngay trên từng đối tượng (kế hoạch, điều chỉnh điểm danh, lô thư, nghiệm thu, chi phí) + nhật ký; duyệt 2 cấp theo ngưỡng tiền | Ít bảng, dễ kiểm thử; đủ người duyệt / lúc duyệt / lý do trong audit |
+| `EmailTemplate.brand/audience` (5.2) | Thư B2B soạn trong code, khung TNTalent qua `brand("corporate")`; lời nhắn riêng nhập trên từng lô | Nội dung thư B2B gắn số liệu kết quả; sửa câu chữ qua lời nhắn của lô |
+| `CorporateEmployee.manager` trỏ nhân sự | Lưu tên + email CBQL theo giai đoạn hiệu lực | CBQL thường không phải học viên; CC chỉ cần email |
+| Nhập file nghiệm thu (6.1) | Khối lượng tính từ kết quả đã phát hành; đề nghị của khách hàng nhập thành dòng điều chỉnh | Chờ mẫu MSB/ROX thật (A1, A2) |
+| `Budget/BudgetLine`, `Receivable` (GĐ2) | Ngân sách trên dòng kế hoạch + thực hiện kế hoạch; công nợ = nghiệm thu − `ClientPayment` | Đủ cho số quản trị, sổ chính thức ở phần mềm kế toán |
+| `CostAllocation` "chốt kỳ" | Phân bổ lại được bất cứ lúc nào, tổng luôn đúng bằng khoản chi | Biên đóng góp là số quản trị, không phải sổ kế toán |
+| Quyền `corporate.finance` (GĐ2) | Tài chính B2B dùng `corporate.acceptance` (+ `corporate.approve_final` cho cấp 2) | Kế toán đã có quyền này |
+| Người nhận "chốt lúc duyệt" (6.4) | Chốt lúc tạo lô (xem trước = đúng người sẽ nhận) | Người duyệt thấy đúng danh sách sẽ gửi |
+| Nhập lớn chạy trong worker | Giới hạn 5 MB / 2.000 dòng, xử lý trong request | Đủ nhanh trong giới hạn; ghi danh Moodle vẫn qua worker |
+
+**Còn phải làm ngoài code:** đo tải QR ở lớp thí điểm đầu tiên (C5), UAT với file thật MSB/ROX, mã số thuế và người
+đại diện TNTalent (C3).
 
 ## 0. THAY ĐỔI SO VỚI V5
 
