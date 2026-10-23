@@ -113,7 +113,8 @@ export const HERO_BANNERS: HeroBannerItem[] = [
     id: 'banner-ai-frontier',
     title: 'Learn AI from the companies building it',
     subtitle: 'Courses and certificates from Google, OpenAI, Anthropic, and IBM - for every level and role.',
-    bgGradient: 'from-[#071328] via-[#0E2042] to-[#0B1936]',
+    bgGradient: 'from-[#050D1A] via-[#0A1F3D] to-[#0284C7]',
+    cardTemplate: 'cyber_glow',
     buttonText: 'Explore AI courses',
     buttonAction: 'explore_ai',
     buttonStyle: 'link',
@@ -123,17 +124,18 @@ export const HERO_BANNERS: HeroBannerItem[] = [
       { name: 'Anthropic', color: '#D97757' },
       { name: 'IBM', color: '#60A5FA' }
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80',
     floatingBadges: [
-      { text: 'Google', iconColor: '#4285F4', position: 'top-left' },
-      { text: 'OpenAI', iconColor: '#10A37F', position: 'bottom-right' }
+      { text: 'Google Cloud & Vertex AI', iconColor: '#4285F4', position: 'top-left' },
+      { text: 'OpenAI GPT-4o & Assistants', iconColor: '#10A37F', position: 'bottom-right' }
     ]
   },
   {
     id: 'banner-career-advance',
     title: 'Start, switch, or advance your career',
     subtitle: 'Grow with courses, certificates, and degrees from world-class universities and top organizations.',
-    bgGradient: 'from-[#0048C8] via-[#0056D2] to-[#0073C1]',
+    bgGradient: 'from-[#0A1A3A] via-[#0E2A5D] to-[#0073C1]',
+    cardTemplate: 'modern_split',
     buttonText: 'Join for Free',
     buttonAction: 'browse_catalog',
     buttonStyle: 'primary',
@@ -142,17 +144,18 @@ export const HERO_BANNERS: HeroBannerItem[] = [
       { name: 'IBM', color: '#93C5FD' },
       { name: 'Penn', color: '#FCD34D' }
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
     floatingBadges: [
-      { text: 'IBM', position: 'top-right' },
-      { text: 'Stanford', iconColor: '#EF4444', position: 'bottom-left' }
+      { text: 'Chuyên Gia Cố Vấn 1-1', position: 'top-right' },
+      { text: 'Chứng Chỉ Quốc Tế', iconColor: '#EF4444', position: 'bottom-left' }
     ]
   },
   {
     id: 'banner-twings-banking',
     title: 'Đột phá Sự nghiệp Ngân hàng Thực chiến',
     subtitle: 'Đào tạo trực tiếp cùng Giám đốc khối & Chuyên gia MSB, ROX Group. Cam kết kết nối việc làm và bảo lãnh tuyển dụng.',
-    bgGradient: 'from-[#0F294D] via-[#1E3A8A] to-[#0073C1]',
+    bgGradient: 'from-[#041D1A] via-[#064E3B] to-[#047857]',
+    cardTemplate: 'badge_highlight',
     buttonText: 'Đăng ký tư vấn trực tiếp',
     buttonAction: 'consultation',
     buttonStyle: 'primary',
@@ -160,17 +163,18 @@ export const HERO_BANNERS: HeroBannerItem[] = [
       { name: 'TWINGS ACADEMY', color: '#0073C1' },
       { name: 'MSB Bank', color: '#EA580C' }
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80',
     floatingBadges: [
-      { text: 'TWINGS', iconColor: '#0073C1', position: 'top-left' },
-      { text: 'MSB Bank', iconColor: '#EA580C', position: 'bottom-right' }
+      { text: 'Cố vấn 1-1 cùng Giám đốc Khối MSB', iconColor: '#0073C1', position: 'top-left' },
+      { text: 'Cam kết bảo lãnh tuyển dụng 100%', iconColor: '#EA580C', position: 'bottom-right' }
     ]
   },
   {
     id: 'banner-genai-mastery',
     title: 'Xây dựng & Triển khai các AI Agents',
     subtitle: 'Chuyên môn hóa với DeepLearning.AI và Andrew Ng. Học cách xây dựng hệ thống tác nhân AI đa luồng thế hệ mới.',
-    bgGradient: 'from-[#172554] via-[#1E3A8A] to-[#3B82F6]',
+    bgGradient: 'from-[#110B29] via-[#31104E] to-[#4F46E5]',
+    cardTemplate: 'floating_showcase',
     buttonText: 'Học thử Video YouTube',
     buttonAction: 'youtube_trial',
     buttonStyle: 'link',
@@ -178,17 +182,18 @@ export const HERO_BANNERS: HeroBannerItem[] = [
       { name: 'DeepLearning.AI', color: '#FF6F00' },
       { name: 'Stanford', color: '#8C1515' }
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=600&q=80',
     floatingBadges: [
-      { text: 'DeepLearning.AI', iconColor: '#FF6F00', position: 'top-left' },
-      { text: 'Agentic AI', iconColor: '#60A5FA', position: 'bottom-right' }
+      { text: 'Tác Nhân Tự Trị Đa Luồng', position: 'top-left' },
+      { text: 'Thực Hành Trực Tiếp Cloud', position: 'bottom-right' }
     ]
   },
   {
     id: 'banner-online-degrees',
     title: 'Tốt nghiệp Cử nhân & Thạc sĩ Quốc tế',
     subtitle: 'Chương trình đào tạo đại học 100% trực tuyến từ University of Illinois và University of London.',
-    bgGradient: 'from-[#311042] via-[#4C1D95] to-[#6D28D9]',
+    bgGradient: 'from-[#090D16] via-[#111827] to-[#1E293B]',
+    cardTemplate: 'minimal_editorial',
     buttonText: 'Khám phá bằng cấp trực tuyến',
     buttonAction: 'browse_catalog',
     buttonStyle: 'primary',
@@ -196,10 +201,10 @@ export const HERO_BANNERS: HeroBannerItem[] = [
       { name: 'Illinois iMBA', color: '#F97316' },
       { name: 'London CS', color: '#A78BFA' }
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=600&q=80',
     floatingBadges: [
-      { text: 'Illinois', iconColor: '#F97316', position: 'top-right' },
-      { text: 'Degree', iconColor: '#C084FC', position: 'bottom-left' }
+      { text: 'Bằng Cấp Quốc Tế 100% Online', position: 'top-right' },
+      { text: 'Kiểm Định Quốc Tế AACSB', position: 'bottom-left' }
     ]
   }
 ];

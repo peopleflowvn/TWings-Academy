@@ -652,11 +652,19 @@ export interface SiteSEOSettings {
 // -------------------------------------------------------------
 // HERO BANNER SLIDER ITEM
 // -------------------------------------------------------------
+export type HeroBannerCardTemplate = 
+  | 'modern_split' 
+  | 'cyber_glow' 
+  | 'floating_showcase' 
+  | 'minimal_editorial' 
+  | 'badge_highlight';
+
 export interface HeroBannerItem {
   id: string;
   title: string;
   subtitle: string;
   bgGradient: string; // e.g. "from-[#071328] via-[#0E2042] to-[#0B1936]"
+  cardTemplate?: HeroBannerCardTemplate;
   buttonText: string;
   buttonAction: 'explore_ai' | 'browse_catalog' | 'consultation' | 'youtube_trial' | 'custom_link';
   buttonStyle: 'link' | 'primary';
@@ -671,6 +679,7 @@ export interface HeroBannerItem {
   showOverlayText?: boolean;
   showOverlayButton?: boolean;
 }
+
 
 export interface StudentEnrollment {
   id: string;

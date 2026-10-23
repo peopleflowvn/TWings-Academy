@@ -293,11 +293,446 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
               );
             }
 
-            // Mode 2: Dynamic Typography Gradient Card Banner (Glassmorphism & EdTech Styling)
+            // Mode 2: Dynamic Typography Gradient Card Banner (5 Aesthetic Templates matching Hero & Three.js canvas)
+            const template = banner.cardTemplate || 'modern_split';
+            const bgGrad = banner.bgGradient || 'from-[#0A1A3A] via-[#0E2A5D] to-[#0073C1]';
+            const facultyImg = banner.imageUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80';
+            const tag1 = banner.floatingBadges?.[0]?.text || 'Cố vấn 1-1 cùng Giám đốc Khối MSB';
+            const tag2 = banner.floatingBadges?.[1]?.text || 'Cam kết kết nối & bảo lãnh tuyển dụng';
+            const partners = banner.partnerBadges && banner.partnerBadges.length > 0 
+              ? banner.partnerBadges 
+              : [{ name: 'TWINGS ACADEMY' }, { name: 'ĐỐI TÁC MSB BANK' }];
+
+            // -------------------------------------------------------------
+            // TEMPLATE 1: CYBER GLOW (Futuristic Tech, AI & Neon Aesthetics)
+            // -------------------------------------------------------------
+            if (template === 'cyber_glow') {
+              return (
+                <div
+                  key={banner.id || index}
+                  className={`w-full min-w-full snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 flex flex-col justify-between shadow-2xl relative overflow-hidden group border border-cyan-400/40 hover:border-cyan-300 ring-1 ring-cyan-400/30 hover:shadow-[0_0_60px_-15px_rgba(6,182,212,0.4)] transition-all duration-300 shrink-0 backdrop-blur-xl`}
+                >
+                  {/* Cyber Grid Background lines */}
+                  <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(6,182,212,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(6,182,212,0.06)_1px,transparent_1px)] bg-[size:28px_28px] pointer-events-none opacity-70" />
+                  
+                  {/* Neon Glow Auras */}
+                  <div className="absolute -top-16 -right-16 w-80 h-80 bg-cyan-400/25 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-16 -left-16 w-80 h-80 bg-blue-600/25 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center relative z-10">
+                    {/* Left Column */}
+                    <div className="lg:col-span-7 xl:col-span-8 space-y-4 sm:space-y-5">
+                      {/* Cyber Telemetry Status Chip */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/80 backdrop-blur-md border border-cyan-400/40 text-cyan-300 font-mono text-[11px] font-black uppercase tracking-wider shadow-xs">
+                          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                          <span>SYS: 2026 AI & EDTECH FRONTIER</span>
+                        </span>
+                        {partners.map((p, pIdx) => (
+                          <span
+                            key={pIdx}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-cyan-200 text-xs font-extrabold uppercase tracking-wider"
+                          >
+                            <span>{p.name}</span>
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Neon Cyber Headline */}
+                      <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-sky-100 to-white leading-[1.15] drop-shadow-md">
+                        {banner.title}
+                      </h2>
+
+                      {banner.subtitle && (
+                        <p className="text-sm sm:text-base text-cyan-100/90 leading-relaxed max-w-2xl font-mono text-[13px] sm:text-[14px]">
+                          {banner.subtitle}
+                        </p>
+                      )}
+
+                      {/* Code-styled Cyber Badges */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs sm:text-sm font-mono text-cyan-200">
+                        <div className="flex items-center gap-2 bg-cyan-950/50 border border-cyan-400/30 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
+                          <Zap className="w-4 h-4 text-cyan-400 shrink-0 animate-pulse" />
+                          <span className="truncate">// {tag1}</span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-cyan-950/50 border border-cyan-400/30 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span className="truncate">// {tag2}</span>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="pt-2 flex flex-wrap items-center gap-3 sm:gap-4">
+                        <button
+                          onClick={() => handleBannerAction(banner)}
+                          className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3.5 bg-gradient-to-r from-[#0073C1] via-[#0284C7] to-[#00A3FF] hover:brightness-110 text-white font-extrabold rounded-xl text-sm sm:text-base shadow-xl hover:shadow-cyan-400/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <span>{banner.buttonText || 'Khám phá ngay'}</span>
+                          <ArrowRight className="w-4.5 h-4.5 transition-transform group-hover:translate-x-1" />
+                        </button>
+
+                        <button
+                          onClick={() => onOpenYouTubeTrial('sal78ACtGTc', banner.title)}
+                          className="inline-flex items-center gap-2 px-5 py-3.5 bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-200 rounded-xl text-sm sm:text-base font-bold backdrop-blur-md border border-cyan-400/30 hover:border-cyan-400/60 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                        >
+                          <Play className="w-4 h-4 text-rose-400 fill-rose-400" />
+                          <span>Học thử 0đ</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Right Cyber Holographic Frame */}
+                    <div className="lg:col-span-5 xl:col-span-4 flex justify-center lg:justify-end pt-4 lg:pt-0">
+                      <div className="relative w-full max-w-[320px] sm:max-w-[340px] bg-cyan-950/40 backdrop-blur-xl border border-cyan-400/30 rounded-3xl p-4 sm:p-5 shadow-2xl transition-transform duration-500 hover:scale-[1.02]">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-3xl blur-xl opacity-30 -z-10" />
+
+                        {/* Top corner brackets */}
+                        <div className="absolute top-2 left-2 w-3 h-3 border-t-2 border-l-2 border-cyan-400 pointer-events-none" />
+                        <div className="absolute top-2 right-2 w-3 h-3 border-t-2 border-r-2 border-cyan-400 pointer-events-none" />
+                        <div className="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-cyan-400 pointer-events-none" />
+                        <div className="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-cyan-400 pointer-events-none" />
+
+                        <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-cyan-400/30 shadow-lg bg-slate-900 mb-3.5">
+                          <img
+                            src={facultyImg}
+                            alt={banner.title}
+                            className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                          
+                          <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-slate-950/90 backdrop-blur-md border border-cyan-400/40 text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1.5 shadow-md">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span>ONLINE 2026</span>
+                          </span>
+
+                          <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-950/80 backdrop-blur-md border border-cyan-400/30 text-[11px] font-mono font-bold text-cyan-300">
+                            <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+                            <span>98.7% MENTOR SCORE</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1 text-left">
+                          <div className="text-[11px] font-mono font-bold tracking-wider uppercase text-cyan-400">
+                            // AI & MENTOR ARCHITECTURE
+                          </div>
+                          <div className="text-base font-extrabold text-white">
+                            Master Trainer & Tech Leads
+                          </div>
+                          <div className="text-xs text-cyan-100/70 font-mono leading-relaxed">
+                            Triển khai dự án thực tế, kiểm chuẩn chất lượng mã nguồn & tư vấn lộ trình cao cấp.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // -------------------------------------------------------------
+            // TEMPLATE 2: FLOATING SHOWCASE (Spotlight Faculty & Mentors)
+            // -------------------------------------------------------------
+            if (template === 'floating_showcase') {
+              return (
+                <div
+                  key={banner.id || index}
+                  className={`w-full min-w-full snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 flex flex-col justify-between shadow-2xl relative overflow-hidden group border border-white/20 hover:border-amber-400/50 transition-all duration-300 shrink-0 backdrop-blur-xl`}
+                >
+                  {/* Ambient Halo Behind Right Column */}
+                  <div className="absolute top-1/2 -translate-y-1/2 right-6 sm:right-16 w-80 h-80 rounded-full bg-gradient-to-tr from-amber-500/30 via-purple-500/25 to-[#5FBEFF]/30 blur-3xl pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center relative z-10">
+                    {/* Left Column */}
+                    <div className="lg:col-span-7 xl:col-span-8 space-y-4 sm:space-y-5">
+                      {/* Masterclass Badge */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-300 text-xs font-black uppercase tracking-wider shadow-xs">
+                          <Award className="w-3.5 h-3.5 text-amber-400" />
+                          <span>CHƯƠNG TRÌNH MASTERCLASS ĐỘC QUYỀN</span>
+                        </span>
+                        {partners.map((p, pIdx) => (
+                          <span
+                            key={pIdx}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-xs font-extrabold uppercase tracking-wider"
+                          >
+                            <span>{p.name}</span>
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Headline with golden/cyan contrast */}
+                      <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.15] drop-shadow-md">
+                        {banner.title}
+                      </h2>
+
+                      {banner.subtitle && (
+                        <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl font-medium">
+                          {banner.subtitle}
+                        </p>
+                      )}
+
+                      {/* Mentorship Highlights */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs sm:text-sm font-semibold text-slate-200">
+                        <div className="flex items-center gap-2.5 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
+                          <Star className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" />
+                          <span>{tag1}</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>{tag2}</span>
+                        </div>
+                      </div>
+
+                      {/* Buttons */}
+                      <div className="pt-2 flex flex-wrap items-center gap-3 sm:gap-4">
+                        <button
+                          onClick={() => handleBannerAction(banner)}
+                          className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3.5 bg-gradient-to-r from-[#FF6B35] via-[#EA580C] to-[#C23010] hover:from-[#FF7A47] hover:to-[#B02808] text-white font-extrabold rounded-xl text-sm sm:text-base shadow-xl hover:shadow-orange-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <span>{banner.buttonText || 'Đăng ký tư vấn trực tiếp'}</span>
+                          <ArrowRight className="w-4.5 h-4.5 transition-transform group-hover:translate-x-1" />
+                        </button>
+
+                        <button
+                          onClick={() => onOpenYouTubeTrial('sal78ACtGTc', banner.title)}
+                          className="inline-flex items-center gap-2 px-5 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm sm:text-base font-bold backdrop-blur-md border border-white/25 hover:border-white/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                        >
+                          <Play className="w-4 h-4 text-rose-400 fill-rose-400" />
+                          <span>Học thử 0đ</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Right Spotlight Portrait with Floating Badges */}
+                    <div className="lg:col-span-5 xl:col-span-4 flex justify-center lg:justify-end pt-4 lg:pt-0">
+                      <div className="relative w-64 h-64 sm:w-72 sm:h-72">
+                        {/* Glowing Circular Halo */}
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-[#0073C1] animate-pulse blur-md opacity-70" />
+                        
+                        {/* Circular Portrait Frame */}
+                        <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white/80 shadow-2xl bg-slate-900">
+                          <img
+                            src={facultyImg}
+                            alt={banner.title}
+                            className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700"
+                            loading="lazy"
+                          />
+                        </div>
+
+                        {/* Floating Badge Top-Left */}
+                        <div className="absolute -top-3 -left-4 bg-slate-950/90 backdrop-blur-md border border-amber-400/50 px-3 py-1.5 rounded-full text-xs font-bold text-amber-300 shadow-xl flex items-center gap-1.5 animate-bounce duration-1000">
+                          <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+                          <span>Chuyên gia MSB</span>
+                        </div>
+
+                        {/* Floating Badge Bottom-Right */}
+                        <div className="absolute -bottom-3 -right-4 bg-slate-950/90 backdrop-blur-md border border-emerald-400/50 px-3 py-1.5 rounded-full text-xs font-bold text-emerald-300 shadow-xl flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                          <span>Bảo lãnh việc làm</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // -------------------------------------------------------------
+            // TEMPLATE 3: MINIMAL EDITORIAL (Refined Academic Luxury)
+            // -------------------------------------------------------------
+            if (template === 'minimal_editorial') {
+              return (
+                <div
+                  key={banner.id || index}
+                  className={`w-full min-w-full snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-6 sm:p-10 lg:p-12 flex flex-col justify-between shadow-2xl relative overflow-hidden group border border-white/15 hover:border-white/30 transition-all duration-300 shrink-0 backdrop-blur-xl`}
+                >
+                  <div className="absolute top-0 right-1/4 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center relative z-10">
+                    {/* Left Column with Vertical Accent Line */}
+                    <div className="lg:col-span-7 xl:col-span-8 border-l-2 border-[#5FBEFF]/80 pl-5 sm:pl-7 space-y-4 sm:space-y-5">
+                      <div className="text-[11px] sm:text-xs font-mono font-bold tracking-widest uppercase text-[#5FBEFF]">
+                        TWINGS ACADEMY — STRATEGIC EXECUTIVE EDUCATION
+                      </div>
+
+                      <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                        {banner.title}
+                      </h2>
+
+                      {banner.subtitle && (
+                        <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl font-normal">
+                          {banner.subtitle}
+                        </p>
+                      )}
+
+                      {/* Editorial Minimalist Pills */}
+                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                        <span className="px-3.5 py-1.5 rounded-lg bg-white/5 border border-white/15 text-xs text-slate-200 font-medium">
+                          ✦ {tag1}
+                        </span>
+                        <span className="px-3.5 py-1.5 rounded-lg bg-white/5 border border-white/15 text-xs text-slate-200 font-medium">
+                          ✦ {tag2}
+                        </span>
+                      </div>
+
+                      {/* Minimalist Action Buttons */}
+                      <div className="pt-2 flex flex-wrap items-center gap-3 sm:gap-4">
+                        <button
+                          onClick={() => handleBannerAction(banner)}
+                          className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 bg-white text-slate-900 hover:bg-slate-100 font-bold rounded-xl text-sm sm:text-base shadow-xl transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <span>{banner.buttonText || 'Khám phá ngay'}</span>
+                          <ArrowRight className="w-4.5 h-4.5" />
+                        </button>
+
+                        <button
+                          onClick={() => onOpenYouTubeTrial('sal78ACtGTc', banner.title)}
+                          className="inline-flex items-center gap-2 px-5 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm sm:text-base font-medium backdrop-blur-md border border-white/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <Play className="w-4 h-4 text-rose-400 fill-rose-400" />
+                          <span>Học thử 0đ</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Clean Editorial Framed Photo */}
+                    <div className="lg:col-span-5 xl:col-span-4 flex justify-center lg:justify-end">
+                      <div className="relative w-full max-w-[280px] sm:max-w-[320px] rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-slate-900 group-hover:border-white/40 transition-colors">
+                        <div className="aspect-[4/5] overflow-hidden">
+                          <img
+                            src={facultyImg}
+                            alt={banner.title}
+                            className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700"
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="p-3 bg-slate-950/80 backdrop-blur-md border-t border-white/10 text-center">
+                          <div className="text-xs font-bold text-white">Chuyên Gia Giảng Dạy Trực Tiếp</div>
+                          <div className="text-[11px] text-slate-400">Chứng chỉ & Đào tạo thực chiến</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // -------------------------------------------------------------
+            // TEMPLATE 4: BADGE HIGHLIGHT (100% Career Guarantee & Trust)
+            // -------------------------------------------------------------
+            if (template === 'badge_highlight') {
+              return (
+                <div
+                  key={banner.id || index}
+                  className={`w-full min-w-full snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 flex flex-col justify-between shadow-2xl relative overflow-hidden group border border-emerald-400/40 hover:border-emerald-300 ring-1 ring-emerald-500/20 shadow-emerald-950/40 transition-all duration-300 shrink-0 backdrop-blur-xl`}
+                >
+                  <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center relative z-10">
+                    {/* Left Column */}
+                    <div className="lg:col-span-7 xl:col-span-8 space-y-4 sm:space-y-5">
+                      {/* Career Guarantee Header Stamp */}
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 text-xs font-black uppercase tracking-wider shadow-sm">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        <span>BẢO LÃNH ĐẦU RA 100% — ĐỐI TÁC MSB BANK</span>
+                      </div>
+
+                      <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.15] drop-shadow-md">
+                        {banner.title}
+                      </h2>
+
+                      {banner.subtitle && (
+                        <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl font-medium">
+                          {banner.subtitle}
+                        </p>
+                      )}
+
+                      {/* 4-point Checklist Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs sm:text-sm font-semibold text-slate-200">
+                        <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-400/30 rounded-xl px-3.5 py-2 backdrop-blur-md">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>Phỏng vấn trực tiếp tại Hội sở MSB</span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-400/30 rounded-xl px-3.5 py-2 backdrop-blur-md">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>Hoàn 100% học phí nếu không đạt</span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-400/30 rounded-xl px-3.5 py-2 backdrop-blur-md">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>{tag1}</span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-400/30 rounded-xl px-3.5 py-2 backdrop-blur-md">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>{tag2}</span>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="pt-2 flex flex-wrap items-center gap-3 sm:gap-4">
+                        <button
+                          onClick={() => handleBannerAction(banner)}
+                          className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3.5 bg-gradient-to-r from-[#FF6B35] via-[#EA580C] to-[#C23010] hover:from-[#FF7A47] hover:to-[#B02808] text-white font-extrabold rounded-xl text-sm sm:text-base shadow-xl hover:shadow-orange-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <span>{banner.buttonText || 'Đăng ký tư vấn trực tiếp'}</span>
+                          <ArrowRight className="w-4.5 h-4.5 transition-transform group-hover:translate-x-1" />
+                        </button>
+
+                        <button
+                          onClick={() => onOpenYouTubeTrial('sal78ACtGTc', banner.title)}
+                          className="inline-flex items-center gap-2 px-5 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm sm:text-base font-bold backdrop-blur-md border border-white/25 hover:border-white/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                        >
+                          <Play className="w-4 h-4 text-rose-400 fill-rose-400" />
+                          <span>Học thử 0đ</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Verification Card with Official Seal */}
+                    <div className="lg:col-span-5 xl:col-span-4 flex justify-center lg:justify-end pt-4 lg:pt-0">
+                      <div className="relative w-full max-w-[320px] sm:max-w-[340px] bg-gradient-to-b from-emerald-950/40 to-slate-900/60 backdrop-blur-xl border border-emerald-400/40 rounded-3xl p-4 sm:p-5 shadow-2xl transition-transform duration-500 hover:scale-[1.02]">
+                        <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-emerald-400/30 shadow-lg bg-slate-900 mb-3.5">
+                          <img
+                            src={facultyImg}
+                            alt={banner.title}
+                            className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+
+                          <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-emerald-950/90 backdrop-blur-md border border-emerald-400/40 text-[11px] font-bold text-emerald-300 flex items-center gap-1.5 shadow-md">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>MSB VERIFIED</span>
+                          </span>
+                        </div>
+
+                        <div className="space-y-1 text-left">
+                          <div className="text-[11px] font-extrabold tracking-wider uppercase text-emerald-400">
+                            CAM KẾT TUYỂN DỤNG CHÍNH THỨC
+                          </div>
+                          <div className="text-base font-extrabold text-white">
+                            Hội đồng Khảo thí & Chuyên gia MSB
+                          </div>
+                          <div className="text-xs text-slate-300 font-medium leading-relaxed">
+                            Bảo lãnh trực tiếp vào hệ thống chi nhánh và các khối kinh doanh trọng điểm.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // -------------------------------------------------------------
+            // TEMPLATE 5: MODERN SPLIT (Default Executive Split)
+            // -------------------------------------------------------------
             return (
               <div
                 key={banner.id || index}
-                className={`w-full min-w-full snap-start bg-gradient-to-br ${banner.bgGradient || 'from-[#1A2656] via-[#0E5496] to-[#0073C1]'} text-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 flex flex-col justify-between shadow-2xl relative overflow-hidden group border border-white/20 hover:border-[#5FBEFF]/50 transition-all duration-300 shrink-0`}
+                className={`w-full min-w-full snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 flex flex-col justify-between shadow-2xl relative overflow-hidden group border border-white/20 hover:border-[#5FBEFF]/50 transition-all duration-300 shrink-0 backdrop-blur-xl`}
               >
                 {/* Glow lights */}
                 <div className="absolute top-0 right-0 w-80 h-80 bg-[#5FBEFF]/20 rounded-full blur-3xl pointer-events-none" />
@@ -308,28 +743,15 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                   <div className="lg:col-span-7 xl:col-span-8 space-y-4 sm:space-y-5">
                     {/* Partner Badges */}
                     <div className="flex flex-wrap items-center gap-2">
-                      {banner.partnerBadges && banner.partnerBadges.length > 0 ? (
-                        banner.partnerBadges.map((badge, bIdx) => (
-                          <span
-                            key={bIdx}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-xs font-extrabold uppercase tracking-wider shadow-xs"
-                          >
-                            <span className="w-2 h-2 rounded-full bg-[#5FBEFF] animate-pulse" />
-                            <span>{badge.name}</span>
-                          </span>
-                        ))
-                      ) : (
-                        <>
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-xs font-extrabold uppercase tracking-wider shadow-xs">
-                            <span className="w-2 h-2 rounded-full bg-[#5FBEFF] animate-pulse" />
-                            <span>TWINGS ACADEMY</span>
-                          </span>
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EA580C]/20 backdrop-blur-md border border-[#EA580C]/40 text-[#FFA07A] text-xs font-extrabold uppercase tracking-wider shadow-xs">
-                            <span className="w-2 h-2 rounded-full bg-[#EA580C]" />
-                            <span>ĐỐI TÁC MSB BANK</span>
-                          </span>
-                        </>
-                      )}
+                      {partners.map((badge, bIdx) => (
+                        <span
+                          key={bIdx}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-xs font-extrabold uppercase tracking-wider shadow-xs"
+                        >
+                          <span className="w-2 h-2 rounded-full bg-[#5FBEFF] animate-pulse" />
+                          <span>{badge.name}</span>
+                        </span>
+                      ))}
                     </div>
 
                     {/* Headline with vibrant gradient highlights */}
@@ -355,32 +777,14 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
 
                     {/* Value-add highlights (Taglines) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs sm:text-sm font-semibold text-slate-200">
-                      {banner.floatingBadges && banner.floatingBadges.length > 0 ? (
-                        banner.floatingBadges.map((badge, bIdx) => (
-                          <div
-                            key={bIdx}
-                            className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md"
-                          >
-                            <CheckCircle2
-                              className={`w-4 h-4 shrink-0 ${
-                                bIdx % 2 === 0 ? 'text-[#5FBEFF]' : 'text-emerald-400'
-                              }`}
-                            />
-                            <span>{badge.text}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
-                            <CheckCircle2 className="w-4 h-4 text-[#5FBEFF] shrink-0" />
-                            <span>Cố vấn 1-1 cùng Giám đốc Khối MSB</span>
-                          </div>
-                          <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                            <span>Cam kết kết nối & bảo lãnh tuyển dụng</span>
-                          </div>
-                        </>
-                      )}
+                      <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
+                        <CheckCircle2 className="w-4 h-4 text-[#5FBEFF] shrink-0" />
+                        <span>{tag1}</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 backdrop-blur-md">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>{tag2}</span>
+                      </div>
                     </div>
 
                     {/* Action buttons row */}
@@ -421,7 +825,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
 
                       <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-white/20 shadow-lg bg-slate-900 mb-3.5">
                         <img
-                          src={banner.imageUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80'}
+                          src={facultyImg}
                           alt={banner.title}
                           className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700"
                           loading="lazy"
