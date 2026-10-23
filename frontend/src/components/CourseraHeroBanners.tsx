@@ -209,7 +209,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
 
   return (
     <section 
-      className="bg-gradient-to-b from-[#161F45] via-[#101735] to-[#0A0E22] text-white pt-6 sm:pt-10 pb-12 sm:pb-16 px-3 sm:px-6 lg:px-8 relative overflow-hidden"
+      className="bg-gradient-to-b from-[#161F45] via-[#101735] to-[#0A0E22] text-white pt-3 sm:pt-5 pb-10 sm:pb-14 px-3 sm:px-6 lg:px-8 relative overflow-hidden"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -219,47 +219,12 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
       <div className="absolute top-1/3 -right-20 w-[500px] h-[350px] bg-[#5FBEFF]/15 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-1/4 -left-20 w-[450px] h-[300px] bg-[#0073C1]/15 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 relative z-10">
-        {/* Top Header Navigation Controls */}
-        <div className="flex items-center justify-end gap-3">
-          <span className="text-xs font-semibold text-slate-400">
-            {String(activeIndex + 1).padStart(2, '0')} / {String(displayBanners.length).padStart(2, '0')}
-          </span>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => scroll('left')}
-              disabled={!canScrollLeft}
-              className={`p-2 rounded-full border transition-all cursor-pointer backdrop-blur-md ${
-                canScrollLeft
-                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/20 shadow-xs'
-                  : 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed opacity-40'
-              }`}
-              title="Chương trình trước"
-              aria-label="Chương trình trước"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => scroll('right')}
-              disabled={!canScrollRight}
-              className={`p-2 rounded-full border transition-all cursor-pointer backdrop-blur-md ${
-                canScrollRight
-                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/20 shadow-xs'
-                  : 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed opacity-40'
-              }`}
-              title="Chương trình tiếp theo"
-              aria-label="Chương trình tiếp theo"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 relative z-10">
         {/* Scrollable Horizontal Track of Banners */}
         <div
           ref={scrollContainerRef}
           onScroll={checkScroll}
-          className="flex gap-4 sm:gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0"
+          className="flex gap-4 sm:gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0"
         >
           {displayBanners.map((banner, index) => {
             // Mode 1: Full-Image Banner with Hyperlink Support
@@ -481,21 +446,61 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
           })}
         </div>
 
-        {/* Carousel Pagination Dots */}
-        <div className="flex items-center justify-center gap-2 pt-1">
-          {displayBanners.map((_, idx) => (
+        {/* Unified Slideshow Navigation Bar: Prev, Indicator Dots, Slide Counter & Next */}
+        <div className="flex items-center justify-center pt-1 sm:pt-2">
+          <div className="inline-flex items-center gap-2.5 sm:gap-3.5 px-3.5 sm:px-4 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/15 shadow-xl">
+            {/* Prev Button */}
             <button
-              key={idx}
-              onClick={() => scrollToBanner(idx)}
-              className={`h-2 rounded-full transition-all cursor-pointer ${
-                activeIndex === idx 
-                  ? 'w-8 bg-[#5FBEFF] shadow-xs shadow-[#5FBEFF]/50' 
-                  : 'w-2 bg-slate-700 hover:bg-slate-500'
+              onClick={() => scroll('left')}
+              disabled={!canScrollLeft}
+              className={`p-1 sm:p-1.5 rounded-full transition-all cursor-pointer ${
+                canScrollLeft
+                  ? 'text-white hover:bg-white/20 active:scale-95'
+                  : 'text-slate-500 cursor-not-allowed opacity-30'
               }`}
-              title={`Chuyển tới slide ${idx + 1}`}
-              aria-label={`Chuyển tới slide ${idx + 1}`}
-            />
-          ))}
+              title="Chương trình trước"
+              aria-label="Chương trình trước"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {/* Pagination Dots */}
+            <div className="flex items-center gap-1.5">
+              {displayBanners.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => scrollToBanner(idx)}
+                  className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                    activeIndex === idx 
+                      ? 'w-7 bg-[#5FBEFF] shadow-xs shadow-[#5FBEFF]/60' 
+                      : 'w-2 bg-white/25 hover:bg-white/45'
+                  }`}
+                  title={`Chuyển tới slide ${idx + 1}`}
+                  aria-label={`Chuyển tới slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+
+            {/* Slide Counter */}
+            <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-300 tracking-wider select-none pl-2.5 border-l border-white/20">
+              {String(activeIndex + 1).padStart(2, '0')}&nbsp;/&nbsp;{String(displayBanners.length).padStart(2, '0')}
+            </span>
+
+            {/* Next Button */}
+            <button
+              onClick={() => scroll('right')}
+              disabled={!canScrollRight}
+              className={`p-1 sm:p-1.5 rounded-full transition-all cursor-pointer ${
+                canScrollRight
+                  ? 'text-white hover:bg-white/20 active:scale-95'
+                  : 'text-slate-500 cursor-not-allowed opacity-30'
+              }`}
+              title="Chương trình tiếp theo"
+              aria-label="Chương trình tiếp theo"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* 4 Trust & Metrics Stat Cards */}
