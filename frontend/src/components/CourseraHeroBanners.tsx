@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { HeroBannerItem } from '../types';
 import { HERO_BANNERS } from '../data/courseraData';
+import { ThreeHeroBackground } from './ThreeHeroBackground';
 
 interface CourseraHeroBannersProps {
   banners: HeroBannerItem[];
@@ -213,9 +214,12 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* 3D Interactive Cyber Wave Canvas in Background */}
+      <ThreeHeroBackground />
+
       {/* Soft gradient bridge from header */}
       <div className="absolute top-0 inset-x-0 h-16 bg-gradient-to-b from-black/25 to-transparent pointer-events-none" />
-      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-radial from-[#0073C1]/30 via-[#2C93E8]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-radial from-[#0073C1]/25 via-[#2C93E8]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 -right-20 w-[500px] h-[350px] bg-[#5FBEFF]/15 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-1/4 -left-20 w-[450px] h-[300px] bg-[#0073C1]/15 rounded-full blur-[100px] pointer-events-none" />
 
