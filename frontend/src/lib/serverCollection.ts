@@ -159,7 +159,17 @@ export function useServerDocument<T extends object>(key: string, demoData: T, de
     [live, key, debounceMs]
   );
 
-  return { doc, update, live };
+  const saveNow = useCallback(
+    async (override?: T) => {
+      const payload = override ?? doc;
+      if (timer.current) clearTimeout(timer.current);
+      if (!live) return;
+      await api.patch(`/staff/site-config/${key}/`, { data: payload });
+    },
+    [live, key, doc]
+  );
+
+  return { doc, update, saveNow, live };
 }
 
 // ---------------------------------------------------------------- date helpers (UI dd/mm/yyyy <-> ISO)

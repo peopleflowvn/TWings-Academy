@@ -63,6 +63,7 @@ import { CMSUsersTab } from '../components/cms/CMSUsersTab';
 import { TopLoadingBar, startPageLoading, donePageLoading } from '../components/TopLoadingBar';
 import { useAppPath, linkProps, navigate } from './router';
 import { useCourses, useHomepageSections, useOrders } from './data';
+import { useSiteSeo } from '../lib/siteSeo';
 import { OverviewReportsPage } from './pages/OverviewReportsPage';
 import { CouponsPage, TransactionsPage } from './pages/FinancePages';
 import { HealthPage, MoodleHubPage } from './pages/SystemPages';
@@ -253,9 +254,12 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
     return current?.label || 'TWings Quản trị';
   })();
 
+  const siteSeo = useSiteSeo();
+  const siteBrand = siteSeo?.siteName || 'TWings Quản trị';
+
   useEffect(() => {
-    document.title = `${pageTitle} | TWings Quản trị`;
-  }, [pageTitle]);
+    document.title = `${pageTitle} | ${siteBrand}`;
+  }, [pageTitle, siteBrand]);
 
   // E-mail previews read a few leads; the CRM pipeline loads (filtered, paginated) leads itself.
   const orders = useOrders(can('crm.view_leads') && path === '/content/email');

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { api, ApiError, resetCsrfToken } from '../../lib/api';
 import { AdminUser, UserRole } from '../../types';
+import { BrandLogo } from '../../components/BrandLogo';
 
 interface MeResponse {
   id: string;
@@ -88,6 +89,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [successNotice, setSuccessNotice] = useState(notice);
 
   useEffect(() => {
+    document.title = 'Đăng nhập | Cổng Quản trị TWings Academy';
+  }, []);
+
+  useEffect(() => {
     if (errorNotice) setError(errorNotice);
   }, [errorNotice]);
 
@@ -138,12 +143,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       {/* Subtle top card highlight */}
       <div className="absolute inset-x-8 -top-px h-px bg-gradient-to-r from-transparent via-sky-400/40 to-transparent pointer-events-none" />
 
-      {/* Title & Badge */}
-      <div className="space-y-2">
+      {/* Brand Logo & Header */}
+      <div className="flex items-center justify-between pb-1">
+        <BrandLogo dark={true} size="sm" />
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-[#0073C1]/20 to-sky-500/10 text-[#38BDF8] text-xs font-bold border border-sky-500/30 shadow-xs">
           <KeyRound className="w-3.5 h-3.5" />
           <span>Cổng Nhân Sự & Giảng Viên</span>
         </div>
+      </div>
+
+      {/* Title & Badge */}
+      <div className="space-y-1">
         <h2 className="text-2xl font-black text-white tracking-tight">Đăng nhập tài khoản</h2>
         <p className="text-xs text-slate-300">
           Nhập thông tin tài khoản được cấp bởi TWings để truy cập bảng điều khiển.

@@ -779,6 +779,7 @@ export const INITIAL_SEO_SETTINGS: SiteSEOSettings = {
   googleAnalyticsId: 'G-TWINGS2026',
   facebookPixelId: '1098245582910',
   robotsTxt: 'User-agent: *\nAllow: /\nDisallow: /app\nDisallow: /api/\nSitemap: https://twings.edu.vn/sitemap.xml',
+  facebookUrl: 'https://www.facebook.com/twings.academy',
   hotline: '0843 314 382 (Ms. Hường)',
   email: 'hello@twings.edu.vn',
   address: 'Tòa ROX Tower, 54A Nguyễn Chí Thanh, Phường Láng, Hà Nội'

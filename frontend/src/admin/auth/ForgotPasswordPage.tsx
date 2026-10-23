@@ -10,6 +10,7 @@ import {
   Send
 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
+import { BrandLogo } from '../../components/BrandLogo';
 
 interface ForgotPasswordPageProps {
   onNavigateToLogin: (notice?: string) => void;
@@ -25,6 +26,10 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
   const [error, setError] = useState('');
   const [sentSuccess, setSentSuccess] = useState(false);
   const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    document.title = 'Quên mật khẩu | Cổng Quản trị TWings Academy';
+  }, []);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -58,12 +63,17 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-3xl p-7 sm:p-9 shadow-2xl space-y-6">
-      {/* Title & Badge */}
-      <div className="space-y-2">
+      {/* Brand Logo & Header */}
+      <div className="flex items-center justify-between pb-1">
+        <BrandLogo dark={true} size="sm" />
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 text-xs font-bold border border-amber-500/30">
           <KeyRound className="w-3.5 h-3.5" />
           <span>Khôi phục tài khoản</span>
         </div>
+      </div>
+
+      {/* Title */}
+      <div className="space-y-1">
         <h2 className="text-2xl font-black text-white tracking-tight">Quên mật khẩu?</h2>
         <p className="text-xs text-slate-400 leading-relaxed">
           Nhập email công việc được cấp tại TWings. Hệ thống sẽ gửi một liên kết đặt lại mật khẩu an toàn đến hộp thư của bạn.

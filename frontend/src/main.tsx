@@ -25,9 +25,11 @@ if (/^\/(learn\/)?tai-khoan(\/|$)/.test(path)) {
 
 const isStorefront = /^\/(chuong-trinh|chinh-sach-bao-mat|dieu-khoan)(\/|$)/.test(path);
 
-// Favicon, logo, default title/description from /app → Cài đặt SEO (not for the staff app).
+// Favicon and site identity from /app → Cài đặt SEO apply everywhere.
+applySiteSeo();
+
+// Capture attribution for public visitors submitting forms
 if (!isAdmin) {
-  applySiteSeo();
   captureAttribution(); // utm / ref / referrer of this visit, sent with a form the visitor submits
 }
 

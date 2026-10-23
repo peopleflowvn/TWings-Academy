@@ -45,15 +45,22 @@ function setLink(rel: string, href: string) {
   link.href = href;
 }
 
+export const DEFAULT_FAVICON = '/favicon.svg';
+
 /** Only https URLs (or site-relative paths) are applied. */
 const safeUrl = (url?: string) => (url && /^(https:\/\/|\/)/.test(url) ? url : '');
 
 export async function applySiteSeo(): Promise<void> {
   const seo = await loadSiteSeo();
-  const favicon = safeUrl(seo?.faviconUrl);
-  if (!favicon) return;
+  const favicon = safeUrl(seo?.faviconUrl) || DEFAULT_FAVICON;
+  
   document.head.querySelectorAll('link[rel~="icon"]').forEach((l) => l.remove());
   setLink('icon', favicon);
+
+  // /app staff pages must never be indexed by search engines
+  if (/^\/app(\/|$)/.test(window.location.pathname)) {
+    setMeta('name', 'robots', 'noindex, nofollow');
+  }
 }
 
 interface PageMeta {

@@ -21,7 +21,7 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
     <div
       className={`${
         fullScreen
-          ? 'fixed inset-0 z-50 flex items-center justify-center'
+          ? 'fixed inset-0 w-screen h-screen min-h-screen z-[99999] flex items-center justify-center m-0 p-0'
           : 'w-full py-16 flex items-center justify-center'
       } relative overflow-hidden ${
         dark
@@ -30,6 +30,7 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
       } transition-colors duration-300 animate-fadeIn ${className}`}
       role="status"
       aria-live="polite"
+      style={fullScreen ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', margin: 0 } : undefined}
     >
       {/* Dynamic ambient radial lighting and subtle grid/auras for premium depth */}
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#0073C1]/25 rounded-full blur-3xl pointer-events-none" />

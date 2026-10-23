@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { api, ApiError, resetCsrfToken } from '../../lib/api';
 import { evaluatePassword } from './passwordStrength';
+import { BrandLogo } from '../../components/BrandLogo';
 
 interface ResetPasswordPageProps {
   initialUid?: string;
@@ -34,6 +35,10 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  React.useEffect(() => {
+    document.title = 'Đặt lại mật khẩu | Cổng Quản trị TWings Academy';
+  }, []);
 
   const evaluation = useMemo(
     () => evaluatePassword(newPassword, confirmPassword),
@@ -110,12 +115,17 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-3xl p-7 sm:p-9 shadow-2xl space-y-6">
-      {/* Title & Badge */}
-      <div className="space-y-2">
+      {/* Brand Logo & Header */}
+      <div className="flex items-center justify-between pb-1">
+        <BrandLogo dark={true} size="sm" />
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 text-blue-300 text-xs font-bold border border-blue-500/30">
           <ShieldCheck className="w-3.5 h-3.5" />
           <span>Bảo vệ tài khoản</span>
         </div>
+      </div>
+
+      {/* Title */}
+      <div className="space-y-1">
         <h2 className="text-2xl font-black text-white tracking-tight">Đặt mật khẩu mới</h2>
         <p className="text-xs text-slate-400 leading-relaxed">
           Thiết lập mật khẩu mới an toàn cho tài khoản cán bộ của bạn.
