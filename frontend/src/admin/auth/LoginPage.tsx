@@ -134,22 +134,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-7 sm:p-9 shadow-2xl space-y-6">
+    <div className="bg-slate-900/80 border border-slate-700/60 hover:border-slate-600/80 rounded-3xl p-7 sm:p-9 shadow-2xl backdrop-blur-xl space-y-6 relative transition-all duration-300">
+      {/* Subtle top card highlight */}
+      <div className="absolute inset-x-8 -top-px h-px bg-gradient-to-r from-transparent via-sky-400/40 to-transparent pointer-events-none" />
+
       {/* Title & Badge */}
       <div className="space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0073C1]/15 text-[#38BDF8] text-xs font-bold border border-[#0073C1]/30">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-[#0073C1]/20 to-sky-500/10 text-[#38BDF8] text-xs font-bold border border-sky-500/30 shadow-xs">
           <KeyRound className="w-3.5 h-3.5" />
           <span>Cổng Nhân Sự & Giảng Viên</span>
         </div>
         <h2 className="text-2xl font-black text-white tracking-tight">Đăng nhập tài khoản</h2>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-300">
           Nhập thông tin tài khoản được cấp bởi TWings để truy cập bảng điều khiển.
         </p>
       </div>
 
       {/* Success Notice */}
       {successNotice && (
-        <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs leading-relaxed animate-fadeIn">
+        <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs leading-relaxed animate-fadeIn">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
           <div className="font-medium">{successNotice}</div>
         </div>
@@ -157,7 +160,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
       {/* Error Alert */}
       {error && (
-        <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs leading-relaxed animate-fadeIn">
+        <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs leading-relaxed animate-fadeIn">
           <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
           <div className="font-medium">{error}</div>
         </div>
@@ -182,7 +185,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tuyendung@tntalent.vn hoặc admin"
-              className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700/80 rounded-2xl text-sm text-white placeholder-slate-400 focus:outline-none focus:border-[#0073C1] focus:ring-2 focus:ring-[#0073C1]/20 transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-700/80 rounded-2xl text-sm text-white placeholder-slate-400 focus:outline-none focus:border-[#38BDF8] focus:ring-2 focus:ring-[#38BDF8]/20 transition-all"
             />
           </div>
         </div>
@@ -213,7 +216,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
-              className="w-full pl-10 pr-11 py-3 bg-slate-950 border border-slate-700/80 rounded-2xl text-sm text-white placeholder-slate-400 focus:outline-none focus:border-[#0073C1] focus:ring-2 focus:ring-[#0073C1]/20 transition-all"
+              className="w-full pl-10 pr-11 py-3 bg-slate-950/80 border border-slate-700/80 rounded-2xl text-sm text-white placeholder-slate-400 focus:outline-none focus:border-[#38BDF8] focus:ring-2 focus:ring-[#38BDF8]/20 transition-all"
             />
             <button
               type="button"
@@ -243,7 +246,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         <button
           type="submit"
           disabled={submitting}
-          className="w-full mt-2 py-3.5 bg-gradient-to-r from-[#0073C1] to-[#2C93E8] hover:from-[#0E6BBB] hover:to-[#0073C1] active:scale-[0.99] disabled:opacity-60 text-white font-bold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-[#0073C1]/20 cursor-pointer transition-all"
+          className="w-full mt-2 py-3.5 bg-gradient-to-r from-[#0073C1] via-[#0E6BBB] to-[#2C93E8] hover:from-[#0E6BBB] hover:to-[#0073C1] active:scale-[0.99] disabled:opacity-60 text-white font-bold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-[#0073C1]/30 cursor-pointer transition-all border border-sky-400/20 hover:border-sky-400/40"
         >
           {submitting ? (
             <>
@@ -260,7 +263,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       </form>
 
       {/* Security Hint */}
-      <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2.5">
+      <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2.5">
         <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
         <span>
           Tài khoản sẽ tự động tạm khóa 1 giờ sau 5 lần nhập sai liên tiếp để phòng ngừa rò rỉ dữ liệu.
@@ -268,7 +271,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       </div>
 
       {/* Learner Portal Links */}
-      <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-slate-400">
+      <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-slate-400">
         <a
           href="/learn/"
           className="inline-flex items-center gap-1.5 text-[#38BDF8] font-bold hover:underline transition-colors"
