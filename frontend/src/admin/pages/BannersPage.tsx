@@ -135,6 +135,8 @@ export const BannersPage: React.FC<{
       imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80',
       linkUrl: '#dang-ky',
       targetBlank: false,
+      showOverlayText: false,
+      showOverlayButton: false,
       partnerBadges: [{ name: 'TWINGS ACADEMY' }, { name: 'ĐỐI TÁC MSB BANK' }],
       floatingBadges: [
         { text: 'Cố vấn 1-1 cùng Giám đốc Khối MSB', position: 'top-left' },
@@ -342,6 +344,22 @@ export const BannersPage: React.FC<{
                     {partnerNames && (
                       <span className="text-[11px] font-bold text-slate-500 truncate max-w-xs">
                         {partnerNames}
+                      </span>
+                    )}
+
+                    {isImageOnly && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        banner.showOverlayText || banner.showOverlayButton
+                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                      }`}>
+                        {banner.showOverlayText && banner.showOverlayButton
+                          ? 'Chữ & Nút: Bật'
+                          : banner.showOverlayText
+                          ? 'Chữ: Bật'
+                          : banner.showOverlayButton
+                          ? 'Nút: Bật'
+                          : 'Ảnh thuần túy (Không đè chữ/nút)'}
                       </span>
                     )}
 
@@ -559,9 +577,34 @@ export const BannersPage: React.FC<{
                         Khung xem trước tỷ lệ Hero
                       </div>
                       {editingBanner.linkUrl && (
-                        <div className="absolute bottom-3 right-3 bg-purple-600/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-md">
+                        <div className="absolute top-3 right-3 bg-purple-600/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-md">
                           <Link2 className="w-3.5 h-3.5" />
-                          <span>Link khi click: {editingBanner.linkUrl}</span>
+                          <span>Link: {editingBanner.linkUrl}</span>
+                        </div>
+                      )}
+
+                      {/* Optional Overlay on Preview */}
+                      {(editingBanner.showOverlayText || editingBanner.showOverlayButton) && (
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 via-slate-900/40 to-transparent p-4 flex items-end justify-between gap-3">
+                          {editingBanner.showOverlayText ? (
+                            <div className="min-w-0">
+                              <h4 className="font-extrabold text-sm text-white drop-shadow-md truncate">
+                                {editingBanner.title || 'Tiêu đề banner'}
+                              </h4>
+                              {editingBanner.subtitle && (
+                                <p className="text-[11px] text-slate-300 line-clamp-1">
+                                  {editingBanner.subtitle}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div />
+                          )}
+                          {editingBanner.showOverlayButton && (
+                            <span className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#0073C1] to-[#2C93E8] text-xs font-bold text-white shadow-md shrink-0">
+                              {editingBanner.buttonText || 'Nút bấm CTA'}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -613,31 +656,105 @@ export const BannersPage: React.FC<{
                     </div>
                   </div>
 
-                  {/* Overlay labels */}
-                  <div className="pt-3 border-t border-purple-200/60 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-700">
-                        Tiêu Đề & Nút CTA Phủ Mờ Trên Ảnh (Tùy chọn)
-                      </label>
-                      <span className="text-[11px] text-slate-400">
-                        Để trống tiêu đề nếu bạn muốn ảnh thuần túy, không có chữ đè lên.
-                      </span>
+                  {/* Tên nội bộ nhận diện Banner */}
+                  <div className="space-y-1.5 pt-3 border-t border-purple-200/60">
+                    <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                      <span>Tên / Tiêu Đề Banner (Quản lý trong CMS)</span>
+                      <span className="text-[11px] font-normal text-slate-500">Dùng đặt tên slide</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editingBanner.title}
+                      onChange={(e) => setEditingBanner({ ...editingBanner, title: e.target.value })}
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white shadow-2xs focus:border-purple-500 focus:outline-none"
+                      placeholder="VD: Banner Chương Trình Tuyển Dụng Tháng 10..."
+                    />
+                  </div>
+
+                  {/* Tùy chọn Bật/Tắt hiển thị Chữ và Nút bấm đè lên ảnh */}
+                  <div className="pt-3 border-t border-purple-200/60 space-y-3.5">
+                    <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-start gap-2.5">
+                      <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold">Lưu ý về thiết kế banner ảnh:</div>
+                        <div className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                          Nếu ảnh của bạn <strong>đã được thiết kế sẵn chữ và nút bấm</strong> (từ Photoshop, Canva...), hãy <strong>tắt cả 2 tùy chọn</strong> bên dưới để ảnh hiển thị nguyên bản, không bị chữ đè lên trùng lặp.
+                        </div>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        value={editingBanner.title}
-                        onChange={(e) => setEditingBanner({ ...editingBanner, title: e.target.value })}
-                        className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white shadow-2xs"
-                        placeholder="Tiêu đề ngắn đè lên ảnh (nếu cần)"
-                      />
-                      <input
-                        type="text"
-                        value={editingBanner.buttonText || ''}
-                        onChange={(e) => setEditingBanner({ ...editingBanner, buttonText: e.target.value })}
-                        className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white shadow-2xs"
-                        placeholder="Tên nút CTA (VD: Khám phá ngay)"
-                      />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Toggle 1: Chữ đè lên ảnh */}
+                      <div className={`p-4 rounded-xl border transition-all ${editingBanner.showOverlayText ? 'bg-purple-50/60 border-purple-300 shadow-xs' : 'bg-white border-slate-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-900 flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={editingBanner.showOverlayText ?? false}
+                              onChange={(e) => setEditingBanner({ ...editingBanner, showOverlayText: e.target.checked })}
+                              className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Hiển thị Chữ đè lên ảnh</span>
+                          </label>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${editingBanner.showOverlayText ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {editingBanner.showOverlayText ? 'Đang Bật' : 'Đang Tắt'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-1 pl-6">
+                          Hiển thị tiêu đề và phụ đề trên dải gradient chân ảnh.
+                        </p>
+
+                        {editingBanner.showOverlayText && (
+                          <div className="mt-3 space-y-2 pt-3 border-t border-purple-200 pl-6">
+                            <div>
+                              <label className="text-[11px] font-bold text-slate-700 block mb-1">Dòng phụ đề (Subtitle):</label>
+                              <input
+                                type="text"
+                                value={editingBanner.subtitle || ''}
+                                onChange={(e) => setEditingBanner({ ...editingBanner, subtitle: e.target.value })}
+                                className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white"
+                                placeholder="Dòng chữ mô tả đè lên ảnh..."
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Toggle 2: Nút bấm CTA đè lên ảnh */}
+                      <div className={`p-4 rounded-xl border transition-all ${editingBanner.showOverlayButton ? 'bg-purple-50/60 border-purple-300 shadow-xs' : 'bg-white border-slate-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-900 flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={editingBanner.showOverlayButton ?? false}
+                              onChange={(e) => setEditingBanner({ ...editingBanner, showOverlayButton: e.target.checked })}
+                              className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Hiển thị Nút bấm CTA đè lên ảnh</span>
+                          </label>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${editingBanner.showOverlayButton ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {editingBanner.showOverlayButton ? 'Đang Bật' : 'Đang Tắt'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-1 pl-6">
+                          Hiển thị nút kêu gọi hành động ở góc phải dưới của banner.
+                        </p>
+
+                        {editingBanner.showOverlayButton && (
+                          <div className="mt-3 space-y-2 pt-3 border-t border-purple-200 pl-6">
+                            <div>
+                              <label className="text-[11px] font-bold text-slate-700 block mb-1">Tên nút bấm:</label>
+                              <input
+                                type="text"
+                                value={editingBanner.buttonText || ''}
+                                onChange={(e) => setEditingBanner({ ...editingBanner, buttonText: e.target.value })}
+                                className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white"
+                                placeholder="VD: Khám phá ngay, Đăng ký tư vấn..."
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

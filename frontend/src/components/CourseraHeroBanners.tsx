@@ -230,6 +230,10 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
             // Mode 1: Full-Image Banner with Hyperlink Support
             if (banner.displayType === 'image_only' && (banner.fullBannerImageUrl || banner.imageUrl)) {
               const img = banner.fullBannerImageUrl || banner.imageUrl;
+              const hasOverlayText = !!(banner.showOverlayText && banner.title && banner.title !== 'Banner' && banner.title.trim().length > 0);
+              const hasOverlayButton = !!(banner.showOverlayButton && banner.buttonText && banner.buttonText.trim().length > 0);
+              const hasOverlay = hasOverlayText || hasOverlayButton;
+
               return (
                 <div
                   key={banner.id || index}
@@ -256,20 +260,24 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                       <ExternalLink className="w-3.5 h-3.5" />
                     </div>
                   )}
-                  {/* Optional title overlay only if title is specified */}
-                  {banner.title && banner.title !== 'Banner' && banner.title.trim().length > 0 && (
+                  {/* Optional title & button overlay only if explicitly enabled in CMS */}
+                  {hasOverlay && (
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 via-slate-900/40 to-transparent p-4 sm:p-6 flex items-end justify-between gap-4">
-                      <div className="min-w-0">
-                        <h3 className="font-extrabold text-base sm:text-xl lg:text-2xl text-white drop-shadow-md truncate">
-                          {banner.title}
-                        </h3>
-                        {banner.subtitle && (
-                          <p className="text-xs sm:text-sm text-slate-300 line-clamp-1">
-                            {banner.subtitle}
-                          </p>
-                        )}
-                      </div>
-                      {banner.buttonText && (
+                      {hasOverlayText ? (
+                        <div className="min-w-0">
+                          <h3 className="font-extrabold text-base sm:text-xl lg:text-2xl text-white drop-shadow-md truncate">
+                            {banner.title}
+                          </h3>
+                          {banner.subtitle && (
+                            <p className="text-xs sm:text-sm text-slate-300 line-clamp-1">
+                              {banner.subtitle}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div />
+                      )}
+                      {hasOverlayButton && (
                         <span className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0073C1] to-[#2C93E8] text-xs sm:text-sm font-bold flex items-center gap-1.5 text-white shadow-lg shrink-0 group-hover:brightness-110">
                           <span>{banner.buttonText}</span>
                           <ExternalLink className="w-3.5 h-3.5" />

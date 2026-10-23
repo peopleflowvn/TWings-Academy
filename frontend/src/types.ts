@@ -668,6 +668,8 @@ export interface HeroBannerItem {
   fullBannerImageUrl?: string;
   linkUrl?: string; // internal anchor (e.g. #dang-ky, #khoa-hoc-ban-chay) or external URL
   targetBlank?: boolean;
+  showOverlayText?: boolean;
+  showOverlayButton?: boolean;
 }
 
 export interface StudentEnrollment {

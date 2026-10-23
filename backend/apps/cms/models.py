@@ -79,6 +79,8 @@ class HeroBanner(BaseModel):
     full_banner_image_url = models.CharField(max_length=500, blank=True)
     link_url = models.CharField(max_length=500, blank=True)
     target_blank = models.BooleanField(default=False)
+    show_overlay_text = models.BooleanField(default=False)
+    show_overlay_button = models.BooleanField(default=False)
     sort_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 

@@ -205,7 +205,9 @@ export const BANNERS: CollectionOptions<HeroBannerItem> = {
     displayType: d.displayType || 'card',
     fullBannerImageUrl: d.fullBannerImageUrl || '',
     linkUrl: d.linkUrl || '',
-    targetBlank: !!d.targetBlank
+    targetBlank: !!d.targetBlank,
+    showOverlayText: !!(d.showOverlayText ?? d.show_overlay_text),
+    showOverlayButton: !!(d.showOverlayButton ?? d.show_overlay_button)
   }),
   toServer: (b) => ({
     title: b.title,
@@ -221,6 +223,8 @@ export const BANNERS: CollectionOptions<HeroBannerItem> = {
     fullBannerImageUrl: b.fullBannerImageUrl || '',
     linkUrl: b.linkUrl || '',
     targetBlank: !!b.targetBlank,
+    showOverlayText: !!b.showOverlayText,
+    showOverlayButton: !!b.showOverlayButton,
     isActive: true
   })
 };
