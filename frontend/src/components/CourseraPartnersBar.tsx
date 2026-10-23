@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Building2, ExternalLink, Handshake, ShieldCheck, Sparkles } from 'lucide-react';
 import { PartnerItem } from '../types';
 
 interface CourseraPartnersBarProps {
@@ -15,8 +15,8 @@ const DEFAULT_PARTNERS: PartnerItem[] = [
     logoColor: '#EA580C',
     themeColor: '#EA580C',
     logoUrl: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?auto=format&fit=crop&w=200&q=80',
-    slogan: 'Ngân hàng TMCP Hàng Hải Việt Nam',
-    tag: 'Bảo lãnh tuyển dụng',
+    slogan: 'Ngân hàng TMCP Hàng Hải',
+    tag: 'Bảo lãnh việc làm',
     type: 'company',
     websiteUrl: 'https://www.msb.com.vn',
   },
@@ -27,7 +27,7 @@ const DEFAULT_PARTNERS: PartnerItem[] = [
     logoColor: '#E65100',
     themeColor: '#E65100',
     logoUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=200&q=80',
-    slogan: 'Tập đoàn Đầu tư & Phát triển Bất động sản, Dịch vụ',
+    slogan: 'Tập đoàn Đầu tư & Phát triển',
     tag: 'Đối tác chiến lược',
     type: 'company',
     websiteUrl: 'https://roxgroup.vn',
@@ -39,8 +39,8 @@ const DEFAULT_PARTNERS: PartnerItem[] = [
     logoColor: '#DC2626',
     themeColor: '#DC2626',
     logoUrl: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=200&q=80',
-    slogan: 'Tư vấn & Cung ứng Giải pháp Nhân sự Chiến lược',
-    tag: 'Kết nối việc làm',
+    slogan: 'Giải pháp Nhân sự Chiến lược',
+    tag: 'Cung ứng nhân sự',
     type: 'company',
     websiteUrl: 'https://tntalent.vn',
   },
@@ -52,7 +52,7 @@ const DEFAULT_PARTNERS: PartnerItem[] = [
     themeColor: '#0048C8',
     logoUrl: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=200&q=80',
     slogan: 'Ngân hàng TMCP Quân Đội',
-    tag: 'Đối tác ngân hàng',
+    tag: 'Đối tác tuyển dụng',
     type: 'company',
     websiteUrl: 'https://www.mbbank.com.vn',
   },
@@ -62,39 +62,39 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
   partners = [],
   title,
 }) => {
-  // Use provided partners if available, otherwise high-converting default partners
   const activePartners = partners.filter((p: any) => p.is_active !== false);
   const displayPartners = activePartners.length > 0 ? activePartners : DEFAULT_PARTNERS;
 
   if (displayPartners.length === 0) return null;
 
   return (
-    <section className="bg-gradient-to-b from-white via-slate-50/60 to-white py-8 sm:py-12 border-b border-slate-200/80 relative overflow-hidden">
-      {/* Subtle background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[180px] bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+    <section className="bg-gradient-to-b from-white via-sky-50/30 to-slate-50/50 py-10 sm:py-14 border-b border-slate-200/70 relative overflow-hidden">
+      {/* Background ambient glow circles */}
+      <div className="absolute top-0 left-1/3 w-96 h-96 bg-sky-400/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5 sm:space-y-7 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 relative z-10">
         {/* Section Header */}
-        <div className="flex flex-col items-center justify-center text-center space-y-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/60 text-[#0073C1] text-xs font-extrabold uppercase tracking-widest shadow-2xs">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#0073C1]" />
-            <span>Mạng Lưới Đối Tác & Bảo Lãnh Tuyển Dụng</span>
-          </span>
+        <div className="flex flex-col items-center justify-center text-center space-y-2.5 max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-blue-500/10 to-sky-500/10 border border-sky-200/80 text-[#0073C1] text-xs font-black uppercase tracking-wider shadow-2xs">
+            <Handshake className="w-3.5 h-3.5 text-[#0073C1]" />
+            <span>Mạng Lưới Đối Tác Doanh Nghiệp</span>
+          </div>
 
-          <h2 className="text-sm sm:text-lg font-black text-slate-800 tracking-tight">
+          <h2 className="text-base sm:text-xl font-black text-slate-800 tracking-tight leading-snug">
             {title || (
               <>
-                Đồng hành đào tạo cùng các Ngân hàng & Tập đoàn đối tác của{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0073C1] to-[#2C93E8]">
-                  TWINGS ACADEMY
+                Đồng hành đào tạo & Bảo lãnh tuyển dụng cùng các{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0073C1] via-[#0E6BBB] to-[#2C93E8]">
+                  Ngân hàng & Tập đoàn hàng đầu
                 </span>
               </>
             )}
           </h2>
         </div>
 
-        {/* Logos Container: Smooth horizontal swipe on mobile, centered grid on desktop */}
-        <div className="flex items-center sm:justify-center gap-3 sm:gap-4 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap pb-1">
+        {/* Logos & Partners Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 max-w-5xl mx-auto">
           {displayPartners.map((p) => {
             const hasWebsite = Boolean(p.websiteUrl);
 
@@ -106,53 +106,56 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
                     window.open(p.websiteUrl, '_blank', 'noopener,noreferrer');
                   }
                 }}
-                className={`flex items-center gap-3 p-2.5 sm:p-3 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-[#0073C1]/50 transition-all shrink-0 select-none shadow-2xs hover:shadow-md hover:-translate-y-0.5 group duration-300 ${
-                  hasWebsite ? 'cursor-pointer' : 'cursor-default'
+                className={`flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/90 hover:bg-white border border-slate-200/80 hover:border-sky-400/60 shadow-xs hover:shadow-lg hover:shadow-sky-500/10 transition-all duration-300 group select-none ${
+                  hasWebsite ? 'cursor-pointer hover:-translate-y-0.5' : 'cursor-default'
                 }`}
                 title={p.slogan || p.name}
               >
-                {/* Logo Box */}
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden border border-slate-200/80 bg-slate-50 p-1.5 shrink-0 flex items-center justify-center shadow-inner group-hover:scale-105 group-hover:bg-white transition-all">
+                {/* Brand Logo Box */}
+                <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-100 bg-slate-50/80 p-2 shrink-0 flex items-center justify-center shadow-inner group-hover:scale-105 group-hover:bg-white group-hover:border-sky-100 transition-all duration-300">
                   {p.logoUrl ? (
                     <img 
                       loading="lazy" 
                       decoding="async"
                       src={p.logoUrl}
                       alt={p.name}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain filter group-hover:contrast-105 transition-all"
                       onError={(e) => {
                         (e.target as HTMLElement).style.display = 'none';
                       }}
                     />
                   ) : (
-                    <Building2 className="w-5 h-5 text-[#0073C1]" />
+                    <Building2 className="w-6 h-6 text-[#0073C1]" />
                   )}
                 </div>
 
-                {/* Text Details */}
-                <div className="text-left pr-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
+                {/* Info Text */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
                     <span
-                      className="text-xs sm:text-sm font-black tracking-tight whitespace-nowrap group-hover:text-[#0073C1] transition-colors leading-tight"
+                      className="text-sm font-black tracking-tight whitespace-nowrap group-hover:text-[#0073C1] transition-colors"
                       style={{ color: p.logoColor || p.themeColor || '#0f172a' }}
                     >
                       {p.logoText || p.name}
                     </span>
 
-                    {p.tag && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-50 text-[#0073C1] border border-blue-100 hidden sm:inline-block leading-tight">
-                        {p.tag}
-                      </span>
-                    )}
-
                     {hasWebsite && (
-                      <ExternalLink className="w-3 h-3 text-slate-300 group-hover:text-[#0073C1] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#0073C1] opacity-0 group-hover:opacity-100 transition-all shrink-0" />
                     )}
                   </div>
 
                   {p.slogan && (
-                    <div className="text-[11px] text-slate-500 font-medium line-clamp-1 max-w-[140px] sm:max-w-[190px] mt-0.5">
+                    <div className="text-[11px] text-slate-500 font-medium line-clamp-1 mt-0.5" title={p.slogan}>
                       {p.slogan}
+                    </div>
+                  )}
+
+                  {p.tag && (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-[#0073C1] border border-blue-100/80 group-hover:bg-blue-100/80 transition-colors">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span>{p.tag}</span>
+                      </span>
                     </div>
                   )}
                 </div>
@@ -164,3 +167,4 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
     </section>
   );
 };
+

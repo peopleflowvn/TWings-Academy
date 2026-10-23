@@ -73,26 +73,46 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
 
       <div className="max-w-7xl mx-auto space-y-8 sm:space-y-12 relative z-10">
         {/* Section Heading */}
-        <div className="text-center space-y-2.5 sm:space-y-3.5 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 rounded-full bg-[#D7F5FF] border border-[#94D9FF]/60 text-[#0073C1] text-[11px] sm:text-xs font-extrabold uppercase tracking-widest shadow-2xs">
+        <div className="text-center space-y-3 sm:space-y-4 max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/70 text-[#0073C1] text-[11px] sm:text-xs font-black uppercase tracking-widest shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-[#0073C1] animate-pulse" />
             <span>{eyebrow}</span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#263060] tracking-tight leading-tight">
+          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-[#1e293b] tracking-tight leading-tight">
             NÂNG TẦM NĂNG LỰC,{' '}
-            <span className="bg-gradient-to-r from-[#5FBEFF] via-[#0073C1] to-[#0E6BBB] bg-clip-text text-transparent">
+            <span className="whitespace-nowrap bg-gradient-to-r from-[#0073C1] via-[#0E6BBB] to-[#2C93E8] bg-clip-text text-transparent">
               KIẾN TẠO TƯƠNG LAI
             </span>
           </h2>
 
-          <p className="text-xs sm:text-sm text-[#424242]/90 leading-relaxed max-w-2xl mx-auto">
+          <p className="text-xs sm:text-base text-slate-600 leading-relaxed max-w-2xl mx-auto">
             {description}
           </p>
 
+          {/* Social Proof Impact Highlights */}
+          <div className="pt-2 sm:pt-4">
+            <div className="inline-flex flex-wrap items-center justify-center gap-4 sm:gap-8 px-6 py-3 rounded-2xl bg-white border border-slate-200/80 shadow-xs backdrop-blur-md">
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-black text-[#0073C1]">98%</div>
+                <div className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wide">Có việc làm sau đào tạo</div>
+              </div>
+              <div className="w-px h-8 bg-slate-200 hidden sm:block" />
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-black text-[#0073C1]">15.000+</div>
+                <div className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wide">Học viên toàn quốc</div>
+              </div>
+              <div className="w-px h-8 bg-slate-200 hidden sm:block" />
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-black text-[#0073C1]">50+</div>
+                <div className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wide">Đối tác ngân hàng & DN</div>
+              </div>
+            </div>
+          </div>
+
           {/* Mobile Swipe Hint */}
           {tiles.length > 1 && (
-            <div className="sm:hidden pt-1 flex items-center justify-center gap-1.5 text-xs font-bold text-[#0073C1]">
+            <div className="sm:hidden pt-2 flex items-center justify-center gap-1.5 text-xs font-bold text-[#0073C1]">
               <span>Vuốt ngang để xem {tiles.length} nhóm chương trình</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </div>
