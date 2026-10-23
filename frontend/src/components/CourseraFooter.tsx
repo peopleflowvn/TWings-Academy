@@ -12,11 +12,19 @@ interface CourseraFooterProps {
 }
 
 /** Real links only: <a href> with the page's own URL, handled by the SPA router on a plain click. */
-const NavLink: React.FC<{ view: View; slug?: string; onNavigate: (view: View) => void; onSlug?: () => void; children: React.ReactNode }> = ({
+const NavLink: React.FC<{ 
+  view: View; 
+  slug?: string; 
+  onNavigate: (view: View) => void; 
+  onSlug?: () => void; 
+  className?: string;
+  children: React.ReactNode 
+}> = ({
   view,
   slug,
   onNavigate,
   onSlug,
+  className,
   children
 }) => (
   <a
@@ -27,7 +35,7 @@ const NavLink: React.FC<{ view: View; slug?: string; onNavigate: (view: View) =>
       if (onSlug) onSlug();
       else onNavigate(view);
     }}
-    className="hover:text-white transition-colors"
+    className={className || "hover:text-white transition-colors"}
   >
     {children}
   </a>
