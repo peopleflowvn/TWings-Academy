@@ -511,33 +511,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
           </div>
         </div>
 
-        {/* 4 Trust & Metrics Stat Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5 pt-6 sm:pt-8">
-          {TRUST_STATS.map((stat, sIdx) => {
-            const Icon = stat.icon;
-            return (
-              <div 
-                key={sIdx}
-                className="bg-gradient-to-b from-white/[0.08] to-white/[0.02] backdrop-blur-xl border border-white/10 hover:border-[#5FBEFF]/50 rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#0073C1]/10 group cursor-default"
-              >
-                <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl ${stat.glowBg} ${stat.borderColor} border ${stat.color} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform`}>
-                  <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-lg sm:text-2xl font-black text-white tracking-tight leading-none mb-1">
-                    {stat.number}
-                  </div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-100 group-hover:text-[#D7F5FF] transition-colors truncate">
-                    {stat.label}
-                  </div>
-                  <div className="text-[11px] text-slate-300 truncate hidden sm:block font-medium">
-                    {stat.subtext}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+
 
         {/* Quick Category Navigation Rail */}
         <div className="pt-6 sm:pt-8 border-t border-white/10">

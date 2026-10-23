@@ -1,5 +1,16 @@
 import React from 'react';
-import { TrendingUp, Sparkles, ShieldCheck, GraduationCap, ArrowRight, Layers } from 'lucide-react';
+import { 
+  TrendingUp, 
+  Sparkles, 
+  ShieldCheck, 
+  GraduationCap, 
+  ArrowRight, 
+  Layers,
+  Users,
+  Briefcase,
+  Award,
+  PlayCircle
+} from 'lucide-react';
 import { CMSSectionsConfig } from '../types';
 
 interface IntroSectionProps {
@@ -8,6 +19,49 @@ interface IntroSectionProps {
   /** Course count of each shelf shown on the page; a tile without its shelf is not shown. */
   shelfCounts?: Record<string, number>;
 }
+
+const TRUST_STATS = [
+  {
+    icon: Users,
+    number: '5.000+',
+    label: 'Học viên đã tốt nghiệp',
+    subtext: 'Gia nhập các Ngân hàng lớn',
+    color: 'text-[#0073C1]',
+    glowBg: 'bg-blue-500/10',
+    borderColor: 'border-blue-200/80',
+    badgeColor: 'bg-blue-50 text-[#0073C1]',
+  },
+  {
+    icon: Briefcase,
+    number: '95%',
+    label: 'Tỷ lệ có việc làm',
+    subtext: 'Bảo lãnh & giới thiệu tại MSB',
+    color: 'text-emerald-600',
+    glowBg: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-200/80',
+    badgeColor: 'bg-emerald-50 text-emerald-700',
+  },
+  {
+    icon: Award,
+    number: '100%',
+    label: 'Giảng viên Giám đốc Khối',
+    subtext: '20+ năm nghiệp vụ thực chiến',
+    color: 'text-amber-600',
+    glowBg: 'bg-amber-500/10',
+    borderColor: 'border-amber-200/80',
+    badgeColor: 'bg-amber-50 text-amber-700',
+  },
+  {
+    icon: PlayCircle,
+    number: 'Miễn phí',
+    label: 'Học thử Video YouTube',
+    subtext: 'Kiểm tra chất lượng trước khi mua',
+    color: 'text-rose-600',
+    glowBg: 'bg-rose-500/10',
+    borderColor: 'border-rose-200/80',
+    badgeColor: 'bg-rose-50 text-rose-700',
+  },
+];
 
 export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollToSection, shelfCounts = {} }) => {
   const eyebrow = introData?.eyebrow || 'TWINGS ACADEMY';
@@ -90,23 +144,33 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
             {description}
           </p>
 
-          {/* Social Proof Impact Highlights */}
-          <div className="pt-2 sm:pt-4">
-            <div className="inline-flex flex-wrap items-center justify-center gap-4 sm:gap-8 px-6 py-3 rounded-2xl bg-white border border-slate-200/80 shadow-xs backdrop-blur-md">
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-black text-[#0073C1]">98%</div>
-                <div className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wide">Có việc làm sau đào tạo</div>
-              </div>
-              <div className="w-px h-8 bg-slate-200 hidden sm:block" />
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-black text-[#0073C1]">15.000+</div>
-                <div className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wide">Học viên toàn quốc</div>
-              </div>
-              <div className="w-px h-8 bg-slate-200 hidden sm:block" />
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-black text-[#0073C1]">50+</div>
-                <div className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wide">Đối tác ngân hàng & DN</div>
-              </div>
+          {/* 4 Trust & Metrics Stat Cards directly under the headline */}
+          <div className="pt-3 sm:pt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 max-w-6xl mx-auto text-left">
+              {TRUST_STATS.map((stat, sIdx) => {
+                const Icon = stat.icon;
+                return (
+                  <div 
+                    key={sIdx}
+                    className="bg-white/95 hover:bg-white border border-slate-200/90 hover:border-sky-400/60 rounded-2xl p-4 sm:p-4.5 flex items-center gap-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-500/10 group cursor-default shadow-xs"
+                  >
+                    <div className={`w-12 h-12 rounded-xl ${stat.glowBg} ${stat.borderColor} border ${stat.color} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform`}>
+                      <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-none mb-1 group-hover:text-[#0073C1] transition-colors">
+                        {stat.number}
+                      </div>
+                      <div className="text-xs sm:text-sm font-bold text-slate-700 truncate">
+                        {stat.label}
+                      </div>
+                      <div className="text-[11px] text-slate-500 truncate font-medium mt-0.5">
+                        {stat.subtext}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
