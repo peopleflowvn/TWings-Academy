@@ -23,26 +23,33 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
         fullScreen
           ? 'fixed inset-0 z-50 flex items-center justify-center'
           : 'w-full py-16 flex items-center justify-center'
-      } ${
-        dark ? 'bg-[#0B0F1F] text-slate-100' : 'bg-slate-50/95 backdrop-blur-md text-slate-800'
+      } relative overflow-hidden ${
+        dark
+          ? 'bg-[#060913] text-slate-100'
+          : 'bg-gradient-to-br from-[#0B1536] via-[#101D46] to-[#080D21] text-white'
       } transition-colors duration-300 animate-fadeIn ${className}`}
       role="status"
       aria-live="polite"
     >
-      <div className="flex flex-col items-center justify-center text-center space-y-6">
+      {/* Dynamic ambient radial lighting and subtle grid/auras for premium depth */}
+      <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#0073C1]/25 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-[#5FBEFF]/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-radial from-white/[0.04] via-transparent to-black/40 pointer-events-none" />
+
+      <div className="relative z-10 flex flex-col items-center justify-center text-center space-y-6">
         {/* Impressive Multi-layered Orbital Spinner */}
         <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
           {/* Ambient Glow Aura */}
           <div
             className={`absolute inset-0 rounded-full blur-xl -z-10 animate-pulse ${
-              dark ? 'bg-[#0073C1]/30' : 'bg-[#5FBEFF]/25'
+              dark ? 'bg-[#0073C1]/30' : 'bg-[#5FBEFF]/30'
             }`}
           />
 
           {/* Outer Static Track */}
           <div
             className={`absolute inset-0 rounded-full border-2 ${
-              dark ? 'border-white/10' : 'border-slate-200/80'
+              dark ? 'border-white/10' : 'border-white/15'
             }`}
           />
 
@@ -112,18 +119,18 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
         </div>
 
         {/* Loading Message with subtle tracking and bouncing dots */}
-        <div className="space-y-2 max-w-xs px-4">
+        <div className="space-y-2.5 max-w-xs px-4">
           <p
-            className={`text-xs sm:text-sm font-bold tracking-wide transition-colors ${
-              dark ? 'text-slate-200' : 'text-slate-700'
+            className={`text-xs sm:text-sm font-semibold tracking-wide transition-colors ${
+              dark ? 'text-slate-200' : 'text-slate-100'
             }`}
           >
             {message}
           </p>
           <div className="flex items-center justify-center gap-1.5 pt-0.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#0073C1] animate-bounce" style={{ animationDelay: '0ms' }} />
-            <span className="w-1.5 h-1.5 rounded-full bg-[#5FBEFF] animate-bounce" style={{ animationDelay: '150ms' }} />
-            <span className="w-1.5 h-1.5 rounded-full bg-[#EA580C] animate-bounce" style={{ animationDelay: '300ms' }} />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#5FBEFF] animate-bounce shadow-[0_0_8px_#5FBEFF]" style={{ animationDelay: '0ms' }} />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#0073C1] animate-bounce shadow-[0_0_8px_#0073C1]" style={{ animationDelay: '150ms' }} />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#EA580C] animate-bounce shadow-[0_0_8px_#EA580C]" style={{ animationDelay: '300ms' }} />
           </div>
         </div>
       </div>

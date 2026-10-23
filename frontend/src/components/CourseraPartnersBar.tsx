@@ -63,12 +63,29 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
   title,
 }) => {
   const activePartners = partners.filter((p: any) => p.is_active !== false);
-  const displayPartners = activePartners.length > 0 ? activePartners : DEFAULT_PARTNERS;
+  const basePartners = activePartners.length > 0 ? activePartners : DEFAULT_PARTNERS;
+
+  // Enrich items with default tags/logos if cms items don't provide them yet
+  const displayPartners = basePartners.map((p) => {
+    const matched = DEFAULT_PARTNERS.find(
+      (d) => d.name.toLowerCase().includes(p.name.toLowerCase()) || p.name.toLowerCase().includes(d.name.toLowerCase())
+    );
+    return {
+      ...matched,
+      ...p,
+      tag: p.tag || matched?.tag || 'Đối tác chiến lược',
+      logoUrl: p.logoUrl || matched?.logoUrl,
+      websiteUrl: p.websiteUrl || matched?.websiteUrl,
+      slogan: p.slogan || matched?.slogan,
+      logoText: p.logoText || matched?.logoText || p.name,
+      themeColor: p.themeColor || matched?.themeColor || '#0073C1',
+    };
+  });
 
   if (displayPartners.length === 0) return null;
 
   return (
-    <section className="bg-gradient-to-b from-white via-sky-50/30 to-slate-50/50 py-10 sm:py-14 border-b border-slate-200/70 relative overflow-hidden">
+    <section className="bg-gradient-to-b from-white via-sky-50/20 to-slate-50/40 py-10 sm:py-14 border-b border-slate-200/70 relative overflow-hidden">
       {/* Background ambient glow circles */}
       <div className="absolute top-0 left-1/3 w-96 h-96 bg-sky-400/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -93,8 +110,8 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
           </h2>
         </div>
 
-        {/* Logos & Partners Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 max-w-5xl mx-auto">
+        {/* Logos & Partners Cards Grid: 3 or 4 columns gracefully centered */}
+        <div className="flex flex-wrap items-stretch justify-center gap-4 max-w-5xl mx-auto">
           {displayPartners.map((p) => {
             const hasWebsite = Boolean(p.websiteUrl);
 
@@ -106,7 +123,7 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
                     window.open(p.websiteUrl, '_blank', 'noopener,noreferrer');
                   }
                 }}
-                className={`flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/90 hover:bg-white border border-slate-200/80 hover:border-sky-400/60 shadow-xs hover:shadow-lg hover:shadow-sky-500/10 transition-all duration-300 group select-none ${
+                className={`flex items-center gap-3.5 p-3.5 rounded-2xl bg-white border border-slate-200/80 hover:border-sky-400/60 shadow-xs hover:shadow-lg hover:shadow-sky-500/10 transition-all duration-300 group select-none w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-0.75rem)] ${
                   hasWebsite ? 'cursor-pointer hover:-translate-y-0.5' : 'cursor-default'
                 }`}
                 title={p.slogan || p.name}

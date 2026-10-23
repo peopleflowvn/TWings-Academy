@@ -20,13 +20,13 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: #F8FAFC;
-        color: #0f172a;
+        background: linear-gradient(135deg, #0B1536 0%, #101D46 50%, #080D21 100%);
+        color: #ffffff;
         font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
         z-index: 99999;
       }
       .is-admin-route #initial-loader {
-        background: #0f172a;
+        background: #060913;
         color: #f8fafc;
       }
       .is-admin-route #initial-loader .tw-brand-title-admin {
@@ -36,8 +36,8 @@
         color: #94a3b8 !important;
       }
       @keyframes twPulse {
-        0%, 100% { transform: scale(1); filter: drop-shadow(0 4px 14px rgba(0, 115, 193, 0.25)); }
-        50% { transform: scale(1.04); filter: drop-shadow(0 6px 20px rgba(0, 115, 193, 0.45)); }
+        0%, 100% { transform: scale(1); filter: drop-shadow(0 4px 14px rgba(0, 115, 193, 0.4)); }
+        50% { transform: scale(1.04); filter: drop-shadow(0 6px 24px rgba(95, 190, 255, 0.6)); }
       }
       @keyframes twBarSlide {
         0% { transform: translateX(-100%); }
@@ -54,24 +54,24 @@
     <!-- External file: the site's CSP (script-src 'self') blocks inline scripts. -->
     <script src="/route-class.js"></script>
   </head>
-  <body class="bg-[#F8FAFC] text-slate-800 antialiased font-sans selection:bg-amber-100 selection:text-amber-900">
+  <body class="bg-[#0B1536] text-slate-800 antialiased font-sans selection:bg-amber-100 selection:text-amber-900">
     <div id="root">
       <div id="initial-loader">
         <div style="display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;">
-          <div class="tw-logo-box" style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#00388A,#0050D8,#0073C1);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:20px;letter-spacing:-0.5px;box-shadow:0 10px 25px -5px rgba(0,115,193,0.4);">
+          <div class="tw-logo-box" style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#0050D8,#0073C1,#38BDF8);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:20px;letter-spacing:-0.5px;box-shadow:0 10px 25px -5px rgba(0,115,193,0.5);border:1px solid rgba(255,255,255,0.2);">
             TW
           </div>
           <div>
             <div class="tw-brand-title" style="display:flex;align-items:center;justify-content:center;gap:6px;font-weight:900;font-size:18px;letter-spacing:0.5px;text-transform:uppercase;">
-              <span class="tw-brand-title-admin" style="color:#00388A;">TWINGS</span>
-              <span style="color:#0073C1;">ACADEMY</span>
+              <span class="tw-brand-title-admin" style="color:#ffffff;">TWINGS</span>
+              <span style="color:#5FBEFF;">ACADEMY</span>
             </div>
-            <div class="tw-brand-sub" style="font-size:11px;font-weight:600;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-top:4px;">
+            <div class="tw-brand-sub" style="font-size:11px;font-weight:600;color:#94a3b8;letter-spacing:1px;text-transform:uppercase;margin-top:4px;">
               Đang khởi tạo trang...
             </div>
           </div>
-          <div style="width:160px;height:4px;background:rgba(0,115,193,0.15);border-radius:99px;overflow:hidden;position:relative;">
-            <div class="tw-bar-inner" style="position:absolute;inset:0;background:linear-gradient(90deg,#00388A,#0073C1,#38BDF8);border-radius:99px;"></div>
+          <div style="width:160px;height:4px;background:rgba(255,255,255,0.12);border-radius:99px;overflow:hidden;position:relative;">
+            <div class="tw-bar-inner" style="position:absolute;inset:0;background:linear-gradient(90deg,#0050D8,#0073C1,#38BDF8);border-radius:99px;"></div>
           </div>
         </div>
       </div>
