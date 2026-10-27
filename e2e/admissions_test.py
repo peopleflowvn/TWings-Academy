@@ -144,6 +144,21 @@ def class_quota_and_new_class(page: Page):
     row = page.locator("tr:has-text('CAMP-E2E')")
     assert row.locator("text=0/10").count() == 1, "seats paid / capacity"
     assert row.locator("text=Trên website").count() == 1, "the class is on the website"
+    # Cards (the phone layout): the same class, what to do about it, its pipeline.
+    page.locator("button:has-text('Thẻ')").click()
+    card = page.locator("article[data-class='CAMP-E2E']")
+    card.wait_for(timeout=20000)
+    assert card.locator("text=0/10").count() == 1, "seats on the card"
+    assert card.locator("button[title='Mở pipeline của lớp']").count() == 1, "its pipeline from the card"
+    # "Cần xử lý" shows the classes with something to do, as many as its count says.
+    chip = page.locator("button.rounded-full:has-text('Cần xử lý')")
+    expected = int(chip.inner_text().split()[-1])
+    chip.click()
+    page.wait_for_timeout(300)
+    assert page.locator("article[data-class]").count() == expected > 0, "classes needing attention"
+    assert page.locator("article[data-class] li").count() >= expected, "each says what to do"
+    page.locator("button:has-text('Bảng')").click()
+    row = page.locator("tr:has-text('CAMP-E2E')")
     row.locator("button[title='Mở pipeline của lớp']").click()
     page.wait_for_selector("text=0/10 chỗ", timeout=20000)  # the class's pipeline, its seats
     page.wait_for_selector("text=Nguyễn Văn An", timeout=20000)  # its lead

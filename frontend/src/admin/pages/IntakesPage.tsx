@@ -4,10 +4,13 @@
  * for admissions, who open the class's pipeline from here.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Copy, ExternalLink, Loader2, Plus, RefreshCw, Save, Search, X } from 'lucide-react';
+import {
+  AlertTriangle, ArrowUpDown, CalendarDays, CheckCircle2, Copy, ExternalLink, Globe, LayoutGrid, Loader2, MoreHorizontal, Plus, RefreshCw, Save, Search, Table as TableIcon, X
+} from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { formatDate, formatVND } from '../../lib/commerce';
+import { rank } from '../../lib/search';
 import { RosterModal } from './JourneyPages';
 import { GradebookModal } from './LearningPages';
 import { ImageUploadField } from '../../components/cms/ImageUploadField';
@@ -414,6 +417,146 @@ function classLink(r: IntakeRow, courseSlug?: string) {
   return `${window.location.origin}${page}?${params}`;
 }
 
+// ---------------------------------------------------------------- what needs doing on a class
+
+type Tone = 'red' | 'amber' | 'green' | 'slate';
+interface Hint {
+  tone: Tone;
+  text: string;
+  /** What to do about it (tooltip). */
+  why?: string;
+}
+const HINT_STYLE: Record<Tone, string> = {
+  red: 'text-red-700 bg-red-50 border-red-100',
+  amber: 'text-amber-800 bg-amber-50 border-amber-100',
+  green: 'text-emerald-800 bg-emerald-50 border-emerald-100',
+  slate: 'text-slate-600 bg-slate-50 border-slate-100'
+};
+const TONE_WEIGHT: Record<Tone, number> = { red: 100, amber: 10, green: 1, slate: 0 };
+
+/** Days from today to an ISO date (negative: past), or null. */
+function daysTo(iso: string | null): number | null {
+  if (!iso) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((new Date(`${iso}T00:00:00`).getTime() - today.getTime()) / 86_400_000);
+}
+const inDays = (d: number) => (d === 0 ? 'hôm nay' : d === 1 ? 'ngày mai' : d > 0 ? `còn ${d} ngày` : `${-d} ngày trước`);
+
+/** What the admissions / training staff should look at on a class, worst first. */
+function hintsOf(r: IntakeRow): Hint[] {
+  const out: Hint[] = [];
+  const recruiting = JOINABLE.includes(r.status);
+  const start = daysTo(r.startDate);
+  if (recruiting) {
+    const d = r.daysToDeadline;
+    if (start !== null && start < 0) out.push({ tone: 'red', text: `Đã khai giảng ${-start} ngày, vẫn đang tuyển`, why: 'Chuyển lớp sang "Đang học" hoặc dời ngày khai giảng' });
+    else if (d !== null && d < 0) out.push({ tone: 'red', text: `Quá hạn đăng ký ${-d} ngày`, why: 'Đóng tuyển sinh hoặc dời hạn đăng ký' });
+    if (d !== null && d >= 0 && d <= 3 && r.seatsLeft > 0) out.push({ tone: 'red', text: `Hạn ĐK ${inDays(d)}, còn ${r.seatsLeft} chỗ`, why: 'Gọi lại lead đang tư vấn, nhắc người giữ chỗ thanh toán' });
+    if (!r.funnel.leads) out.push({ tone: 'amber', text: 'Chưa có lead nào' });
+    if (!r.code) out.push({ tone: 'amber', text: 'Chưa có mã tuyển sinh', why: 'Đặt mã để lead từ link UTM / form đăng ký tự vào lớp' });
+    if (r.isPublished && r.websiteState !== 'live') out.push({ tone: 'amber', text: 'Bật đăng web nhưng không hiện', why: r.websiteLabel });
+    else if (!r.isPublished && (d === null || d >= 0)) out.push({ tone: 'slate', text: 'Chưa đăng trên website' });
+    if (!r.registrationDeadline) out.push({ tone: 'slate', text: 'Chưa đặt hạn đăng ký' });
+    if (r.capacity && r.seatsLeft > 0 && (r.fillRate || 0) >= 80) out.push({ tone: 'green', text: `Sắp đủ sĩ số: còn ${r.seatsLeft} chỗ` });
+  }
+  if (r.pending > 0) out.push({ tone: 'amber', text: `${r.pending} học viên chờ thanh toán` });
+  if (start !== null && start >= 0 && start <= 14 && !r.sessions && r.status !== 'completed') {
+    out.push({ tone: 'red', text: `Khai giảng ${inDays(start)}, chưa có lịch`, why: 'Tạo lịch học (đồng bộ lên Moodle) trong menu "…" → Lịch học' });
+  }
+  return out.sort((a, b) => TONE_WEIGHT[b.tone] - TONE_WEIGHT[a.tone]);
+}
+const needsAttention = (hints: Hint[]) => hints.some((h) => h.tone === 'red' || h.tone === 'amber');
+const conversion = (r: IntakeRow) => (r.funnel.leads ? Math.round((100 * r.funnel.paid) / r.funnel.leads) : null);
+
+const FILTERS = [
+  ['recruiting', 'Đang tuyển'],
+  ['attention', 'Cần xử lý'],
+  ['live', 'Trên website'],
+  ['training', 'Đang học'],
+  ['ended', 'Đã đóng'],
+  ['all', 'Tất cả']
+] as const;
+type Filter = (typeof FILTERS)[number][0];
+const inFilter = (f: Filter, r: IntakeRow, hints: Hint[]) =>
+  f === 'recruiting' ? JOINABLE.includes(r.status)
+    : f === 'attention' ? needsAttention(hints)
+      : f === 'live' ? r.websiteState === 'live'
+        : f === 'training' ? r.status === 'in_progress'
+          : f === 'ended' ? ['full', 'closed', 'completed'].includes(r.status)
+            : true;
+
+const SORTS = [
+  ['smart', 'Cần xử lý trước'],
+  ['deadline', 'Hạn đăng ký gần nhất'],
+  ['start', 'Khai giảng sớm nhất'],
+  ['fill', 'Lấp đầy cao nhất'],
+  ['leads', 'Nhiều lead nhất']
+] as const;
+type Sort = (typeof SORTS)[number][0];
+const FAR = 99_999;
+function compare(sort: Sort, a: Item, b: Item): number {
+  const deadline = (x: Item) => (x.row.daysToDeadline !== null && x.row.daysToDeadline >= 0 ? x.row.daysToDeadline : FAR);
+  const start = (x: Item) => daysTo(x.row.startDate) ?? FAR;
+  if (sort === 'deadline') return deadline(a) - deadline(b) || start(a) - start(b);
+  if (sort === 'start') return start(a) - start(b);
+  if (sort === 'fill') return (b.row.fillRate || 0) - (a.row.fillRate || 0);
+  if (sort === 'leads') return b.row.funnel.leads - a.row.funnel.leads;
+  const weight = (x: Item) => x.hints.reduce((s, h) => s + TONE_WEIGHT[h.tone], 0) + (JOINABLE.includes(x.row.status) ? 5 : 0);
+  return weight(b) - weight(a) || deadline(a) - deadline(b) || start(a) - start(b);
+}
+interface Item {
+  row: IntakeRow;
+  hints: Hint[];
+}
+
+type Layout = 'cards' | 'table';
+const LAYOUT_KEY = 'twings.classes.layout';
+function initialLayout(): Layout {
+  try {
+    const saved = window.localStorage.getItem(LAYOUT_KEY);
+    if (saved === 'cards' || saved === 'table') return saved;
+  } catch {
+    /* storage blocked: fall back to the screen size */
+  }
+  return window.matchMedia?.('(max-width: 1023px)').matches ? 'cards' : 'table';
+}
+
+// ---------------------------------------------------------------- small parts
+
+const StatusBadge: React.FC<{ r: IntakeRow }> = ({ r }) => (
+  <span className={`inline-block border rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${STATUS_STYLE[r.status] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>{r.statusLabel}</span>
+);
+
+const WebBadge: React.FC<{ r: IntakeRow }> = ({ r }) => (
+  <span title={r.websiteLabel} className={`inline-flex items-center gap-1 text-[11px] whitespace-nowrap ${r.websiteState === 'live' ? 'text-sky-700 font-bold' : 'text-slate-400'}`}>
+    <Globe className="w-3 h-3" />
+    {r.websiteState === 'live' ? 'Trên website' : 'Không trên website'}
+    {r.viewCount ? ` · ${r.viewCount} lượt xem` : ''}
+  </span>
+);
+
+const SeatsBar: React.FC<{ r: IntakeRow }> = ({ r }) => {
+  const rate = Math.min(r.fillRate || 0, 100);
+  return (
+    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+      <div className={`h-full ${rate >= 100 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${rate}%` }} />
+    </div>
+  );
+};
+
+const HintList: React.FC<{ hints: Hint[]; max?: number }> = ({ hints, max = 3 }) =>
+  hints.length ? (
+    <ul className="space-y-1">
+      {hints.slice(0, max).map((h) => (
+        <li key={h.text} title={h.why} className={`border rounded-lg px-2 py-1 text-[11px] leading-snug ${HINT_STYLE[h.tone]}`}>{h.text}</li>
+      ))}
+      {hints.length > max && <li className="text-[11px] text-slate-400">+{hints.length - max} việc khác</li>}
+    </ul>
+  ) : null;
+
+// ---------------------------------------------------------------- the screen
+
 export const ClassesView: React.FC<{
   rows: IntakeRow[];
   courses: { id: string; title: string; slug?: string }[];
@@ -428,44 +571,174 @@ export const ClassesView: React.FC<{
   const [scheduling, setScheduling] = useState<IntakeRow | null>(null);
   const [roster, setRoster] = useState<string | null>(null);
   const [gradebook, setGradebook] = useState<string | null>(null);
+  const [menu, setMenu] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const [show, setShow] = useState<'all' | 'recruiting' | 'live'>('all');
+  const [course, setCourse] = useState('');
+  const [sort, setSort] = useState<Sort>('smart');
+  const [layout, setLayout] = useState<Layout>(initialLayout);
   const [copied, setCopied] = useState('');
 
-  const grouped = useMemo(() => {
-    const words = q.toLowerCase().trim();
-    const map = new Map<string, IntakeRow[]>();
-    rows
-      .filter((r) => (show === 'live' ? r.websiteState === 'live' : show === 'recruiting' ? JOINABLE.includes(r.status) : true))
-      .filter((r) => !words || `${r.courseTitle} ${r.name} ${r.code} ${r.location}`.toLowerCase().includes(words))
-      .forEach((r) => map.set(r.courseTitle, [...(map.get(r.courseTitle) || []), r]));
-    return [...map.entries()];
-  }, [rows, q, show]);
-  const totals = rows.reduce(
-    (t, r) => ({ seats: t.seats + r.capacity, paid: t.paid + r.paid, leads: t.leads + r.funnel.leads, live: t.live + (r.websiteState === 'live' ? 1 : 0) }),
-    { seats: 0, paid: 0, leads: 0, live: 0 }
+  const items = useMemo<Item[]>(() => rows.map((row) => ({ row, hints: hintsOf(row) })), [rows]);
+  const counts = useMemo(
+    () => Object.fromEntries(FILTERS.map(([f]) => [f, items.filter((i) => inFilter(f, i.row, i.hints)).length])) as Record<Filter, number>,
+    [items]
   );
+  // Open on the classes being recruited when there are some.
+  const [filter, setFilter] = useState<Filter>(() => (rows.some((r) => JOINABLE.includes(r.status)) ? 'recruiting' : 'all'));
+
+  const shown = useMemo(() => {
+    const list = items.filter((i) => inFilter(filter, i.row, i.hints) && (!course || i.row.courseId === course));
+    if (q.trim()) {
+      return rank(list, q, (i) => [
+        { text: i.row.name, weight: 3 },
+        { text: i.row.code, weight: 3 },
+        { text: i.row.courseTitle, weight: 2 },
+        { text: [i.row.location, i.row.leadInstructor, i.row.recruiter, i.row.jobTitle, i.row.jobDepartment].join(' '), weight: 1 }
+      ]);
+    }
+    return [...list].sort((a, b) => compare(sort, a, b));
+  }, [items, filter, course, q, sort]);
+
+  const recruiting = rows.filter((r) => JOINABLE.includes(r.status));
+  const kpi = recruiting.reduce(
+    (t, r) => ({ seats: t.seats + r.capacity, paid: t.paid + r.paid, left: t.left + r.seatsLeft, leads: t.leads + r.funnel.leads, leadsPaid: t.leadsPaid + r.funnel.paid }),
+    { seats: 0, paid: 0, left: 0, leads: 0, leadsPaid: 0 }
+  );
+  const pending = rows.reduce((s, r) => s + r.pending, 0);
+  const classCourses = useMemo(() => [...new Map(rows.map((r) => [r.courseId, r.courseTitle])).entries()], [rows]);
+
+  const switchLayout = (next: Layout) => {
+    setLayout(next);
+    try {
+      window.localStorage.setItem(LAYOUT_KEY, next);
+    } catch {
+      /* not remembered: fine */
+    }
+  };
   const copy = (r: IntakeRow) => {
     navigator.clipboard?.writeText(classLink(r, courses.find((c) => c.id === r.courseId)?.slug));
     setCopied(r.id);
     setTimeout(() => setCopied(''), 1500);
   };
+  const canEdit = canTraining || canAdmissions;
 
+  /** The less used actions of a class, behind "…". */
+  const moreMenu = (r: IntakeRow) => (
+    <div className="relative">
+      <button type="button" onClick={() => setMenu(menu === r.id ? null : r.id)} title="Thêm thao tác" aria-label="Thêm thao tác"
+        className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+      {menu === r.id && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setMenu(null)} />
+          <div className="absolute right-0 top-full mt-1 z-40 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 text-xs text-left">
+            {r.websiteState === 'live' && r.slug && (
+              <a href={`/tuyen-sinh/${encodeURIComponent(r.slug)}`} target="_blank" rel="noopener" onClick={() => setMenu(null)} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50">
+                <ExternalLink className="w-3.5 h-3.5" /> Xem trên website
+              </a>
+            )}
+            <button type="button" onClick={() => { setMenu(null); setRoster(r.id); }} className="w-full text-left px-3 py-2 hover:bg-slate-50 cursor-pointer">Danh sách lớp</button>
+            {r.status !== 'upcoming' && (
+              <button type="button" onClick={() => { setMenu(null); setGradebook(r.id); }} className="w-full text-left px-3 py-2 hover:bg-slate-50 cursor-pointer">Học tập</button>
+            )}
+            {canTraining && (
+              <button type="button" onClick={() => { setMenu(null); setScheduling(r); }} className="w-full text-left px-3 py-2 hover:bg-slate-50 cursor-pointer flex items-center gap-2">
+                <CalendarDays className="w-3.5 h-3.5" /> Lịch học
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const copyButton = (r: IntakeRow) => (
+    <button type="button" onClick={() => copy(r)} title="Chép link có mã UTM của lớp"
+      className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer inline-flex items-center gap-1 text-[#0073C1] font-bold whitespace-nowrap">
+      {copied === r.id ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+    </button>
+  );
+
+  const card = ({ row: r, hints }: Item) => {
+    const start = daysTo(r.startDate);
+    const conv = conversion(r);
+    const deadlineUrgent = r.daysToDeadline !== null && r.daysToDeadline <= 3 && r.status === 'opening';
+    return (
+      <article key={r.id} data-class={r.code || r.id} className={`bg-white rounded-2xl border p-4 flex flex-col gap-3 ${needsAttention(hints) ? 'border-amber-200' : 'border-slate-200'}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-[11px] text-slate-500 truncate">{r.courseTitle}</div>
+            <div className="font-black text-slate-900 leading-snug">{r.name}</div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
+              <StatusBadge r={r} />
+              {r.code && <span className="font-mono text-[11px] text-indigo-700 bg-indigo-50 rounded px-1.5 py-0.5">{r.code}</span>}
+              <WebBadge r={r} />
+            </div>
+          </div>
+          {moreMenu(r)}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="bg-slate-50 rounded-xl px-3 py-2">
+            <div className="text-[11px] text-slate-500">Khai giảng</div>
+            <div className="font-bold">{r.startDate ? formatDate(r.startDate) : '–'}</div>
+            {start !== null && start >= 0 && <div className="text-[11px] text-slate-500">{inDays(start)}</div>}
+          </div>
+          <div className={`rounded-xl px-3 py-2 ${deadlineUrgent ? 'bg-red-50' : 'bg-slate-50'}`}>
+            <div className="text-[11px] text-slate-500">Hạn đăng ký</div>
+            <div className={`font-bold ${deadlineUrgent ? 'text-red-700' : ''}`}>{r.registrationDeadline ? formatDate(r.registrationDeadline) : 'Chưa đặt'}</div>
+            {r.daysToDeadline !== null && (r.daysToDeadline >= 0 || JOINABLE.includes(r.status)) && <div className={`text-[11px] ${deadlineUrgent ? 'text-red-700 font-bold' : 'text-slate-500'}`}>{inDays(r.daysToDeadline)}</div>}
+          </div>
+        </div>
+
+        <div className="text-xs space-y-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-slate-500">Đã đóng phí / chỉ tiêu</span>
+            <span><strong>{r.paid}/{r.capacity}</strong> <span className="text-slate-500">· còn {r.seatsLeft}</span></span>
+          </div>
+          <SeatsBar r={r} />
+          <div className="flex items-baseline justify-between gap-2 text-slate-500">
+            <span>{r.funnel.leads} lead → {r.funnel.paid} đóng phí{conv !== null ? ` (${conv}%)` : ''}</span>
+            <span className="font-bold text-slate-800">{formatVND(r.priceNow)}</span>
+          </div>
+          {r.earlyBirdActive && <div className="text-emerald-700 text-[11px]">Ưu đãi sớm tới {formatDate(r.earlyBirdDeadline)}</div>}
+          {r.jobTitle && <div className="text-slate-500 text-[11px]">Đầu ra: {r.jobTitle}{r.jobDepartment ? ` – ${r.jobDepartment}` : ''}</div>}
+        </div>
+
+        <HintList hints={hints} />
+
+        <div className="flex items-center gap-2 mt-auto pt-1">
+          <button type="button" onClick={() => onOpenPipeline(r.id)} title="Mở pipeline của lớp"
+            className="flex-1 px-3 py-2 rounded-xl bg-[#0073C1] text-white text-xs font-bold cursor-pointer">
+            Pipeline · {r.funnel.leads} lead
+          </button>
+          {copyButton(r)}
+          {canEdit && (
+            <button type="button" onClick={() => onEdit({ ...r })} className="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-[#0073C1] cursor-pointer">Sửa</button>
+          )}
+        </div>
+      </article>
+    );
+  };
+
+  const kpiTile = 'shrink-0 min-w-[150px] snap-start lg:min-w-0 border rounded-2xl px-3 py-2.5 text-left';
+  const kpiBox = `${kpiTile} bg-white border-slate-200`;
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-black text-slate-900">Lớp tuyển sinh</h1>
-          <p className="text-xs text-slate-500">
+          <p className="hidden sm:block text-xs text-slate-500">
             Mỗi lớp là một chiến dịch tuyển sinh: sĩ số là chỉ tiêu, mã tuyển sinh gắn lead (link UTM, form đăng ký), bật “Hiện trên website” để đăng tuyển.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
           <button type="button" onClick={() => onOpenPipeline('all')} className="px-3 py-2 rounded-xl bg-slate-900 text-white font-bold cursor-pointer">Pipeline tất cả lead</button>
           <button type="button" onClick={() => onOpenPipeline('none')} className="px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold cursor-pointer">Lead chưa gắn lớp</button>
-          <button type="button" onClick={onReload} className="p-2 rounded-xl border border-slate-200 bg-white cursor-pointer" title="Làm mới"><RefreshCw className="w-4 h-4" /></button>
+          <button type="button" onClick={onReload} className="p-2 rounded-xl border border-slate-200 bg-white cursor-pointer" title="Làm mới" aria-label="Làm mới"><RefreshCw className="w-4 h-4" /></button>
           {canTraining && courses.length > 0 && (
-            <button type="button" onClick={() => onEdit({ courseId: courses[0].id, status: 'upcoming', capacity: 25, autoRolloverWaitlist: true, showQuota: true })}
+            <button type="button" onClick={() => onEdit({ courseId: course || courses[0].id, status: 'upcoming', capacity: 25, autoRolloverWaitlist: true, showQuota: true })}
               className="px-4 py-2 rounded-xl bg-[#0073C1] text-white font-bold flex items-center gap-1.5 cursor-pointer">
               <Plus className="w-4 h-4" /> Mở lớp mới
             </button>
@@ -473,108 +746,149 @@ export const ClassesView: React.FC<{
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="bg-white border border-slate-200 rounded-xl px-3 py-2"><strong>{rows.length}</strong> lớp</span>
-        <span className="bg-white border border-slate-200 rounded-xl px-3 py-2">Đã đóng phí <strong>{totals.paid}</strong> / {totals.seats} chỗ</span>
-        <span className="bg-white border border-slate-200 rounded-xl px-3 py-2"><strong>{totals.leads}</strong> lead</span>
-        <span className="bg-white border border-slate-200 rounded-xl px-3 py-2"><strong>{totals.live}</strong> lớp đang trên website</span>
-        <div className="relative ml-auto">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm lớp, mã, khóa…" className="pl-8 pr-3 py-2 border border-slate-200 rounded-xl bg-white" />
+      {/* The admissions at a glance (classes being recruited) */}
+      <div className="flex gap-2 overflow-x-auto snap-x pb-1 -mx-1 px-1 lg:grid lg:grid-cols-5 lg:overflow-visible text-xs">
+        <button type="button" onClick={() => setFilter('attention')}
+          className={`${kpiTile} cursor-pointer ${counts.attention ? 'border-amber-300 bg-amber-50 hover:border-amber-400' : 'bg-white border-slate-200 hover:border-[#0073C1]'}`}>
+          <div className="text-slate-500 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Cần xử lý</div>
+          <div className="text-lg font-black text-slate-900">{counts.attention} lớp</div>
+          <div className="text-slate-500">sắp hết hạn, chưa có lead, chưa có lịch…</div>
+        </button>
+        <button type="button" onClick={() => setFilter('recruiting')} className={`${kpiBox} cursor-pointer hover:border-[#0073C1]`}>
+          <div className="text-slate-500">Đang tuyển</div>
+          <div className="text-lg font-black text-slate-900">{recruiting.length} lớp</div>
+          <div className="text-slate-500">còn {kpi.left} chỗ trống</div>
+        </button>
+        <div className={kpiBox}>
+          <div className="text-slate-500">Đã đóng phí / chỉ tiêu</div>
+          <div className="text-lg font-black text-slate-900">{kpi.paid}/{kpi.seats}</div>
+          <div className="text-slate-500">{kpi.seats ? `${Math.round((100 * kpi.paid) / kpi.seats)}% lấp đầy` : '–'}</div>
         </div>
-        <select value={show} onChange={(e) => setShow(e.target.value as typeof show)} className="px-2.5 py-2 border border-slate-200 rounded-xl bg-white">
-          <option value="all">Mọi lớp</option>
-          <option value="recruiting">Đang nhận đăng ký</option>
-          <option value="live">Đang trên website</option>
-        </select>
+        <div className={kpiBox}>
+          <div className="text-slate-500">Lead của lớp đang tuyển</div>
+          <div className="text-lg font-black text-slate-900">{kpi.leads}</div>
+          <div className="text-slate-500">{kpi.leads ? `${Math.round((100 * kpi.leadsPaid) / kpi.leads)}% đã đóng phí` : 'chưa có lead'}</div>
+        </div>
+        <div className={kpiBox}>
+          <div className="text-slate-500">Chờ thanh toán</div>
+          <div className="text-lg font-black text-slate-900">{pending}</div>
+          <div className="text-slate-500">học viên đã giữ chỗ</div>
+        </div>
       </div>
 
-      {grouped.length === 0 && <p className="text-sm text-slate-500">Không có lớp phù hợp.</p>}
-      {grouped.map(([title, list]) => (
-        <section key={title} className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
-          <div className="px-4 py-3 font-bold text-slate-900 border-b border-slate-100">{title}</div>
-          <table className="w-full text-xs min-w-[1000px]">
-            <thead className="text-slate-500 text-left">
+      {/* Filters, search, order, layout */}
+      <div className="space-y-2">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 text-xs">
+          {FILTERS.map(([f, label]) => (
+            <button key={f} type="button" onClick={() => setFilter(f)}
+              className={`shrink-0 px-3 py-1.5 rounded-full border font-bold cursor-pointer ${filter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
+              {label} <span className={filter === f ? 'text-slate-300' : 'text-slate-400'}>{counts[f]}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm lớp, mã, khóa, địa điểm… (gõ không dấu được)" className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl bg-white" />
+          </div>
+          {classCourses.length > 1 && (
+            <select value={course} onChange={(e) => setCourse(e.target.value)} aria-label="Khóa học" className="px-2.5 py-2 border border-slate-200 rounded-xl bg-white max-w-[45%] sm:max-w-[220px]">
+              <option value="">Mọi khóa</option>
+              {classCourses.map(([id, title]) => <option key={id} value={id}>{title}</option>)}
+            </select>
+          )}
+          <label className="flex items-center gap-1 px-2.5 py-2 border border-slate-200 rounded-xl bg-white" title="Sắp xếp">
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} disabled={!!q.trim()} aria-label="Sắp xếp" className="bg-transparent outline-none disabled:text-slate-400">
+              {SORTS.map(([s, label]) => <option key={s} value={s}>{label}</option>)}
+            </select>
+          </label>
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl ml-auto">
+            {(['cards', 'table'] as const).map((l) => (
+              <button key={l} type="button" onClick={() => switchLayout(l)} aria-pressed={layout === l}
+                className={`px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 cursor-pointer ${layout === l ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'}`}>
+                {l === 'cards' ? <LayoutGrid className="w-3.5 h-3.5" /> : <TableIcon className="w-3.5 h-3.5" />}
+                {l === 'cards' ? 'Thẻ' : 'Bảng'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {shown.length === 0 && (
+        <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-6 text-center text-sm text-slate-500">
+          Không có lớp phù hợp.{' '}
+          {(filter !== 'all' || course || q) && (
+            <button type="button" onClick={() => { setFilter('all'); setCourse(''); setQ(''); }} className="text-[#0073C1] font-bold hover:underline cursor-pointer">Xem tất cả lớp</button>
+          )}
+        </div>
+      )}
+
+      {shown.length > 0 && layout === 'cards' && <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">{shown.map(card)}</div>}
+
+      {shown.length > 0 && layout === 'table' && (
+        <section className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+          <table className="w-full text-xs min-w-[1080px]">
+            <thead className="text-slate-500 text-left bg-slate-50">
               <tr>
-                <th className="p-3">Lớp</th><th>Trạng thái · website</th><th>Khai giảng / hạn ĐK</th><th>Chỗ (chỉ tiêu)</th><th>Lead</th><th>Học phí hiện tại</th><th>Lịch học</th><th></th>
+                <th className="p-3">Lớp</th><th>Trạng thái · website</th><th>Khai giảng / hạn ĐK</th><th>Chỗ (chỉ tiêu)</th><th>Lead</th><th>Học phí</th><th>Cần xử lý</th><th></th>
               </tr>
             </thead>
             <tbody>
-              {list.map((r) => (
-                <tr key={r.id} className="border-t border-slate-100 align-top">
-                  <td className="p-3">
-                    <div className="font-bold text-slate-900">{r.name}</div>
-                    {r.code && <div className="font-mono text-[11px] text-indigo-700">{r.code}</div>}
-                    <div className="text-slate-500">{[r.location, r.leadInstructor && `GV: ${r.leadInstructor}`].filter(Boolean).join(' · ')}</div>
-                    {r.jobTitle && <div className="text-slate-500">Đầu ra: {r.jobTitle}{r.jobDepartment ? ` – ${r.jobDepartment}` : ''}</div>}
-                    {r.nextCohort && <div className="text-slate-400">→ {r.nextCohort}{r.autoRolloverWaitlist ? ' (tự chuyển)' : ''}</div>}
-                  </td>
-                  <td className="py-3 space-y-1">
-                    <span className={`inline-block border rounded-full px-2 py-0.5 font-bold ${STATUS_STYLE[r.status] || ''}`}>{r.statusLabel}</span>
-                    <div title={r.websiteLabel} className={r.websiteState === 'live' ? 'text-sky-700 font-bold' : 'text-slate-400'}>
-                      {r.websiteState === 'live' ? 'Trên website' : 'Không trên website'}
-                      {r.viewCount ? ` · ${r.viewCount} lượt xem` : ''}
-                    </div>
-                  </td>
-                  <td className="py-3">
-                    <div>{r.startDate ? formatDate(r.startDate) : '–'}</div>
-                    <div className={r.daysToDeadline !== null && r.daysToDeadline <= 3 && r.status === 'opening' ? 'text-red-600 font-bold' : 'text-slate-500'}>
-                      {r.registrationDeadline ? `Hạn ĐK ${formatDate(r.registrationDeadline)}` : 'Chưa đặt hạn'}
-                    </div>
-                  </td>
-                  <td className="py-3 w-36">
-                    <div className="font-bold">{r.paid}/{r.capacity} <span className="font-normal text-slate-500">(còn {r.seatsLeft})</span></div>
-                    <div className="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${Math.min(r.fillRate || 0, 100)}%` }} /></div>
-                    {r.pending > 0 && <div className="text-slate-500">{r.pending} chờ thanh toán</div>}
-                  </td>
-                  <td className="py-3">
-                    <button type="button" onClick={() => onOpenPipeline(r.id)} className="font-bold text-[#0073C1] hover:underline cursor-pointer" title="Mở pipeline của lớp">
-                      {r.funnel.leads} lead
-                    </button>
-                    <div className="text-slate-500">{r.funnel.paid} đã đóng phí</div>
-                  </td>
-                  <td className="py-3">
-                    <div className="font-bold">{formatVND(r.priceNow)}</div>
-                    {r.earlyBirdActive && <div className="text-emerald-700">Ưu đãi sớm tới {formatDate(r.earlyBirdDeadline)}</div>}
-                  </td>
-                  <td className="py-3">
-                    <div>{r.scheduleText || <span className="text-slate-400">Chưa có lịch</span>}</div>
-                    <div className="text-slate-500">
-                      {r.sessions ? `${r.sessions} buổi` : ''}{r.sessions ? (r.sessionsSynced === r.sessions ? ' · đã lên Moodle' : ` · ${r.sessionsSynced}/${r.sessions} trên Moodle`) : ''}
-                    </div>
-                    {r.nextSession && <div className="text-slate-500">Buổi tới: {new Date(r.nextSession).toLocaleString('vi-VN')}</div>}
-                  </td>
-                  <td className="py-3 pr-3 text-right">
-                    <div className="flex flex-wrap justify-end gap-x-3 gap-y-1">
-                      <button type="button" onClick={() => onOpenPipeline(r.id)} className="px-2.5 py-1 rounded-lg bg-[#0073C1] text-white font-bold cursor-pointer">Pipeline</button>
-                      <button type="button" onClick={() => copy(r)} className="text-[#0073C1] font-bold hover:underline cursor-pointer inline-flex items-center gap-1" title="Chép link có mã UTM của lớp">
-                        <Copy className="w-3.5 h-3.5" /> {copied === r.id ? 'Đã chép' : 'Chép link'}
+              {shown.map(({ row: r, hints }) => {
+                const conv = conversion(r);
+                return (
+                  <tr key={r.id} className="border-t border-slate-100 align-top hover:bg-slate-50/60">
+                    <td className="p-3 max-w-[210px]">
+                      <div className="text-[11px] text-slate-500 truncate">{r.courseTitle}</div>
+                      <div className="font-bold text-slate-900">{r.name}</div>
+                      {r.code && <div className="font-mono text-[11px] text-indigo-700">{r.code}</div>}
+                      <div className="text-slate-500">{[r.location, r.leadInstructor && `GV: ${r.leadInstructor}`].filter(Boolean).join(' · ')}</div>
+                      {r.jobTitle && <div className="text-slate-500">Đầu ra: {r.jobTitle}{r.jobDepartment ? ` – ${r.jobDepartment}` : ''}</div>}
+                    </td>
+                    <td className="py-3 pr-2 space-y-1">
+                      <StatusBadge r={r} />
+                      <div><WebBadge r={r} /></div>
+                    </td>
+                    <td className="py-3 pr-2 whitespace-nowrap">
+                      <div>{r.startDate ? formatDate(r.startDate) : '–'}</div>
+                      <div className={r.daysToDeadline !== null && r.daysToDeadline <= 3 && r.status === 'opening' ? 'text-red-600 font-bold' : 'text-slate-500'}>
+                        {r.registrationDeadline ? `Hạn ĐK ${formatDate(r.registrationDeadline)}` : 'Chưa đặt hạn'}
+                      </div>
+                    </td>
+                    <td className="py-3 pr-2 w-36 whitespace-nowrap">
+                      <div className="font-bold">{r.paid}/{r.capacity} <span className="font-normal text-slate-500">(còn {r.seatsLeft})</span></div>
+                      <div className="mt-1"><SeatsBar r={r} /></div>
+                      {r.pending > 0 && <div className="text-slate-500">{r.pending} chờ thanh toán</div>}
+                    </td>
+                    <td className="py-3 pr-2 whitespace-nowrap">
+                      <button type="button" onClick={() => onOpenPipeline(r.id)} className="font-bold text-[#0073C1] hover:underline cursor-pointer" title="Mở pipeline của lớp">
+                        {r.funnel.leads} lead
                       </button>
-                      {r.websiteState === 'live' && r.slug && (
-                        <a href={`/tuyen-sinh/${encodeURIComponent(r.slug)}`} target="_blank" rel="noopener" className="text-[#0073C1] font-bold hover:underline inline-flex items-center gap-1">
-                          <ExternalLink className="w-3.5 h-3.5" /> Xem
-                        </a>
-                      )}
-                      <button type="button" onClick={() => setRoster(r.id)} className="text-[#0073C1] font-bold hover:underline cursor-pointer">Danh sách lớp</button>
-                      {r.status !== 'upcoming' && (
-                        <button type="button" onClick={() => setGradebook(r.id)} className="text-[#0073C1] font-bold hover:underline cursor-pointer">Học tập</button>
-                      )}
-                      {canTraining && (
-                        <button type="button" onClick={() => setScheduling(r)} className="text-[#0073C1] font-bold hover:underline cursor-pointer inline-flex items-center gap-1">
-                          <CalendarDays className="w-3.5 h-3.5" /> Lịch học
-                        </button>
-                      )}
-                      {(canTraining || canAdmissions) && (
-                        <button type="button" onClick={() => onEdit({ ...r })} className="text-[#0073C1] font-bold hover:underline cursor-pointer">Sửa</button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      <div className="text-slate-500">{r.funnel.paid} đã đóng phí{conv !== null ? ` · ${conv}%` : ''}</div>
+                    </td>
+                    <td className="py-3 pr-2 whitespace-nowrap">
+                      <div className="font-bold">{formatVND(r.priceNow)}</div>
+                      {r.earlyBirdActive && <div className="text-emerald-700">Ưu đãi sớm tới {formatDate(r.earlyBirdDeadline)}</div>}
+                    </td>
+                    <td className="py-3 pr-2 min-w-[160px] max-w-[200px]"><HintList hints={hints} max={2} /></td>
+                    <td className="py-3 pr-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button type="button" onClick={() => onOpenPipeline(r.id)} className="px-2.5 py-2 rounded-lg bg-[#0073C1] text-white font-bold cursor-pointer">Pipeline</button>
+                        {copyButton(r)}
+                        {canEdit && (
+                          <button type="button" onClick={() => onEdit({ ...r })} className="px-2.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-bold text-[#0073C1] cursor-pointer">Sửa</button>
+                        )}
+                        {moreMenu(r)}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </section>
-      ))}
+      )}
 
       {editing && <IntakeEditor draft={editing} courses={courses} intakes={rows} canTraining={canTraining} onClose={() => onEdit(null)} onSaved={onReload} />}
       {scheduling && <SessionsEditor intake={scheduling} onClose={() => setScheduling(null)} onSaved={onReload} />}
