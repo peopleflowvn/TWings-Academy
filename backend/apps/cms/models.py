@@ -69,6 +69,7 @@ class HeroBanner(BaseModel):
     title = models.CharField(max_length=300)
     subtitle = models.TextField(blank=True)
     bg_gradient = models.CharField(max_length=200, blank=True)
+    card_template = models.CharField(max_length=32, default="modern_split", blank=True)
     button_text = models.CharField(max_length=100, blank=True)
     button_action = models.CharField(max_length=32, blank=True)
     button_style = models.CharField(max_length=16, default="primary")

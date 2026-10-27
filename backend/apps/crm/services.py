@@ -151,6 +151,11 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     if item is None:
         raise CheckoutError("Vui lòng chọn khóa học hoặc chương trình.")
 
+    # Registering from a class page (or a link carrying its code): that class is the one asked for.
+    code = (data.get("campaign_code") or (attribution.get("last") or {}).get("campaign") or "").strip()
+    if course and code and not preferred_cohort:
+        tagged = Cohort.objects.public().filter(course=course, code__iexact=code).first()
+        preferred_cohort = tagged.name if tagged else ""
     cohort, rerouted = resolve_cohort(course, preferred_cohort) if course else (None, False)
     if with_payment and course is not None and cohort is None and not checkout_open(course):
         raise CheckoutError(
@@ -355,9 +360,9 @@ def create_staff_lead(request, serializer) -> Order:
                     )
                 }
             )
-    campaign = data.get("campaign")
-    if campaign is not None and not data.get("campaign_code"):
-        extra["campaign_code"] = campaign.code
+    cohort = data.get("cohort")
+    if cohort is not None and cohort.code and not data.get("campaign_code"):
+        extra["campaign_code"] = cohort.code
     order = serializer.save(**extra)
     flag_duplicates(order)
     user = request.user

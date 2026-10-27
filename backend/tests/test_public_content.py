@@ -215,3 +215,33 @@ def test_demo_banners_are_deleted_for_good():
     _migration("cms", "0005_delete_demo_banners").delete_demo_banners(django_apps, None)
     assert not HeroBanner.objects.filter(pk=demo.pk).exists()
     assert HeroBanner.objects.get(pk=real.pk).is_active
+
+
+def test_hero_banner_card_template_sort_order_and_no_cache(client):
+    b2 = HeroBanner.objects.create(
+        title="Banner 2 Cyber Glow",
+        card_template="cyber_glow",
+        sort_order=2,
+        is_active=True,
+        show_overlay_text=True,
+        show_overlay_button=True,
+    )
+    b1 = HeroBanner.objects.create(
+        title="Banner 1 Modern Split",
+        card_template="modern_split",
+        sort_order=1,
+        is_active=True,
+    )
+    res = client.get("/api/v1/public/banners/")
+    assert res.status_code == 200
+    assert "no-store" in res.headers.get("Cache-Control", "")
+    data = res.json()
+    assert len(data) >= 2
+    # Verify sort order
+    ids = [b["id"] for b in data]
+    assert ids.index(b1.id) < ids.index(b2.id)
+    # Verify camelCase serialization of card_template and show_overlay fields
+    b2_data = next(b for b in data if b["id"] == b2.id)
+    assert b2_data.get("cardTemplate") == "cyber_glow"
+    assert b2_data.get("showOverlayText") is True
+    assert b2_data.get("showOverlayButton") is True

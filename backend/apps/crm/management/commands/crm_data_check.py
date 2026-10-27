@@ -9,7 +9,7 @@ What it reports:
 - manual payments recorded for the whole balance of an installment order at once;
 - PIC names that are not a staff member, and PIC without an assigned consultant;
 - a class written as text without the intake (cohort) it belongs to;
-- campaign codes that match no campaign (e.g. the old defaults CAMP-2026-Q4-HN, TW3);
+- campaign codes that match no class code (e.g. the old defaults CAMP-2026-Q4-HN, TW3);
 - registrations without a learner, learners with several registrations, duplicate flags;
 - e-mails already sent with the sample bank account of the old tuition template;
 - selling rules (15/10/2026): published courses whose struck-through price is hidden for want of a
@@ -32,7 +32,8 @@ def _codes(qs, n=10):
 
 def collect() -> dict:
     from apps.accounts.models import User
-    from apps.crm.models import AdmissionCampaign, Learner, Order
+    from apps.catalog.models import Cohort
+    from apps.crm.models import Learner, Order
     from apps.payments.models import Payment
 
     leads = Order.objects.filter(parent__isnull=True)
@@ -78,7 +79,7 @@ def collect() -> dict:
         ],
     }
 
-    codes = {c.lower() for c in AdmissionCampaign.objects.values_list("code", flat=True)}
+    codes = {c.lower() for c in Cohort.objects.exclude(code="").values_list("code", flat=True)}
     unknown = [
         {"code": r["campaign_code"], "count": r["n"]}
         for r in leads.exclude(campaign_code="")
@@ -89,7 +90,7 @@ def collect() -> dict:
     ]
     report["campaign_codes_without_campaign"] = {
         "values": unknown[:30],
-        "old_defaults": leads.filter(campaign_code__in=OLD_DEFAULT_CODES, campaign__isnull=True).count(),
+        "old_defaults": leads.filter(campaign_code__in=OLD_DEFAULT_CODES).count(),
     }
 
     from apps.notifications.models import EmailLog

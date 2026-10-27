@@ -24,7 +24,6 @@ JOB_LABELS = {
     "sync_lms_enrollments": "Thử lại ghi danh lỗi",
     "sync_lms_completion": "Đồng bộ tiến độ, chuyên cần, điểm, chứng chỉ",
     "refresh_intakes": "Cập nhật trạng thái đợt khai giảng",
-    "refresh_campaigns": "Chiến dịch quá hạn → Hết hạn (gỡ khỏi website)",
     "refresh_corporate_classes": "Trạng thái lớp doanh nghiệp theo lịch học",
     "expire_checkouts": "Nhắc và hủy đơn thanh toán quá hạn giữ chỗ",
     "alert_overdue_leads": "Nhắc lead quá hạn liên hệ, báo quản lý tuyển sinh",

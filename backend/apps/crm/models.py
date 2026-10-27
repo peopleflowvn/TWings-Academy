@@ -17,122 +17,6 @@ def new_order_code() -> str:
     return "TW" + "".join(secrets.choice(ORDER_CODE_ALPHABET) for _ in range(8))
 
 
-def campaign_slug(text: str) -> str:
-    """Vietnamese title -> URL slug ("Tuyển sinh Đà Nẵng" -> "tuyen-sinh-da-nang")."""
-    from django.utils.text import slugify
-
-    return slugify((text or "").replace("đ", "d").replace("Đ", "D"))[:80] or "chien-dich"
-
-
-class AdmissionCampaignQuerySet(models.QuerySet):
-    def on_website(self, today=None):
-        """
-        What the public site lists: published, recruiting, started, not past its deadline. Dates are
-        checked here, so a campaign appears and disappears on its own (scheduled / expired).
-        """
-        today = today or timezone.localdate()
-        return (
-            self.filter(is_published=True, status="active")
-            .filter(models.Q(start_date__isnull=True) | models.Q(start_date__lte=today))
-            .filter(models.Q(deadline__isnull=True) | models.Q(deadline__gte=today))
-        )
-
-
-class AdmissionCampaign(BaseModel):
-    """
-    An admission campaign: the courses it offers with their quotas, its dates and, like a job posting,
-    whether and how it shows on the public site (/tuyen-sinh/<slug>).
-
-    Status is where the campaign is in its life; "Hiện trên website" is the staff switch. A campaign
-    shows on the site only while it is recruiting (active), switched on, started and not past its
-    deadline; any other status takes it off the site (the switch is turned off with it).
-    """
-
-    STATUS_CHOICES = [
-        ("planning", "Lên kế hoạch"),
-        ("active", "Đang tuyển sinh"),
-        ("paused", "Tạm dừng"),
-        ("full", "Đã đủ chỉ tiêu"),
-        ("closed", "Đã đóng"),
-        ("expired", "Hết hạn"),
-    ]
-    # Statuses that never show on the site, even if the switch had been on.
-    NOT_PUBLISHABLE = {"planning", "paused", "full", "closed", "expired"}
-    # Statuses where recruiting has stopped for good.
-    ENDED = {"full", "closed", "expired"}
-
-    code = models.CharField(max_length=50, unique=True)
-    name = models.CharField(max_length=300)
-    start_date = models.DateField(null=True, blank=True)
-    deadline = models.DateField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="planning", db_index=True)
-    target_headcount = models.PositiveIntegerField(default=0)
-    lead_recruiter = models.CharField(max_length=200, blank=True)
-    scholarship_budget = models.PositiveBigIntegerField(default=0)
-    location = models.CharField(max_length=200, blank=True)
-    description = models.TextField(blank=True)
-
-    # On the public site (like a job posting)
-    slug = models.SlugField(max_length=90, unique=True, blank=True)
-    is_published = models.BooleanField(default=False, db_index=True)  # "Hiện trên website"
-    is_featured = models.BooleanField(default=False)  # shown first, with a badge
-    show_quota = models.BooleanField(default=True)  # show the places left
-    summary = models.CharField(max_length=300, blank=True)  # the hook on the card
-    image = models.CharField(max_length=500, blank=True)
-    view_count = models.PositiveIntegerField(default=0)
-
-    objects = AdmissionCampaignQuerySet.as_manager()
-
-    class Meta:
-        ordering = ["-start_date", "code"]
-
-    def __str__(self):
-        return self.code
-
-    def save(self, *args, **kwargs):
-        if self.status in self.NOT_PUBLISHABLE:
-            self.is_published = False
-        if not self.slug:
-            base = campaign_slug(self.name or self.code)
-            slug, n = base, 2
-            while AdmissionCampaign.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                slug, n = f"{base}-{n}", n + 1
-            self.slug = slug
-        if "update_fields" in kwargs and kwargs["update_fields"] is not None:
-            kwargs["update_fields"] = {*kwargs["update_fields"], "is_published", "slug"}
-        super().save(*args, **kwargs)
-
-    def website_state(self, today=None) -> tuple[str, str]:
-        """(state, label) of the campaign on the public site, for staff screens."""
-        today = today or timezone.localdate()
-        if self.status != "active":
-            return "off", f"Không hiện: {self.get_status_display().lower()}"
-        if not self.is_published:
-            return "off", "Không hiện: chưa bật Hiện trên website"
-        if self.start_date and self.start_date > today:
-            return "scheduled", f"Hiện từ {self.start_date:%d/%m/%Y}"
-        if self.deadline and self.deadline < today:
-            return "off", "Không hiện: đã qua hạn nhận hồ sơ"
-        return "live", "Đang hiện trên website"
-
-
-class CampaignPosition(BaseModel):
-    """
-    A course offered by a campaign, with its admission quota and, for train-to-hire courses, the job it
-    leads to at the partner (title, unit, indicative income) used when referring graduates (Placement).
-    """
-
-    campaign = models.ForeignKey(AdmissionCampaign, on_delete=models.CASCADE, related_name="positions")
-    course = models.ForeignKey(Course, on_delete=models.PROTECT, related_name="campaign_positions")
-    position_title = models.CharField(max_length=300, blank=True)  # the job it leads to, if any
-    department = models.CharField(max_length=200, blank=True)
-    target_quota = models.PositiveIntegerField(default=0)
-    salary_range = models.CharField(max_length=100, blank=True)
-
-    class Meta:
-        ordering = ["campaign", "position_title"]
-
-
 def new_learner_code() -> str:
     return "HV" + "".join(secrets.choice(ORDER_CODE_ALPHABET) for _ in range(8))
 
@@ -232,9 +116,6 @@ class Order(BaseModel):
         Cohort, null=True, blank=True, on_delete=models.SET_NULL, related_name="orders"
     )
     batch_cohort = models.CharField(max_length=200, blank=True)
-    campaign = models.ForeignKey(
-        AdmissionCampaign, null=True, blank=True, on_delete=models.SET_NULL, related_name="orders"
-    )
     # A program order is paid once; each of its courses gets a component order (parent = the program
     # order, amount 0) so intakes and LMS enrolment work per course exactly like single purchases.
     program = models.ForeignKey(
@@ -509,8 +390,9 @@ class Placement(BaseModel):
     PROBATION_CHOICES = [("", "Chưa đánh giá"), ("passed", "Qua thử việc"), ("failed", "Không qua thử việc")]
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="placements")
-    position = models.ForeignKey(
-        CampaignPosition, null=True, blank=True, on_delete=models.SET_NULL, related_name="placements"
+    # The class whose job opening the referral fills (its job title / unit / income), if any.
+    opening = models.ForeignKey(
+        Cohort, null=True, blank=True, on_delete=models.SET_NULL, related_name="placements"
     )
     employer = models.CharField(max_length=200, default="MSB")
     unit = models.CharField(max_length=200, blank=True)  # branch / division

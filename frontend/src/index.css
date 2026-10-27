@@ -23,6 +23,24 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+  /* Custom sleek scrollbar for admin sidebar */
+  .custom-sidebar-scrollbar::-webkit-scrollbar {
+    width: 5px;
+  }
+  .custom-sidebar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 9999px;
+  }
+  .custom-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.45);
+  }
+  .custom-sidebar-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+  }
 }
 
 /* TWings Brand Colors & Gradients from Brand Identity */

@@ -20,7 +20,9 @@ from django.db.models import Q
 from django.utils import timezone
 from django.utils.html import escape
 
-from .models import Activity, CampaignPosition, FollowupTask, Order, PartnerShare, Placement
+from apps.catalog.models import Cohort
+
+from .models import Activity, FollowupTask, Order, PartnerShare, Placement
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +60,8 @@ def placement_data(p: Placement) -> dict:
         "phone": order.customer_phone,
         "email": order.customer_email,
         "course": order.course_title,
-        "position_id": p.position_id,
-        "position": p.position.position_title if p.position_id else "",
+        "position_id": p.opening_id,
+        "position": p.opening.job_title if p.opening_id else "",
         "employer": p.employer,
         "unit": p.unit,
         "job_title": p.job_title,
@@ -88,7 +90,7 @@ def placement_data(p: Placement) -> dict:
 
 def placements_qs():
     return Placement.objects.select_related(
-        "order", "order__lms_enrollment", "order__lms_enrollment__certificate", "position", "staff"
+        "order", "order__lms_enrollment", "order__lms_enrollment__certificate", "opening", "staff"
     )
 
 
@@ -114,10 +116,9 @@ def candidates() -> list[dict]:
     by_order: dict[str, list[Placement]] = {}
     for p in Placement.objects.filter(order__in=graduates):
         by_order.setdefault(p.order_id, []).append(p)
-    positions: dict[str, list[CampaignPosition]] = {}
-    for pos in CampaignPosition.objects.filter(campaign__status__in=("active", "planning")).select_related(
-        "campaign"
-    ):
+    # Job openings: classes that lead to a job (job title set), not finished long ago.
+    positions: dict[str, list[Cohort]] = {}
+    for pos in Cohort.objects.public().exclude(job_title="").select_related("course"):
         positions.setdefault(pos.course_id, []).append(pos)
     rows = []
     for order in graduates:
@@ -143,7 +144,7 @@ def candidates() -> list[dict]:
                 "previous": [f"{p.employer} – {STAGE_LABEL[p.stage]}" for p in mine],
                 "rereferral": bool(hired),
                 "positions": [
-                    {"id": pos.id, "title": pos.position_title, "campaign": pos.campaign.name}
+                    {"id": pos.id, "title": pos.job_title, "campaign": pos.display_name}
                     for pos in positions.get(order.course_id, [])
                 ],
             }
@@ -172,7 +173,7 @@ def _has_cv(order) -> bool:
     return bool(learner and learner.cv_link.startswith("private:"))
 
 
-def refer(order: Order, user, *, position: CampaignPosition | None = None, **fields) -> Placement:
+def refer(order: Order, user, *, position: Cohort | None = None, **fields) -> Placement:
     enrollment = getattr(order, "lms_enrollment", None)
     certificate = getattr(enrollment, "certificate", None) if enrollment else None
     if certificate is None or certificate.revoked:
@@ -181,10 +182,10 @@ def refer(order: Order, user, *, position: CampaignPosition | None = None, **fie
         raise PlacementError("Học viên đang có một hồ sơ giới thiệu chưa kết thúc.")
     p = Placement.objects.create(
         order=order,
-        position=position,
+        opening=position,
         employer=(fields.get("employer") or "MSB")[:200],
-        unit=(fields.get("unit") or (position.department if position else ""))[:200],
-        job_title=(fields.get("job_title") or (position.position_title if position else ""))[:200],
+        unit=(fields.get("unit") or (position.job_department if position else ""))[:200],
+        job_title=(fields.get("job_title") or (position.job_title if position else ""))[:200],
         staff=user,
     )
     _log(p, f"Đề cử việc làm: {p.employer}", " – ".join(x for x in (p.job_title, p.unit) if x), user)
@@ -472,7 +473,7 @@ def learner_items(orders) -> list[dict]:
 def outcomes() -> dict:
     today = timezone.localdate()
     graduates = list(_graduates())
-    placements = list(Placement.objects.select_related("order", "position", "position__campaign"))
+    placements = list(Placement.objects.select_related("order", "opening", "opening__course"))
     by_order: dict[str, list[Placement]] = {}
     for p in placements:
         by_order.setdefault(p.order_id, []).append(p)
@@ -510,15 +511,13 @@ def outcomes() -> dict:
         row["avg_days_to_job"] = round(sum(days) / len(days)) if days else None
         rows.append(row)
     quotas = []
-    for pos in CampaignPosition.objects.select_related("campaign").order_by(
-        "campaign__code", "position_title"
-    ):
-        mine = [p for p in placements if p.position_id == pos.id]
+    for pos in Cohort.objects.public().exclude(job_title="").select_related("course").order_by("start_date"):
+        mine = [p for p in placements if p.opening_id == pos.id]
         quotas.append(
             {
-                "campaign": pos.campaign.name,
-                "position": pos.position_title,
-                "target": pos.target_quota,
+                "campaign": pos.display_name,
+                "position": pos.job_title,
+                "target": pos.job_quota,
                 "in_process": sum(p.stage in OPEN_STAGES for p in mine),
                 "hired": sum(p.stage == "hired" for p in mine),
             }

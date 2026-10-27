@@ -1,50 +1,47 @@
 """
-Admission campaigns on the public site (/tuyen-sinh, /tuyen-sinh/<slug>), like job postings on a career
-site: only what AdmissionCampaign.objects.on_website() returns (published, recruiting, started, not
-past its deadline), featured first then the nearest deadline. A campaign's page lists its courses on
-sale with their next intake and, when the campaign shows it, the places left.
+Classes recruiting on the public site (/tuyen-sinh/<slug>), like job postings on a career site: only what
+Cohort.objects.on_website() returns (switched on, taking registrations, not past the registration
+deadline), featured first then the nearest deadline. One class = one admission campaign: its course, its
+dates, its places left (the capacity minus the seats taken, holds included, as at checkout) and, for
+train-to-hire classes, the job it leads to.
 """
 
-from django.db.models import F, Q
+from django.db.models import F
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.catalog.intakes import seats_taken
 from apps.catalog.models import Cohort
 
-from .models import AdmissionCampaign, Order
 
-
-def _enrolled(camp: AdmissionCampaign, course_id=None) -> int:
-    """Learners who may study (paid, or first installment paid): same rule as the staff screens."""
-    qs = Order.objects.filter(Q(campaign=camp) | Q(campaign_code__iexact=camp.code)).filter(
-        learning_access=True, parent__isnull=True
-    )
-    return qs.filter(course_id=course_id).count() if course_id else qs.count()
-
-
-def _card(camp: AdmissionCampaign, today) -> dict:
-    courses = [p.course for p in camp.positions.all() if p.course.sellable]
+def _card(c: Cohort, today) -> dict:
+    course = c.course
+    deadline = c.registration_deadline
     data = {
-        "slug": camp.slug,
-        "code": camp.code,
-        "name": camp.name,
-        "summary": camp.summary or (camp.description or "")[:240],
-        "image": camp.image or next((c.thumbnail for c in courses if c.thumbnail), ""),
-        "start_date": camp.start_date,
-        "deadline": camp.deadline,
-        "days_left": (camp.deadline - today).days if camp.deadline else None,
-        "location": camp.location,
-        "is_featured": camp.is_featured,
-        "has_scholarship": camp.scholarship_budget > 0,
-        "courses": [{"slug": c.slug, "title": c.title} for c in courses],
+        "slug": c.slug,
+        "code": c.code,
+        "name": c.display_name,
+        "summary": c.summary or (c.description or course.subtitle or "")[:240],
+        "image": c.image or course.thumbnail,
+        "start_date": c.start_date,
+        "deadline": deadline,
+        "days_left": (deadline - today).days if deadline else None,
+        "location": c.location,
+        "is_featured": c.is_featured,
+        "has_scholarship": c.scholarship_budget > 0,
+        "courses": [{"slug": course.slug, "title": course.title}] if course.sellable else [],
     }
-    if camp.show_quota and camp.target_headcount:
-        data["places_left"] = max(camp.target_headcount - _enrolled(camp), 0)
-        data["quota"] = camp.target_headcount
+    if c.show_quota and c.capacity:
+        data["quota"] = c.capacity
+        data["places_left"] = max(c.capacity - seats_taken(c), 0)
     return data
+
+
+def _listed(today):
+    return Cohort.objects.on_website(today).select_related("course").filter(course__status="published")
 
 
 class PublicCampaignListView(APIView):
@@ -53,12 +50,12 @@ class PublicCampaignListView(APIView):
 
     def get(self, request):
         today = timezone.localdate()
-        camps = (
-            AdmissionCampaign.objects.on_website(today)
-            .prefetch_related("positions__course")
-            .order_by("-is_featured", F("deadline").asc(nulls_last=True), "name")
+        classes = _listed(today).order_by(
+            "-is_featured",
+            F("registration_deadline").asc(nulls_last=True),
+            F("start_date").asc(nulls_last=True),
         )
-        return Response([_card(c, today) for c in camps])
+        return Response([_card(c, today) for c in classes])
 
 
 class PublicCampaignDetailView(APIView):
@@ -67,37 +64,25 @@ class PublicCampaignDetailView(APIView):
 
     def get(self, request, slug):
         today = timezone.localdate()
-        camp = get_object_or_404(
-            AdmissionCampaign.objects.on_website(today).prefetch_related("positions__course"), slug=slug
-        )
-        AdmissionCampaign.objects.filter(pk=camp.pk).update(view_count=F("view_count") + 1)
-        data = _card(camp, today)
-        data["description"] = camp.description
-        rows = []
-        for pos in camp.positions.all():
-            course = pos.course
-            if not course.sellable:
-                continue
-            intake = (
-                Cohort.objects.public()
-                .filter(course=course, status="opening")
-                .order_by(F("start_date").asc(nulls_last=True))
-                .first()
-            )
-            row = {
-                "course_id": course.pk,
-                "slug": course.slug,
-                "title": course.title,
-                "thumbnail": course.thumbnail,
-                "price": intake.price(today) if intake else course.price,
-                "original_price": course.original_price or course.price,
-                "next_intake": {"name": intake.name, "start_date": intake.start_date} if intake else None,
-                "job_title": pos.position_title,
-                "income": pos.salary_range,
-            }
-            if camp.show_quota and pos.target_quota:
-                row["quota"] = pos.target_quota
-                row["places_left"] = max(pos.target_quota - _enrolled(camp, course.pk), 0)
-            rows.append(row)
-        data["courses"] = rows
+        c = get_object_or_404(_listed(today), slug=slug)
+        Cohort.objects.filter(pk=c.pk).update(view_count=F("view_count") + 1)
+        data = _card(c, today)
+        data["description"] = c.description
+        course = c.course
+        row = {
+            "course_id": course.pk,
+            "slug": course.slug,
+            "title": course.title,
+            "thumbnail": course.thumbnail,
+            "price": c.price(today),
+            "original_price": course.list_price(today),
+            "next_intake": {"name": c.name, "start_date": c.start_date},
+            "schedule": c.schedule_text,
+            "job_title": c.job_title,
+            "income": c.salary_range,
+        }
+        if c.show_quota and c.capacity:
+            row["quota"] = c.capacity
+            row["places_left"] = data["places_left"]
+        data["courses"] = [row]
         return Response(data)

@@ -18,7 +18,6 @@ from djangorestframework_camel_case.util import underscoreize
 from apps.catalog.models import Cohort, Coupon, Course, Instructor, Partner
 from apps.cms.models import Article, HeroBanner
 from apps.core.models import SiteConfig
-from apps.crm.models import AdmissionCampaign, CampaignPosition
 from apps.notifications.models import EmailTemplate
 
 DEFAULT_FIXTURE = Path(settings.BASE_DIR) / "fixtures" / "seed_content.json"
@@ -111,27 +110,6 @@ class Command(BaseCommand):
         for c in cohorts:  # second pass once every cohort exists
             nxt = c.get("next_cohort_id")
             Cohort.objects.filter(id=c["id"]).update(next_cohort_id=nxt if nxt in cohort_ids else None)
-
-        for camp in data.get("campaigns", []):
-            obj, _ = AdmissionCampaign.objects.update_or_create(
-                id=camp["id"],
-                defaults={
-                    **pick(AdmissionCampaign, camp),
-                    "start_date": parse_date(camp.get("start_date")),
-                    "deadline": parse_date(camp.get("deadline")),
-                },
-            )
-            for pos in camp.get("positions", []):
-                if pos.get("course_id") in known_courses:
-                    CampaignPosition.objects.update_or_create(
-                        id=pos["id"],
-                        defaults={
-                            **pick(CampaignPosition, pos, exclude={"campaign", "course"}),
-                            "campaign": obj,
-                            "course_id": pos["course_id"],
-                        },
-                    )
-            bump("campaigns")
 
         for cp in data.get("coupons", []):
             Coupon.objects.update_or_create(

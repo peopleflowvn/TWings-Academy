@@ -86,28 +86,19 @@ def source_label(key: str) -> str:
 
 
 def apply(order_fields: dict, attribution: dict) -> dict:
-    """Fill source / campaign / referrer of a new order from the touches (form values win)."""
-    from .models import AdmissionCampaign
-
+    """Fill source / class code (the UTM campaign) / referrer of a new order from the touches (form wins)."""
     last = attribution.get("last") or attribution.get("first") or {}
     code = (order_fields.get("campaign_code") or "").strip()
-    if code and "campaign" not in order_fields:
-        campaign = AdmissionCampaign.objects.filter(code__iexact=code).first()
-        if campaign is not None:
-            order_fields["campaign"], order_fields["campaign_code"] = campaign, campaign.code
+    if code:
+        order_fields["campaign_code"] = code.upper()[:50]
     if attribution:
         order_fields["attribution"] = attribution
     if last.get("source") or last.get("referrer"):
         order_fields["source"] = (
             f"{order_fields.get('source') or 'Website'} · {source_label(source_key(last))}"[:100]
         )
-    if last.get("campaign"):
-        campaign = AdmissionCampaign.objects.filter(code__iexact=last["campaign"]).first()
-        if campaign is not None:
-            order_fields.setdefault("campaign", campaign)
-            order_fields["campaign_code"] = order_fields.get("campaign_code") or campaign.code
-        elif not order_fields.get("campaign_code"):
-            order_fields["campaign_code"] = last["campaign"][:50]
+    if last.get("campaign") and not order_fields.get("campaign_code"):
+        order_fields["campaign_code"] = last["campaign"].strip().upper()[:50]
     ref = (attribution.get("last") or {}).get("ref") or (attribution.get("first") or {}).get("ref")
     if ref and not order_fields.get("referrer_staff_code"):
         order_fields["referrer_staff_code"] = ref[:50]

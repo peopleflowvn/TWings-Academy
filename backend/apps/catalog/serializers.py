@@ -227,7 +227,24 @@ class CohortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cohort
         fields = "__all__"
-        read_only_fields = ["calendar_cleanup"]
+        read_only_fields = ["calendar_cleanup", "view_count"]
+
+    def _unique(self, field, value):
+        value = (value or "").strip()
+        if (
+            value
+            and Cohort.objects.filter(**{f"{field}__iexact": value})
+            .exclude(pk=getattr(self.instance, "pk", None))
+            .exists()
+        ):
+            raise serializers.ValidationError("Đã có lớp khác dùng giá trị này.")
+        return value
+
+    def validate_code(self, value):
+        return self._unique("code", value).upper()
+
+    def validate_slug(self, value):
+        return self._unique("slug", value)
 
 
 class CouponSerializer(serializers.ModelSerializer):

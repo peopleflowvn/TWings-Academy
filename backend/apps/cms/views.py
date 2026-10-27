@@ -38,12 +38,24 @@ class PublicArticleViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
         return response
 
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
+
+
+@method_decorator(never_cache, name="dispatch")
 class PublicBannerViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     permission_classes = [AllowAny]
     authentication_classes = []
     serializer_class = HeroBannerSerializer
     pagination_class = None
     queryset = HeroBanner.objects.filter(is_active=True)
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        response["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response["Pragma"] = "no-cache"
+        response["Expires"] = "0"
+        return response
 
 
 class PublicSiteConfigViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):

@@ -5,7 +5,8 @@ from datetime import date, timedelta
 import pytest
 from django.utils import timezone
 
-from apps.crm.models import AdmissionCampaign, CampaignPosition, FollowupTask, Order, Placement
+from apps.catalog.models import Cohort
+from apps.crm.models import FollowupTask, Order, Placement
 from apps.lms.completion import issue_certificate
 from apps.lms.models import LmsEnrollment
 from apps.notifications.models import EmailLog
@@ -36,13 +37,14 @@ def graduate(course):
 
 @pytest.fixture
 def position(course):
-    campaign = AdmissionCampaign.objects.create(code="MSB-2026", name="MSB 2026", status="active")
-    return CampaignPosition.objects.create(
-        campaign=campaign,
+    return Cohort.objects.create(
         course=course,
-        position_title="RM KHDN",
-        department="MSB Hà Nội",
-        target_quota=10,
+        name="MSB 2026",
+        code="MSB-2026",
+        status="opening",
+        job_title="RM KHDN",
+        job_department="MSB Hà Nội",
+        job_quota=10,
     )
 
 

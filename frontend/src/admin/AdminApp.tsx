@@ -2,10 +2,12 @@
  * TWings staff app (/app): admissions & sales, products, training on Moodle, finance, marketing,
  * system. Always on live data (no demo mode); every page is also authorised again by the API.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen,
   Building2,
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
   FileCheck2,
   Handshake,
@@ -36,6 +38,7 @@ import {
   Link2,
   MessageSquareQuote,
   Receipt,
+  Search,
   Send,
   ShieldCheck,
   Tag,
@@ -49,6 +52,8 @@ import { isBackendEnabled } from '../lib/api';
 import { openInMoodle, StaffUserContext } from '../lib/lms';
 import { useServerCollection } from '../lib/serverCollection';
 import { BANNERS } from '../lib/cmsCollections';
+import { getCachedBanners } from '../lib/bannerSync';
+import { HERO_BANNERS } from '../data/courseraData';
 import { AdminUser, CMSSectionsConfig, HeroBannerItem, PartnerItem } from '../types';
 import { ChangePasswordDialog, StaffLoginGate } from '../components/cms/StaffLoginGate';
 import { CMSCoursesTab } from '../components/cms/CMSCoursesTab';
@@ -210,8 +215,15 @@ function makeCan(user: AdminUser) {
 
 /** Mounted only on its page, so users without the banner permission never trigger the request. */
 const BannersRoute: React.FC = () => {
-  const banners = useServerCollection<HeroBannerItem>(BANNERS, []);
-  return <BannersPage bannersState={banners.items} setBannersState={banners.update} />;
+  const [initialData] = useState<HeroBannerItem[]>(() => getCachedBanners() || HERO_BANNERS);
+  const banners = useServerCollection<HeroBannerItem>(BANNERS, initialData);
+  return (
+    <BannersPage
+      bannersState={banners.items}
+      setBannersState={banners.update}
+      onSaveNow={banners.saveNow}
+    />
+  );
 };
 
 const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, logout }) => {
@@ -247,6 +259,73 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
   const can = useMemo(() => makeCan(user), [user]);
   const visible = (item: NavItem) => item.perms.length === 0 || item.perms.some(can);
   const current = ALL_ITEMS.find((i) => isItemActive(i, path));
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('twings_admin_sidebar_collapsed_sections');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleSectionCollapse = (title: string) => {
+    setCollapsedSections((prev) => {
+      const next = { ...prev, [title]: !prev[title] };
+      try {
+        localStorage.setItem('twings_admin_sidebar_collapsed_sections', JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
+  const navContainerRef = useRef<HTMLDivElement>(null);
+
+  // Restore sidebar scroll position on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem('twings_admin_sidebar_scroll');
+    if (saved && navContainerRef.current) {
+      navContainerRef.current.scrollTop = Number(saved);
+    }
+  }, []);
+
+  // Save scroll position when user scrolls the nav
+  const handleNavScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    sessionStorage.setItem('twings_admin_sidebar_scroll', String(e.currentTarget.scrollTop));
+  };
+
+  // If path changes, ensure active item is visible in view without jumping to top
+  useEffect(() => {
+    if (!navContainerRef.current) return;
+    const activeEl = navContainerRef.current.querySelector<HTMLElement>('[data-active="true"]');
+    if (activeEl) {
+      const container = navContainerRef.current;
+      const cTop = container.scrollTop;
+      const cBottom = cTop + container.clientHeight;
+      const elTop = activeEl.offsetTop;
+      const elBottom = elTop + activeEl.clientHeight;
+
+      // Only scroll if outside the visible area
+      if (elTop < cTop || elBottom > cBottom) {
+        activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [path]);
+
+  // If active item belongs to a collapsed section, auto-expand that section so active route is visible
+  useEffect(() => {
+    for (const section of NAV) {
+      if (section.title && section.items.some((i) => isItemActive(i, path))) {
+        if (collapsedSections[section.title]) {
+          setCollapsedSections((prev) => ({ ...prev, [section.title]: false }));
+        }
+        break;
+      }
+    }
+  }, [path]);
 
   const pageTitle = (() => {
     if (path === '/') return 'Tổng quan & Báo cáo · Vận hành hôm nay';
@@ -396,48 +475,97 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
     }
   })();
 
-  const sidebar = (
-    <nav className={`flex flex-col gap-4 p-3 flex-1 ${desktopCollapsed ? 'items-center px-2' : ''}`}>
-      {NAV.map((section) => {
-        const items = section.items.filter(visible);
-        if (!items.length) return null;
-        return (
-          <div key={section.title || 'home'} className="space-y-1 w-full">
-            {section.title && (
-              desktopCollapsed ? (
-                <div className="h-px bg-slate-800 my-2 mx-2" title={section.title} />
-              ) : (
-                <div className="px-3 pt-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-400">
-                  {section.title}
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredNav = useMemo(() => {
+    return NAV.map((section) => {
+      const visibleItems = section.items.filter(visible);
+      if (!normalizedQuery) {
+        return { ...section, items: visibleItems };
+      }
+      const matched = visibleItems.filter(
+        (i) =>
+          i.label.toLowerCase().includes(normalizedQuery) ||
+          i.path.toLowerCase().includes(normalizedQuery)
+      );
+      return { ...section, items: matched };
+    }).filter((section) => section.items.length > 0);
+  }, [can, normalizedQuery]);
+
+  const sidebarContent = (
+    <nav className={`flex flex-col flex-1 ${desktopCollapsed ? 'items-center px-1' : 'px-2'}`}>
+      {filteredNav.length === 0 ? (
+        <div className="py-8 px-3 text-center text-xs text-slate-400">
+          <p className="mb-2">Không tìm thấy mục "{searchQuery}"</p>
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="text-[#5FBEFF] hover:underline font-medium cursor-pointer"
+          >
+            Xóa tìm kiếm
+          </button>
+        </div>
+      ) : (
+        filteredNav.map((section) => {
+          const isCollapsed = !normalizedQuery && Boolean(section.title && collapsedSections[section.title]);
+          return (
+            <div key={section.title || 'home'} className="mb-2 space-y-0.5 w-full">
+              {section.title && (
+                desktopCollapsed ? (
+                  <div className="h-px bg-slate-800/80 my-2 mx-2" title={section.title} />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionCollapse(section.title)}
+                    className="flex items-center justify-between w-full px-2.5 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400/80 hover:text-slate-200 transition-colors select-none group cursor-pointer"
+                  >
+                    <span className="truncate">{section.title}</span>
+                    <span className="text-slate-500 group-hover:text-slate-300 transition-colors">
+                      {isCollapsed ? (
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      )}
+                    </span>
+                  </button>
+                )
+              )}
+
+              {!isCollapsed && (
+                <div className="space-y-0.5">
+                  {section.items.map((item) => {
+                    const active = isItemActive(item, path);
+                    return (
+                      <a
+                        key={item.path}
+                        {...linkProps(item.path)}
+                        data-active={active ? 'true' : 'false'}
+                        onClickCapture={() => setMenuOpen(false)}
+                        title={desktopCollapsed ? item.label : undefined}
+                        className={`flex items-center gap-2.5 rounded-xl transition-all duration-150 ${
+                          desktopCollapsed
+                            ? 'justify-center p-2.5 w-10 h-10 mx-auto'
+                            : 'px-3 py-2 text-[13.5px]'
+                        } ${
+                          active
+                            ? 'bg-gradient-to-r from-[#0073C1] to-[#0A84D6] text-white font-semibold shadow-xs shadow-[#0073C1]/25 ring-1 ring-white/10'
+                            : 'text-slate-300/85 hover:text-white hover:bg-slate-800/60 font-medium hover:translate-x-0.5'
+                        }`}
+                      >
+                        <item.icon
+                          className={`shrink-0 transition-colors ${
+                            desktopCollapsed ? 'w-5 h-5' : 'w-[18px] h-[18px]'
+                          } ${active ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}
+                        />
+                        {!desktopCollapsed && <span className="truncate leading-snug">{item.label}</span>}
+                      </a>
+                    );
+                  })}
                 </div>
-              )
-            )}
-            {items.map((item) => {
-              const active = isItemActive(item, path);
-              return (
-                <a
-                  key={item.path}
-                  {...linkProps(item.path)}
-                  onClickCapture={() => setMenuOpen(false)}
-                  title={desktopCollapsed ? item.label : undefined}
-                  className={`flex items-center gap-3 rounded-xl transition-all duration-150 ${
-                    desktopCollapsed
-                      ? 'justify-center p-3 w-12 h-12 mx-auto'
-                      : 'px-3.5 py-2.5 text-[14.5px] font-semibold'
-                  } ${
-                    active
-                      ? 'bg-[#0073C1] text-white shadow-xs'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5 shrink-0" />
-                  {!desktopCollapsed && <span className="truncate">{item.label}</span>}
-                </a>
-              );
-            })}
-          </div>
-        );
-      })}
+              )}
+            </div>
+          );
+        })
+      )}
     </nav>
   );
 
@@ -445,17 +573,19 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
     <StaffUserContext.Provider value={user}>
       <div className="min-h-screen bg-slate-100 text-slate-800 font-sans text-[15px] lg:flex">
         <TopLoadingBar />
-        {/* Sidebar (drawer on mobile, collapsible on desktop) */}
+        {/* Sidebar (drawer on mobile, fixed/sticky on desktop) */}
         <aside
-          className={`fixed inset-y-0 left-0 z-40 bg-slate-900 overflow-y-auto overflow-x-hidden transition-all duration-300 ease-in-out lg:static lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-40 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:shrink-0 lg:translate-x-0 bg-[#0D1527] border-r border-slate-800/80 transition-all duration-300 ease-in-out flex flex-col justify-between overflow-hidden ${
             menuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
-          } ${desktopCollapsed ? 'lg:w-20' : 'lg:w-64'} w-64 flex flex-col justify-between`}
+          } ${desktopCollapsed ? 'lg:w-20 w-72' : 'lg:w-[264px] w-72'}`}
         >
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* Sidebar Brand Header */}
-            <div className={`flex items-center justify-between p-4 border-b border-slate-800 min-h-[64px] ${
-              desktopCollapsed ? 'lg:justify-center lg:px-2' : ''
-            }`}>
+            <div
+              className={`shrink-0 flex items-center justify-between p-4 border-b border-slate-800/80 min-h-[64px] bg-[#0D1527] ${
+                desktopCollapsed ? 'lg:justify-center lg:px-2' : ''
+              }`}
+            >
               <a
                 {...linkProps('/')}
                 className="flex items-center min-w-0"
@@ -473,35 +603,67 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
-                className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
                 aria-label="Đóng menu"
                 title="Đóng menu"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            {/* Sidebar Navigation Links */}
-            <div className="overflow-y-auto flex-1">
-              {sidebar}
+
+            {/* Quick search input (only when expanded) */}
+            {!desktopCollapsed && (
+              <div className="shrink-0 px-2.5 pt-2.5 pb-1">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Tìm nhanh menu..."
+                    aria-label="Tìm nhanh menu"
+                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-800/60 border border-slate-700/60 rounded-lg text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#0073C1] focus:ring-1 focus:ring-[#0073C1] transition-all"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5 rounded cursor-pointer"
+                      title="Xóa tìm kiếm"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Sidebar Navigation Links (Dedicated Independent Scroll Container) */}
+            <div
+              ref={navContainerRef}
+              onScroll={handleNavScroll}
+              className="overflow-y-auto flex-1 min-h-0 py-2 custom-sidebar-scrollbar"
+            >
+              {sidebarContent}
             </div>
           </div>
 
           {/* Desktop Sidebar Collapse Toggle Footer */}
-          <div className="p-3 border-t border-slate-800 hidden lg:block">
+          <div className="shrink-0 p-3 border-t border-slate-800/80 bg-[#0D1527] hidden lg:block">
             <button
               type="button"
               onClick={toggleDesktopSidebar}
-              className={`flex items-center gap-3 w-full p-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer ${
+              className={`flex items-center gap-2.5 w-full p-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors cursor-pointer ${
                 desktopCollapsed ? 'justify-center' : ''
               }`}
               title={desktopCollapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
               aria-label={desktopCollapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
             >
               {desktopCollapsed ? (
-                <PanelLeftOpen className="w-5 h-5 text-slate-400 hover:text-white" />
+                <PanelLeftOpen className="w-4 h-4 text-slate-400 hover:text-white" />
               ) : (
                 <>
-                  <PanelLeftClose className="w-5 h-5 shrink-0 text-slate-400" />
+                  <PanelLeftClose className="w-4 h-4 shrink-0 text-slate-400" />
                   <span className="truncate">Thu gọn menu</span>
                 </>
               )}

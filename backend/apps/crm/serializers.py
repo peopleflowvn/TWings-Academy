@@ -5,9 +5,7 @@ from apps.catalog.models import Cohort, Course, Program
 
 from .models import (
     Activity,
-    AdmissionCampaign,
     Appointment,
-    CampaignPosition,
     FollowupTask,
     Learner,
     Order,
@@ -222,97 +220,6 @@ class PublicRegistrationSerializer(serializers.Serializer):
 
     def consent_fields(self):
         return {"privacy_consent_at": timezone.now(), "privacy_consent_version": PRIVACY_POLICY_VERSION}
-
-
-class CampaignPositionSerializer(serializers.ModelSerializer):
-    # Writable so the CMS can send back existing positions (kept) next to new ones (created).
-    id = serializers.CharField(required=False)
-    course_id = serializers.PrimaryKeyRelatedField(source="course", queryset=Course.objects.all())
-    enrolled_count = serializers.IntegerField(read_only=True, default=0)
-
-    class Meta:
-        model = CampaignPosition
-        exclude = ["campaign", "course", "created_at", "updated_at"]
-
-
-class AdmissionCampaignSerializer(serializers.ModelSerializer):
-    positions = CampaignPositionSerializer(many=True, required=False)
-    total_enrolled = serializers.IntegerField(read_only=True, default=0)
-    funnel = serializers.SerializerMethodField()
-    website_state = serializers.SerializerMethodField()
-    website_label = serializers.SerializerMethodField()
-
-    def get_website_state(self, obj):
-        return obj.website_state()[0]
-
-    def get_website_label(self, obj):
-        return obj.website_state()[1]
-
-    def validate(self, attrs):
-        """Publishing is checked like a job posting: recruiting, with something to apply for, not expired."""
-        instance = self.instance
-        get = lambda f: attrs.get(f, getattr(instance, f, None))  # noqa: E731
-        if get("is_published"):
-            errors = {}
-            if get("status") != "active":
-                errors["is_published"] = "Chuyển trạng thái sang “Đang tuyển sinh” để hiện trên website."
-            deadline = get("deadline")
-            if deadline and deadline < timezone.localdate():
-                errors["deadline"] = "Hạn nhận hồ sơ đã qua: gia hạn trước khi hiện trên website."
-            positions = attrs.get("positions")
-            has_course = (
-                any(p.get("course") is not None and p["course"].sellable for p in positions)
-                if positions is not None
-                else bool(instance and instance.positions.filter(course__status="published").exists())
-            )
-            if not has_course:
-                errors["positions"] = "Cần ít nhất một khóa học đang mở bán để hiện trên website."
-            if errors:
-                raise serializers.ValidationError(errors)
-        return attrs
-
-    def get_funnel(self, obj):
-        """Leads of the campaign per stage and per course (lists: dict keys would be re-cased)."""
-        f = self.context.get("funnels", {}).get(obj.pk, {"leads": 0, "stages": {}, "courses": {}})
-        return {
-            "leads": f["leads"],
-            "stages": [{"stage": k, "count": v} for k, v in f["stages"].items()],
-            "courses": [{"course_id": k, **v} for k, v in f["courses"].items()],
-        }
-
-    class Meta:
-        model = AdmissionCampaign
-        exclude = ["created_at", "updated_at"]
-        read_only_fields = ["view_count"]
-
-    def create(self, validated_data):
-        positions = validated_data.pop("positions", [])
-        campaign = super().create(validated_data)
-        self._save_positions(campaign, positions)
-        return campaign
-
-    def update(self, instance, validated_data):
-        positions = validated_data.pop("positions", None)
-        campaign = super().update(instance, validated_data)
-        if positions is not None:
-            self._save_positions(campaign, positions)
-        return campaign
-
-    @staticmethod
-    def _save_positions(campaign, positions):
-        """The list sent is the new truth: known ids are updated, others created, missing ones removed."""
-        keep = []
-        for data in positions:
-            pid = data.pop("id", None)
-            position = campaign.positions.filter(pk=pid).first() if pid else None
-            if position is None:
-                position = CampaignPosition.objects.create(campaign=campaign, **data)
-            else:
-                for field, value in data.items():
-                    setattr(position, field, value)
-                position.save()
-            keep.append(position.pk)
-        campaign.positions.exclude(pk__in=keep).delete()
 
 
 class AppointmentSerializer(serializers.ModelSerializer):

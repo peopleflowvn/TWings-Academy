@@ -186,7 +186,7 @@ def _catalog(seo) -> Page:
         ),
         image=default_image(seo),
         heading="Khóa học & Chương trình đào tạo",
-        links=[(c.name, f"/tuyen-sinh/{c.slug}") for c in _campaigns()]
+        links=[(c.display_name, f"/tuyen-sinh/{c.slug}") for c in _campaigns()]
         + [(p.title, f"/chuong-trinh/{p.slug}") for p in _programs()]
         + [(c.title, f"/khoa-hoc/{c.slug}") for c in courses],
         jsonld=[
@@ -301,26 +301,33 @@ def _program(seo, slug) -> Page:
 
 
 def _campaigns():
-    from apps.crm.models import AdmissionCampaign
+    """Classes recruiting on the site (a class is an admission campaign)."""
+    from apps.catalog.models import Cohort
 
-    return AdmissionCampaign.objects.on_website().order_by("-is_featured", "deadline")
+    return (
+        Cohort.objects.on_website()
+        .filter(course__status="published")
+        .select_related("course")
+        .order_by("-is_featured", "registration_deadline")
+    )
 
 
 def _campaign(seo, slug) -> Page:
-    camp = _campaigns().filter(slug=slug).prefetch_related("positions__course").first()
-    if camp is None:
+    c = _campaigns().filter(slug=slug).first()
+    if c is None:
         raise Http404
-    courses = [p.course for p in camp.positions.all() if p.course.sellable]
-    deadline = f" Hạn nhận hồ sơ {camp.deadline:%d/%m/%Y}." if camp.deadline else ""
+    when = f" Khai giảng {c.start_date:%d/%m/%Y}." if c.start_date else ""
+    deadline = f" Hạn đăng ký {c.registration_deadline:%d/%m/%Y}." if c.registration_deadline else ""
+    image = c.image or c.course.thumbnail
     return Page(
-        path=f"/tuyen-sinh/{camp.slug}",
-        title=f"{camp.name} | {SITE_NAME}",
-        description=plain((camp.summary or camp.description) + deadline),
-        image=absolute(camp.image) if camp.image else default_image(seo),
-        heading=camp.name,
-        body_html=f"<p>{escape(plain(camp.description, 2000))}</p>" if camp.description else "",
-        links=[(c.title, f"/khoa-hoc/{c.slug}") for c in courses] + [("Khóa học & tuyển sinh", "/khoa-hoc")],
-        jsonld=[_breadcrumb([("Khóa học", "/khoa-hoc"), (camp.name, f"/tuyen-sinh/{camp.slug}")])],
+        path=f"/tuyen-sinh/{c.slug}",
+        title=f"{c.display_name} | {SITE_NAME}",
+        description=plain((c.summary or c.description or c.course.subtitle) + when + deadline),
+        image=absolute(image) if image else default_image(seo),
+        heading=c.display_name,
+        body_html=f"<p>{escape(plain(c.description, 2000))}</p>" if c.description else "",
+        links=[(c.course.title, f"/khoa-hoc/{c.course.slug}"), ("Khóa học & tuyển sinh", "/khoa-hoc")],
+        jsonld=[_breadcrumb([("Khóa học", "/khoa-hoc"), (c.display_name, f"/tuyen-sinh/{c.slug}")])],
     )
 
 

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Activity, AdmissionCampaign, CampaignPosition, FollowupTask, Learner, Order
+from .models import Activity, FollowupTask, Learner, Order
 
 
 class ActivityInline(admin.TabularInline):
@@ -26,17 +26,6 @@ class OrderAdmin(admin.ModelAdmin):
     readonly_fields = ["order_code", "privacy_consent_at", "privacy_consent_version"]
     raw_id_fields = ["learner", "parent"]
     inlines = [ActivityInline]
-
-
-class PositionInline(admin.TabularInline):
-    model = CampaignPosition
-    extra = 0
-
-
-@admin.register(AdmissionCampaign)
-class AdmissionCampaignAdmin(admin.ModelAdmin):
-    list_display = ["code", "name", "status", "target_headcount"]
-    inlines = [PositionInline]
 
 
 @admin.register(Learner)

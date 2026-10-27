@@ -31,7 +31,6 @@ from apps.crm.placement_views import (
     ShareRevokeView,
 )
 from apps.crm.views import (
-    AdmissionCampaignViewSet,
     AppointmentViewSet,
     CohortRolloverView,
     CohortRosterView,
@@ -71,7 +70,6 @@ router.register("banners", HeroBannerViewSet, basename="staff-banner")
 router.register("site-config", SiteConfigViewSet, basename="staff-site-config")
 router.register("orders", OrderViewSet, basename="staff-order")
 router.register("learners", LearnerViewSet, basename="staff-learner")
-router.register("campaigns", AdmissionCampaignViewSet, basename="staff-campaign")
 router.register("appointments", AppointmentViewSet, basename="staff-appointment")
 router.register("invoices", InvoiceRequestViewSet, basename="staff-invoice")
 router.register("email-templates", EmailTemplateViewSet, basename="staff-email-template")

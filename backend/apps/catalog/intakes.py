@@ -135,7 +135,8 @@ def sync_sessions(cohort: Cohort) -> dict:
 
 # ---------------------------------------------------------------- overview for /app
 def overview() -> dict:
-    from apps.crm.models import AdmissionCampaign, Order
+    """Every public class with seats, price, schedule and its admissions (web page, code, lead funnel)."""
+    from apps.crm.views import class_funnels
 
     today = timezone.localdate()
     now = timezone.now()
@@ -158,8 +159,10 @@ def overview() -> dict:
         .order_by("course__title", "start_date")
     )
     rows = []
+    funnels = class_funnels([c.pk for c in cohorts])
     for c in cohorts:
         next_session = c.sessions.filter(starts_at__gte=now).first()
+        state, state_label = c.website_state(today)
         rows.append(
             {
                 "id": c.id,
@@ -193,38 +196,29 @@ def overview() -> dict:
                 "sessions": c.session_count,
                 "sessions_synced": c.synced_count,
                 "next_session": next_session.starts_at.isoformat() if next_session else None,
+                # Admissions of the class (it is the campaign): web page, code, recruiter, job, funnel.
+                "code": c.code,
+                "slug": c.slug,
+                "is_published": c.is_published,
+                "is_featured": c.is_featured,
+                "show_quota": c.show_quota,
+                "summary": c.summary,
+                "image": c.image,
+                "description": c.description,
+                "view_count": c.view_count,
+                "scholarship_budget": c.scholarship_budget,
+                "recruiter": c.recruiter,
+                "job_title": c.job_title,
+                "job_department": c.job_department,
+                "salary_range": c.salary_range,
+                "job_quota": c.job_quota,
+                "website_state": state,
+                "website_label": state_label,
+                "seats_taken": seats_taken(c),
+                "funnel": funnels.get(c.pk, {"leads": 0, "paid": 0, "stages": {}}),
             }
         )
-    campaigns = []
-    for camp in AdmissionCampaign.objects.exclude(status="closed").prefetch_related("positions__course"):
-        positions = []
-        for pos in camp.positions.all():
-            # Same rule as the campaign list: linked to the campaign or carrying its code.
-            enrolled = (
-                Order.objects.filter(Q(campaign=camp) | Q(campaign_code__iexact=camp.code))
-                .filter(course=pos.course, learning_access=True, parent__isnull=True)
-                .count()
-            )
-            positions.append(
-                {
-                    "title": pos.position_title or pos.course.title,
-                    "course_title": pos.course.title,
-                    "target": pos.target_quota,
-                    "enrolled": enrolled,
-                    "rate": round(100 * enrolled / pos.target_quota) if pos.target_quota else None,
-                }
-            )
-        campaigns.append(
-            {
-                "code": camp.code,
-                "name": camp.name,
-                "deadline": camp.deadline.isoformat() if camp.deadline else None,
-                "target": camp.target_headcount,
-                "enrolled": sum(p["enrolled"] for p in positions),
-                "positions": positions,
-            }
-        )
-    return {"intakes": rows, "campaigns": campaigns, "today": today.isoformat()}
+    return {"intakes": rows, "today": today.isoformat()}
 
 
 def session_rows(cohort: Cohort) -> list[dict]:

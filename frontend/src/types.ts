@@ -678,6 +678,7 @@ export interface HeroBannerItem {
   targetBlank?: boolean;
   showOverlayText?: boolean;
   showOverlayButton?: boolean;
+  sortOrder?: number;
 }
 
 

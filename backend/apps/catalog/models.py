@@ -190,6 +190,27 @@ class CohortQuerySet(models.QuerySet):
         """Intakes sold to individuals: the website, admissions, checkout and intake planning use these."""
         return self.filter(audience=Cohort.AUDIENCE_PUBLIC)
 
+    def on_website(self, today=None):
+        """
+        Classes the public site lists under "Đang tuyển sinh" (/tuyen-sinh/<slug>), like job postings:
+        switched on, taking registrations, not past the registration deadline (nor started, without one).
+        They come off on their own when the deadline passes or the class fills / closes.
+        """
+        from django.utils import timezone
+
+        today = today or timezone.localdate()
+        return (
+            self.public()
+            .filter(is_published=True, status__in=Cohort.JOINABLE)
+            .exclude(slug="")
+            .filter(models.Q(registration_deadline__isnull=True) | models.Q(registration_deadline__gte=today))
+            .filter(
+                models.Q(registration_deadline__isnull=False)
+                | models.Q(start_date__isnull=True)
+                | models.Q(start_date__gte=today)
+            )
+        )
+
 
 class Cohort(BaseModel):
     AUDIENCE_PUBLIC = "public"
@@ -205,6 +226,8 @@ class Cohort(BaseModel):
         ("completed", "Đã kết thúc"),
         ("upcoming", "Sắp mở"),
     ]
+    # Statuses that take registrations (and may show on the website).
+    JOINABLE = ("opening", "upcoming")
 
     course = models.ForeignKey(Course, on_delete=models.PROTECT, related_name="cohorts")
     name = models.CharField(max_length=200)
@@ -233,11 +256,34 @@ class Cohort(BaseModel):
     moodle_attendance_id = models.PositiveIntegerField(null=True, blank=True)
     attendance_cleanup = models.JSONField(default=list, blank=True)
 
+    # Admissions: a class is recruited for like a job posting (it replaces the separate campaigns).
+    # The code tags its leads (UTM / registration form); the quota is the capacity.
+    code = models.CharField(max_length=50, blank=True, db_index=True)
+    slug = models.SlugField(max_length=90, blank=True)  # /tuyen-sinh/<slug>
+    is_published = models.BooleanField(default=False, db_index=True)  # "Hiện trên website"
+    is_featured = models.BooleanField(default=False)
+    show_quota = models.BooleanField(default=True)  # show the places left
+    summary = models.CharField(max_length=300, blank=True)  # the hook on the card
+    image = models.CharField(max_length=500, blank=True)
+    description = models.TextField(blank=True)
+    view_count = models.PositiveIntegerField(default=0)
+    scholarship_budget = models.PositiveBigIntegerField(default=0)
+    recruiter = models.CharField(max_length=200, blank=True)  # who runs the admissions of this class
+    # Train-to-hire: the job the class leads to at the partner, and how many hires are planned.
+    job_title = models.CharField(max_length=300, blank=True)
+    job_department = models.CharField(max_length=200, blank=True)
+    salary_range = models.CharField(max_length=100, blank=True)
+    job_quota = models.PositiveIntegerField(default=0)
+
     objects = CohortQuerySet.as_manager()
 
     class Meta:
         ordering = ["start_date", "name"]
-        constraints = [models.UniqueConstraint(fields=["course", "name"], name="uniq_cohort_name_per_course")]
+        constraints = [
+            models.UniqueConstraint(fields=["course", "name"], name="uniq_cohort_name_per_course"),
+            models.UniqueConstraint(fields=["code"], condition=~models.Q(code=""), name="uniq_cohort_code"),
+            models.UniqueConstraint(fields=["slug"], condition=~models.Q(slug=""), name="uniq_cohort_slug"),
+        ]
 
     def __str__(self):
         return self.name
@@ -257,9 +303,52 @@ class Cohort(BaseModel):
         """What a learner pays for this intake today (before coupons)."""
         return self.early_bird_price if self.early_bird_active(today) else self.course.price
 
+    @property
+    def display_name(self) -> str:
+        """The class as visitors and staff name it: course and intake ("RM Doanh nghiệp · Khóa 10")."""
+        return f"{self.course.title} · {self.name}"
+
+    def website_state(self, today=None) -> tuple[str, str]:
+        """(live | off, label): whether the class shows on the public site, and why not."""
+        from django.utils import timezone
+
+        today = today or timezone.localdate()
+        if self.audience != self.AUDIENCE_PUBLIC:
+            return "off", "Lớp doanh nghiệp: không đăng website"
+        if self.status not in self.JOINABLE:
+            return "off", f"Không hiện: {self.get_status_display().lower()}"
+        if not self.is_published:
+            return "off", "Không hiện: chưa bật Hiện trên website"
+        if self.registration_deadline and self.registration_deadline < today:
+            return "off", "Không hiện: đã qua hạn đăng ký"
+        if not self.registration_deadline and self.start_date and self.start_date < today:
+            return "off", "Không hiện: lớp đã khai giảng"
+        return "live", "Đang hiện trên website"
+
     def save(self, *args, **kwargs):
+        from django.utils.text import slugify
+
+        if self.status not in self.JOINABLE or self.audience != self.AUDIENCE_PUBLIC:
+            self.is_published = False  # a class that does not take registrations comes off the site
+        self.code = (self.code or "").strip().upper()
+        if self.is_published and not self.slug:
+            base = slugify(unidecode_vi(f"{self.course.title} {self.name}"))[:80] or "lop"
+            slug, n = base, 2
+            while Cohort.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug, n = f"{base}-{n}", n + 1
+            self.slug = slug
+        if "update_fields" in kwargs and kwargs["update_fields"] is not None:
+            kwargs["update_fields"] = {*kwargs["update_fields"], "is_published", "slug", "code"}
         super().save(*args, **kwargs)
         sync_registration_names(cohort=self)
+
+
+def unidecode_vi(text: str) -> str:
+    """Vietnamese without accents (đ → d), for URLs."""
+    import unicodedata
+
+    text = text.replace("đ", "d").replace("Đ", "D")
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
 
 
 class CohortSession(BaseModel):

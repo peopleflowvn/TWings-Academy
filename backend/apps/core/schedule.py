@@ -58,7 +58,6 @@ SCHEDULE: dict[str, Every | Daily] = {
     "sync_lms_enrollments": Every(minutes=10),  # Moodle enrolments that failed: retry
     "sync_lms_completion": Every(minutes=30),  # progress, attendance, grades, certificates
     "refresh_intakes": Daily(hour=0, minute=15),  # intake statuses (full, closed, started)
-    "refresh_campaigns": Daily(hour=0, minute=20),  # campaigns past their deadline: expired
     "refresh_corporate_classes": Every(minutes=60),  # B2B class status from its schedule
     "expire_checkouts": Every(minutes=30),  # unpaid checkouts past their hold: cancelled
     "alert_overdue_leads": Every(minutes=30),  # leads past their response deadline: remind / escalate

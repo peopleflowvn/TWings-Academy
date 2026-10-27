@@ -5,7 +5,8 @@ from rest_framework.test import APIClient
 
 from apps.catalog.models import CourseReview
 from apps.cms.models import PageViewDaily
-from apps.crm.models import AdmissionCampaign, Order
+from apps.catalog.models import Cohort
+from apps.crm.models import Order
 from apps.lms.models import LmsEnrollment
 from tests.conftest import Role
 
@@ -23,8 +24,9 @@ TOUCHES = {
 }
 
 
-def test_registration_keeps_attribution_and_links_the_campaign(api, registration_payload):
-    camp = AdmissionCampaign.objects.create(code="CAMP-Q4", name="Q4")
+def test_registration_keeps_attribution_and_joins_the_class_of_its_code(api, registration_payload, course):
+    Cohort.objects.create(course=course, name="K9", status="opening")
+    q4 = Cohort.objects.create(course=course, name="K10 – Q4", status="opening", code="CAMP-Q4")
     payload = {
         **registration_payload,
         "attribution": {**TOUCHES, "last": {**TOUCHES["last"], "campaign": "camp-q4"}},
@@ -32,7 +34,7 @@ def test_registration_keeps_attribution_and_links_the_campaign(api, registration
     res = api.post("/api/v1/public/registrations/", payload, format="json")
     assert res.status_code == 201, res.content
     order = Order.objects.get()
-    assert order.campaign == camp and order.campaign_code == "CAMP-Q4"
+    assert order.cohort == q4 and order.campaign_code == "CAMP-Q4"
     assert order.source == "Website · Facebook" and order.referrer_staff_code == "HUONGNT22"
     assert order.attribution["first"]["source"] == "facebook" and "x" not in order.attribution["first"]
 
@@ -44,7 +46,7 @@ def test_unknown_campaign_code_is_kept_as_text(api, registration_payload):
         format="json",
     )
     order = Order.objects.get()
-    assert order.campaign is None and order.campaign_code == "tet-2027" and order.source.endswith("Zalo")
+    assert order.campaign_code == "TET-2027" and order.source.endswith("Zalo")
 
 
 def test_page_views_are_counted_per_day_without_personal_data(api):

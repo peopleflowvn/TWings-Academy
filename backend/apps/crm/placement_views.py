@@ -7,10 +7,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import require_perms
+from apps.catalog.models import Cohort
 from apps.core.models import audit
 
 from . import placement as svc
-from .models import CampaignPosition, Order, PartnerShare, Placement
+from .models import Order, PartnerShare, Placement
 
 VIEW = ("placement.view", "placement.manage")
 
@@ -50,9 +51,7 @@ class PlacementListView(APIView):
         order = get_object_or_404(
             Order.objects.select_related("lms_enrollment__certificate"), pk=data["order_id"]
         )
-        position = (
-            get_object_or_404(CampaignPosition, pk=data["position_id"]) if data.get("position_id") else None
-        )
+        position = get_object_or_404(Cohort, pk=data["position_id"]) if data.get("position_id") else None
         p = _check(
             svc.refer,
             order,

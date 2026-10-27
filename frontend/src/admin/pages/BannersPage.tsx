@@ -26,10 +26,14 @@ import {
   ShieldCheck,
   Award,
   Star,
-  Palette
+  Palette,
+  RefreshCw,
+  RotateCcw,
+  Info
 } from 'lucide-react';
 import { HeroBannerItem, HeroBannerCardTemplate } from '../../types';
 import { uploadImage } from '../../components/cms/ImageUploadField';
+import { broadcastBannersUpdate, clearBannersCache } from '../../lib/bannerSync';
 
 export const CARD_TEMPLATES: Array<{
   id: HeroBannerCardTemplate;
@@ -390,11 +394,14 @@ const BannerCardLivePreview: React.FC<{ banner: HeroBannerItem }> = ({ banner })
 export const BannersPage: React.FC<{
   bannersState: HeroBannerItem[];
   setBannersState: (next: HeroBannerItem[]) => void;
-}> = ({ bannersState, setBannersState }) => {
+  onSaveNow?: (next?: HeroBannerItem[]) => Promise<void>;
+}> = ({ bannersState, setBannersState, onSaveNow }) => {
   const [editingBanner, setEditingBanner] = useState<HeroBannerItem | null>(null);
   const [isNewBanner, setIsNewBanner] = useState(false);
   const [activeTab, setActiveTab] = useState<'templates' | 'content' | 'faculty' | 'buttons' | 'taglines'>('templates');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [isUploadingFull, setIsUploadingFull] = useState(false);
   const [isUploadingFaculty, setIsUploadingFaculty] = useState(false);
@@ -403,33 +410,63 @@ export const BannersPage: React.FC<{
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const moveUp = (idx: number) => {
+  const withSortOrders = (list: HeroBannerItem[]): HeroBannerItem[] =>
+    list.map((item, idx) => ({ ...item, sortOrder: idx }));
+
+  const moveUp = async (idx: number) => {
     if (idx <= 0) return;
     const next = [...bannersState];
     const tmp = next[idx];
     next[idx] = next[idx - 1];
     next[idx - 1] = tmp;
-    setBannersState(next);
-    showToast(`Đã chuyển Slide #${idx + 1} lên vị trí #${idx}`);
+    const ordered = withSortOrders(next);
+    setBannersState(ordered);
+    broadcastBannersUpdate(ordered);
+    if (onSaveNow) {
+      try {
+        await onSaveNow(ordered);
+      } catch (err) {
+        console.error('Error saving reordered banners:', err);
+      }
+    }
+    showToast(`Đã chuyển Slide #${idx + 1} lên vị trí #${idx} & đồng bộ ngay!`);
   };
 
-  const moveDown = (idx: number) => {
+  const moveDown = async (idx: number) => {
     if (idx >= bannersState.length - 1) return;
     const next = [...bannersState];
     const tmp = next[idx];
     next[idx] = next[idx + 1];
     next[idx + 1] = tmp;
-    setBannersState(next);
-    showToast(`Đã chuyển Slide #${idx + 1} xuống vị trí #${idx + 2}`);
+    const ordered = withSortOrders(next);
+    setBannersState(ordered);
+    broadcastBannersUpdate(ordered);
+    if (onSaveNow) {
+      try {
+        await onSaveNow(ordered);
+      } catch (err) {
+        console.error('Error saving reordered banners:', err);
+      }
+    }
+    showToast(`Đã chuyển Slide #${idx + 1} xuống vị trí #${idx + 2} & đồng bộ ngay!`);
   };
 
-  const handleDelete = (id: string, idx: number) => {
-    if (window.confirm(`Bạn có chắc muốn xóa Slide #${idx + 1}? Thao tác này không thể hoàn tác.`)) {
-      setBannersState(bannersState.filter((b) => b.id !== id));
-      showToast(`Đã xóa Slide #${idx + 1}`);
+  const handleDelete = async (id: string, idx: number) => {
+    if (window.confirm(`Bạn có chắc muốn xóa Slide #${idx + 1}? Thao tác này sẽ đồng bộ ngay ra trang chủ.`)) {
+      const next = withSortOrders(bannersState.filter((b) => b.id !== id));
+      setBannersState(next);
+      broadcastBannersUpdate(next);
+      if (onSaveNow) {
+        try {
+          await onSaveNow(next);
+        } catch (err) {
+          console.error('Error deleting banner:', err);
+        }
+      }
+      showToast(`Đã xóa Slide #${idx + 1} & cập nhật trang chủ`);
     }
   };
 
@@ -448,6 +485,7 @@ export const BannersPage: React.FC<{
       subtitle: 'Đào tạo trực tiếp cùng Giám đốc Khối & Chuyên gia MSB. Cam kết kết nối việc làm và bảo lãnh tuyển dụng.',
       bgGradient: 'from-[#0A1A3A] via-[#0E2A5D] to-[#0073C1]',
       cardTemplate: 'modern_split',
+      sortOrder: 0,
       buttonText: 'Đăng ký tư vấn trực tiếp',
       buttonAction: 'consultation',
       buttonStyle: 'primary',
@@ -469,17 +507,66 @@ export const BannersPage: React.FC<{
     setActiveTab('templates');
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingBanner) return;
-
+    setIsSaving(true);
+    let nextList: HeroBannerItem[];
     if (isNewBanner) {
-      setBannersState([editingBanner, ...bannersState]);
-      showToast('Đã thêm banner mới thành công!');
+      nextList = withSortOrders([editingBanner, ...bannersState]);
     } else {
-      setBannersState(bannersState.map((b) => (b.id === editingBanner.id ? editingBanner : b)));
-      showToast('Đã lưu thay đổi banner thành công!');
+      nextList = withSortOrders(bannersState.map((b) => (b.id === editingBanner.id ? editingBanner : b)));
     }
+    setBannersState(nextList);
+    // Instant real-time local and cross-tab broadcast
+    broadcastBannersUpdate(nextList);
+
+    // Immediate save to backend
+    if (onSaveNow) {
+      try {
+        await onSaveNow(nextList);
+      } catch (err) {
+        console.error('Error saving banner to server:', err);
+        setIsSaving(false);
+        showToast('Có lỗi khi lưu lên máy chủ: ' + (err instanceof Error ? err.message : String(err)));
+        return;
+      }
+    }
+    setIsSaving(false);
+    showToast(isNewBanner ? 'Đã thêm & đồng bộ banner ra trang chủ!' : 'Đã lưu & đồng bộ banner ra trang chủ thành công!');
     setEditingBanner(null);
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    const ordered = withSortOrders(bannersState);
+    setBannersState(ordered);
+    broadcastBannersUpdate(ordered);
+    if (onSaveNow) {
+      try {
+        await onSaveNow(ordered);
+      } catch (err) {
+        console.error('Error in manual sync:', err);
+      }
+    }
+    setIsSyncing(false);
+    showToast('Đã đồng bộ tức thì toàn bộ banner ra ngoài trang chủ!');
+  };
+
+  const handleClearCacheAndSync = async () => {
+    setIsSyncing(true);
+    clearBannersCache();
+    const ordered = withSortOrders(bannersState);
+    setBannersState(ordered);
+    broadcastBannersUpdate(ordered);
+    if (onSaveNow) {
+      try {
+        await onSaveNow(ordered);
+      } catch (err) {
+        console.error('Error in clear cache sync:', err);
+      }
+    }
+    setIsSyncing(false);
+    showToast('Đã xóa sạch cookie/cache và làm mới toàn bộ banner!');
   };
 
   const handleCancelEdit = () => {
@@ -539,28 +626,69 @@ export const BannersPage: React.FC<{
       )}
 
       {/* Header Bar */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
             <h2 className="text-xl font-bold text-slate-900">
               Quản Lý Banner Hero Trang Chủ
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-[#0073C1] border border-blue-200">
               {bannersState.length} Slideshow
             </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Đồng bộ tức thì
+            </span>
           </div>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-            Các banner chạy tự động dạng slides show tại đầu trang chủ. Hỗ trợ upload ảnh từ máy tính, chế độ chỉnh sửa & lưu an toàn, linh hoạt giữa <strong>Thẻ Card Động</strong> và <strong>Thay thế hoàn toàn bằng 1 ảnh hyperlink</strong>.
+            Thay đổi tại đây sẽ được <strong>lưu vào database và đồng bộ tự động tức thì (real-time)</strong> ra trang chủ mà không cần chờ đợi. Nếu người dùng mở trang trước đó, cơ chế Broadcast & Cache-busting sẽ tự động đẩy nội dung mới nhất.
           </p>
         </div>
 
-        <button
-          onClick={handleStartNew}
-          className="px-4 py-2.5 bg-[#0073C1] hover:bg-[#005FA0] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-xs hover:shadow-md shrink-0 active:scale-98"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Thêm Banner Mới</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
+          {/* Clear Cache & Sync */}
+          <button
+            onClick={handleClearCacheAndSync}
+            disabled={isSyncing}
+            title="Xóa cookie và cache trình duyệt, ép tải lại banner mới nhất"
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-98"
+          >
+            <RotateCcw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>Xóa Cookie & Cache</span>
+          </button>
+
+          {/* Manual Sync Button */}
+          <button
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            title="Đẩy dữ liệu banner hiện tại ra ngoài trang chủ ngay lập tức"
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 active:scale-98"
+          >
+            <Zap className={`w-3.5 h-3.5 ${isSyncing ? 'animate-bounce' : ''}`} />
+            <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng Bộ Ngay'}</span>
+          </button>
+
+          {/* View Homepage Live */}
+          <a
+            href={`/?_t=${Date.now()}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Mở trang chủ với tham số làm mới tức thì"
+            className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-98"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Xem Trang Chủ</span>
+          </a>
+
+          {/* Add New Banner */}
+          <button
+            onClick={handleStartNew}
+            className="px-4 py-2 bg-[#0073C1] hover:bg-[#005FA0] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-xs hover:shadow-md shrink-0 active:scale-98"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm Banner</span>
+          </button>
+        </div>
       </div>
 
       {/* Overview Slides List */}
@@ -829,6 +957,67 @@ export const BannersPage: React.FC<{
               {/* CHẾ ĐỘ 1: THAY THẾ HOÀN TOÀN BẰNG 1 ẢNH (FULL IMAGE) */}
               {editingBanner.displayType === 'image_only' ? (
                 <div className="space-y-6 bg-purple-50/30 p-5 rounded-2xl border border-purple-100">
+                  {/* Gợi Ý Kích Thước & Tỷ Lệ Chuẩn Cho Chế Độ Banner Ảnh */}
+                  <div className="bg-gradient-to-r from-purple-900/10 via-indigo-900/10 to-blue-900/10 border border-purple-200/80 rounded-2xl p-4 sm:p-5 space-y-3 shadow-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-purple-900 font-bold text-xs uppercase tracking-wider">
+                        <Info className="w-4 h-4 text-purple-600 shrink-0" />
+                        <span>Gợi Ý Kích Thước & Tỷ Lệ Chuẩn (Khuyên Dùng Cho Màn Hình 14" - 16")</span>
+                      </div>
+                      <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-300 shadow-2xs">
+                        Tỷ Lệ Vàng ~3.8:1
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="bg-white/95 p-3 rounded-xl border border-purple-100 shadow-2xs space-y-1">
+                        <div className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-purple-500" />
+                          <span>Kích thước tối ưu:</span>
+                        </div>
+                        <div className="text-purple-700 font-mono font-black text-sm tracking-tight">
+                          1920 × 500 px
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-relaxed">
+                          Hoặc <strong>1440 × 380 px</strong>. Chiều cao thấp vừa vặn, không chiếm hết màn hình laptop 14 inch. Tối thiểu 1200 × 350 px.
+                        </p>
+                      </div>
+
+                      <div className="bg-white/95 p-3 rounded-xl border border-purple-100 shadow-2xs space-y-1">
+                        <div className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                          <span>Vùng an toàn (Safe Zone):</span>
+                        </div>
+                        <div className="text-indigo-700 font-bold text-xs">
+                          80% Trung tâm chiều rộng
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-relaxed">
+                          Đặt chữ, tiêu đề và logo trong khoảng 80% chính giữa để không bị che khuất khi co giãn trên laptop và điện thoại.
+                        </p>
+                      </div>
+
+                      <div className="bg-white/95 p-3 rounded-xl border border-purple-100 shadow-2xs space-y-1">
+                        <div className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span>Định dạng & Dung lượng:</span>
+                        </div>
+                        <div className="text-emerald-700 font-bold text-xs">
+                          WebP / JPG &lt; 500 KB
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-relaxed">
+                          Nén ảnh trước khi tải lên giúp trang chủ tải nhanh, mượt mà và tăng điểm SEO Core Web Vitals.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-amber-50 border border-amber-200/80 rounded-xl px-3.5 py-2 text-[11px] text-amber-800 flex items-start gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Mẹo thiết kế:</strong> Nếu ảnh banner của bạn đã có sẵn câu chữ, logo hoặc nút bấm CTA trong ảnh, hãy tắt hai tùy chọn <em>"Hiện tiêu đề đè lên ảnh"</em> và <em>"Hiện nút bấm đè lên ảnh"</em> bên dưới để giao diện gọn gàng, tránh bị lặp nội dung.
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Upload Dropzone for Full Banner */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -892,7 +1081,7 @@ export const BannersPage: React.FC<{
                     </div>
 
                     {/* Live Preview */}
-                    <div className="aspect-[16/6] rounded-2xl overflow-hidden border border-slate-300 bg-slate-900 relative group shadow-inner mt-2">
+                    <div className="aspect-[3.84/1] min-h-[140px] max-h-[220px] rounded-2xl overflow-hidden border border-slate-300 bg-slate-900 relative group shadow-inner mt-2">
                       <img
                         src={editingBanner.fullBannerImageUrl || editingBanner.imageUrl}
                         alt="Preview"
@@ -902,7 +1091,7 @@ export const BannersPage: React.FC<{
                         }}
                       />
                       <div className="absolute top-3 left-3 bg-slate-950/70 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-bold text-white border border-white/20">
-                        Khung xem trước tỷ lệ Hero
+                        Khung xem trước tỷ lệ Hero chuẩn 14" (Tỷ lệ ~3.8:1)
                       </div>
                       {editingBanner.linkUrl && (
                         <div className="absolute top-3 right-3 bg-purple-600/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-md">
@@ -1141,7 +1330,7 @@ export const BannersPage: React.FC<{
                               <button
                                 key={tmpl.id}
                                 type="button"
-                                onClick={() => setEditingBanner({ ...editingBanner, cardTemplate: tmpl.id })}
+                                onClick={() => setEditingBanner({ ...editingBanner, cardTemplate: tmpl.id, displayType: 'card' })}
                                 className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative group flex flex-col justify-between ${
                                   isSelected
                                     ? 'border-[#0073C1] bg-blue-50/70 shadow-sm ring-2 ring-blue-500/20'
@@ -1198,7 +1387,7 @@ export const BannersPage: React.FC<{
                               <button
                                 key={p.id}
                                 type="button"
-                                onClick={() => setEditingBanner({ ...editingBanner, bgGradient: p.value })}
+                                onClick={() => setEditingBanner({ ...editingBanner, bgGradient: p.value, displayType: 'card' })}
                                 className={`p-3 rounded-xl border text-left transition-all cursor-pointer group ${
                                   isSelected
                                     ? 'border-[#0073C1] bg-blue-50/60 ring-2 ring-blue-500/20 shadow-xs'
@@ -1537,10 +1726,20 @@ export const BannersPage: React.FC<{
                 <button
                   type="button"
                   onClick={handleSaveEdit}
-                  className="px-5 py-2 bg-[#0073C1] hover:bg-[#005FA0] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:shadow-md active:scale-98"
+                  disabled={isSaving}
+                  className="px-5 py-2 bg-[#0073C1] hover:bg-[#005FA0] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:shadow-md active:scale-98 disabled:opacity-60"
                 >
-                  <Save className="w-4 h-4" />
-                  <span>Lưu Thay Đổi</span>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Đang lưu & đồng bộ...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Lưu & Đồng Bộ Ngay</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

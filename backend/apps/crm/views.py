@@ -3,7 +3,6 @@ from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import Count, F, OuterRef, Q, Subquery, Sum
-from django.db.models.functions import Coalesce, Lower
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -20,13 +19,12 @@ from apps.catalog.models import Cohort
 from apps.core.models import audit
 
 from . import journeys
-from .models import Activity, AdmissionCampaign, Appointment, FollowupTask, Order
+from .models import Activity, Appointment, FollowupTask, Order
 from .serializers import (
     ASSIGN_FIELDS,
     FINANCE_FIELDS,
     PAID_STAGE,
     ActivitySerializer,
-    AdmissionCampaignSerializer,
     FollowupTaskSerializer,
     OrderSerializer,
     PublicRegistrationSerializer,
@@ -114,7 +112,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         "course",
         "program",
         "cohort",
-        "campaign",
         "pic",
         "assigned_to",
         "interest_level",
@@ -146,8 +143,8 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def _pipeline_filters(self, qs):
         """
-        Lead pipeline filters beyond plain fields: ?scope=<campaign id> (linked, or the campaign code
-        entered) | none (no campaign); ?mine=1, ?unassigned=1, ?overdue=1 (first response late);
+        Lead pipeline filters beyond plain fields: ?scope=<class id> (its leads, or leads carrying its
+        code) | none (no class); ?mine=1, ?unassigned=1, ?overdue=1 (first response late);
         ?paid=paid|unpaid.
         """
         from .assignment import overdue_leads
@@ -155,17 +152,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         params = self.request.query_params
         scope = params.get("scope", "")
         if scope == "none":
-            codes = [c.lower() for c in AdmissionCampaign.objects.values_list("code", flat=True)]
-            qs = (
-                qs.filter(campaign__isnull=True)
-                .annotate(_code=Lower("campaign_code"))
-                .exclude(_code__in=codes)
-            )
+            qs = qs.filter(cohort__isnull=True)
         elif scope and scope != "all":
-            campaign = AdmissionCampaign.objects.filter(pk=scope).first()
-            if campaign is None:
+            cohort = Cohort.objects.filter(pk=scope).first()
+            if cohort is None:
                 return qs.none()
-            qs = qs.filter(Q(campaign=campaign) | Q(campaign_code__iexact=campaign.code))
+            qs = qs.filter(
+                Q(cohort=cohort) | (Q(campaign_code__iexact=cohort.code) if cohort.code else Q(pk__in=[]))
+            )
         if params.get("mine"):
             qs = qs.filter(assigned_to=self.request.user)
         if params.get("unassigned"):
@@ -455,60 +449,26 @@ class OrderViewSet(viewsets.ModelViewSet):
         return response
 
 
-class AdmissionCampaignViewSet(viewsets.ModelViewSet):
-    serializer_class = AdmissionCampaignSerializer
-    permission_classes = [ActionPermission]
-    permission_map = {
-        "list": ["crm.view_leads"],
-        "retrieve": ["crm.view_leads"],
-        **dict.fromkeys(["create", "update", "partial_update", "destroy"], ["crm.assign_pic"]),
-    }
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        if self.action in ("list", "retrieve"):
-            context["funnels"] = campaign_funnels()
-        return context
-
-    def get_queryset(self):
-        # A lead belongs to a campaign by its link or by the campaign code (same rule as the CRM screens).
-        enrolled = (
-            Order.objects.filter(
-                Q(campaign=OuterRef("pk")) | Q(campaign_code__iexact=OuterRef("code")),
-                parent__isnull=True,
-                learning_access=True,
-            )
-            .order_by()
-            .values("learning_access")
-            .annotate(n=Count("pk"))
-            .values("n")
-        )
-        return AdmissionCampaign.objects.prefetch_related("positions").annotate(
-            total_enrolled=Coalesce(Subquery(enrolled), 0)
-        )
-
-
-def campaign_funnels() -> dict:
-    """
-    Per campaign: leads per CRM stage and, per course, leads and paid learners. A lead belongs to a
-    campaign by its link or by the campaign code it carries (program courses aside).
-    """
-    by_code = {code.lower(): pk for pk, code in AdmissionCampaign.objects.values_list("pk", "code")}
+def class_funnels(cohort_ids=None) -> dict:
+    """Per class: leads per CRM stage, leads and paid learners (its leads, or leads carrying its code)."""
+    classes = Cohort.objects.public()
+    if cohort_ids is not None:
+        classes = classes.filter(pk__in=cohort_ids)
+    by_code = {code.lower(): pk for pk, code in classes.exclude(code="").values_list("pk", "code")}
+    ids = set(classes.values_list("pk", flat=True))
     rows = (
         Order.objects.filter(parent__isnull=True)
-        .filter(Q(campaign__isnull=False) | ~Q(campaign_code=""))
-        .values_list("campaign_id", "campaign_code", "crm_status", "course_id", "status")
+        .annotate(_code=Lower("campaign_code"))
+        .filter(Q(cohort__in=ids) | Q(_code__in=list(by_code)))
+        .values_list("cohort_id", "campaign_code", "crm_status", "status")
     )
     funnels: dict = {}
-    for campaign_id, code, stage, course_id, status_ in rows.iterator():
-        for pk in {campaign_id, by_code.get((code or "").lower())} - {None}:
-            f = funnels.setdefault(pk, {"leads": 0, "stages": {}, "courses": {}})
+    for cohort_id, code, stage, status_ in rows.iterator():
+        for pk in ({cohort_id} & ids) | ({by_code.get((code or "").lower())} - {None}):
+            f = funnels.setdefault(pk, {"leads": 0, "paid": 0, "stages": {}})
             f["leads"] += 1
+            f["paid"] += status_ == "paid"
             f["stages"][stage] = f["stages"].get(stage, 0) + 1
-            if course_id:
-                c = f["courses"].setdefault(course_id, {"leads": 0, "paid": 0})
-                c["leads"] += 1
-                c["paid"] += status_ == "paid"
     return funnels
 
 

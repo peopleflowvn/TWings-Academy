@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from apps.catalog.intakes import overview, refresh_statuses
 from apps.catalog.models import Cohort, CohortSession
-from apps.crm.models import AdmissionCampaign, CampaignPosition, Order
+from apps.crm.models import Order
 from apps.lms import moodle
 from tests.conftest import Role
 
@@ -79,24 +79,19 @@ def test_daily_refresh_closes_after_deadline_and_starts_classes(course):
     assert refresh_statuses() == {"full": 0, "closed": 0, "in_progress": 0, "rolled_over": 0}  # idempotent
 
 
-def test_overview_counts_seats_and_campaign_quotas(course, staff_client, api):
-    cohort = Cohort.objects.create(course=course, name="Khóa 12", status="opening", capacity=10)
-    camp = AdmissionCampaign.objects.create(code="C1", name="Q4", status="active", target_headcount=20)
-    CampaignPosition.objects.create(campaign=camp, course=course, position_title="RM", target_quota=5)
-    order = _paid(course, cohort)
-    order.campaign = camp
-    order.save()
+def test_overview_counts_seats_and_the_class_admissions(course, staff_client, api):
+    cohort = Cohort.objects.create(
+        course=course, name="Khóa 12", status="opening", capacity=10, code="k12-hn", job_title="RM"
+    )
+    _paid(course, cohort)
     Order.objects.create(customer_name="C", course=course, cohort=cohort, amount=1)  # still to pay
+    Order.objects.create(customer_name="D", course=course, campaign_code="K12-HN")  # tagged by its code
     data = staff_client(Role.SALES_CRM).get("/api/v1/staff/intakes/").json()
     row = next(r for r in data["intakes"] if r["id"] == cohort.pk)
     assert (row["paid"], row["pending"], row["seatsLeft"], row["fillRate"]) == (1, 1, 9, 10)
-    assert data["campaigns"][0]["positions"][0] == {
-        "title": "RM",
-        "courseTitle": course.title,
-        "target": 5,
-        "enrolled": 1,
-        "rate": 20,
-    }
+    assert row["code"] == "K12-HN" and row["jobTitle"] == "RM" and row["websiteState"] == "off"
+    assert row["funnel"]["leads"] == 3 and row["funnel"]["paid"] == 1
+    assert "campaigns" not in data
     assert api.get("/api/v1/staff/intakes/").status_code in (401, 403)
 
 

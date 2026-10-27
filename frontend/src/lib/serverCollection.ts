@@ -107,7 +107,11 @@ export function useServerCollection<T extends { id: string }>(opts: CollectionOp
       setItems(current.current);
     }
     if (startVersion === version.current) await reload().catch(() => undefined);
-    if (errors.length) window.alert(`Chưa lưu được một phần thay đổi: ${errors.join('; ')}`);
+    if (errors.length) {
+      const msg = `Chưa lưu được một phần thay đổi: ${errors.join('; ')}`;
+      window.alert(msg);
+      throw new Error(msg);
+    }
   }, [reload]);
 
   const update = useCallback(
@@ -122,7 +126,21 @@ export function useServerCollection<T extends { id: string }>(opts: CollectionOp
     [live, flush]
   );
 
-  return { items, update, reload, live, loaded };
+  const saveNow = useCallback(
+    async (next?: T[]) => {
+      if (timer.current) clearTimeout(timer.current);
+      if (next) {
+        current.current = next;
+        setItems(next);
+        version.current += 1;
+      }
+      if (!live) return;
+      await flush();
+    },
+    [live, flush]
+  );
+
+  return { items, update, reload, saveNow, live, loaded };
 }
 
 /** A single JSON document (SiteConfig: homepage sections, site SEO) saved with a debounce. */

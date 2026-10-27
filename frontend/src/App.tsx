@@ -17,6 +17,7 @@ import { canBuy } from './lib/selling';
 import { parseRoute, routePath, View } from './lib/routes';
 import { applyPageMeta } from './lib/siteSeo';
 import { trackView } from './lib/attribution';
+import { getCachedBanners, subscribeBannersUpdate, broadcastBannersUpdate } from './lib/bannerSync';
 
 // Coursera Components
 import { CourseraHeader } from './components/CourseraHeader';
@@ -75,7 +76,21 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [articles, setArticles] = useState<Article[]>(LIVE ? [] : INITIAL_ARTICLES);
   const [cmsSections, setCmsSections] = useState<CMSSectionsConfig>(LIVE ? LIVE_SECTIONS : DEFAULT_CMS_SECTIONS);
-  const [banners, setBanners] = useState<HeroBannerItem[]>(LIVE ? [] : HERO_BANNERS);
+  const [banners, setBanners] = useState<HeroBannerItem[]>(() => {
+    const cached = getCachedBanners();
+    if (cached && cached.length > 0) return cached;
+    return LIVE ? [] : HERO_BANNERS;
+  });
+
+  // Real-time synchronization subscription for banners (cross-tab and within session)
+  useEffect(() => {
+    const unsubscribe = subscribeBannersUpdate((updated) => {
+      if (Array.isArray(updated) && updated.length > 0) {
+        setBanners(updated);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   // Active Selected Course & Article
   const [selectedCourse, setSelectedCourse] = useState<Course>(COURSES[0]);
@@ -109,10 +124,11 @@ export default function App() {
     if (!isBackendEnabled()) return;
     let cancelled = false;
     const load = async () => {
+      const bannerTimestamp = Date.now();
       const [courseRes, articleRes, bannerRes, sectionsRes] = await Promise.allSettled([
         api.get<Course[]>('/public/courses/'),
         api.get<Paginated<Article>>('/public/articles/'),
-        api.get<HeroBannerItem[]>('/public/banners/'),
+        api.get<HeroBannerItem[]>(`/public/banners/?_t=${bannerTimestamp}`),
         api.get<{ data: CMSSectionsConfig }>('/public/site-config/homepage_sections/')
       ]);
       if (cancelled) return;
@@ -124,7 +140,10 @@ export default function App() {
         setArticles(articleRes.value.results);
         if (articleRes.value.results.length) setSelectedArticle(articleRes.value.results[0]);
       }
-      if (bannerRes.status === 'fulfilled') setBanners(bannerRes.value);
+      if (bannerRes.status === 'fulfilled' && Array.isArray(bannerRes.value) && bannerRes.value.length > 0) {
+        setBanners(bannerRes.value);
+        broadcastBannersUpdate(bannerRes.value);
+      }
       if (sectionsRes.status === 'fulfilled' && sectionsRes.value.data?.hero) {
         setCmsSections({ ...LIVE_SECTIONS, ...sectionsRes.value.data });
       }
