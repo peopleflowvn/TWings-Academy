@@ -27,10 +27,17 @@ export const CampaignLinksPage: React.FC<{ courses: Course[] }> = ({ courses }) 
   const [ref, setRef] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // A class's code is its campaign: a lead from the link joins that class.
   useEffect(() => {
     api
-      .get<Paginated<{ code: string; name: string }> | { code: string; name: string }[]>('/staff/campaigns/?pageSize=100')
-      .then((res) => setCampaigns(Array.isArray(res) ? res : res.results))
+      .get<{ intakes: { code: string; name: string; courseTitle: string; status: string }[] }>('/staff/intakes/')
+      .then((res) =>
+        setCampaigns(
+          res.intakes
+            .filter((c) => c.code && (c.status === 'opening' || c.status === 'upcoming'))
+            .map((c) => ({ code: c.code, name: `${c.courseTitle} · ${c.name}` }))
+        )
+      )
       .catch(() => setCampaigns([]));
   }, []);
 
@@ -47,8 +54,8 @@ export const CampaignLinksPage: React.FC<{ courses: Course[] }> = ({ courses }) 
   return (
     <div className="max-w-3xl space-y-4">
       <p className="text-sm text-slate-600">
-        Dùng link này khi đăng bài, chạy quảng cáo hay in QR. Lead đến từ link tự ghi nhận kênh, chiến dịch (khớp mã chiến
-        dịch tuyển sinh thì gắn luôn vào chiến dịch) và mã người giới thiệu – xem trong hồ sơ lead và trang Báo cáo.
+        Dùng link này khi đăng bài, chạy quảng cáo hay in QR. Lead đến từ link tự ghi nhận kênh, chiến dịch (khớp mã của
+        một lớp đang tuyển sinh thì vào luôn lớp đó) và mã người giới thiệu – xem trong hồ sơ lead và trang Báo cáo.
       </p>
       <div className="bg-white rounded-2xl border border-slate-200 p-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         <label className="sm:col-span-2">Trang đích
@@ -65,7 +72,7 @@ export const CampaignLinksPage: React.FC<{ courses: Course[] }> = ({ courses }) 
             {CHANNELS.map((c, i) => <option key={c.label} value={i}>{c.label}</option>)}
           </select>
         </label>
-        <label>Chiến dịch tuyển sinh
+        <label>Lớp tuyển sinh (mã chiến dịch)
           <select className={input} value={campaign} onChange={(e) => setCampaign(e.target.value)}>
             <option value="">– Không gắn –</option>
             {campaigns.map((c) => <option key={c.code} value={c.code}>{c.code} – {c.name}</option>)}

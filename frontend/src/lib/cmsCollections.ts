@@ -2,7 +2,7 @@
  * API mappings for the CMS lists persisted through useServerCollection (UI shape <-> DRF camelCase).
  * Fields only the UI knows about are dropped on the way out and given defaults on the way in.
  */
-import { AdmissionCampaign, Article, CourseCohort, EmailSendLog, EmailTemplate, HeroBannerItem, Instructor } from '../types';
+import { Article, CourseCohort, EmailSendLog, EmailTemplate, HeroBannerItem, Instructor } from '../types';
 import { CollectionOptions, isoToViDate, viDateToIso } from './serverCollection';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -38,69 +38,6 @@ export const COHORTS: CollectionOptions<CourseCohort> = {
     leadInstructor: c.leadInstructorId || null,
     location: c.location || '',
     notes: c.notes || ''
-  })
-};
-
-export const CAMPAIGNS: CollectionOptions<AdmissionCampaign> = {
-  endpoint: '/staff/campaigns/',
-  debounceMs: 0,
-  fromServer: (d: any) => ({
-    id: d.id,
-    code: d.code,
-    name: d.name,
-    startDate: isoToViDate(d.startDate),
-    deadline: isoToViDate(d.deadline),
-    status: d.status,
-    targetHeadcount: d.targetHeadcount || 0,
-    totalEnrolled: d.totalEnrolled || 0,
-    funnel: d.funnel || { leads: 0, stages: [], courses: [] },
-    positions: (d.positions || []).map((p: any) => ({
-      id: p.id,
-      courseId: p.courseId,
-      targetQuota: p.targetQuota || 0,
-      positionTitle: p.positionTitle || '',
-      department: p.department || '',
-      salaryRange: p.salaryRange || ''
-    })),
-    leadRecruiter: d.leadRecruiter || '',
-    scholarshipBudget: d.scholarshipBudget || 0,
-    location: d.location || '',
-    description: d.description || '',
-    slug: d.slug || '',
-    isPublished: Boolean(d.isPublished),
-    isFeatured: Boolean(d.isFeatured),
-    showQuota: d.showQuota !== false,
-    summary: d.summary || '',
-    image: d.image || '',
-    viewCount: d.viewCount || 0,
-    websiteState: d.websiteState,
-    websiteLabel: d.websiteLabel
-  }),
-  toServer: (c) => ({
-    code: c.code,
-    name: c.name,
-    startDate: viDateToIso(c.startDate),
-    deadline: viDateToIso(c.deadline),
-    status: c.status,
-    targetHeadcount: c.targetHeadcount || 0,
-    leadRecruiter: c.leadRecruiter || '',
-    scholarshipBudget: c.scholarshipBudget || 0,
-    location: c.location || '',
-    description: c.description || '',
-    slug: c.slug || '',
-    isPublished: c.status === 'active' && c.isPublished,
-    isFeatured: c.isFeatured,
-    showQuota: c.showQuota,
-    summary: c.summary || '',
-    image: c.image || '',
-    positions: (c.positions || []).map((p) => ({
-      id: p.id,
-      courseId: p.courseId,
-      targetQuota: p.targetQuota || 0,
-      positionTitle: p.positionTitle || '',
-      department: p.department || '',
-      salaryRange: p.salaryRange || ''
-    }))
   })
 };
 

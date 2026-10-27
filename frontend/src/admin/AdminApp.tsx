@@ -76,7 +76,6 @@ import { BannersPage } from './pages/BannersPage';
 import { LayoutPage } from './pages/LayoutPage';
 import { ProgramsPage } from './pages/ProgramsPage';
 import { JourneysPage } from './pages/JourneysPage';
-import { IntakesPage } from './pages/IntakesPage';
 import { LearnersPage } from './pages/LearnersPage';
 import { AdmissionsPage } from './pages/AdmissionsPage';
 import { CampaignLinksPage, ReviewsPage } from './pages/MarketingPages';
@@ -123,15 +122,14 @@ const NAV: { title: string; items: NavItem[] }[] = [
       // A consultant's list for today (overdue leads, new leads, tasks, appointments), phone first.
       { path: '/sales/today', label: 'Hôm nay của tôi', icon: CalendarCheck, perms: ['crm.view_leads'] },
       {
-        // Campaigns, the lead pipeline (kanban / detailed table, all leads or one campaign) and new campaigns.
+        // The classes (a class is an admission campaign) and the lead pipeline (all leads or one class).
         path: '/sales/crm',
-        label: 'Chiến dịch tuyển sinh & pipeline',
+        label: 'Lớp tuyển sinh & pipeline',
         icon: Briefcase,
         perms: ['crm.view_leads']
       },
       { path: '/sales/learners', label: 'Học viên', icon: UserRound, perms: ['crm.view_leads'] },
       { path: '/sales/consulting', label: 'Tư vấn & lịch hẹn', icon: Headset, perms: ['crm.view_leads'] },
-      { path: '/sales/intakes', label: 'Lớp & đợt khai giảng', icon: CalendarDays, perms: ['courses.view', 'crm.view_leads'] },
       { path: '/sales/coupons', label: 'Mã giảm giá & học bổng', icon: Tag, perms: ['finance.transactions', 'crm.view_leads'] }
     ]
   },
@@ -231,6 +229,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
   // The former all-leads pipeline page is the pipeline of /sales/crm with every lead (old links keep working).
   useEffect(() => {
     if (path === '/sales/pipeline') navigate('/sales/crm?view=kanban&campaignId=all', { replace: true });
+    // Classes and campaigns are one screen now (a class is an admission campaign).
+    if (path === '/sales/intakes') navigate('/sales/crm?view=campaigns', { replace: true });
     startPageLoading();
     const timer = setTimeout(() => donePageLoading(), 150);
     return () => clearTimeout(timer);
@@ -390,8 +390,6 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <MyDayPage />;
       case '/finance/invoices':
         return <InvoicesPage />;
-      case '/sales/intakes':
-        return <IntakesPage courses={courses.courses.map((c) => ({ id: c.id, title: c.title }))} />;
       case '/sales/coupons':
         return <CouponsPage canEdit={can('finance.confirm_manual')} />;
       case '/catalog/courses':

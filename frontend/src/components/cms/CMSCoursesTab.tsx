@@ -394,7 +394,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
               className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-emerald-200"
             >
               <Briefcase className="w-4 h-4 text-emerald-600" />
-              <span className="hidden 2xl:inline">Tạo chiến dịch</span>
+              <span className="hidden 2xl:inline">Mở lớp tuyển sinh</span>
             </button>
 
             <button

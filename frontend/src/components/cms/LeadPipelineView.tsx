@@ -1,18 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, BarChart3, ChevronLeft, ChevronRight, Download, Edit, LayoutGrid, Loader2, Plus, Search, Table as TableIcon, X } from 'lucide-react';
-import { AdmissionCampaign, CRMStatus, Course, Order } from '../../types';
+import { CRMStatus, Course, Order } from '../../types';
+import type { IntakeRow } from '../../admin/pages/IntakesPage';
 import { api, API_ROOT, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
 import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../../admin/catalog';
 import { useStageGate } from './StageGate';
 
-/** Leads of every campaign ('all'), of none ('none'), or of one campaign (its id). */
+/** Every lead ('all'), the leads not in a class yet ('none'), or the leads of one class (its id). */
 export type PipelineScope = 'all' | 'none' | string;
 
 interface LeadPipelineViewProps {
   scope: PipelineScope;
-  campaigns: AdmissionCampaign[];
+  /** The classes (a class is an admission campaign). */
+  classes: IntakeRow[];
   courses: Course[];
   programs: ProgramOption[];
   /** Changes whenever a lead was saved elsewhere (lead workspace): the pipeline reloads. */
@@ -20,7 +22,7 @@ interface LeadPipelineViewProps {
   onChangeScope: (scope: PipelineScope) => void;
   onBack: () => void;
   onOpenLeadDetail: (order: Order) => void;
-  onOpenEditCampaign: () => void;
+  onOpenEditClass: () => void;
 }
 
 // The CRM stages of an order (Order.crmStatus). "Đã đóng phí" reflects a recorded payment: it is never
@@ -59,11 +61,6 @@ function responseState(o: Order): 'late' | 'due' | null {
   return new Date(o.responseDueAt).getTime() < Date.now() ? 'late' : 'due';
 }
 
-/** An order belongs to a campaign through its campaign link, or the campaign code entered by staff. */
-export function inCampaign(o: Order, c: AdmissionCampaign): boolean {
-  return o.campaign === c.id || (!!c.code && (o.campaignCode || '').toLowerCase() === c.code.toLowerCase());
-}
-
 const SORTS = [
   { id: '-created_at', label: 'Mới nhất' },
   { id: 'response_due_at', label: 'Hạn phản hồi gần nhất' },
@@ -74,18 +71,18 @@ const SORTS = [
 
 export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   scope,
-  campaigns,
+  classes,
   courses,
   programs,
   refreshKey,
   onChangeScope,
   onBack,
   onOpenLeadDetail,
-  onOpenEditCampaign
+  onOpenEditClass
 }) => {
   const canEdit = useStaffCan('crm.edit_status');
   const canExport = useStaffCan('crm.export_excel');
-  const campaign = campaigns.find((c) => c.id === scope) || null;
+  const klass = classes.find((c) => c.id === scope) || null;
   const [layout, setLayout] = useState<'kanban' | 'table'>(() =>
     new URLSearchParams(window.location.search).get('layout') === 'table' ? 'table' : 'kanban'
   );
@@ -294,15 +291,15 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
       <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <button type="button" onClick={onBack} title="Danh sách chiến dịch" className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 cursor-pointer">
+            <button type="button" onClick={onBack} title="Danh sách lớp" className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 cursor-pointer">
               <ArrowLeft className="w-4 h-4" />
             </button>
             <select value={scope} onChange={(e) => onChangeScope(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-xl text-sm font-bold bg-white max-w-[360px]">
               <option value="all">Tất cả lead</option>
-              <option value="none">Lead chưa gắn chiến dịch</option>
-              {campaigns.map((c) => (
+              <option value="none">Lead chưa gắn lớp</option>
+              {classes.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.code} · {c.name}
+                  {c.courseTitle} · {c.name}{c.code ? ` (${c.code})` : ''}
                 </option>
               ))}
             </select>
@@ -321,9 +318,9 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
                 <Download className="w-3.5 h-3.5" /> Xuất CSV ({summary?.total ?? 0})
               </a>
             )}
-            {campaign && (
-              <button type="button" onClick={onOpenEditCampaign} className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer">
-                <Edit className="w-3.5 h-3.5" /> Cài đặt chiến dịch
+            {klass && (
+              <button type="button" onClick={onOpenEditClass} className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer">
+                <Edit className="w-3.5 h-3.5" /> Cài đặt lớp
               </button>
             )}
           </div>
@@ -332,14 +329,14 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
         <div className="flex flex-wrap items-end justify-between gap-3 text-xs">
           <div>
             <div className="text-lg font-black text-slate-900">
-              {campaign ? campaign.name : scope === 'none' ? 'Lead chưa gắn chiến dịch' : 'Tất cả lead'}
+              {klass ? `${klass.courseTitle} · ${klass.name}` : scope === 'none' ? 'Lead chưa gắn lớp' : 'Tất cả lead'}
             </div>
             <div className="text-slate-500">
               {summary?.total ?? 0} lead · {summary?.paid ?? 0} đã đóng phí
-              {campaign && campaign.targetHeadcount
-                ? ` · ${campaign.totalEnrolled || 0}/${campaign.targetHeadcount} chỉ tiêu (${Math.round((100 * (campaign.totalEnrolled || 0)) / campaign.targetHeadcount)}%)`
+              {klass && klass.capacity
+                ? ` · ${klass.paid}/${klass.capacity} chỗ (${Math.round((100 * klass.paid) / klass.capacity)}%)${klass.startDate ? ` · khai giảng ${new Date(`${klass.startDate}T00:00:00`).toLocaleDateString('vi-VN')}` : ''}`
                 : ''}
-              {scope === 'none' && ' · gắn chiến dịch bằng mã chiến dịch trong hồ sơ lead hoặc link UTM'}
+              {scope === 'none' && ' · xếp lớp trong hồ sơ lead, hoặc lead tự vào lớp khi đăng ký bằng link / mã của lớp'}
             </div>
           </div>
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
@@ -555,7 +552,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
         <NewLeadDialog
           courses={courses}
           programs={programs}
-          campaign={campaign}
+          klass={klass}
           onClose={() => setCreating(false)}
           onCreated={(order) => {
             setCreating(false);
@@ -572,11 +569,12 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
 const NewLeadDialog: React.FC<{
   courses: Course[];
   programs: ProgramOption[];
-  campaign: AdmissionCampaign | null;
+  /** Adding a lead from a class's pipeline: the lead is in that class. */
+  klass: IntakeRow | null;
   onClose: () => void;
   onCreated: (order: Order) => void;
-}> = ({ courses, programs, campaign, onClose, onCreated }) => {
-  const [form, setForm] = useState({ customerName: '', customerPhone: '', customerEmail: '', courseId: '', source: 'Nhập tay', consultNeed: '' });
+}> = ({ courses, programs, klass, onClose, onCreated }) => {
+  const [form, setForm] = useState({ customerName: '', customerPhone: '', customerEmail: '', courseId: klass?.courseId || '', source: 'Nhập tay', consultNeed: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -594,7 +592,7 @@ const NewLeadDialog: React.FC<{
       const created = await api.post<Order>('/staff/orders/', {
         ...form,
         ...itemFields(form.courseId),
-        campaign: campaign?.id || null
+        cohortId: klass && form.courseId === klass.courseId ? klass.id : null
       });
       onCreated(created);
     } catch (err) {
@@ -609,7 +607,7 @@ const NewLeadDialog: React.FC<{
     <div className="fixed inset-0 z-50 bg-slate-950/60 flex items-center justify-center p-4" onClick={onClose}>
       <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl border border-slate-200 w-full max-w-lg p-5 space-y-3 text-xs">
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-sm text-slate-900">Thêm lead {campaign ? `· ${campaign.code}` : ''}</h3>
+          <h3 className="font-bold text-sm text-slate-900">Thêm lead {klass ? `· ${klass.courseTitle} · ${klass.name}` : ''}</h3>
           <button type="button" onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 cursor-pointer" title="Đóng"><X className="w-4 h-4" /></button>
         </div>
         <label className="block">

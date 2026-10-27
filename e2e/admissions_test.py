@@ -137,49 +137,48 @@ def learner_with_two_registrations(page: Page):
 
 
 @step
-def campaign_quota_and_new_campaign(page: Page):
+def class_quota_and_new_class(page: Page):
+    # One class = one admission campaign: its seats are the quota, its code tags the leads.
     page.goto(f"{BASE}/app/sales/crm?view=campaigns")
     page.wait_for_selector("text=CAMP-E2E", timeout=20000)
-    page.locator("button[title='Sửa chiến dịch, chỉ tiêu']").first.click()
-    page.wait_for_selector("text=Khóa học & chỉ tiêu theo khóa", timeout=20000)
-    assert page.locator("text=0/10 đã đóng phí").count() == 1, "course quota progress"
-    page.locator("button:has-text('Hủy')").click()
+    row = page.locator("tr:has-text('CAMP-E2E')")
+    assert row.locator("text=0/10").count() == 1, "seats paid / capacity"
+    assert row.locator("text=Trên website").count() == 1, "the class is on the website"
+    row.locator("button[title='Mở pipeline của lớp']").click()
+    page.wait_for_selector("text=0/10 chỗ", timeout=20000)  # the class's pipeline, its seats
+    page.wait_for_selector("text=Nguyễn Văn An", timeout=20000)  # its lead
     page.goto(f"{BASE}/app/sales/crm?view=campaigns&action=new_campaign")
-    page.wait_for_selector("text=Chiến dịch tuyển sinh mới", timeout=20000)
-    page.locator("label:has-text('Mã chiến dịch') input").fill("CAMP-UI")
-    page.locator("label:has-text('Tên chiến dịch') input").fill("Chiến dịch tạo từ UI")
-    page.locator("label:has-text('Chỉ tiêu tổng') input").fill("20")
-    page.locator("button:has-text('Thêm khóa')").click()
-    page.locator("table select").last.select_option(label="E2E Giao dịch viên")
-    page.locator("table input[type=number]").last.fill("20")
-    page.locator("button:has-text('Tạo chiến dịch')").click()
-    page.wait_for_selector("h2:has-text('Chiến dịch tuyển sinh mới')", state="detached", timeout=20000)
-    page.wait_for_timeout(2500)
+    page.wait_for_selector("h3:has-text('Mở lớp mới')", timeout=20000)
+    page.locator("label:has-text('Khóa học') select").select_option(label="E2E Giao dịch viên")
+    page.locator("label:has-text('Tên lớp') input").fill("E2E GDV K4")
+    page.locator("label:has-text('Sĩ số tối đa') input").fill("20")
+    page.locator("label:has-text('Mã tuyển sinh') input").fill("CAMP-UI")
+    page.locator("button:has-text('Lưu')").last.click()
+    page.wait_for_selector("h3:has-text('Mở lớp mới')", state="detached", timeout=20000)
     page.goto(f"{BASE}/app/sales/crm?view=campaigns")
-    page.wait_for_selector("text=CAMP-UI", timeout=20000)
+    page.wait_for_selector("tr:has-text('CAMP-UI')", timeout=20000)
 
 
 @step
-def campaign_on_the_website_like_a_job_posting(page: Page):
-    # Campaigns are listed on the course catalogue (/tuyen-sinh shows it too).
+def class_on_the_website_like_a_job_posting(page: Page):
+    # Recruiting classes are listed on the course catalogue (/tuyen-sinh shows it too).
     page.goto(f"{BASE}/tuyen-sinh")
     page.wait_for_selector("h2:has-text('Đang tuyển sinh')", timeout=20000)
     assert page.url.endswith("/khoa-hoc"), page.url
-    page.wait_for_selector("text=Chiến dịch E2E", timeout=20000)
+    page.wait_for_selector("text=E2E RM Doanh nghiệp · E2E K9", timeout=20000)
     assert page.locator("text=Còn 10/10 suất").count() >= 1, "places left on the card"
-    page.locator("text=Chiến dịch E2E").first.click()
-    page.wait_for_selector("h1:has-text('Chiến dịch E2E')", timeout=20000)
+    page.locator("text=E2E RM Doanh nghiệp · E2E K9").first.click()
+    page.wait_for_selector("h1:has-text('E2E K9')", timeout=20000)
     page.locator("button:has-text('Đăng ký')").first.click()
     page.wait_for_selector("text=ĐĂNG KÝ TƯ VẤN KHÓA HỌC", timeout=20000)
-    # Staff switch it off: the page leaves the site.
+    # Staff take it off the website: the page leaves the site.
     page.goto(f"{BASE}/app/sales/crm?view=campaigns")
     page.wait_for_selector("text=CAMP-E2E", timeout=20000)
-    page.locator("button[title='Sửa chiến dịch, chỉ tiêu']").first.click()
-    page.wait_for_selector("text=Đăng trên website", timeout=20000)
-    assert page.locator("text=Đang hiện trên website").count() >= 1
+    page.locator("tr:has-text('CAMP-E2E') button:has-text('Sửa')").click()
+    page.wait_for_selector("text=Tuyển sinh & website", timeout=20000)
     page.locator("label:has-text('Hiện trên website') input").uncheck()
     page.locator("button:has-text('Lưu')").last.click()
-    page.wait_for_timeout(2500)
+    page.wait_for_selector("text=Tuyển sinh & website", state="detached", timeout=20000)
     page.goto(f"{BASE}/tuyen-sinh/chien-dich-e2e")
     page.wait_for_selector("text=Đợt tuyển sinh không còn mở", timeout=20000)
 

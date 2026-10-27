@@ -41,7 +41,8 @@ def test_a_class_is_posted_on_the_website_like_a_job(api, course):
     assert k10.display_name in page
     assert f"/tuyen-sinh/{k10.slug}</loc>" in api.get("/sitemap.xml").content.decode()
 
-    Order.objects.create(customer_name="A", course=course, cohort=k10, learning_access=True)
+    learner = Order.objects.create(customer_name="A", course=course, cohort=k10)
+    Order.objects.filter(pk=learner.pk).update(learning_access=True)  # save() derives it from payments
     assert api.get("/api/v1/public/campaigns/").json()[0]["placesLeft"] == 19  # the capacity is the quota
     k10.show_quota = False
     k10.save()

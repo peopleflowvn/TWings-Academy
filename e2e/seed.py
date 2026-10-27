@@ -1,7 +1,7 @@
 """
 Data for the admissions end-to-end test (run inside Django: manage.py shell -c "exec(open(...).read())").
-Seeds the public content (e-mail templates included), two courses with intakes, a campaign with a
-course quota, a consultant and five leads: one learner with two registrations, one late first response.
+Seeds the public content (e-mail templates included), two courses with intakes (one of them
+recruiting on the website under its own code), a consultant and five leads: one learner with two registrations, one late first response.
 """
 
 from datetime import timedelta
