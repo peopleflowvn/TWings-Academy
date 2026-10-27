@@ -256,7 +256,7 @@ export const SessionsEditor: React.FC<{ intake: SessionTarget; onClose: () => vo
 export type Draft = Partial<IntakeRow> & { id?: string; courseId: string };
 
 /** A new class of this course, with the usual defaults. */
-export const newClass = (courseId: string): Draft => ({ courseId, status: 'upcoming', capacity: 25, autoRolloverWaitlist: true, showQuota: true });
+export const newClass = (courseId: string): Draft => ({ courseId, status: 'upcoming', capacity: 25, autoRolloverWaitlist: true, showQuota: true, isPublished: true });
 
 type CourseOption = Pick<Course, 'id' | 'title'> & Partial<Pick<Course, 'slug' | 'status' | 'price'>>;
 const COURSE_STATE: Record<string, string> = { draft: 'chưa mở bán', review: 'chờ duyệt', archived: 'ngừng bán' };
@@ -386,7 +386,7 @@ export const IntakeEditor: React.FC<{
           <label>Phụ trách tuyển sinh<input className={input} value={d.recruiter || ''} onChange={(e) => setD({ ...d, recruiter: e.target.value })} /></label>
           <label className={`sm:col-span-2 flex items-center gap-2 font-bold ${JOINABLE.includes(d.status || 'upcoming') ? '' : 'text-slate-400'}`}>
             <input type="checkbox" disabled={!JOINABLE.includes(d.status || 'upcoming')} checked={!!d.isPublished} onChange={(e) => setD({ ...d, isPublished: e.target.checked })} />
-            Hiện trên website (trang Tuyển sinh)
+            Hiện trên website: trang chủ, thẻ & trang khóa học, mua online, trang Tuyển sinh
             {!JOINABLE.includes(d.status || 'upcoming') && <span className="font-normal">– chỉ khi lớp đang nhận đăng ký / sắp mở</span>}
           </label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={!!d.isFeatured} onChange={(e) => setD({ ...d, isFeatured: e.target.checked })} /> Nổi bật (lên đầu)</label>
@@ -483,7 +483,7 @@ function hintsOf(r: IntakeRow): Hint[] {
     if (!r.code) out.push({ tone: 'amber', text: 'Chưa có mã tuyển sinh', why: 'Đặt mã để lead từ link UTM / form đăng ký tự vào lớp' });
     // Off sale, the course is why the class is not on the website (said above).
     if (!offSale && r.isPublished && r.websiteState !== 'live') out.push({ tone: 'amber', text: 'Bật đăng web nhưng không hiện', why: r.websiteLabel });
-    else if (!offSale && !r.isPublished && (d === null || d >= 0)) out.push({ tone: 'slate', text: 'Chưa đăng trên website' });
+    else if (!offSale && !r.isPublished && (d === null || d >= 0)) out.push({ tone: 'slate', text: 'Lớp nội bộ: không hiện trên website', why: 'Khách chỉ vào lớp qua mã / link của lớp. Bật “Hiện trên website” trong Sửa để mở bán công khai.' });
     if (!r.registrationDeadline) out.push({ tone: 'slate', text: 'Chưa đặt hạn đăng ký' });
     if (r.capacity && r.seatsLeft > 0 && (r.fillRate || 0) >= 80) out.push({ tone: 'green', text: `Sắp đủ sĩ số: còn ${r.seatsLeft} chỗ` });
   }

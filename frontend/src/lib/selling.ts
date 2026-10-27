@@ -33,7 +33,7 @@ export function startLine(course: Course): string {
   const next = openIntakes(course)[0];
   if (next) {
     const when = next.startDate ? `Khai giảng ${viDate(next.startDate)}` : `${next.name} · sắp công bố ngày`;
-    return `${when} · còn ${next.seatsLeft} chỗ`;
+    return next.showQuota === false ? `${when} · đang nhận đăng ký` : `${when} · còn ${next.seatsLeft} chỗ`;
   }
   if (!canBuy(course)) return 'Chưa có lịch khai giảng mới';
   return course.deliveryFormat === 'online_external_lms' ? 'Học online, vào học ngay sau khi thanh toán' : '';

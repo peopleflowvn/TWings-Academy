@@ -103,19 +103,16 @@ class CourseSerializer(serializers.ModelSerializer):
 
 
 def upcoming_cohorts(course) -> list[dict]:
-    """Intakes a visitor can still join: opening or upcoming, not started yet (or no date set)."""
-    from django.db.models import Q
+    """
+    Classes a visitor can join, as the class list in /app shows them "Trên website" (Cohort.listed):
+    the homepage, course card, course page and checkout offer the same classes.
+    """
     from django.utils import timezone
 
-    from .intakes import JOINABLE, seats_taken
+    from .intakes import seats_taken
 
     today = timezone.localdate()
-    rows = (
-        course.cohorts.public()
-        .filter(status__in=JOINABLE)
-        .filter(Q(start_date__isnull=True) | Q(start_date__gte=today))
-        .order_by("start_date")[:4]
-    )
+    rows = course.cohorts.listed(today).order_by("start_date")[:4]
     return [
         {
             "name": c.name,
@@ -124,6 +121,7 @@ def upcoming_cohorts(course) -> list[dict]:
             "location": c.location,
             "status": c.status,
             "seats_left": max(c.capacity - seats_taken(c), 0),
+            "show_quota": c.show_quota,
             "schedule_text": c.schedule_text,
             "price": c.price(today),
             "early_bird_deadline": c.early_bird_deadline.isoformat() if c.early_bird_active(today) else None,

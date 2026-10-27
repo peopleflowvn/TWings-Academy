@@ -89,7 +89,8 @@ def test_overview_counts_seats_and_the_class_admissions(course, staff_client, ap
     data = staff_client(Role.SALES_CRM).get("/api/v1/staff/intakes/").json()
     row = next(r for r in data["intakes"] if r["id"] == cohort.pk)
     assert (row["paid"], row["pending"], row["seatsLeft"], row["fillRate"]) == (1, 1, 9, 10)
-    assert row["code"] == "K12-HN" and row["jobTitle"] == "RM" and row["websiteState"] == "off"
+    # A new class is offered on the site unless switched off (an internal class).
+    assert row["code"] == "K12-HN" and row["jobTitle"] == "RM" and row["websiteState"] == "live"
     assert row["funnel"]["leads"] == 3 and row["funnel"]["paid"] == 1
     assert "campaigns" not in data
     assert api.get("/api/v1/staff/intakes/").status_code in (401, 403)

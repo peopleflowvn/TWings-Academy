@@ -281,6 +281,8 @@ export interface Course {
     location: string;
     status: 'opening' | 'upcoming';
     seatsLeft: number;
+    /** false: staff hide how many seats are left (only "full" is said). */
+    showQuota?: boolean;
     /** e.g. "Trực tiếp thứ 2-4-6, 19:00–21:00" */
     scheduleText?: string;
     /** Price for this intake today (early bird until earlyBirdDeadline). */

@@ -183,7 +183,8 @@ def overview() -> dict:
                 "capacity": c.capacity,
                 "paid": c.paid,
                 "pending": c.pending,
-                "seats_left": max(c.capacity - c.paid, 0),
+                # As the website counts it: unpaid checkouts hold their seat until the hold expires.
+                "seats_left": max(c.capacity - seats_taken(c), 0),
                 "fill_rate": round(100 * c.paid / c.capacity) if c.capacity else None,
                 "location": c.location,
                 "schedule_text": c.schedule_text,

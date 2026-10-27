@@ -17,9 +17,9 @@ class CheckoutError(Exception):
 
 def resolve_cohort(course: Course, preferred_label: str = "") -> tuple[Cohort | None, bool]:
     """
-    Pick the intake for a new applicant: the one asked for if it takes registrations and has a seat,
-    else (following its successors) the next that does, else the earliest joinable intake with a
-    seat. Open and announced (upcoming) intakes take registrations. Returns (cohort, was_rerouted).
+    Pick the intake for a new applicant: the one asked for (by name or code, internal classes too) if it
+    takes registrations and has a seat, else (following its successors) the next that does, else the
+    earliest class offered on the site (Cohort.listed) with a seat. Returns (cohort, was_rerouted).
     """
     from apps.catalog.intakes import JOINABLE, has_seat
 
@@ -37,7 +37,7 @@ def resolve_cohort(course: Course, preferred_label: str = "") -> tuple[Cohort | 
             return candidate, candidate != preferred
         seen.add(candidate.pk)
         candidate = candidate.next_cohort
-    for cohort in cohorts.filter(status__in=JOINABLE).order_by(F("start_date").asc(nulls_last=True)):
+    for cohort in cohorts.listed(today).order_by(F("start_date").asc(nulls_last=True)):
         if joinable(cohort):
             return cohort, preferred is not None
     return None, preferred is not None

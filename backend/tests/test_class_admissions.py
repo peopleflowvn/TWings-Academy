@@ -122,6 +122,26 @@ def test_class_dates_and_early_bird_price_are_checked(staff_client, course):
     assert ok.status_code == 201, ok.content
 
 
+def test_the_homepage_offers_the_classes_the_class_list_shows_on_the_website(api, course):
+    """Course card, course page, checkout and the "Đang tuyển sinh" strip: one set of classes."""
+    listed = _class(course, code="", is_published=True)
+    internal = _class(course, name="K11 nội bộ", code="NOIBO", is_published=False)
+    assert listed.website_state()[0] == "live" and internal.website_state()[0] == "off"
+    card = next(c for c in api.get("/api/v1/public/courses/").json() if c["slug"] == course.slug)
+    assert [k["name"] for k in card["upcomingCohorts"]] == [listed.name] and card["upcomingCohorts"][0][
+        "showQuota"
+    ]
+    assert [c["slug"] for c in api.get("/api/v1/public/campaigns/").json()] == [listed.slug]
+    from apps.crm.services import resolve_cohort
+
+    assert resolve_cohort(course)[0] == listed  # online checkout: a class the buyer was shown
+    assert resolve_cohort(course, "K11 nội bộ")[0] == internal  # its code / name still joins it
+    listed.is_published = False
+    listed.save()
+    card = next(c for c in api.get("/api/v1/public/courses/").json() if c["slug"] == course.slug)
+    assert card["upcomingCohorts"] == [] and card["checkoutOpen"] is False
+
+
 @pytest.mark.django_db(transaction=True)
 def test_campaigns_move_into_their_classes():
     """crm 0017 on data as it was: each course of a campaign becomes (or joins) a class."""

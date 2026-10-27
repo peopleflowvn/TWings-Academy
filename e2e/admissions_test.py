@@ -9,7 +9,9 @@ seeded with e2e/seed.py. Exits non-zero when a step fails or the browser reports
 import os
 import sys
 import traceback
+from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from playwright.sync_api import Page, sync_playwright
 
@@ -229,6 +231,10 @@ def class_on_the_website_like_a_job_posting(page: Page):
     assert page.url.endswith("/khoa-hoc"), page.url
     page.wait_for_selector("text=E2E RM Doanh nghiệp · E2E K9", timeout=20000)
     assert page.locator("text=Còn 10/10 suất").count() >= 1, "places left on the card"
+    # The course card offers the same class (its start date), as the class list says "Trên website".
+    today = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date()  # the seed's local date
+    k9_start = (today + timedelta(days=20)).strftime("%d/%m/%Y")
+    assert page.locator(f"text=Khai giảng {k9_start}").count() >= 1, "the class on its course card"
     page.locator("text=E2E RM Doanh nghiệp · E2E K9").first.click()
     page.wait_for_selector("h1:has-text('E2E K9')", timeout=20000)
     page.locator("button:has-text('Đăng ký')").first.click()
@@ -243,6 +249,23 @@ def class_on_the_website_like_a_job_posting(page: Page):
     page.wait_for_selector("text=Tuyển sinh & website", state="detached", timeout=20000)
     page.goto(f"{BASE}/tuyen-sinh/chien-dich-e2e")
     page.wait_for_selector("text=Đợt tuyển sinh không còn mở", timeout=20000)
+    # Off the website means off everywhere: the strip and the course card no longer offer it.
+    page.goto(f"{BASE}/khoa-hoc")
+    page.wait_for_selector("text=E2E RM Doanh nghiệp", timeout=20000)
+    page.wait_for_timeout(500)
+    assert page.locator("text=E2E RM Doanh nghiệp · E2E K9").count() == 0, "not in the strip"
+    assert page.locator(f"text=Khai giảng {k9_start}").count() == 0, "not on the course card"
+    # Back on: offered again (the checkout suite buys this class).
+    page.goto(f"{BASE}/app/sales/crm?view=campaigns")
+    page.locator("button.rounded-full:has-text('Tất cả')").click()
+    page.locator("tr:has-text('CAMP-E2E') button:has-text('Sửa')").click()
+    page.wait_for_selector("text=Tuyển sinh & website", timeout=20000)
+    page.locator("label:has-text('Hiện trên website') input").check()
+    page.locator("button:has-text('Lưu')").last.click()
+    page.wait_for_selector("text=Tuyển sinh & website", state="detached", timeout=20000)
+    page.goto(f"{BASE}/khoa-hoc")
+    page.wait_for_selector("text=E2E RM Doanh nghiệp · E2E K9", timeout=20000)
+    assert page.locator(f"text=Khai giảng {k9_start}").count() >= 1, "back on its course card"
 
 
 @step

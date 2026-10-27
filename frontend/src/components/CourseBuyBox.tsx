@@ -142,8 +142,8 @@ export const CourseBuyBox: React.FC<CourseBuyBoxProps> = ({ course, onCheckout, 
                   <span className="flex-1 min-w-0">
                     <span className="flex items-center justify-between gap-2">
                       <span className="font-bold text-slate-900">{c.startDate ? `Khai giảng ${viDate(c.startDate)}` : c.name}</span>
-                      <span className={`shrink-0 font-bold ${full ? 'text-slate-500' : c.seatsLeft <= 5 ? 'text-red-600' : 'text-emerald-700'}`}>
-                        {full ? 'Hết chỗ' : `Còn ${c.seatsLeft} chỗ`}
+                      <span className={`shrink-0 font-bold ${full ? 'text-slate-500' : c.seatsLeft <= 5 && c.showQuota !== false ? 'text-red-600' : 'text-emerald-700'}`}>
+                        {full ? 'Hết chỗ' : c.showQuota === false ? 'Còn chỗ' : `Còn ${c.seatsLeft} chỗ`}
                       </span>
                     </span>
                     <span className="block text-slate-500">

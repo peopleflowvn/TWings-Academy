@@ -422,7 +422,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                             {c.price !== undefined ? ` – ${formatVND(c.price)}` : ''}
                             {c.earlyBirdDeadline ? ' (ưu đãi sớm)' : ''}
                             {c.status === 'upcoming' ? ' – sắp mở' : ''}
-                            {` – còn ${c.seatsLeft} chỗ`}
+                            {c.showQuota === false ? '' : ` – còn ${c.seatsLeft} chỗ`}
                           </option>
                         ))}
                       </select>

@@ -190,19 +190,19 @@ class CohortQuerySet(models.QuerySet):
         """Intakes sold to individuals: the website, admissions, checkout and intake planning use these."""
         return self.filter(audience=Cohort.AUDIENCE_PUBLIC)
 
-    def on_website(self, today=None):
+    def listed(self, today=None):
         """
-        Classes the public site lists under "Đang tuyển sinh" (/tuyen-sinh/<slug>), like job postings:
-        switched on, taking registrations, of a course on sale, not past the registration deadline (nor
-        started, without one). They come off on their own when the deadline passes, the class fills /
-        closes or the course is taken off sale.
+        Classes offered on the site, the same set everywhere (homepage, course card and page, online
+        checkout, /tuyen-sinh/<slug>): "Hiện trên website" on, taking registrations, not past the
+        registration deadline (nor started, without one). They come off on their own when the deadline
+        passes or the class fills / closes. A class switched off is internal: joined only by its code.
         """
         from django.utils import timezone
 
         today = today or timezone.localdate()
         return (
             self.public()
-            .filter(is_published=True, status__in=Cohort.JOINABLE, course__status="published")
+            .filter(is_published=True, status__in=Cohort.JOINABLE)
             .exclude(slug="")
             .filter(models.Q(registration_deadline__isnull=True) | models.Q(registration_deadline__gte=today))
             .filter(
@@ -211,6 +211,10 @@ class CohortQuerySet(models.QuerySet):
                 | models.Q(start_date__gte=today)
             )
         )
+
+    def on_website(self, today=None):
+        """Listed classes of courses on sale: what the public site shows (a draft course shows none)."""
+        return self.listed(today).filter(course__status="published")
 
 
 class Cohort(BaseModel):
@@ -261,7 +265,8 @@ class Cohort(BaseModel):
     # The code tags its leads (UTM / registration form); the quota is the capacity.
     code = models.CharField(max_length=50, blank=True, db_index=True)
     slug = models.SlugField(max_length=90, blank=True)  # /tuyen-sinh/<slug>
-    is_published = models.BooleanField(default=False, db_index=True)  # "Hiện trên website"
+    # "Hiện trên website": offered on the site (see CohortQuerySet.listed); off = internal class.
+    is_published = models.BooleanField(default=True, db_index=True)
     is_featured = models.BooleanField(default=False)
     show_quota = models.BooleanField(default=True)  # show the places left
     summary = models.CharField(max_length=300, blank=True)  # the hook on the card
