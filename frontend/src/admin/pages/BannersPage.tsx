@@ -42,6 +42,8 @@ export const CARD_TEMPLATES: Array<{
   badgeColor: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
+  recommendedGradient: string;
+  recommendedGradientName: string;
 }> = [
   {
     id: 'modern_split',
@@ -50,6 +52,8 @@ export const CARD_TEMPLATES: Array<{
     badgeColor: 'bg-blue-100 text-[#0073C1] border-blue-200',
     description: 'Bố cục 2 cột cân bằng: Cột trái nội dung & nút CTA, cột phải thẻ chuyên gia MSB với đánh giá sao.',
     icon: Layout,
+    recommendedGradient: 'from-[#061229] via-[#0A2558] to-[#0073C1]',
+    recommendedGradientName: 'TWings Royal Navy',
   },
   {
     id: 'cyber_glow',
@@ -58,6 +62,8 @@ export const CARD_TEMPLATES: Array<{
     badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-200',
     description: 'Viền phát sáng neon, lưới cyber tương lai kết nối ăn khớp với nền 3D Three.js.',
     icon: Zap,
+    recommendedGradient: 'from-[#030914] via-[#081E3D] to-[#00E5FF]',
+    recommendedGradientName: 'Cyber Deep Space',
   },
   {
     id: 'floating_showcase',
@@ -66,6 +72,8 @@ export const CARD_TEMPLATES: Array<{
     badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
     description: 'Chân dung chuyên gia lớn với vòng hào quang phát sáng tròn và huy hiệu thành tích bay lơ lửng.',
     icon: UserCheck,
+    recommendedGradient: 'from-[#120B02] via-[#381F05] to-[#D97706]',
+    recommendedGradientName: 'Golden Luxury',
   },
   {
     id: 'minimal_editorial',
@@ -74,6 +82,8 @@ export const CARD_TEMPLATES: Array<{
     badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
     description: 'Phong cách tạp chí học viện cao cấp, đường nét thanh lịch, vạch nhấn dọc tinh tế và khoáng đạt.',
     icon: Sparkles,
+    recommendedGradient: 'from-[#050811] via-[#0E1626] to-[#334155]',
+    recommendedGradientName: 'Stealth Obsidian',
   },
   {
     id: 'badge_highlight',
@@ -82,81 +92,118 @@ export const CARD_TEMPLATES: Array<{
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     description: 'Con dấu bảo lãnh việc làm 100%, huy hiệu kiểm định MSB và lưới cam kết 4 điểm vững chắc.',
     icon: ShieldCheck,
+    recommendedGradient: 'from-[#021310] via-[#063B2F] to-[#10B981]',
+    recommendedGradientName: 'Emerald Banking',
   },
 ];
 
-export const CARD_GRADIENT_PRESETS = [
+export const CARD_GRADIENT_PRESETS: Array<{
+  id: string;
+  label: string;
+  value: string;
+  bg: string;
+  description: string;
+  tag: string;
+  tagColor: string;
+  bestForTemplate: HeroBannerCardTemplate | 'all';
+  bestForLabel: string;
+  accentColor: string;
+}> = [
   {
     id: 'twings_royal_navy',
-    label: 'Xanh TWings Hoàng Gia',
-    value: 'from-[#0A1A3A] via-[#0E2A5D] to-[#0073C1]',
-    bg: 'bg-gradient-to-r from-[#0A1A3A] via-[#0E2A5D] to-[#0073C1]',
-    description: 'Tone xanh thương hiệu chủ đạo, trang trọng và đáng tin cậy',
+    label: 'TWings Royal Navy',
+    value: 'from-[#061229] via-[#0A2558] to-[#0073C1]',
+    bg: 'bg-gradient-to-r from-[#061229] via-[#0A2558] to-[#0073C1]',
+    description: 'Tone xanh thương hiệu chuẩn mực, chiều sâu đại dương sang trọng tôn vinh chuyên gia MSB.',
     tag: 'Thương Hiệu',
-    tagColor: 'bg-blue-100 text-[#0073C1]',
+    tagColor: 'bg-blue-100 text-[#0073C1] border-blue-200',
+    bestForTemplate: 'modern_split',
+    bestForLabel: 'Hợp nhất với: Executive Split',
+    accentColor: '#0073C1',
   },
   {
     id: 'cyber_deep_space',
-    label: 'Vũ Trụ Cyber Đêm',
-    value: 'from-[#050D1A] via-[#0A1F3D] to-[#0284C7]',
-    bg: 'bg-gradient-to-r from-[#050D1A] via-[#0A1F3D] to-[#0284C7]',
-    description: 'Hòa quyện hoàn hảo với nền 3D Three.js và ánh sáng mạng',
-    tag: 'Khuyên Dùng Hero',
-    tagColor: 'bg-cyan-100 text-cyan-800',
+    label: 'Cyber Deep Space',
+    value: 'from-[#030914] via-[#081E3D] to-[#00E5FF]',
+    bg: 'bg-gradient-to-r from-[#030914] via-[#081E3D] to-[#00E5FF]',
+    description: 'Hòa quyện tuyệt đối với sóng Three.js 3D, viền neon cyan phản quang công nghệ cao.',
+    tag: 'Hot Three.js',
+    tagColor: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    bestForTemplate: 'cyber_glow',
+    bestForLabel: 'Hợp nhất với: Cyber Glow',
+    accentColor: '#00E5FF',
+  },
+  {
+    id: 'golden_luxury',
+    label: 'Golden Luxury',
+    value: 'from-[#120B02] via-[#381F05] to-[#D97706]',
+    bg: 'bg-gradient-to-r from-[#120B02] via-[#381F05] to-[#D97706]',
+    description: 'Sắc hổ phách hoàng kim quý phái, tạo vòng hào quang tỏa sáng cho giảng viên và chuyên gia.',
+    tag: 'Chuyên Gia VIP',
+    tagColor: 'bg-amber-100 text-amber-800 border-amber-200',
+    bestForTemplate: 'floating_showcase',
+    bestForLabel: 'Hợp nhất với: Spotlight Giảng Viên',
+    accentColor: '#F59E0B',
+  },
+  {
+    id: 'stealth_obsidian',
+    label: 'Stealth Obsidian',
+    value: 'from-[#050811] via-[#0E1626] to-[#334155]',
+    bg: 'bg-gradient-to-r from-[#050811] via-[#0E1626] to-[#334155]',
+    description: 'Phong cách tối giản huyền bí của các học viện Ivy League, tĩnh lặng và thanh lịch tuyệt đối.',
+    tag: 'Tối Giản Cao Cấp',
+    tagColor: 'bg-slate-200 text-slate-800 border-slate-300',
+    bestForTemplate: 'minimal_editorial',
+    bestForLabel: 'Hợp nhất với: Minimal Editorial',
+    accentColor: '#94A3B8',
   },
   {
     id: 'emerald_banking',
-    label: 'Ngọc Lục Bảo Ngân Hàng',
-    value: 'from-[#041D1A] via-[#064E3B] to-[#047857]',
-    bg: 'bg-gradient-to-r from-[#041D1A] via-[#064E3B] to-[#047857]',
-    description: 'Sắc xanh thịnh vượng, chuyên dùng cho đào tạo tài chính & ngân hàng',
-    tag: 'Ngân Hàng',
-    tagColor: 'bg-emerald-100 text-emerald-800',
+    label: 'Emerald Banking',
+    value: 'from-[#021310] via-[#063B2F] to-[#10B981]',
+    bg: 'bg-gradient-to-r from-[#021310] via-[#063B2F] to-[#10B981]',
+    description: 'Ngọc lục bảo ngân hàng và tài chính, tượng trưng cho tín nhiệm và cam kết đầu ra vững chắc.',
+    tag: 'Bảo Lãnh MSB',
+    tagColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    bestForTemplate: 'badge_highlight',
+    bestForLabel: 'Hợp nhất với: Bảo Lãnh MSB',
+    accentColor: '#10B981',
   },
   {
     id: 'sunset_executive',
-    label: 'Hoàng Hôn Tinh Anh',
-    value: 'from-[#1A1024] via-[#7C2D12] to-[#EA580C]',
-    bg: 'bg-gradient-to-r from-[#1A1024] via-[#7C2D12] to-[#EA580C]',
-    description: 'Tông cam nhiệt huyết, kích thích tỷ lệ click và đăng ký',
-    tag: 'Chuyển Đổi Cao',
-    tagColor: 'bg-orange-100 text-orange-800',
+    label: 'Sunset Executive',
+    value: 'from-[#14080D] via-[#4D1507] to-[#EA580C]',
+    bg: 'bg-gradient-to-r from-[#14080D] via-[#4D1507] to-[#EA580C]',
+    description: 'Tông cam hoàng hôn năng lượng cao, kích thích nhãn quan và tăng tỷ lệ click nút đăng ký.',
+    tag: 'Click Cao',
+    tagColor: 'bg-orange-100 text-orange-800 border-orange-200',
+    bestForTemplate: 'all',
+    bestForLabel: 'Tối ưu kích thích CTA & Đăng ký',
+    accentColor: '#EA580C',
   },
   {
-    id: 'cosmic_indigo',
-    label: 'Tím Vũ Trụ AI',
-    value: 'from-[#110B29] via-[#31104E] to-[#4F46E5]',
-    bg: 'bg-gradient-to-r from-[#110B29] via-[#31104E] to-[#4F46E5]',
-    description: 'Sắc tím công nghệ AI & EdTech, đột phá và hiện đại',
-    tag: 'Công Nghệ AI',
-    tagColor: 'bg-indigo-100 text-indigo-800',
+    id: 'cosmic_amethyst',
+    label: 'Cosmic Amethyst',
+    value: 'from-[#0C071E] via-[#240C44] to-[#6366F1]',
+    bg: 'bg-gradient-to-r from-[#0C071E] via-[#240C44] to-[#6366F1]',
+    description: 'Sắc tím thạch anh công nghệ số, hiện đại và kích thích tinh thần đổi mới sáng tạo.',
+    tag: 'FinTech AI',
+    tagColor: 'bg-purple-100 text-purple-800 border-purple-200',
+    bestForTemplate: 'cyber_glow',
+    bestForLabel: 'Khuyên dùng cho: FinTech & AI',
+    accentColor: '#6366F1',
   },
   {
-    id: 'dark_titanium',
-    label: 'Đen Titan Sang Trọng',
-    value: 'from-[#090D16] via-[#111827] to-[#1E293B]',
-    bg: 'bg-gradient-to-r from-[#090D16] via-[#111827] to-[#1E293B]',
-    description: 'Tối giản huyền bí, tôn vinh hình ảnh và nội dung học thuật',
-    tag: 'Sang Trọng',
-    tagColor: 'bg-slate-200 text-slate-800',
-  },
-  {
-    id: 'crimson_leadership',
-    label: 'Đỏ Chu Sa Lãnh Đạo',
-    value: 'from-[#180811] via-[#5C1123] to-[#B91C1C]',
-    bg: 'bg-gradient-to-r from-[#180811] via-[#5C1123] to-[#B91C1C]',
-    description: 'Sắc đỏ lãnh đạo quyết đoán, uy quyền và danh giá',
-    tag: 'Lãnh Đạo',
-    tagColor: 'bg-rose-100 text-rose-800',
-  },
-  {
-    id: 'arctic_frost',
-    label: 'Băng Đăng Phát Sáng',
-    value: 'from-[#071E3D] via-[#0E4A7D] to-[#0284C7]',
-    bg: 'bg-gradient-to-r from-[#071E3D] via-[#0E4A7D] to-[#0284C7]',
-    description: 'Tone băng đăng công nghệ, tươi sáng và hiện đại',
+    id: 'arctic_aurora',
+    label: 'Arctic Aurora',
+    value: 'from-[#041226] via-[#09355E] to-[#38BDF8]',
+    bg: 'bg-gradient-to-r from-[#041226] via-[#09355E] to-[#38BDF8]',
+    description: 'Ánh sáng cực quang Bắc cực tươi mát, tạo cảm giác nhẹ nhàng, khoáng đạt và trẻ trung.',
     tag: 'Tươi Sáng',
-    tagColor: 'bg-sky-100 text-sky-800',
+    tagColor: 'bg-sky-100 text-sky-800 border-sky-200',
+    bestForTemplate: 'all',
+    bestForLabel: 'Màu sắc trẻ trung, tươi sáng',
+    accentColor: '#38BDF8',
   },
 ];
 
@@ -211,12 +258,17 @@ const BannerCardLivePreview: React.FC<{ banner: HeroBannerItem }> = ({ banner })
         </span>
       </div>
 
-      <div className={`w-full rounded-2xl bg-gradient-to-br ${bgGrad} text-white p-4 sm:p-6 shadow-xl relative overflow-hidden border border-white/20`}>
+      <div className={`w-full rounded-2xl bg-gradient-to-br ${bgGrad} text-white p-4 sm:p-5 shadow-2xl relative overflow-hidden border border-white/20 backdrop-blur-2xl`}>
+        {/* Specular highlights & reflections */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-transparent to-black/45 pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+
         {template === 'cyber_glow' ? (
-          <div className="relative z-10 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-400/40 text-cyan-300 font-mono text-[9px] font-bold">
-                SYS: 2026 AI FRONTIER
+          <div className="relative z-10 space-y-2.5">
+            <div className="flex items-center gap-1.5">
+              <span className="px-2.5 py-0.5 rounded-full bg-cyan-950/85 border border-cyan-400/50 text-cyan-300 font-mono text-[9px] font-black uppercase flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                <span>SYS: AI & FINTECH FRONTIER 2026</span>
               </span>
               {partners.map((p, i) => (
                 <span key={i} className="px-2 py-0.5 rounded-full bg-white/10 text-cyan-200 text-[9px] font-bold">
@@ -225,33 +277,34 @@ const BannerCardLivePreview: React.FC<{ banner: HeroBannerItem }> = ({ banner })
               ))}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-              <div className="sm:col-span-8 space-y-2">
-                <h4 className="text-base sm:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 to-white">
+              <div className="sm:col-span-8 space-y-1.5">
+                <h4 className="text-base sm:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-100 via-white to-sky-200 leading-tight">
                   {banner.title || 'Tiêu đề banner'}
                 </h4>
-                <p className="text-[11px] text-cyan-100/80 line-clamp-2 font-mono">
+                <p className="text-[11px] text-cyan-100/90 line-clamp-2 font-mono">
                   {banner.subtitle || 'Mô tả chương trình'}
                 </p>
-                <div className="flex flex-wrap gap-2 text-[10px] font-mono text-cyan-300">
-                  <span className="bg-cyan-950/60 border border-cyan-400/30 px-2 py-1 rounded">// {tag1}</span>
-                  <span className="bg-cyan-950/60 border border-cyan-400/30 px-2 py-1 rounded">// {tag2}</span>
+                <div className="flex flex-wrap gap-1.5 text-[9px] font-mono text-cyan-300">
+                  <span className="bg-cyan-950/60 border border-cyan-400/35 px-2 py-0.5 rounded">// {tag1}</span>
+                  <span className="bg-cyan-950/60 border border-cyan-400/35 px-2 py-0.5 rounded">// {tag2}</span>
                 </div>
               </div>
               <div className="sm:col-span-4 flex justify-end">
-                <div className="w-24 h-24 rounded-xl overflow-hidden border border-cyan-400/40 relative shadow-md">
+                <div className="w-24 h-24 rounded-xl overflow-hidden border border-cyan-400/40 relative shadow-md bg-slate-900">
                   <img src={facultyImg} alt="" className="w-full h-full object-cover object-top" />
-                  <span className="absolute bottom-1 left-1 text-[8px] font-mono font-bold bg-slate-950/80 px-1 rounded text-cyan-300">
-                    MSB MENTOR
+                  <span className="absolute bottom-1 left-1 text-[8px] font-mono font-bold bg-slate-950/90 px-1 rounded text-cyan-300 border border-cyan-400/30">
+                    AI & QUANT MENTOR
                   </span>
                 </div>
               </div>
             </div>
           </div>
         ) : template === 'floating_showcase' ? (
-          <div className="relative z-10 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[9px] font-black">
-                MASTERCLASS ĐỘC QUYỀN
+          <div className="relative z-10 space-y-2.5">
+            <div className="flex items-center gap-1.5">
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[9px] font-black uppercase flex items-center gap-1">
+                <Award className="w-3 h-3 text-amber-400" />
+                <span>MASTERCLASS ĐỘC QUYỀN</span>
               </span>
               {partners.map((p, i) => (
                 <span key={i} className="px-2 py-0.5 rounded-full bg-white/10 text-[#5FBEFF] text-[9px] font-bold">
@@ -260,73 +313,74 @@ const BannerCardLivePreview: React.FC<{ banner: HeroBannerItem }> = ({ banner })
               ))}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-              <div className="sm:col-span-8 space-y-2">
-                <h4 className="text-base sm:text-lg font-black text-white">
+              <div className="sm:col-span-8 space-y-1.5">
+                <h4 className="text-base sm:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-white to-amber-200 leading-tight">
                   {banner.title || 'Tiêu đề banner'}
                 </h4>
                 <p className="text-[11px] text-slate-200 line-clamp-2">
                   {banner.subtitle || 'Mô tả chương trình'}
                 </p>
-                <div className="flex flex-wrap gap-2 text-[10px] font-semibold text-amber-300">
-                  <span className="bg-white/10 px-2 py-1 rounded-lg">★ {tag1}</span>
-                  <span className="bg-white/10 px-2 py-1 rounded-lg">★ {tag2}</span>
+                <div className="flex flex-wrap gap-1.5 text-[9px] font-semibold text-amber-300">
+                  <span className="bg-white/10 border border-white/15 px-2 py-0.5 rounded-lg">★ {tag1}</span>
+                  <span className="bg-white/10 border border-white/15 px-2 py-0.5 rounded-lg">✓ {tag2}</span>
                 </div>
               </div>
               <div className="sm:col-span-4 flex justify-end">
-                <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-amber-300 shadow-lg">
+                <div className="relative w-22 h-22 rounded-full overflow-hidden border-2 border-amber-300 shadow-xl ring-2 ring-amber-400/30 bg-slate-900">
                   <img src={facultyImg} alt="" className="w-full h-full object-cover object-top" />
                 </div>
               </div>
             </div>
           </div>
         ) : template === 'minimal_editorial' ? (
-          <div className="relative z-10 border-l-2 border-[#5FBEFF] pl-4 space-y-2.5">
-            <div className="text-[9px] font-mono font-bold tracking-widest uppercase text-[#5FBEFF]">
-              TWINGS ACADEMY — STRATEGIC EXECUTIVE
+          <div className="relative z-10 border-l-2 border-[#5FBEFF]/90 pl-3.5 space-y-2">
+            <div className="text-[9px] font-mono font-bold tracking-widest uppercase text-[#5FBEFF] flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              <span>TWINGS STRATEGIC EXECUTIVE EDUCATION</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-              <div className="sm:col-span-8 space-y-1.5">
-                <h4 className="text-base sm:text-lg font-bold text-white">
+              <div className="sm:col-span-8 space-y-1">
+                <h4 className="text-base sm:text-lg font-extrabold text-white leading-tight">
                   {banner.title || 'Tiêu đề banner'}
                 </h4>
                 <p className="text-[11px] text-slate-300 line-clamp-2">
                   {banner.subtitle || 'Mô tả chương trình'}
                 </p>
-                <div className="flex flex-wrap gap-2 text-[10px] text-slate-200">
-                  <span className="bg-white/10 px-2 py-0.5 rounded">✦ {tag1}</span>
-                  <span className="bg-white/10 px-2 py-0.5 rounded">✦ {tag2}</span>
+                <div className="flex flex-wrap gap-1.5 text-[9px] text-slate-200">
+                  <span className="bg-white/10 border border-white/15 px-2 py-0.5 rounded">✦ {tag1}</span>
+                  <span className="bg-white/10 border border-white/15 px-2 py-0.5 rounded">✦ {tag2}</span>
                 </div>
               </div>
               <div className="sm:col-span-4 flex justify-end">
-                <div className="w-20 h-24 rounded-lg overflow-hidden border border-white/20 shadow-md">
+                <div className="w-20 h-22 rounded-xl overflow-hidden border border-white/25 shadow-md bg-slate-900">
                   <img src={facultyImg} alt="" className="w-full h-full object-cover object-top" />
                 </div>
               </div>
             </div>
           </div>
         ) : template === 'badge_highlight' ? (
-          <div className="relative z-10 space-y-2.5">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-black uppercase">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>BẢO LÃNH ĐẦU RA 100% — MSB BANK</span>
+          <div className="relative z-10 space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/85 border border-emerald-400/50 text-emerald-300 text-[9px] font-black uppercase">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>BẢO LÃNH ĐẦU RA 100% — ĐỐI TÁC MSB BANK</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-              <div className="sm:col-span-8 space-y-1.5">
-                <h4 className="text-base sm:text-lg font-black text-white">
+              <div className="sm:col-span-8 space-y-1">
+                <h4 className="text-base sm:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-100 via-white to-emerald-200 leading-tight">
                   {banner.title || 'Tiêu đề banner'}
                 </h4>
                 <p className="text-[11px] text-slate-200 line-clamp-2">
                   {banner.subtitle || 'Mô tả chương trình'}
                 </p>
-                <div className="grid grid-cols-2 gap-1.5 text-[10px] text-slate-200">
-                  <span className="bg-emerald-950/40 border border-emerald-400/30 px-2 py-0.5 rounded truncate">✓ Phỏng vấn tại MSB</span>
-                  <span className="bg-emerald-950/40 border border-emerald-400/30 px-2 py-0.5 rounded truncate">✓ {tag1}</span>
+                <div className="grid grid-cols-2 gap-1 text-[9px] text-slate-200">
+                  <span className="bg-emerald-950/60 border border-emerald-400/35 px-2 py-0.5 rounded truncate">✓ Phỏng vấn tại MSB</span>
+                  <span className="bg-emerald-950/60 border border-emerald-400/35 px-2 py-0.5 rounded truncate">✓ {tag1}</span>
                 </div>
               </div>
               <div className="sm:col-span-4 flex justify-end">
-                <div className="w-24 h-24 rounded-xl overflow-hidden border border-emerald-400/40 relative shadow-md">
+                <div className="w-24 h-24 rounded-xl overflow-hidden border border-emerald-400/40 relative shadow-md bg-slate-900">
                   <img src={facultyImg} alt="" className="w-full h-full object-cover object-top" />
-                  <span className="absolute bottom-1 left-1 text-[8px] font-bold bg-slate-950/90 px-1 rounded text-emerald-300">
+                  <span className="absolute bottom-1 left-1 text-[8px] font-bold bg-slate-950/90 px-1 rounded text-emerald-300 border border-emerald-400/30">
                     MSB VERIFIED
                   </span>
                 </div>
@@ -335,8 +389,11 @@ const BannerCardLivePreview: React.FC<{ banner: HeroBannerItem }> = ({ banner })
           </div>
         ) : (
           /* modern_split (Default) */
-          <div className="relative z-10 space-y-2.5">
-            <div className="flex items-center gap-2">
+          <div className="relative z-10 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <span className="px-2 py-0.5 rounded-full bg-[#EA580C]/20 border border-[#EA580C]/40 text-[#FFA07A] text-[9px] font-extrabold uppercase">
+                TUYỂN SINH MỚI
+              </span>
               {partners.map((p, i) => (
                 <span key={i} className="px-2 py-0.5 rounded-full bg-white/10 text-[#5FBEFF] text-[9px] font-bold uppercase">
                   {p.name}
@@ -344,28 +401,28 @@ const BannerCardLivePreview: React.FC<{ banner: HeroBannerItem }> = ({ banner })
               ))}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-              <div className="sm:col-span-8 space-y-1.5">
-                <h4 className="text-base sm:text-lg font-black text-white">
+              <div className="sm:col-span-8 space-y-1">
+                <h4 className="text-base sm:text-lg font-black text-white leading-tight">
                   {banner.title || 'Tiêu đề banner'}
                 </h4>
                 <p className="text-[11px] text-slate-200 line-clamp-2">
                   {banner.subtitle || 'Mô tả chương trình'}
                 </p>
-                <div className="flex flex-wrap gap-2 text-[10px] text-slate-200">
-                  <span className="bg-white/10 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                <div className="flex flex-wrap gap-1.5 text-[9px] text-slate-200">
+                  <span className="bg-white/10 border border-white/20 px-2 py-0.5 rounded-lg flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-[#5FBEFF]" />
                     <span>{tag1}</span>
                   </span>
-                  <span className="bg-white/10 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                  <span className="bg-white/10 border border-white/20 px-2 py-0.5 rounded-lg flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                     <span>{tag2}</span>
                   </span>
                 </div>
               </div>
               <div className="sm:col-span-4 flex justify-end">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden border border-white/20 relative shadow-md">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden border border-white/25 relative shadow-md bg-slate-900">
                   <img src={facultyImg} alt="" className="w-full h-full object-cover object-top" />
-                  <span className="absolute bottom-1 left-1 text-[8px] font-bold bg-slate-950/80 px-1 rounded text-[#5FBEFF]">
+                  <span className="absolute bottom-1 left-1 text-[8px] font-bold bg-slate-950/85 px-1 rounded text-[#5FBEFF]">
                     MSB BANK
                   </span>
                 </div>
@@ -483,7 +540,7 @@ export const BannersPage: React.FC<{
       id: `banner-${Date.now()}`,
       title: 'Đột phá Sự nghiệp Ngân hàng Thực chiến',
       subtitle: 'Đào tạo trực tiếp cùng Giám đốc Khối & Chuyên gia MSB. Cam kết kết nối việc làm và bảo lãnh tuyển dụng.',
-      bgGradient: 'from-[#0A1A3A] via-[#0E2A5D] to-[#0073C1]',
+      bgGradient: 'from-[#061229] via-[#0A2558] to-[#0073C1]',
       cardTemplate: 'modern_split',
       sortOrder: 0,
       buttonText: 'Đăng ký tư vấn trực tiếp',
@@ -1330,7 +1387,17 @@ export const BannersPage: React.FC<{
                               <button
                                 key={tmpl.id}
                                 type="button"
-                                onClick={() => setEditingBanner({ ...editingBanner, cardTemplate: tmpl.id, displayType: 'card' })}
+                                onClick={() => {
+                                  const updates: Partial<HeroBannerItem> = {
+                                    cardTemplate: tmpl.id,
+                                    displayType: 'card',
+                                  };
+                                  // Tự động đồng bộ sang màu khuyến nghị nếu banner chưa tùy biến màu riêng hoặc đang dùng 1 preset cũ
+                                  if (!editingBanner.bgGradient || CARD_GRADIENT_PRESETS.some((p) => p.value === editingBanner.bgGradient)) {
+                                    updates.bgGradient = tmpl.recommendedGradient;
+                                  }
+                                  setEditingBanner({ ...editingBanner, ...updates });
+                                }}
                                 className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative group flex flex-col justify-between ${
                                   isSelected
                                     ? 'border-[#0073C1] bg-blue-50/70 shadow-sm ring-2 ring-blue-500/20'
@@ -1354,13 +1421,20 @@ export const BannersPage: React.FC<{
                                   </p>
                                 </div>
 
-                                <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[10px] font-bold">
-                                  <span className={isSelected ? 'text-[#0073C1]' : 'text-slate-400'}>
-                                    {isSelected ? '✓ Đang chọn mẫu này' : 'Bấm để áp dụng'}
-                                  </span>
-                                  {isSelected && (
-                                    <span className="w-2 h-2 rounded-full bg-[#0073C1] animate-ping" />
-                                  )}
+                                <div className="mt-3 pt-2.5 border-t border-slate-200/60 space-y-2">
+                                  {/* Gợi ý phối màu đi kèm */}
+                                  <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                                    <Palette className="w-3 h-3 text-[#0073C1] shrink-0" />
+                                    <span className="truncate">Màu chuẩn: <strong className="text-slate-700">{tmpl.recommendedGradientName}</strong></span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[10px] font-bold">
+                                    <span className={isSelected ? 'text-[#0073C1]' : 'text-slate-400 group-hover:text-slate-600'}>
+                                      {isSelected ? '✓ Đang chọn mẫu này' : 'Bấm để áp dụng'}
+                                    </span>
+                                    {isSelected && (
+                                      <span className="w-2 h-2 rounded-full bg-[#0073C1] animate-ping" />
+                                    )}
+                                  </div>
                                 </div>
                               </button>
                             );
@@ -1370,43 +1444,101 @@ export const BannersPage: React.FC<{
 
                       {/* Section 2: Curated background palettes */}
                       <div className="space-y-3 pt-4 border-t border-slate-200">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
-                            <Palette className="w-4 h-4 text-[#0073C1]" />
-                            <span>2. Bộ Màu Nền Sẵn Dành Riêng Cho Hero Section (Curated Palettes)</span>
-                          </label>
-                          <span className="text-[11px] text-slate-500 font-medium">
-                            Phối màu tối sâu, hòa quyện với sóng Three.js 3D Wave
-                          </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                              <Palette className="w-4 h-4 text-[#0073C1]" />
+                              <span>2. Bộ Màu Nền Kính Sẵn Cho Hero Section (Curated Glass Palettes)</span>
+                            </label>
+                            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                              8 công thức chiều sâu tối cao cấp, tôn vinh Three.js 3D Wave và tương thích mọi kích thước màn hình
+                            </p>
+                          </div>
+
+                          {/* Quick apply matched color button if available */}
+                          {(() => {
+                            const currentTmpl = editingBanner.cardTemplate || 'modern_split';
+                            const tmplConfig = CARD_TEMPLATES.find((t) => t.id === currentTmpl);
+                            const isAlreadyUsingRecommended = editingBanner.bgGradient === tmplConfig?.recommendedGradient;
+                            if (!tmplConfig || isAlreadyUsingRecommended) return null;
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => setEditingBanner({ ...editingBanner, bgGradient: tmplConfig.recommendedGradient, displayType: 'card' })}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#0073C1] to-[#2C93E8] text-white text-[11px] font-bold shadow-xs hover:brightness-110 transition-all cursor-pointer shrink-0 animate-pulse"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>Áp dụng màu chuẩn {tmplConfig.recommendedGradientName}</span>
+                              </button>
+                            );
+                          })()}
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                           {CARD_GRADIENT_PRESETS.map((p) => {
                             const isSelected = editingBanner.bgGradient === p.value;
+                            const currentTmpl = editingBanner.cardTemplate || 'modern_split';
+                            const isRecommendedForCurrent = p.bestForTemplate === currentTmpl;
+
                             return (
                               <button
                                 key={p.id}
                                 type="button"
                                 onClick={() => setEditingBanner({ ...editingBanner, bgGradient: p.value, displayType: 'card' })}
-                                className={`p-3 rounded-xl border text-left transition-all cursor-pointer group ${
+                                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer group relative flex flex-col justify-between ${
                                   isSelected
-                                    ? 'border-[#0073C1] bg-blue-50/60 ring-2 ring-blue-500/20 shadow-xs'
-                                    : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                                    ? 'border-[#0073C1] bg-blue-50/70 ring-2 ring-blue-500/25 shadow-sm'
+                                    : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/60 shadow-2xs hover:shadow-xs'
                                 }`}
                               >
-                                <div className={`w-full h-8 rounded-lg ${p.bg} shadow-inner mb-2 border border-black/10`} />
-                                <div className="flex items-center justify-between gap-1 mb-1">
-                                  <span className="text-xs font-bold text-slate-900 truncate">
-                                    {p.label}
-                                  </span>
+                                <div>
+                                  {/* Glass Swatch (Viên ngọc kính phản quang) */}
+                                  <div className={`w-full h-14 rounded-xl ${p.bg} shadow-inner mb-2.5 relative overflow-hidden border border-white/20 ring-1 ring-black/10`}>
+                                    {/* Curved Glass Specular Highlight */}
+                                    <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent pointer-events-none rounded-t-xl" />
+                                    
+                                    {/* Neon Accent Glow Dot */}
+                                    <div 
+                                      className="absolute bottom-2 right-2 w-3 h-3 rounded-full border border-white/40 shadow-sm"
+                                      style={{ backgroundColor: p.accentColor, boxShadow: `0 0 10px ${p.accentColor}` }}
+                                      title={`Màu điểm xuyết neon: ${p.accentColor}`}
+                                    />
+
+                                    {/* Recommended Tag Overlay on Swatch */}
+                                    {isRecommendedForCurrent && (
+                                      <div className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-amber-400/60 text-amber-300 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                                        <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
+                                        <span>Khuyên dùng</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Swatch Info */}
+                                  <div className="flex items-center justify-between gap-1 mb-1">
+                                    <span className="text-xs font-extrabold text-slate-900 group-hover:text-[#0073C1] transition-colors truncate">
+                                      {p.label}
+                                    </span>
+                                  </div>
+
+                                  <p className="text-[10px] text-slate-500 leading-snug line-clamp-2 mb-2">
+                                    {p.description}
+                                  </p>
                                 </div>
-                                <div className="flex items-center justify-between text-[10px]">
-                                  <span className={`font-bold px-1.5 py-0.5 rounded ${p.tagColor}`}>
-                                    {p.tag}
-                                  </span>
-                                  <span className={`font-semibold ${isSelected ? 'text-[#0073C1] font-bold' : 'text-slate-400'}`}>
-                                    {isSelected ? '✓ Đang dùng' : 'Chọn'}
-                                  </span>
+
+                                <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                                  {/* Tag Category & Best-for hint */}
+                                  <div className="flex items-center justify-between text-[10px]">
+                                    <span className={`font-bold px-1.5 py-0.5 rounded border text-[9px] ${p.tagColor}`}>
+                                      {p.tag}
+                                    </span>
+                                    <span className={`font-bold ${isSelected ? 'text-[#0073C1]' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                                      {isSelected ? '✓ Đang dùng' : 'Chọn màu'}
+                                    </span>
+                                  </div>
+                                  <div className="text-[9.5px] text-slate-500 font-medium truncate flex items-center gap-1" title={p.bestForLabel}>
+                                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.accentColor }} />
+                                    <span className="truncate">{p.bestForLabel}</span>
+                                  </div>
                                 </div>
                               </button>
                             );
@@ -1420,7 +1552,7 @@ export const BannersPage: React.FC<{
                           </label>
                           <input
                             type="text"
-                            value={editingBanner.bgGradient || 'from-[#0A1A3A] via-[#0E2A5D] to-[#0073C1]'}
+                            value={editingBanner.bgGradient || 'from-[#061229] via-[#0A2558] to-[#0073C1]'}
                             onChange={(e) => setEditingBanner({ ...editingBanner, bgGradient: e.target.value })}
                             className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-slate-50 font-mono shadow-2xs focus:bg-white focus:border-blue-500 focus:outline-none"
                             placeholder="from-[#...] via-[#...] to-[#...]"
