@@ -28,7 +28,6 @@ import {
   Eye,
   Sliders,
   Image as ImageIcon,
-  Briefcase,
   ArrowLeft
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -39,11 +38,13 @@ import { CoursePublishingPanel } from './CoursePublishingPanel';
 import { CourseListView } from './CourseListView';
 import { ImageUploadField } from './ImageUploadField';
 import { navigate, useAppSearch } from '../../admin/router';
+import { CourseClassesPanel, useClasses } from '../../admin/pages/IntakesPage';
 import { viDateToIso } from '../../lib/serverCollection';
 
 interface CMSCoursesTabProps {
   courses: Course[];
-  onAddCourse: (newCourse: Course) => void;
+  /** Saves a new course; resolves to the saved course (its server id) or nothing when it failed. */
+  onAddCourse: (newCourse: Course) => Promise<Course | undefined> | void;
   onUpdateCourse: (updatedCourse: Course) => void;
   onDeleteCourse: (courseId: string) => void;
   onPreviewCourse?: (course: Course) => void;
@@ -63,6 +64,8 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
   const requestedCourseId = appSearch.get('id');
   const isDetailView = !!requestedCourseId && courses.some((course) => course.id === requestedCourseId);
   const canPrice = useStaffCan('courses.pricing');
+  // The classes of every course: counts on the list, the classes panel on a course's page.
+  const classes = useClasses();
   // Currently selected course to edit
   const [selectedCourseId, setSelectedCourseId] = useState<string>(() => {
     const p = requestedCourseId;
@@ -138,6 +141,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
     return (
       <CourseListView
         courses={courses}
+        classes={classes.rows}
         onCreateCourse={handleCreateNewCourse}
         onOpenCourse={(courseId) => {
           setSelectedCourseId(courseId);
@@ -204,90 +208,60 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
     setTimeout(() => setSaveSuccessMsg(false), 3000);
   };
 
-  // Handle creating a new course
-  function handleCreateNewCourse() {
-    const newId = `course-new-${Date.now()}`;
+  /** Open a course just saved on the server (it has its server id now). */
+  const openSaved = (saved: Course | undefined | void) => {
+    if (!saved) return;
+    setSelectedCourseId(saved.id);
+    navigate(`/catalog/courses?id=${encodeURIComponent(saved.id)}&subtab=info`);
+    setSaveSuccessMsg(true);
+    setTimeout(() => setSaveSuccessMsg(false), 3000);
+  };
+
+  // A new course is a blank draft: the readiness checklist says what to fill in before review.
+  async function handleCreateNewCourse() {
+    const stamp = Date.now();
     const newCourse: Course = {
-      id: newId,
-      slug: `khoa-hoc-moi-${Date.now()}`,
-      title: 'Khóa Học Nghiệp Vụ Mới 2026',
-      subtitle: 'Chương trình đào tạo thực chiến kết nối cơ hội việc làm tại Ngân hàng MSB & ROX Group.',
-      overview: 'Khóa học được thiết kế chuyên sâu, học viên được cấp tài khoản học trên hệ thống LMS chuyên biệt của viện đào tạo và kèm cặp 1-1 cùng chuyên gia ngân hàng.',
-      category: 'Ngân Hàng & Tín Dụng',
-      level: 'Chuyên viên Mới (Fresher)',
+      id: `course-new-${stamp}`,
+      slug: `khoa-hoc-moi-${stamp}`,
+      title: 'Khóa học mới',
+      subtitle: '',
+      overview: '',
+      category: '',
+      level: 'Mọi cấp độ',
       deliveryFormat: 'online_external_lms',
-      locationText: 'Hệ thống LMS chuyên biệt + Cố vấn 1-1 trực tiếp tại ROX Tower',
-      price: 6990000,
-      originalPrice: 6990000,
+      locationText: '',
+      price: 0,
+      originalPrice: 0,
       rating: 0, // computed by the server from approved learner reviews
       reviewsCount: 0,
-      duration: '40 giờ học thực chiến',
+      duration: '',
       lessonsCount: 0,
       badgeType: 'new',
-      thumbnail: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80',
-      // No placeholder video, instructors or reviews: the public page only shows what staff fill in.
+      thumbnail: '',
       youtubeVideoId: '',
       youtubeTrialUrl: '',
       instructors: [],
       reviews: [], // only real learner reviews are shown publicly
-      guarantees: [
-        'Bảo lãnh thực tập & phỏng vấn tuyển dụng tại MSB',
-        'Cấp tài khoản LMS chuyên biệt kèm 1-1 cùng Giám đốc Khối',
-        'Chứng chỉ nghiệp vụ chuẩn ngân hàng thương mại'
-      ],
-      objectives: [
-        'Làm chủ quy trình thẩm định và xử lý hồ sơ tín dụng thực tế',
-        'Tự tin vượt qua kỳ phỏng vấn tuyển dụng ngân hàng',
-        'Xây dựng thương hiệu cá nhân uy tín của chuyên viên ngân hàng'
-      ],
-      chapters: [
-        {
-          id: `mod-${Date.now()}-1`,
-          title: 'Học phần 1: Tổng quan Nghiệp vụ & Khung Năng lực Cốt Lõi',
-          order: 1,
-          duration: '10 giờ',
-          description: 'Nền tảng kiến thức và chân dung chuyên viên ngân hàng chuẩn mực.',
-          lessons: [
-            {
-              id: `les-${Date.now()}-1`,
-              title: 'Bài 1.1: Giới thiệu khóa học & Phương pháp học tập trên LMS',
-              duration: '20 phút',
-              type: 'video',
-              isFreePreview: true
-            },
-            {
-              id: `les-${Date.now()}-2`,
-              title: 'Bài 1.2: Thực hành xử lý tình huống thực tế cùng Chuyên gia',
-              duration: '35 phút',
-              type: 'video',
-              isFreePreview: false
-            }
-          ]
-        }
-      ]
+      guarantees: [], // only promises the institute has in writing
+      objectives: [],
+      chapters: []
     };
-
-    onAddCourse(newCourse);
-    setSelectedCourseId(newId);
-    navigate(`/catalog/courses?id=${encodeURIComponent(newId)}&subtab=info`);
-    setSaveSuccessMsg(true);
-    setTimeout(() => setSaveSuccessMsg(false), 3000);
+    openSaved(await onAddCourse(newCourse));
   }
 
-  // Handle duplicating current course
-  const handleDuplicateCourse = () => {
+  // A copy of the course as a new draft (its classes, learners and reviews stay with the original).
+  const handleDuplicateCourse = async () => {
     if (!editForm) return;
-    const dupId = `course-copy-${Date.now()}`;
+    const stamp = Date.now();
     const duplicated: Course = {
       ...JSON.parse(JSON.stringify(editForm)),
-      id: dupId,
-      slug: `${editForm.slug}-copy`,
+      id: `course-copy-${stamp}`,
+      slug: `${editForm.slug}-ban-sao-${stamp}`.slice(0, 200),
       title: `${editForm.title} (Bản sao)`,
+      status: 'draft',
+      reviews: []
     };
-    onAddCourse(duplicated);
-    setSelectedCourseId(dupId);
-    setSaveSuccessMsg(true);
-    setTimeout(() => setSaveSuccessMsg(false), 3000);
+    openSaved(await onAddCourse(duplicated));
   };
 
   // Handle deleting current course
@@ -372,7 +346,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
               <button
                 type="button"
                 onClick={() => navigate('/catalog/courses')}
-                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Danh sách</span>
@@ -387,15 +361,6 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                 <span className="hidden 2xl:inline">Xem trước</span>
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={() => navigate(`/sales/crm?action=new_campaign&courseId=${currentCourse?.id || ''}`)}
-              className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-emerald-200"
-            >
-              <Briefcase className="w-4 h-4 text-emerald-600" />
-              <span className="hidden 2xl:inline">Mở lớp tuyển sinh</span>
-            </button>
 
             <button
               type="button"
@@ -420,7 +385,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
             <button
               type="button"
               onClick={handleSaveAll}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
             >
               <Save className="w-4 h-4" />
               <span>Lưu thay đổi</span>
@@ -441,6 +406,11 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
       {/* Journey step 1: readiness, review & publish, preview, Moodle template, history */}
       {currentCourse && isBackendEnabled() && (
         <CoursePublishingPanel course={currentCourse} onChanged={() => onReload?.()} />
+      )}
+
+      {/* Journey step 2: the classes (admission campaigns) of the course */}
+      {currentCourse && isBackendEnabled() && (
+        <CourseClassesPanel course={currentCourse} courses={courses} rows={classes.rows} error={classes.error} onReload={classes.reload} />
       )}
 
       {/* 2. SUB-TABS NAVIGATION (6 DEDICATED SECTIONS) */}

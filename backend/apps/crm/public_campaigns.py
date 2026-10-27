@@ -41,7 +41,7 @@ def _card(c: Cohort, today) -> dict:
 
 
 def _listed(today):
-    return Cohort.objects.on_website(today).select_related("course").filter(course__status="published")
+    return Cohort.objects.on_website(today).select_related("course")
 
 
 class PublicCampaignListView(APIView):

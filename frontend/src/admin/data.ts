@@ -115,12 +115,14 @@ export function useCourses(enabled: boolean) {
     if (enabled) reload().catch(reportError);
   }, [enabled, reload]);
 
-  const add = async (course: Course) => {
+  const add = async (course: Course): Promise<Course | undefined> => {
     try {
       const saved = await api.post<Course>('/staff/courses/', course);
       setCourses((list) => [saved, ...list]);
+      return saved;
     } catch (err) {
       reportError(err);
+      return undefined;
     }
   };
   const update = async (course: Course) => {

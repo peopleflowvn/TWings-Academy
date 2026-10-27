@@ -193,15 +193,16 @@ class CohortQuerySet(models.QuerySet):
     def on_website(self, today=None):
         """
         Classes the public site lists under "Đang tuyển sinh" (/tuyen-sinh/<slug>), like job postings:
-        switched on, taking registrations, not past the registration deadline (nor started, without one).
-        They come off on their own when the deadline passes or the class fills / closes.
+        switched on, taking registrations, of a course on sale, not past the registration deadline (nor
+        started, without one). They come off on their own when the deadline passes, the class fills /
+        closes or the course is taken off sale.
         """
         from django.utils import timezone
 
         today = today or timezone.localdate()
         return (
             self.public()
-            .filter(is_published=True, status__in=Cohort.JOINABLE)
+            .filter(is_published=True, status__in=Cohort.JOINABLE, course__status="published")
             .exclude(slug="")
             .filter(models.Q(registration_deadline__isnull=True) | models.Q(registration_deadline__gte=today))
             .filter(
@@ -317,6 +318,8 @@ class Cohort(BaseModel):
             return "off", "Lớp doanh nghiệp: không đăng website"
         if self.status not in self.JOINABLE:
             return "off", f"Không hiện: {self.get_status_display().lower()}"
+        if self.course.status != "published":
+            return "off", f"Không hiện: khóa học {self.course.get_status_display().lower()}"
         if not self.is_published:
             return "off", "Không hiện: chưa bật Hiện trên website"
         if self.registration_deadline and self.registration_deadline < today:

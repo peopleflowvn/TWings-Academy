@@ -169,6 +169,7 @@ def overview() -> dict:
                 "course_id": c.course_id,
                 "course_title": c.course.title,
                 "course_price": c.course.price,
+                "course_status": c.course.status,
                 "name": c.name,
                 "status": c.status,
                 "status_label": c.get_status_display(),

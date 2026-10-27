@@ -246,6 +246,26 @@ class CohortSerializer(serializers.ModelSerializer):
     def validate_slug(self, value):
         return self._unique("slug", value)
 
+    def validate(self, attrs):
+        def value(field):
+            return attrs[field] if field in attrs else getattr(self.instance, field, None)
+
+        start, deadline = value("start_date"), value("registration_deadline")
+        if start and deadline and deadline > start:
+            raise serializers.ValidationError(
+                {"registration_deadline": "Hạn đăng ký phải trước hoặc đúng ngày khai giảng."}
+            )
+        course, early = value("course"), value("early_bird_price")
+        if course is not None and early is not None and course.price and early >= course.price:
+            raise serializers.ValidationError(
+                {
+                    "early_bird_price": f"Giá ưu đãi phải thấp hơn học phí khóa ({course.price:,}đ).".replace(
+                        ",", "."
+                    )
+                }
+            )
+        return attrs
+
 
 class CouponSerializer(serializers.ModelSerializer):
     class Meta:

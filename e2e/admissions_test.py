@@ -175,6 +175,30 @@ def class_quota_and_new_class(page: Page):
 
 
 @step
+def classes_on_the_course_page(page: Page):
+    # The catalogue says what each course recruits for; a course's page lists and opens its classes.
+    page.goto(f"{BASE}/app/catalog/courses")
+    card = page.locator("button:has(h3:has-text('E2E RM Doanh nghiệp'))")
+    card.wait_for(timeout=20000)
+    assert card.locator("text=lớp đang tuyển").count() == 1, "recruiting classes on the course card"
+    card.click()
+    panel = page.locator("section:has-text('Lớp tuyển sinh')")
+    panel.locator("article[data-course-class='CAMP-E2E']").wait_for(timeout=20000)
+    panel.locator("button:has-text('Mở lớp mới')").click()
+    form = page.locator("div.fixed:has(h3:has-text('Mở lớp mới'))")
+    form.wait_for(timeout=20000)
+    form.locator("label:has-text('Tên lớp') input").fill("E2E RM K10")
+    form.locator("label:has-text('Hạn đăng ký') input").fill("2099-12-31")
+    form.locator("label:has-text('Ngày khai giảng') input").fill("2099-12-01")
+    form.locator("button:has-text('Lưu')").click()
+    page.wait_for_selector("text=Hạn đăng ký phải trước hoặc đúng ngày khai giảng", timeout=20000)
+    form.locator("label:has-text('Hạn đăng ký') input").fill("2099-11-20")
+    form.locator("button:has-text('Lưu')").click()
+    page.wait_for_selector("h3:has-text('Mở lớp mới')", state="detached", timeout=20000)
+    panel.locator("article:has-text('E2E RM K10')").wait_for(timeout=20000)
+
+
+@step
 def class_on_the_website_like_a_job_posting(page: Page):
     # Recruiting classes are listed on the course catalogue (/tuyen-sinh shows it too).
     page.goto(f"{BASE}/tuyen-sinh")

@@ -125,7 +125,7 @@ export const CoursePublishingPanel: React.FC<{ course: Course; onChanged: () => 
           {canPublish && status === 'published' && (
             <button type="button" disabled={!!busy} className={`${btn} border border-red-200 text-red-600 hover:bg-red-50`}
               onClick={() => {
-                if (window.confirm('Ngừng bán khóa này? Trang khóa học bị gỡ khỏi website; học viên đã ghi danh không bị ảnh hưởng.'))
+                if (window.confirm('Ngừng bán khóa này? Trang khóa học và các lớp đang tuyển của khóa bị gỡ khỏi website; học viên đã ghi danh không bị ảnh hưởng.'))
                   run('unpublish', () => flow('unpublish'), 'Đã ngừng bán.');
               }}>
               <XCircle className="w-3.5 h-3.5" /> Ngừng bán

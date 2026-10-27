@@ -14,12 +14,16 @@ import { rank } from '../../lib/search';
 import { RosterModal } from './JourneyPages';
 import { GradebookModal } from './LearningPages';
 import { ImageUploadField } from '../../components/cms/ImageUploadField';
+import { Course } from '../../types';
+import { navigate } from '../router';
 
 export interface IntakeRow {
   id: string;
   courseId: string;
   courseTitle: string;
   coursePrice: number;
+  /** draft | review | published | archived: a class takes registrations only while its course is on sale. */
+  courseStatus: string;
   name: string;
   status: string;
   statusLabel: string;
@@ -251,31 +255,39 @@ export const SessionsEditor: React.FC<{ intake: SessionTarget; onClose: () => vo
 
 export type Draft = Partial<IntakeRow> & { id?: string; courseId: string };
 
-const IntakeEditor: React.FC<{
+/** A new class of this course, with the usual defaults. */
+export const newClass = (courseId: string): Draft => ({ courseId, status: 'upcoming', capacity: 25, autoRolloverWaitlist: true, showQuota: true });
+
+type CourseOption = Pick<Course, 'id' | 'title'> & Partial<Pick<Course, 'slug' | 'status' | 'price'>>;
+const COURSE_STATE: Record<string, string> = { draft: 'chưa mở bán', review: 'chờ duyệt', archived: 'ngừng bán' };
+
+export const IntakeEditor: React.FC<{
   draft: Draft;
-  courses: { id: string; title: string }[];
+  courses: CourseOption[];
   intakes: IntakeRow[];
   /** Training staff edit everything; admissions staff only the recruiting part. */
   canTraining: boolean;
   onClose: () => void;
   onSaved: () => void;
 }> = ({ draft: initial, courses: allCourses, intakes, canTraining, onClose, onSaved }) => {
-  // A new intake is opened for a course that is not archived (drafts labelled); an existing one keeps its course.
-  const [statusById, setStatusById] = useState<Record<string, string>>({});
-  useEffect(() => {
-    api
-      .get<{ results: { id: string; status: string }[] }>('/staff/courses/?pageSize=200')
-      .then((res) => setStatusById(Object.fromEntries(res.results.map((c) => [c.id, c.status]))))
-      .catch(() => setStatusById({}));
-  }, []);
-  const courses = allCourses
-    .filter((c) => c.id === initial.courseId || statusById[c.id] !== 'archived')
-    .map((c) => ({ ...c, title: statusById[c.id] && statusById[c.id] !== 'published' && statusById[c.id] !== 'archived' ? `${c.title} (chưa mở bán)` : c.title }));
+  // A new class is opened for a course that is not archived (others labelled); an existing one keeps its course.
+  const courses = allCourses.filter((c) => c.id === initial.courseId || c.status !== 'archived');
   const [d, setD] = useState<Draft>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const siblings = intakes.filter((i) => i.courseId === d.courseId && i.id !== d.id);
+  const course = allCourses.find((c) => c.id === d.courseId);
+  const coursePrice = course?.price ?? intakes.find((i) => i.courseId === d.courseId)?.coursePrice ?? 0;
   const save = async () => {
+    // Checked by the server too; said here before the round trip.
+    if (canTraining && d.startDate && d.registrationDeadline && d.registrationDeadline > d.startDate) {
+      setError('Hạn đăng ký phải trước hoặc đúng ngày khai giảng.');
+      return;
+    }
+    if (canTraining && d.earlyBirdPrice != null && coursePrice && d.earlyBirdPrice >= coursePrice) {
+      setError(`Giá ưu đãi phải thấp hơn học phí khóa (${formatVND(coursePrice)}).`);
+      return;
+    }
     setBusy(true);
     setError('');
     const admissions = {
@@ -330,8 +342,14 @@ const IntakeEditor: React.FC<{
         <fieldset disabled={!canTraining} className="grid grid-cols-1 sm:grid-cols-2 gap-3 disabled:opacity-60">
           <label className="sm:col-span-2">Khóa học
             <select className={input} value={d.courseId} disabled={!!d.id} onChange={(e) => setD({ ...d, courseId: e.target.value })}>
-              {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              {courses.map((c) => <option key={c.id} value={c.id}>{c.title}{c.status && COURSE_STATE[c.status] ? ` (${COURSE_STATE[c.status]})` : ''}</option>)}
             </select>
+            <span className="block mt-1 font-normal text-slate-500">
+              Học phí lấy từ khóa: <strong>{formatVND(coursePrice)}</strong>
+              {course?.status && course.status !== 'published' && (
+                <span className="text-amber-700"> · Khóa {COURSE_STATE[course.status]}: lớp chỉ nhận đăng ký và lên website khi khóa được duyệt & mở bán.</span>
+              )}
+            </span>
           </label>
           <label>Tên lớp *<input className={input} value={d.name || ''} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="VD: Khóa 12 – Hà Nội" /></label>
           <label>Trạng thái
@@ -344,7 +362,7 @@ const IntakeEditor: React.FC<{
           <label>Sĩ số tối đa (chỉ tiêu tuyển sinh)<input type="number" min={1} className={input} value={d.capacity ?? 25} onChange={(e) => setD({ ...d, capacity: Number(e.target.value) })} /></label>
           <label>Địa điểm<input className={input} value={d.location || ''} onChange={(e) => setD({ ...d, location: e.target.value })} /></label>
           <label>Giá ưu đãi đăng ký sớm (VND)
-            <input type="number" min={0} className={input} value={d.earlyBirdPrice ?? ''} placeholder={`Giá khóa: ${formatVND(courses.find((c) => c.id === d.courseId) ? (intakes.find((i) => i.courseId === d.courseId)?.coursePrice ?? 0) : 0)}`}
+            <input type="number" min={0} className={input} value={d.earlyBirdPrice ?? ''} placeholder={`Thấp hơn ${formatVND(coursePrice)}`}
               onChange={(e) => setD({ ...d, earlyBirdPrice: e.target.value === '' ? null : Number(e.target.value) })} />
           </label>
           <label>Hạn ưu đãi<input type="date" className={input} value={d.earlyBirdDeadline || ''} onChange={(e) => setD({ ...d, earlyBirdDeadline: e.target.value })} /></label>
@@ -448,6 +466,14 @@ function hintsOf(r: IntakeRow): Hint[] {
   const out: Hint[] = [];
   const recruiting = JOINABLE.includes(r.status);
   const start = daysTo(r.startDate);
+  const offSale = r.courseStatus !== 'published';
+  if (recruiting && offSale) {
+    out.push({
+      tone: 'red',
+      text: r.courseStatus === 'archived' ? 'Khóa đã ngừng bán: lớp không nhận đăng ký' : 'Khóa chưa mở bán: lớp chưa nhận đăng ký',
+      why: 'Duyệt & mở bán khóa học ở Danh mục khóa học (mở từ tên khóa)'
+    });
+  }
   if (recruiting) {
     const d = r.daysToDeadline;
     if (start !== null && start < 0) out.push({ tone: 'red', text: `Đã khai giảng ${-start} ngày, vẫn đang tuyển`, why: 'Chuyển lớp sang "Đang học" hoặc dời ngày khai giảng' });
@@ -455,8 +481,9 @@ function hintsOf(r: IntakeRow): Hint[] {
     if (d !== null && d >= 0 && d <= 3 && r.seatsLeft > 0) out.push({ tone: 'red', text: `Hạn ĐK ${inDays(d)}, còn ${r.seatsLeft} chỗ`, why: 'Gọi lại lead đang tư vấn, nhắc người giữ chỗ thanh toán' });
     if (!r.funnel.leads) out.push({ tone: 'amber', text: 'Chưa có lead nào' });
     if (!r.code) out.push({ tone: 'amber', text: 'Chưa có mã tuyển sinh', why: 'Đặt mã để lead từ link UTM / form đăng ký tự vào lớp' });
-    if (r.isPublished && r.websiteState !== 'live') out.push({ tone: 'amber', text: 'Bật đăng web nhưng không hiện', why: r.websiteLabel });
-    else if (!r.isPublished && (d === null || d >= 0)) out.push({ tone: 'slate', text: 'Chưa đăng trên website' });
+    // Off sale, the course is why the class is not on the website (said above).
+    if (!offSale && r.isPublished && r.websiteState !== 'live') out.push({ tone: 'amber', text: 'Bật đăng web nhưng không hiện', why: r.websiteLabel });
+    else if (!offSale && !r.isPublished && (d === null || d >= 0)) out.push({ tone: 'slate', text: 'Chưa đăng trên website' });
     if (!r.registrationDeadline) out.push({ tone: 'slate', text: 'Chưa đặt hạn đăng ký' });
     if (r.capacity && r.seatsLeft > 0 && (r.fillRate || 0) >= 80) out.push({ tone: 'green', text: `Sắp đủ sĩ số: còn ${r.seatsLeft} chỗ` });
   }
@@ -559,7 +586,7 @@ const HintList: React.FC<{ hints: Hint[]; max?: number }> = ({ hints, max = 3 })
 
 export const ClassesView: React.FC<{
   rows: IntakeRow[];
-  courses: { id: string; title: string; slug?: string }[];
+  courses: CourseOption[];
   onReload: () => void;
   onOpenPipeline: (scope: string) => void;
   /** Open the editor of this class, or a new class for this course ("new" + course id). */
@@ -568,12 +595,21 @@ export const ClassesView: React.FC<{
 }> = ({ rows, courses, onReload, onOpenPipeline, editing, onEdit }) => {
   const canTraining = useStaffCan('courses.edit_info');
   const canAdmissions = useStaffCan('crm.assign_pic');
+  const canCourses = useStaffCan('courses.view');
   const [scheduling, setScheduling] = useState<IntakeRow | null>(null);
   const [roster, setRoster] = useState<string | null>(null);
   const [gradebook, setGradebook] = useState<string | null>(null);
   const [menu, setMenu] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const [course, setCourse] = useState('');
+  // ?course=<id>: the classes of one course (link from its page in the catalogue).
+  const [course, setCourse] = useState(() => new URLSearchParams(window.location.search).get('course') || '');
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if ((params.get('course') || '') === course) return;
+    if (course) params.set('course', course);
+    else params.delete('course');
+    window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
+  }, [course]);
   const [sort, setSort] = useState<Sort>('smart');
   const [layout, setLayout] = useState<Layout>(initialLayout);
   const [copied, setCopied] = useState('');
@@ -653,6 +689,17 @@ export const ClassesView: React.FC<{
     </div>
   );
 
+  /** The course of a class: opens its page in the catalogue (content, price, publishing). */
+  const courseLink = (r: IntakeRow) =>
+    canCourses ? (
+      <button type="button" onClick={() => navigate(`/catalog/courses?id=${encodeURIComponent(r.courseId)}&subtab=info`)} title="Mở trang khóa học (nội dung, học phí, mở bán)"
+        className="block max-w-full text-left text-[11px] text-slate-500 hover:text-[#0073C1] hover:underline truncate cursor-pointer">
+        {r.courseTitle}
+      </button>
+    ) : (
+      <div className="text-[11px] text-slate-500 truncate">{r.courseTitle}</div>
+    );
+
   const copyButton = (r: IntakeRow) => (
     <button type="button" onClick={() => copy(r)} title="Chép link có mã UTM của lớp"
       className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer inline-flex items-center gap-1 text-[#0073C1] font-bold whitespace-nowrap">
@@ -668,7 +715,7 @@ export const ClassesView: React.FC<{
       <article key={r.id} data-class={r.code || r.id} className={`bg-white rounded-2xl border p-4 flex flex-col gap-3 ${needsAttention(hints) ? 'border-amber-200' : 'border-slate-200'}`}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="text-[11px] text-slate-500 truncate">{r.courseTitle}</div>
+            {courseLink(r)}
             <div className="font-black text-slate-900 leading-snug">{r.name}</div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
               <StatusBadge r={r} />
@@ -738,7 +785,7 @@ export const ClassesView: React.FC<{
           <button type="button" onClick={() => onOpenPipeline('none')} className="px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold cursor-pointer">Lead chưa gắn lớp</button>
           <button type="button" onClick={onReload} className="p-2 rounded-xl border border-slate-200 bg-white cursor-pointer" title="Làm mới" aria-label="Làm mới"><RefreshCw className="w-4 h-4" /></button>
           {canTraining && courses.length > 0 && (
-            <button type="button" onClick={() => onEdit({ courseId: course || courses[0].id, status: 'upcoming', capacity: 25, autoRolloverWaitlist: true, showQuota: true })}
+            <button type="button" onClick={() => onEdit(newClass(course || courses[0].id))}
               className="px-4 py-2 rounded-xl bg-[#0073C1] text-white font-bold flex items-center gap-1.5 cursor-pointer">
               <Plus className="w-4 h-4" /> Mở lớp mới
             </button>
@@ -840,7 +887,7 @@ export const ClassesView: React.FC<{
                 return (
                   <tr key={r.id} className="border-t border-slate-100 align-top hover:bg-slate-50/60">
                     <td className="p-3 max-w-[210px]">
-                      <div className="text-[11px] text-slate-500 truncate">{r.courseTitle}</div>
+                      {courseLink(r)}
                       <div className="font-bold text-slate-900">{r.name}</div>
                       {r.code && <div className="font-mono text-[11px] text-indigo-700">{r.code}</div>}
                       <div className="text-slate-500">{[r.location, r.leadInstructor && `GV: ${r.leadInstructor}`].filter(Boolean).join(' · ')}</div>
@@ -895,5 +942,130 @@ export const ClassesView: React.FC<{
       {roster && <RosterModal cohortId={roster} onClose={() => setRoster(null)} />}
       {gradebook && <GradebookModal cohortId={gradebook} onClose={() => setGradebook(null)} />}
     </div>
+  );
+};
+
+// ---------------------------------------------------------------- the classes of one course
+
+const byStart = (a: IntakeRow, b: IntakeRow) => (a.startDate || '9999').localeCompare(b.startDate || '9999');
+
+/**
+ * On a course's page (/app/catalog/courses): its classes, opened and edited with the same form as the
+ * admissions screen, so the training staff open classes where they write the course.
+ */
+export const CourseClassesPanel: React.FC<{
+  course: Course;
+  courses: CourseOption[];
+  rows: IntakeRow[] | null;
+  error?: string;
+  onReload: () => void;
+}> = ({ course, courses, rows, error, onReload }) => {
+  const canTraining = useStaffCan('courses.edit_info');
+  const canAdmissions = useStaffCan('crm.assign_pic');
+  const canLeads = useStaffCan('crm.view_leads');
+  const [editing, setEditing] = useState<Draft | null>(null);
+  const [scheduling, setScheduling] = useState<IntakeRow | null>(null);
+  const mine = useMemo(() => (rows || []).filter((r) => r.courseId === course.id).sort(byStart), [rows, course.id]);
+  const recruiting = mine.filter((r) => JOINABLE.includes(r.status));
+  const byClass = course.deliveryFormat === 'offline' || course.deliveryFormat === 'hybrid';
+  const offSale = course.status !== 'published';
+
+  return (
+    <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3 text-xs">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <CalendarDays className="w-5 h-5 text-[#0073C1] shrink-0" />
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-slate-900">
+              Lớp tuyển sinh {mine.length > 0 && <span className="font-normal text-slate-500">· {recruiting.length} đang tuyển / {mine.length} lớp</span>}
+            </div>
+            <div className="text-[11px] text-slate-500">
+              Mỗi lớp là một đợt tuyển sinh: khai giảng, hạn đăng ký, chỉ tiêu, giá ưu đãi sớm, trang tuyển sinh. Học phí lấy từ khóa học.
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {canLeads && mine.length > 0 && (
+            <button type="button" onClick={() => navigate(`/sales/crm?view=campaigns&course=${encodeURIComponent(course.id)}`)}
+              className="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700 cursor-pointer">
+              Xem ở Tuyển sinh
+            </button>
+          )}
+          {canTraining && rows && (
+            <button type="button" onClick={() => setEditing(newClass(course.id))}
+              className="px-3 py-2 rounded-xl bg-[#0073C1] hover:bg-[#005fa3] text-white font-bold flex items-center gap-1.5 cursor-pointer">
+              <Plus className="w-4 h-4" /> Mở lớp mới
+            </button>
+          )}
+        </div>
+      </div>
+
+      {offSale && recruiting.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3">
+          Khóa {COURSE_STATE[course.status || 'draft']}: {recruiting.length} lớp đang tuyển chưa nhận đăng ký và chưa lên website. Duyệt & mở bán ở mục trên.
+        </div>
+      )}
+
+      {error && <p className="text-red-600">Không tải được danh sách lớp: {error}</p>}
+      {!rows && !error && <p className="text-slate-500">Đang tải…</p>}
+      {rows && mine.length === 0 && (
+        <div className={`border border-dashed rounded-xl p-4 ${byClass ? 'border-amber-300 bg-amber-50/50 text-amber-900' : 'border-slate-300 text-slate-500'}`}>
+          Chưa có lớp nào đang mở.{' '}
+          {byClass ? 'Khóa học trực tiếp / kết hợp cần ít nhất 1 lớp sắp mở để bán.' : 'Khóa online không bắt buộc có lớp; mở lớp nếu học theo đợt.'}
+        </div>
+      )}
+
+      {mine.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
+          {mine.map((r) => {
+            const hints = hintsOf(r);
+            return (
+              <article key={r.id} data-course-class={r.code || r.id} className={`border rounded-xl p-3 flex flex-col gap-2 ${needsAttention(hints) ? 'border-amber-200' : 'border-slate-200'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-slate-900 leading-snug">{r.name}</div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                      <StatusBadge r={r} />
+                      {r.code && <span className="font-mono text-[11px] text-indigo-700 bg-indigo-50 rounded px-1.5 py-0.5">{r.code}</span>}
+                    </div>
+                  </div>
+                  <WebBadge r={r} />
+                </div>
+                <div className="text-slate-600">
+                  KG {r.startDate ? formatDate(r.startDate) : '–'} · Hạn ĐK {r.registrationDeadline ? formatDate(r.registrationDeadline) : 'chưa đặt'}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">Đã đóng phí / chỉ tiêu</span>
+                    <span><strong>{r.paid}/{r.capacity}</strong> · {r.funnel.leads} lead</span>
+                  </div>
+                  <SeatsBar r={r} />
+                </div>
+                <HintList hints={hints} max={2} />
+                <div className="flex flex-wrap gap-1.5 mt-auto pt-1">
+                  {(canTraining || canAdmissions) && (
+                    <button type="button" onClick={() => setEditing({ ...r })} className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-bold text-[#0073C1] cursor-pointer">Sửa</button>
+                  )}
+                  {canTraining && (
+                    <button type="button" onClick={() => setScheduling(r)} className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 cursor-pointer">
+                      Lịch học{r.sessions ? ` (${r.sessions} buổi)` : ''}
+                    </button>
+                  )}
+                  {canLeads && (
+                    <button type="button" onClick={() => navigate(`/sales/crm?view=kanban&campaignId=${encodeURIComponent(r.id)}`)}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 cursor-pointer">
+                      Pipeline
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      {editing && <IntakeEditor draft={editing} courses={courses} intakes={rows || []} canTraining={canTraining} onClose={() => setEditing(null)} onSaved={onReload} />}
+      {scheduling && <SessionsEditor intake={scheduling} onClose={() => setScheduling(null)} onSaved={onReload} />}
+    </section>
   );
 };

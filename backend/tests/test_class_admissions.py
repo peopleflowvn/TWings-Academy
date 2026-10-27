@@ -89,6 +89,39 @@ def test_admissions_staff_edit_the_recruiting_part_only(staff_client, course):
     assert dup.status_code == 400 and "code" in dup.json()
 
 
+def test_a_class_of_a_course_off_sale_is_not_on_the_website(api, staff_client, course):
+    k10 = _class(course)
+    course.status = "draft"
+    course.save()
+    k10.refresh_from_db()
+    state, label = k10.website_state()
+    assert state == "off" and "khóa học" in label  # staff see why, not "Đang hiện trên website"
+    assert api.get("/api/v1/public/campaigns/").json() == []
+    assert f"/tuyen-sinh/{k10.slug}" not in api.get("/sitemap.xml").content.decode()
+    row = staff_client(Role.SUPER_ADMIN).get("/api/v1/staff/intakes/").json()["intakes"][0]
+    assert row["courseStatus"] == "draft" and row["websiteState"] == "off"
+
+
+def test_class_dates_and_early_bird_price_are_checked(staff_client, course):
+    admin = staff_client(Role.SUPER_ADMIN)
+    today = timezone.localdate()
+    base = {"course": course.pk, "name": "K12", "startDate": str(today + timedelta(days=10))}
+    late = admin.post(
+        "/api/v1/staff/cohorts/",
+        {**base, "registrationDeadline": str(today + timedelta(days=11))},
+        format="json",
+    )
+    assert late.status_code == 400 and "registrationDeadline" in late.json()
+    dear = admin.post("/api/v1/staff/cohorts/", {**base, "earlyBirdPrice": course.price}, format="json")
+    assert dear.status_code == 400 and "earlyBirdPrice" in dear.json()
+    ok = admin.post(
+        "/api/v1/staff/cohorts/",
+        {**base, "registrationDeadline": str(today + timedelta(days=10)), "earlyBirdPrice": course.price - 1},
+        format="json",
+    )
+    assert ok.status_code == 201, ok.content
+
+
 @pytest.mark.django_db(transaction=True)
 def test_campaigns_move_into_their_classes():
     """crm 0017 on data as it was: each course of a campaign becomes (or joins) a class."""

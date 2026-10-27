@@ -88,10 +88,10 @@ def readiness(course, *, moodle_template: bool | None = None) -> list[dict]:
         ),
         (
             "intake",
-            "Có đợt khai giảng đang tuyển" if needs_intake else "Đợt khai giảng (nếu học theo lớp)",
+            "Có lớp đang tuyển sinh" if needs_intake else "Lớp khai giảng (nếu học theo lớp)",
             needs_intake,
             upcoming.exists(),
-            "Khóa học trực tiếp / kết hợp cần ít nhất 1 đợt sắp mở",
+            "Học trực tiếp / kết hợp cần ít nhất 1 lớp sắp mở: mở ở mục Lớp tuyển sinh bên dưới",
         ),
         ("objectives", "≥ 3 mục tiêu đầu ra", False, len(course.learning_objectives or []) >= 3, ""),
         (

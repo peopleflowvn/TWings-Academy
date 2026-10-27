@@ -305,10 +305,7 @@ def _campaigns():
     from apps.catalog.models import Cohort
 
     return (
-        Cohort.objects.on_website()
-        .filter(course__status="published")
-        .select_related("course")
-        .order_by("-is_featured", "registration_deadline")
+        Cohort.objects.on_website().select_related("course").order_by("-is_featured", "registration_deadline")
     )
 
 
