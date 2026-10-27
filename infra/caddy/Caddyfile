@@ -45,6 +45,16 @@ Disallow: /
 		@oldAccount path /tai-khoan /tai-khoan/* /learn/tai-khoan /learn/tai-khoan/*
 		redir @oldAccount /learn/user/profile.php 301
 
+		# Clean URL for learner login: no .php in path (/learn/login instead of /learn/login/index.php)
+		@learnLoginPhp {
+			path /learn/login/index.php
+			method GET
+		}
+		redir @learnLoginPhp /learn/login{?query} 301
+
+		@learnLogin path /learn/login /learn/login/
+		rewrite @learnLogin /learn/login/index.php
+
 		# The SPA calls the API on its own origin (VITE_API_BASE_URL=same-origin): no CORS, and the
 		# session cookie stays first-party on every domain the site is served from.
 		handle /api/* {

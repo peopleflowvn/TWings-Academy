@@ -12,7 +12,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'theme_twings';
-$plugin->version   = 2026102701;  // YYYYMMDDXX.
+$plugin->version   = 2026102702;  // YYYYMMDDXX.
 $plugin->requires  = 2026042000;  // Moodle 5.2.
 $plugin->maturity  = MATURITY_STABLE;
 $plugin->release   = '2.1';

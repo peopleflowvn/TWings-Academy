@@ -71,9 +71,13 @@ if (!in_array('webservice', $auths, true)) {
 // ---------------------------------------------------------------- look: theme_twings
 // The TWings theme (lms/public/theme/twings: Boost + the website's palette, font and cards). The styles
 // that used to be injected here (additionalhtmlhead, theme_boost scss) are cleared: one source of CSS.
-if (file_exists($CFG->dirroot . '/theme/twings/config.php') && get_config('core', 'theme') !== 'twings') {
-    set_config('theme', 'twings');
+if (file_exists($CFG->dirroot . '/theme/twings/config.php')) {
+    if (get_config('core', 'theme') !== 'twings') {
+        set_config('theme', 'twings');
+    }
+    // Always invalidate compiled SCSS and template caches on every deploy so updates reflect immediately.
     theme_reset_all_caches();
+    purge_all_caches();
 }
 $out('theme: ' . get_config('core', 'theme'));
 set_config('additionalhtmlhead', '');
