@@ -1,68 +1,201 @@
 {{!
     This file is part of TWings Academy Moodle theme.
     @template core/login_panel
-    Custom split-screen branding panel for TWings Academy LMS.
+    Modern split-screen branding panel for TWings Academy LMS (EdTech, non-aviation).
 }}
-<div class="login-layout-left-content twings-login-hero">
+<div class="login-layout-left-content twings-login-hero d-flex flex-column justify-content-between h-100 position-relative">
+    <!-- Interactive Background Particle Canvas -->
+    <canvas id="twings-login-canvas" class="twings-canvas-bg" aria-hidden="true"></canvas>
+
+    <!-- Ambient glow orbs in left panel -->
+    <div class="twings-panel-glow glow-1" aria-hidden="true"></div>
+    <div class="twings-panel-glow glow-2" aria-hidden="true"></div>
+    <div class="twings-panel-glow glow-3" aria-hidden="true"></div>
+
     {{^leftinstructions}}
-        <div class="twings-login-brand mb-4">
-            <div class="twings-brand-badge">
-                <span class="brand-monogram">TW</span>
-                <span class="brand-text">TWINGS ACADEMY</span>
-            </div>
-            <span class="badge-tag">AVIATION TRAINING LMS</span>
+        <!-- Top Brand Header -->
+        <div class="twings-hero-top position-relative z-index-2 d-flex align-items-center justify-content-between">
+            <a href="/" class="twings-brand-link" title="Về trang chủ TWings Academy">
+                <div class="twings-brand-lockup">
+                    <div class="twings-brand-icon">
+                        <span class="twings-brand-tw">TW</span>
+                        <span class="twings-brand-dot"></span>
+                    </div>
+                    <div class="twings-brand-text">
+                        <div class="twings-wordmark">
+                            <span class="twings-wm-white">TW</span>
+                            <span class="twings-wm-i">
+                                <span class="twings-i-dot"></span>
+                                <span class="twings-i-body"></span>
+                            </span>
+                            <span class="twings-wm-white">NGS</span>
+                        </div>
+                        <div class="twings-academy-tag">ACADEMY</div>
+                    </div>
+                </div>
+            </a>
+
+            <a href="/" class="twings-back-btn" title="Quay về trang chủ">
+                <i class="fa fa-arrow-left"></i>
+                <span>Về trang chủ</span>
+            </a>
         </div>
 
-        <h1 class="twings-login-title">
-            Nền Tảng Đào Tạo & Huấn Luyện Hàng Không Số
-        </h1>
+        <!-- Center Showcase Content -->
+        <div class="twings-hero-center position-relative z-index-2 my-auto py-4">
+            <!-- Status Badge Pill -->
+            <div class="twings-status-pill mb-3">
+                <span class="status-pulse-dot"></span>
+                <span class="status-text">Cổng Học Tập Số TWings</span>
+                <span class="status-badge">LMS 2.0</span>
+            </div>
 
-        <p class="twings-login-subtitle">
-            Học viện Đào tạo Hàng không Quốc tế TWings cung cấp hệ thống giáo trình chuẩn ICAO & CAAV với trải nghiệm học tập số thông minh, trực quan và hiện đại.
-        </p>
+            <!-- Main Punchy Title -->
+            <h1 class="twings-login-title">
+                Không gian học tập số & Đào tạo thực chiến cho
+                <span class="twings-title-gradient">Học Viên & Chuyên Gia</span>
+            </h1>
 
-        <div class="twings-login-features my-4">
-            <div class="feature-item">
-                <div class="feature-icon">✈️</div>
-                <div class="feature-text">
-                    <strong>Giáo trình chuẩn Quốc tế</strong>
-                    <span>Cập nhật liên tục theo tiêu chuẩn Hàng không Dân dụng</span>
+            <!-- Subtitle -->
+            <p class="twings-login-subtitle">
+                Nền tảng đào tạo LMS Moodle thế hệ mới của TWings Academy — bài giảng tương tác đa phương tiện, đồ án thực tế doanh nghiệp, đánh giá năng lực liên tục và cấp chứng chỉ số bảo mật.
+            </p>
+
+            <!-- 3 Modern Frosted Feature Cards -->
+            <div class="twings-feature-cards my-4">
+                <div class="twings-card-item">
+                    <div class="card-icon-wrap icon-blue">
+                        <i class="fa fa-play-circle"></i>
+                    </div>
+                    <div class="card-content">
+                        <strong class="card-title">Lộ trình Đào tạo Chuyên sâu & Cá nhân hóa</strong>
+                        <span class="card-desc">Video bài giảng chất lượng cao, bài kiểm tra tương tác và tài liệu cập nhật liên tục.</span>
+                    </div>
+                </div>
+
+                <div class="twings-card-item">
+                    <div class="card-icon-wrap icon-purple">
+                        <i class="fa fa-laptop"></i>
+                    </div>
+                    <div class="card-content">
+                        <strong class="card-title">Đồ án Thực chiến & Giảng viên Doanh nghiệp</strong>
+                        <span class="card-desc">Thực hành trên case study thực tế, nộp đồ án và nhận phản hồi chi tiết từ chuyên gia.</span>
+                    </div>
+                </div>
+
+                <div class="twings-card-item">
+                    <div class="card-icon-wrap icon-emerald">
+                        <i class="fa fa-certificate"></i>
+                    </div>
+                    <div class="card-content">
+                        <strong class="card-title">Chứng chỉ Số Xác thực & Kết nối Tuyển dụng</strong>
+                        <span class="card-desc">Cấp chứng nhận số bảo mật có mã định danh QR, kết nối việc làm với các tập đoàn đối tác.</span>
+                    </div>
                 </div>
             </div>
-            <div class="feature-item">
-                <div class="feature-icon">🎓</div>
-                <div class="feature-text">
-                    <strong>Lộ trình học tập cá nhân hóa</strong>
-                    <span>Theo dõi tiến độ, thi đánh giá và cấp chứng chỉ số</span>
+
+            <!-- Modern Stats Strip -->
+            <div class="twings-login-stats">
+                <div class="stat-box">
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">Thực chiến & Case Study</div>
                 </div>
-            </div>
-            <div class="feature-item">
-                <div class="feature-icon">🌐</div>
-                <div class="feature-text">
-                    <strong>Học tập mọi lúc, mọi nơi</strong>
-                    <span>Tương thích đa thiết bị với thư viện tài liệu phong phú</span>
+                <div class="stat-box">
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">Học tập đa nền tảng</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">ISO</div>
+                    <div class="stat-label">Chuẩn hóa chất lượng</div>
                 </div>
             </div>
         </div>
 
-        <div class="login-layout-stats twings-login-stats mt-4">
-            <div class="login-layout-stat">
-                <strong class="login-layout-stat-value">100%</strong>
-                <span>Chuẩn CAAV / ICAO</span>
+        <!-- Bottom Security & Trust Badge -->
+        <div class="twings-hero-bottom position-relative z-index-2 pt-3 border-top-dark d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2 security-info">
+                <i class="fa fa-shield text-emerald"></i>
+                <span>Bảo mật dữ liệu học viên & Hệ thống đám mây</span>
             </div>
-            <div class="login-layout-stat">
-                <strong class="login-layout-stat-value">24/7</strong>
-                <span>Học tập trực tuyến</span>
-            </div>
-            <div class="login-layout-stat">
-                <strong class="login-layout-stat-value">ISO</strong>
-                <span>Chất lượng đào tạo</span>
-            </div>
+            <span class="security-tag">TLS 1.3 / LMS Core</span>
         </div>
     {{/leftinstructions}}
+
     {{#leftinstructions}}
-        <div class="mx-auto text-start">
+        <div class="position-relative z-index-2 text-start p-4">
             {{{leftinstructions}}}
         </div>
     {{/leftinstructions}}
 </div>
+
+<script>
+// Lightweight smooth constellation particle canvas animation matching /app/login atmosphere
+(function() {
+    var canvas = document.getElementById('twings-login-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    var width = 0, height = 0, particles = [];
+    var PARTICLE_COUNT = 32;
+
+    function resize() {
+        if (!canvas.parentElement) return;
+        width = canvas.width = canvas.parentElement.clientWidth;
+        height = canvas.height = canvas.parentElement.clientHeight;
+    }
+
+    function init() {
+        resize();
+        particles = [];
+        for (var i = 0; i < PARTICLE_COUNT; i++) {
+            particles.push({
+                x: Math.random() * (width || 500),
+                y: Math.random() * (height || 800),
+                vx: (Math.random() - 0.5) * 0.45,
+                vy: (Math.random() - 0.5) * 0.45,
+                radius: Math.random() * 2 + 1,
+                alpha: Math.random() * 0.5 + 0.2
+            });
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+        for (var i = 0; i < particles.length; i++) {
+            var p1 = particles[i];
+            p1.x += p1.vx;
+            p1.y += p1.vy;
+            if (p1.x < 0) p1.x = width;
+            if (p1.x > width) p1.x = 0;
+            if (p1.y < 0) p1.y = height;
+            if (p1.y > height) p1.y = 0;
+
+            for (var j = i + 1; j < particles.length; j++) {
+                var p2 = particles[j];
+                var dx = p1.x - p2.x;
+                var dy = p1.y - p2.y;
+                var dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 110) {
+                    ctx.strokeStyle = 'rgba(56, 189, 248, ' + (0.18 * (1 - dist / 110)) + ')';
+                    ctx.lineWidth = 0.8;
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            }
+
+            ctx.fillStyle = 'rgba(95, 190, 255, ' + p1.alpha + ')';
+            ctx.beginPath();
+            ctx.arc(p1.x, p1.y, p1.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('resize', resize);
+    init();
+    draw();
+})();
+</script>

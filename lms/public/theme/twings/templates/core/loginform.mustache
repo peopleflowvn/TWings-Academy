@@ -1,0 +1,287 @@
+{{!
+    This file is part of TWings Academy Moodle theme.
+    @template core/loginform
+    Modern glassmorphic login card matching /app/login design and UX.
+}}
+<div class="twings-login-card">
+    <!-- Card Top Glow Ray -->
+    <div class="card-top-ray" aria-hidden="true"></div>
+
+    <!-- Card Brand & Badge Header -->
+    <div class="card-brand-header d-flex align-items-center justify-content-between mb-4">
+        <div class="twings-brand-lockup">
+            <div class="twings-brand-icon">
+                <span class="twings-brand-tw">TW</span>
+                <span class="twings-brand-dot"></span>
+            </div>
+            <div class="twings-brand-text">
+                <div class="twings-wordmark">
+                    <span class="twings-wm-white">TW</span>
+                    <span class="twings-wm-i">
+                        <span class="twings-i-dot"></span>
+                        <span class="twings-i-body"></span>
+                    </span>
+                    <span class="twings-wm-white">NGS</span>
+                </div>
+                <div class="twings-academy-tag">ACADEMY</div>
+            </div>
+        </div>
+
+        <div class="twings-role-badge">
+            <i class="fa fa-graduation-cap"></i>
+            <span>Cổng Học Viên LMS</span>
+        </div>
+    </div>
+
+    <!-- Title & Subtitle -->
+    <div class="card-title-group mb-4">
+        <h2 class="card-title">Đăng nhập tài khoản</h2>
+        <p class="card-subtitle">Nhập thông tin tài khoản học viên để truy cập không gian học tập trực tuyến.</p>
+    </div>
+
+    <!-- Maintenance Notice -->
+    {{#maintenance}}
+        <div class="alert alert-warning twings-alert mb-4" role="alert">
+            <i class="fa fa-exclamation-triangle alert-icon"></i>
+            <div>{{{maintenance}}}</div>
+        </div>
+    {{/maintenance}}
+
+    <!-- Error Alert -->
+    {{#error}}
+        <div class="alert alert-danger twings-alert mb-4" id="loginerrormessage" role="alert">
+            <i class="fa fa-exclamation-circle alert-icon"></i>
+            <div>
+                {{#errortitle}}<strong class="d-block mb-1">{{errortitle}}</strong>{{/errortitle}}
+                <span>{{error}}</span>
+            </div>
+        </div>
+    {{/error}}
+
+    <!-- Info Alert -->
+    {{#info}}
+        <div class="alert alert-info twings-alert mb-4" id="logininfomessage" role="status">
+            <i class="fa fa-info-circle alert-icon"></i>
+            <div>{{info}}</div>
+        </div>
+    {{/info}}
+
+    <!-- Main Login Form -->
+    {{#showloginform}}
+        <form class="twings-form" action="{{loginurl}}" method="post" id="login">
+            <input id="anchor" type="hidden" name="anchor" value="">
+            <script>document.getElementById('anchor').value = location.hash;</script>
+            <input type="hidden" name="logintoken" value="{{logintoken}}">
+
+            <!-- Username / Email Field -->
+            <div class="form-field-group mb-3">
+                <label for="username" class="form-field-label">
+                    {{^canloginbyemail}}
+                        {{#str}} username {{/str}}
+                    {{/canloginbyemail}}
+                    {{#canloginbyemail}}
+                        Tên đăng nhập hoặc Email học viên
+                    {{/canloginbyemail}}
+                </label>
+                <div class="form-input-wrapper">
+                    <i class="fa fa-envelope input-icon"></i>
+                    <input type="text"
+                           name="username"
+                           id="username"
+                           class="twings-input"
+                           value="{{username}}"
+                           placeholder="{{^canloginbyemail}}Tên đăng nhập{{/canloginbyemail}}{{#canloginbyemail}}hv.nguyen@twings.edu.vn hoặc tên đăng nhập{{/canloginbyemail}}"
+                           autocomplete="username"
+                           required>
+                </div>
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-field-group mb-3">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <label for="password" class="form-field-label mb-0">Mật khẩu</label>
+                    <a href="{{forgotpasswordurl}}" class="twings-forgot-link">Quên mật khẩu?</a>
+                </div>
+                <div class="form-input-wrapper">
+                    <i class="fa fa-lock input-icon"></i>
+                    <input type="password"
+                           name="password"
+                           id="password"
+                           class="twings-input"
+                           value=""
+                           placeholder="••••••••••••"
+                           autocomplete="current-password"
+                           required>
+                    <button type="button" class="btn-toggle-password" id="twings-toggle-pwd" aria-label="Hiện/ẩn mật khẩu">
+                        <i class="fa fa-eye" id="twings-pwd-icon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recaptcha if enabled -->
+            {{#recaptcha}}
+                <div class="form-field-group mb-3 recaptcha-wrapper">
+                    {{{recaptcha}}}
+                </div>
+            {{/recaptcha}}
+
+            <!-- Submit Button -->
+            <div class="form-submit-wrap mt-4 mb-3">
+                <button class="twings-submit-btn w-100" type="submit" id="loginbtn">
+                    <span>Đăng nhập vào lớp học</span>
+                    <i class="fa fa-arrow-right"></i>
+                </button>
+            </div>
+        </form>
+    {{/showloginform}}
+
+    <!-- Security Hint Box -->
+    <div class="twings-security-hint mb-4">
+        <i class="fa fa-shield text-emerald"></i>
+        <span>Tài khoản học viên được cấp tự động sau khi đăng ký khóa học. Nếu cần hỗ trợ kích hoạt, liên hệ Cố vấn học tập TWings.</span>
+    </div>
+
+    <!-- External IDPs (OAuth2 / SSO) if any -->
+    {{#hasidentityproviders}}
+        <div class="twings-divider"><span>hoặc đăng nhập bằng</span></div>
+        <div class="twings-idp-list mb-3">
+            {{#identityproviders}}
+                <a class="twings-idp-btn w-100" href="{{url}}">
+                    {{#iconurl}}
+                        <img src="{{iconurl}}" alt="" width="20" height="20" class="me-2"/>
+                    {{/iconurl}}
+                    <span>{{#str}}loginwith, core, {{name}}{{/str}}</span>
+                </a>
+            {{/identityproviders}}
+        </div>
+    {{/hasidentityproviders}}
+
+    <!-- Guest Login if enabled -->
+    {{#canloginasguest}}
+        <div class="twings-divider"><span>hoặc</span></div>
+        <form action="{{loginurl}}" method="post" id="guestlogin" class="mb-3">
+            <input type="hidden" name="logintoken" value="{{logintoken}}">
+            <input type="hidden" name="username" value="guest" />
+            <input type="hidden" name="password" value="guest" />
+            <button class="twings-guest-btn w-100" type="submit" id="loginguestbtn">
+                <i class="fa fa-user me-2"></i>
+                <span>{{#str}}loginasguest{{/str}}</span>
+            </button>
+        </form>
+    {{/canloginasguest}}
+
+    <!-- Instructions / Sign up (if enabled) -->
+    {{#hasinstructions}}
+        <div class="twings-instructions mb-3">
+            {{{instructions}}}
+        </div>
+    {{/hasinstructions}}
+    {{#cansignup}}
+        <div class="twings-signup-wrap text-center mb-3">
+            <a class="twings-signup-link" href="{{signupurl}}">{{#str}}loginstartsignup{{/str}}</a>
+        </div>
+    {{/cansignup}}
+
+    <!-- Portal Quick Links Footer inside Card -->
+    <div class="card-quick-links pt-3 border-top-dark d-flex flex-wrap align-items-center justify-content-center gap-3">
+        <a href="/app/login" class="quick-link staff-link" title="Dành cho Quản trị viên & Giảng viên">
+            <i class="fa fa-key"></i>
+            <span>Cổng Quản trị /app</span>
+        </a>
+        <span class="dot-sep">•</span>
+        <a href="/xac-minh/" class="quick-link" title="Xác minh Chứng chỉ tốt nghiệp">
+            <i class="fa fa-certificate"></i>
+            <span>Tra cứu Chứng chỉ</span>
+        </a>
+        <span class="dot-sep">•</span>
+        <a href="/" class="quick-link" title="Trang chủ TWings Academy">
+            <i class="fa fa-home"></i>
+            <span>Trang chủ</span>
+        </a>
+    </div>
+
+    <!-- Cookies Notice & Language Menu -->
+    <div class="d-flex align-items-center justify-content-center gap-3 mt-3 pt-2 text-muted small">
+        {{#languagemenu}}
+            <div class="login-languagemenu">
+                {{>core/action_menu}}
+            </div>
+            <span>•</span>
+        {{/languagemenu}}
+        <button type="button" class="btn-cookie-notice"
+                data-modal="alert"
+                data-modal-title-str='["cookiesenabled", "core"]'
+                data-modal-content-str='["cookiesenabled_help_html", "core"]'>
+            {{#str}}cookiesnotice{{/str}}
+        </button>
+    </div>
+</div>
+
+<script>
+// Interactive password toggle
+(function() {
+    var toggleBtn = document.getElementById('twings-toggle-pwd');
+    var pwdInput = document.getElementById('password');
+    var icon = document.getElementById('twings-pwd-icon');
+    if (toggleBtn && pwdInput && icon) {
+        toggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                icon.className = 'fa fa-eye-slash';
+            } else {
+                pwdInput.type = 'password';
+                icon.className = 'fa fa-eye';
+            }
+        });
+    }
+})();
+</script>
+
+{{#js}}
+    {{^error}}
+        {{#autofocusform}}
+            require(['core_form/events'], function(FormEvent) {
+                function autoFocus() {
+                    const userNameField = document.getElementById('username');
+                    const passwordField = document.getElementById('password');
+                    if (userNameField && userNameField.value.length == 0) {
+                        userNameField.focus();
+                    } else if (passwordField) {
+                        passwordField.focus();
+                    }
+                }
+                autoFocus();
+                window.addEventListener(FormEvent.eventTypes.fieldStructureChanged, autoFocus);
+            });
+        {{/autofocusform}}
+    {{/error}}
+    require(['core/pending'], function(Pending) {
+        const errorMessageDiv = document.getElementById('loginerrormessage');
+        const infoMessageDiv = document.getElementById('logininfomessage');
+        const errorMessage = errorMessageDiv?.textContent.trim();
+        const infoMessage = infoMessageDiv?.textContent.trim();
+        if (errorMessage || infoMessage) {
+            const pendingJS = new Pending('login-move-focus');
+            const usernameField = document.getElementById('username');
+            setTimeout(function() {
+                if (errorMessage && usernameField) {
+                    usernameField.focus();
+                }
+                if (errorMessage) {
+                    errorMessageDiv.innerHTML += "&nbsp;";
+                }
+                if (infoMessage) {
+                    infoMessageDiv.innerHTML += "&nbsp;";
+                }
+                pendingJS.resolve();
+            }, 500);
+        }
+    });
+    require(['core_form/submit'], function(Submit) {
+        Submit.init("loginbtn");
+        {{#canloginasguest}}
+            Submit.init("loginguestbtn");
+        {{/canloginasguest}}
+    });
+{{/js}}

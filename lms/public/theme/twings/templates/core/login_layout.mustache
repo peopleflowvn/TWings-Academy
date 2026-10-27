@@ -1,0 +1,61 @@
+{{!
+    This file is part of TWings Academy Moodle theme.
+    @template core/login_layout
+    Split-screen layout for login-flow pages matching /app/login modern dark design.
+}}
+<div id="page-content" class="twings-auth-root min-vh-100 row g-0 position-relative overflow-hidden">
+    <!-- Ambient Background Lighting Orbs -->
+    <div class="twings-ambient-glow twings-glow-top-left" aria-hidden="true"></div>
+    <div class="twings-ambient-glow twings-glow-bottom-right" aria-hidden="true"></div>
+
+    <!-- Left Column: 3D / Brand Showcase & EdTech Features (Desktop) -->
+    <aside class="login-layout-left col-lg-6 col-xl-5 d-none d-lg-flex">
+        {{> core/login_panel }}
+    </aside>
+
+    <!-- Right Column: Modern Glassmorphic Form Container -->
+    <div id="region-main" class="login-layout-right col-12 col-lg-6 col-xl-7 d-flex flex-column justify-content-between">
+        <!-- Ambient subtle spot for right side -->
+        <div class="twings-ambient-spot" aria-hidden="true"></div>
+
+        <!-- Mobile Header (Hidden on Desktop) -->
+        <div class="twings-mobile-header d-flex d-lg-none align-items-center justify-content-between">
+            <a href="/" class="twings-brand-link" title="TWings Academy">
+                <div class="twings-brand-lockup">
+                    <div class="twings-brand-icon">
+                        <span class="twings-brand-tw">TW</span>
+                        <span class="twings-brand-dot"></span>
+                    </div>
+                    <div class="twings-brand-text">
+                        <div class="twings-wordmark">
+                            <span class="twings-wm-white">TW</span>
+                            <span class="twings-wm-i">
+                                <span class="twings-i-dot"></span>
+                                <span class="twings-i-body"></span>
+                            </span>
+                            <span class="twings-wm-white">NGS</span>
+                        </div>
+                        <div class="twings-academy-tag">ACADEMY</div>
+                    </div>
+                </div>
+            </a>
+            <a href="/" class="twings-back-btn">
+                <i class="fa fa-arrow-left"></i>
+                <span>Trang chủ</span>
+            </a>
+        </div>
+
+        <!-- Center Wrapper for Form -->
+        <div id="region-main-box" class="login-layout-right-content my-auto w-100">
+            <div class="login-container">
+                {{{ output.main_content }}}
+            </div>
+        </div>
+
+        <!-- Footer Copyright -->
+        <footer class="twings-auth-footer text-center">
+            <div class="footer-copy">© 2026 TWings Academy. Nền tảng Đào tạo & Kỹ năng Số Thực Chiến.</div>
+            <div class="footer-sub">Học viên cần hỗ trợ tài khoản? Hotline: <a href="tel:0947266899" class="footer-link">0947.266.899</a> | Email: <a href="mailto:contact@twings.edu.vn" class="footer-link">contact@twings.edu.vn</a></div>
+        </footer>
+    </div>
+</div>
