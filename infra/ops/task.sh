@@ -260,6 +260,9 @@ for c in Course.objects.annotate(n=Count(\"orders\", filter=Q(orders__learning_a
     print(\"course\", c.slug, \"|\", c.title[:60], \"|\", c.category, \"|\", c.level, \"|\", c.price, \"/\", c.original_price, \"| pub\", c.is_published, \"| inst\", c.installment_count, \"| sold\", c.n)
 for p in Program.objects.all():
     print(\"program\", p.slug, \"|\", p.title, \"|\", p.price, \"| pub\", p.is_published, \"|\", [x.course.slug for x in p.program_courses.all()])
+from apps.catalog.models import Cohort
+for k in Cohort.objects.select_related(\"course\").order_by(\"course__title\", \"start_date\"):
+    print(\"class\", k.course.slug, \"| course\", k.course.status, \"|\", k.name[:50], \"|\", k.audience, k.status, \"| start\", k.start_date, \"| deadline\", k.registration_deadline, \"| web\", k.is_published, k.slug or \"-\", \"|\", k.website_state()[1], \"| orders\", k.orders.count())
 '"
     ;;
 
