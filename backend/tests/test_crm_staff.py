@@ -129,6 +129,7 @@ def test_pipeline_filters_and_stage_counts(staff_client, course):
     row = next(r for r in client.get("/api/v1/staff/intakes/").json()["intakes"] if r["id"] == k10.pk)
     assert row["funnel"]["leads"] == 2 and row["funnel"]["stages"]["3. Đang tư vấn"] == 1
 
+
 def test_email_from_the_lead_workspace_goes_into_its_history(staff_client, course, monkeypatch):
     order = Order.objects.create(customer_name="A", course=course, customer_email="a@example.com")
     client = staff_client(Role.SALES_CRM)
@@ -375,5 +376,3 @@ def test_changing_the_course_of_an_unpaid_registration_reprices_it(staff_client,
     order.save()
     res = client.patch(f"/api/v1/staff/orders/{order.pk}/", {"courseId": course.pk}, format="json")
     assert res.status_code == 400
-
-

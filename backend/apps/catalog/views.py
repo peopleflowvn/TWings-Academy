@@ -260,11 +260,48 @@ class PartnerViewSet(viewsets.ModelViewSet):
     queryset = Partner.objects.all()
 
 
+# What admissions staff (crm.assign_pic) may change on a class: its recruiting, not the training.
+ADMISSIONS_FIELDS = {
+    "code",
+    "slug",
+    "is_published",
+    "is_featured",
+    "show_quota",
+    "summary",
+    "image",
+    "description",
+    "scholarship_budget",
+    "recruiter",
+    "job_title",
+    "job_department",
+    "salary_range",
+    "job_quota",
+}
+
+
 class CohortViewSet(viewsets.ModelViewSet):
+    """
+    Classes (intakes). A class is also its admission campaign: training staff (courses.edit_info) open
+    and edit classes; admissions staff (crm.assign_pic) edit the recruiting part (web page, code, job).
+    """
+
     serializer_class = CohortSerializer
     permission_classes = [ActionPermission]
-    permission_map = perm_map(["courses.view", "crm.view_leads"], ["courses.edit_info"])
+    permission_map = {
+        **perm_map(["courses.view", "crm.view_leads"], ["courses.edit_info"]),
+        "update": ["courses.edit_info", "crm.assign_pic"],
+        "partial_update": ["courses.edit_info", "crm.assign_pic"],
+    }
     filterset_fields = ["course", "status"]
+
+    def perform_update(self, serializer):
+        if not has_perm_code(self.request.user, "courses.edit_info"):
+            training = set(serializer.validated_data) - ADMISSIONS_FIELDS
+            if training:
+                raise PermissionDenied(
+                    "Lịch, sĩ số, giá của lớp do bộ phận đào tạo chỉnh sửa (courses.edit_info)."
+                )
+        serializer.save()
 
     def get_queryset(self):
         # Corporate classes are managed with their client (apps.corporate), never as intakes for sale.
@@ -284,7 +321,7 @@ class CouponViewSet(viewsets.ModelViewSet):
 
 # ---------------------------------------------------------------- intakes (journey step 2)
 class IntakesOverviewView(APIView):
-    """Intakes with seats, payments, early bird and schedule; campaign quotas vs enrolments."""
+    """Classes with seats, payments, early bird, schedule and their admissions (web page, code, funnel)."""
 
     permission_classes = [require_perms("courses.view", "crm.view_leads")]
 

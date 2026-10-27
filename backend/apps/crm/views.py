@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import Count, F, OuterRef, Q, Subquery, Sum
+from django.db.models.functions import Lower
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone

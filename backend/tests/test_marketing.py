@@ -3,9 +3,8 @@
 import pytest
 from rest_framework.test import APIClient
 
-from apps.catalog.models import CourseReview
+from apps.catalog.models import Cohort, CourseReview
 from apps.cms.models import PageViewDaily
-from apps.catalog.models import Cohort
 from apps.crm.models import Order
 from apps.lms.models import LmsEnrollment
 from tests.conftest import Role
