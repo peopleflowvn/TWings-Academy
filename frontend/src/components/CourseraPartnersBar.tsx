@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, ExternalLink, Handshake, ShieldCheck, Sparkles } from 'lucide-react';
+import { Building2, ExternalLink, Handshake, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
 import { PartnerItem } from '../types';
 
 interface CourseraPartnersBarProps {
@@ -14,9 +14,9 @@ const DEFAULT_PARTNERS: PartnerItem[] = [
     logoText: 'MSB',
     logoColor: '#EA580C',
     themeColor: '#EA580C',
-    logoUrl: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?auto=format&fit=crop&w=200&q=80',
-    slogan: 'Ngân hàng TMCP Hàng Hải',
-    tag: 'Bảo lãnh việc làm',
+    logoUrl: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?auto=format&fit=crop&w=300&q=80',
+    slogan: 'Ngân hàng TMCP Hàng Hải Việt Nam',
+    tag: 'Bảo lãnh tuyển dụng',
     type: 'company',
     websiteUrl: 'https://www.msb.com.vn',
   },
@@ -26,8 +26,8 @@ const DEFAULT_PARTNERS: PartnerItem[] = [
     logoText: 'ROX GROUP',
     logoColor: '#E65100',
     themeColor: '#E65100',
-    logoUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=200&q=80',
-    slogan: 'Tập đoàn Đầu tư & Phát triển',
+    logoUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=300&q=80',
+    slogan: 'Tập đoàn Đầu tư & Phát triển Đa ngành',
     tag: 'Đối tác chiến lược',
     type: 'company',
     websiteUrl: 'https://roxgroup.vn',
@@ -38,8 +38,8 @@ const DEFAULT_PARTNERS: PartnerItem[] = [
     logoText: 'TNTALENT',
     logoColor: '#DC2626',
     themeColor: '#DC2626',
-    logoUrl: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=200&q=80',
-    slogan: 'Giải pháp Nhân sự Chiến lược',
+    logoUrl: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=300&q=80',
+    slogan: 'Giải pháp Nhân sự & Thu hút Nhân tài',
     tag: 'Cung ứng nhân sự',
     type: 'company',
     websiteUrl: 'https://tntalent.vn',
@@ -50,7 +50,7 @@ const DEFAULT_PARTNERS: PartnerItem[] = [
     logoText: 'MB BANK',
     logoColor: '#0048C8',
     themeColor: '#0048C8',
-    logoUrl: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=200&q=80',
+    logoUrl: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=300&q=80',
     slogan: 'Ngân hàng TMCP Quân Đội',
     tag: 'Đối tác tuyển dụng',
     type: 'company',
@@ -85,20 +85,20 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
   if (displayPartners.length === 0) return null;
 
   return (
-    <section className="bg-gradient-to-b from-white via-sky-50/20 to-slate-50/40 py-10 sm:py-14 border-b border-slate-200/70 relative overflow-hidden">
+    <section className="bg-gradient-to-b from-white via-sky-50/20 to-slate-50/40 py-12 sm:py-16 border-b border-slate-200/80 relative overflow-hidden">
       {/* Background ambient glow circles */}
-      <div className="absolute top-0 left-1/3 w-96 h-96 bg-sky-400/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-1/4 w-[420px] h-[420px] bg-sky-300/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-[420px] h-[420px] bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 relative z-10">
         {/* Section Header */}
-        <div className="flex flex-col items-center justify-center text-center space-y-2.5 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-blue-500/10 to-sky-500/10 border border-sky-200/80 text-[#0073C1] text-xs font-black uppercase tracking-wider shadow-2xs">
-            <Handshake className="w-3.5 h-3.5 text-[#0073C1]" />
+        <div className="flex flex-col items-center justify-center text-center space-y-3 max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-blue-500/10 via-sky-500/10 to-indigo-500/10 border border-sky-200/80 text-[#0073C1] text-xs font-black uppercase tracking-wider shadow-2xs">
+            <Handshake className="w-4 h-4 text-[#0073C1]" />
             <span>Mạng Lưới Đối Tác Doanh Nghiệp</span>
           </div>
 
-          <h2 className="text-base sm:text-xl font-black text-slate-800 tracking-tight leading-snug">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-800 tracking-tight leading-snug">
             {title || (
               <>
                 Đồng hành đào tạo & Bảo lãnh tuyển dụng cùng các{' '}
@@ -108,10 +108,13 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
               </>
             )}
           </h2>
+          <p className="text-xs sm:text-sm text-slate-500 max-w-xl">
+            Học viên TWings Academy được ưu tiên thực tập, xét duyệt hồ sơ nhanh và bảo lãnh việc làm trực tiếp từ mạng lưới đối tác chiến lược.
+          </p>
         </div>
 
-        {/* Logos & Partners Cards Grid: 3 or 4 columns gracefully centered */}
-        <div className="flex flex-wrap items-stretch justify-center gap-4 max-w-5xl mx-auto">
+        {/* Logos & Partners Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 max-w-6xl mx-auto">
           {displayPartners.map((p) => {
             const hasWebsite = Boolean(p.websiteUrl);
 
@@ -123,58 +126,72 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
                     window.open(p.websiteUrl, '_blank', 'noopener,noreferrer');
                   }
                 }}
-                className={`flex items-center gap-3.5 p-3.5 rounded-2xl bg-white border border-slate-200/80 hover:border-sky-400/60 shadow-xs hover:shadow-lg hover:shadow-sky-500/10 transition-all duration-300 group select-none w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-0.75rem)] ${
-                  hasWebsite ? 'cursor-pointer hover:-translate-y-0.5' : 'cursor-default'
+                className={`group relative flex flex-col justify-between p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-sky-400/80 shadow-xs hover:shadow-xl hover:shadow-sky-500/10 transition-all duration-300 select-none ${
+                  hasWebsite ? 'cursor-pointer hover:-translate-y-1' : 'cursor-default'
                 }`}
-                title={p.slogan || p.name}
+                title={p.name}
               >
-                {/* Brand Logo Box */}
-                <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-100 bg-slate-50/80 p-2 shrink-0 flex items-center justify-center shadow-inner group-hover:scale-105 group-hover:bg-white group-hover:border-sky-100 transition-all duration-300">
-                  {p.logoUrl ? (
-                    <img 
-                      loading="lazy" 
-                      decoding="async"
-                      src={p.logoUrl}
-                      alt={p.name}
-                      className="w-full h-full object-contain filter group-hover:contrast-105 transition-all"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <Building2 className="w-6 h-6 text-[#0073C1]" />
+                {/* Top: Header of Card (Tag & External Icon) */}
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-sky-50 text-[#0073C1] border border-sky-100 group-hover:bg-[#0073C1] group-hover:text-white transition-colors">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 group-hover:bg-white" />
+                    <span>{p.tag}</span>
+                  </span>
+
+                  {hasWebsite && (
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 group-hover:text-[#0073C1] group-hover:bg-sky-50 transition-all">
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </span>
                   )}
                 </div>
 
-                {/* Info Text */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
+                {/* Center: Large Brand Logo & Name Box */}
+                <div className="py-2 flex flex-col items-center justify-center text-center">
+                  {/* Prominent Logo Box */}
+                  <div className="h-16 w-full max-w-[200px] flex items-center justify-center px-4 py-2 rounded-xl bg-slate-50/70 border border-slate-100/90 group-hover:bg-white group-hover:border-sky-100/90 transition-all duration-300">
+                    {p.logoUrl ? (
+                      <img 
+                        loading="lazy" 
+                        decoding="async"
+                        src={p.logoUrl}
+                        alt={p.name}
+                        className="max-h-12 max-w-full object-contain filter group-hover:scale-105 transition-all duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <Building2 className="w-8 h-8 text-[#0073C1]" />
+                    )}
+                  </div>
+
+                  {/* Brand Name Typography */}
+                  <div className="mt-3">
                     <span
-                      className="text-sm font-black tracking-tight whitespace-nowrap group-hover:text-[#0073C1] transition-colors"
+                      className="text-base font-black tracking-tight group-hover:text-[#0073C1] transition-colors"
                       style={{ color: p.logoColor || p.themeColor || '#0f172a' }}
                     >
                       {p.logoText || p.name}
                     </span>
-
-                    {hasWebsite && (
-                      <ExternalLink className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#0073C1] opacity-0 group-hover:opacity-100 transition-all shrink-0" />
-                    )}
                   </div>
 
+                  {/* Short subtitle / slogan */}
                   {p.slogan && (
-                    <div className="text-[11px] text-slate-500 font-medium line-clamp-1 mt-0.5" title={p.slogan}>
+                    <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed line-clamp-2" title={p.slogan}>
                       {p.slogan}
-                    </div>
+                    </p>
                   )}
+                </div>
 
-                  {p.tag && (
-                    <div className="mt-1">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-[#0073C1] border border-blue-100/80 group-hover:bg-blue-100/80 transition-colors">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span>{p.tag}</span>
-                      </span>
-                    </div>
-                  )}
+                {/* Bottom highlight bar indicator on hover */}
+                <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-400 group-hover:text-[#0073C1] transition-colors">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Xác thực bởi TWings</span>
+                  </span>
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    Xem chi tiết →
+                  </span>
                 </div>
               </div>
             );

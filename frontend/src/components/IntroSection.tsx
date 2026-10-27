@@ -145,26 +145,31 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
           </p>
 
           {/* 4 Trust & Metrics Stat Cards directly under the headline */}
-          <div className="pt-3 sm:pt-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 max-w-6xl mx-auto text-left">
+          <div className="pt-4 sm:pt-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto text-left">
               {TRUST_STATS.map((stat, sIdx) => {
                 const Icon = stat.icon;
                 return (
                   <div 
                     key={sIdx}
-                    className="bg-white/95 hover:bg-white border border-slate-200/90 hover:border-sky-400/60 rounded-2xl p-4 sm:p-4.5 flex items-center gap-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-500/10 group cursor-default shadow-xs"
+                    className="bg-white hover:bg-white border border-slate-200/90 hover:border-sky-400/80 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 group cursor-default shadow-xs"
                   >
-                    <div className={`w-12 h-12 rounded-xl ${stat.glowBg} ${stat.borderColor} border ${stat.color} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform`}>
-                      <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className={`w-12 h-12 rounded-xl ${stat.glowBg} ${stat.borderColor} border ${stat.color} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform`}>
+                        <Icon className="w-6 h-6" />
+                      </div>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${stat.badgeColor} border border-current/20`}>
+                        {stat.subtext.split(' ')[0] || 'Chứng thực'}
+                      </span>
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-none mb-1 group-hover:text-[#0073C1] transition-colors">
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none mb-1.5 group-hover:text-[#0073C1] transition-colors">
                         {stat.number}
                       </div>
-                      <div className="text-xs sm:text-sm font-bold text-slate-700 truncate">
+                      <div className="text-sm font-bold text-slate-800 leading-snug">
                         {stat.label}
                       </div>
-                      <div className="text-[11px] text-slate-500 truncate font-medium mt-0.5">
+                      <div className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
                         {stat.subtext}
                       </div>
                     </div>

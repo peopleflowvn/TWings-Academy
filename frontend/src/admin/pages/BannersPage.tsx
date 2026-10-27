@@ -1019,10 +1019,10 @@ export const BannersPage: React.FC<{
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2 text-purple-900 font-bold text-xs uppercase tracking-wider">
                         <Info className="w-4 h-4 text-purple-600 shrink-0" />
-                        <span>Gợi Ý Kích Thước & Tỷ Lệ Chuẩn (Khuyên Dùng Cho Màn Hình 14" - 16")</span>
+                        <span>Gợi Ý Kích Thước & Tỷ Lệ Chuẩn (Bố Cục Hiển Thị 2 Banner Song Song)</span>
                       </div>
                       <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-300 shadow-2xs">
-                        Tỷ Lệ Vàng ~3.8:1
+                        Tỷ Lệ ~2:1 Đến 2.4:1
                       </span>
                     </div>
 
@@ -1033,10 +1033,10 @@ export const BannersPage: React.FC<{
                           <span>Kích thước tối ưu:</span>
                         </div>
                         <div className="text-purple-700 font-mono font-black text-sm tracking-tight">
-                          1920 × 500 px
+                          1200 × 500 px
                         </div>
                         <p className="text-[10px] text-slate-500 leading-relaxed">
-                          Hoặc <strong>1440 × 380 px</strong>. Chiều cao thấp vừa vặn, không chiếm hết màn hình laptop 14 inch. Tối thiểu 1200 × 350 px.
+                          Hoặc <strong>960 × 450 px</strong> (tỷ lệ ~2.2:1). Hiển thị vừa vặn 2 banner song song trên màn hình lớn và tự động co giãn 1 banner trên điện thoại.
                         </p>
                       </div>
 

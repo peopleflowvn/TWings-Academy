@@ -648,23 +648,46 @@ export const INITIAL_COUPONS: Coupon[] = [
 export const REAL_PARTNERS: PartnerItem[] = [
   {
     id: 'p-msb',
-    name: 'MSB',
-    slogan: 'Ngân hàng TMCP Hàng Hải Việt Nam - cùng vươn tầm',
+    name: 'MSB Bank',
+    logoText: 'MSB',
+    slogan: 'Ngân hàng TMCP Hàng Hải Việt Nam',
+    tag: 'Bảo lãnh tuyển dụng',
+    logoColor: '#EA580C',
     themeColor: '#EA580C',
+    websiteUrl: 'https://www.msb.com.vn',
   },
   {
     id: 'p-rox',
-    name: 'ROX GROUP',
-    slogan: 'Tập đoàn Đầu tư & Phát triển Bất động sản, Dịch vụ ROX',
+    name: 'ROX Group',
+    logoText: 'ROX GROUP',
+    slogan: 'Tập đoàn Đầu tư & Phát triển Đa ngành',
+    tag: 'Đối tác chiến lược',
+    logoColor: '#E65100',
     themeColor: '#E65100',
+    websiteUrl: 'https://roxgroup.vn',
   },
   {
     id: 'p-tntalent',
     name: 'TNTalent',
-    slogan: 'Tư vấn & Cung ứng Giải pháp Nhân sự Chiến lược',
+    logoText: 'TNTALENT',
+    slogan: 'Giải pháp Nhân sự & Thu hút Nhân tài',
+    tag: 'Cung ứng nhân sự',
+    logoColor: '#DC2626',
     themeColor: '#DC2626',
+    websiteUrl: 'https://tntalent.vn',
+  },
+  {
+    id: 'p-mbbank',
+    name: 'MB Bank',
+    logoText: 'MB BANK',
+    slogan: 'Ngân hàng TMCP Quân Đội',
+    tag: 'Đối tác tuyển dụng',
+    logoColor: '#0048C8',
+    themeColor: '#0048C8',
+    websiteUrl: 'https://www.mbbank.com.vn',
   }
 ];
+
 
 export const REAL_GALLERY: GalleryPhoto[] = [
   {

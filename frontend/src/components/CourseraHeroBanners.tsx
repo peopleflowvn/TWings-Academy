@@ -102,7 +102,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
       setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 15);
       
       const firstCard = scrollContainerRef.current.firstElementChild as HTMLElement | null;
-      const cardWidth = firstCard ? firstCard.offsetWidth + 16 : clientWidth * 0.85;
+      const cardWidth = firstCard ? firstCard.offsetWidth + 16 : clientWidth * 0.5;
       const idx = Math.round(scrollLeft / cardWidth);
       setActiveIndex(Math.max(0, Math.min(idx, displayBanners.length - 1)));
     }
@@ -119,22 +119,25 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
     if (isHovered || displayBanners.length <= 1) return;
     const interval = setInterval(() => {
       if (scrollContainerRef.current) {
-        const nextIdx = (activeIndex + 1) % displayBanners.length;
         const firstCard = scrollContainerRef.current.firstElementChild as HTMLElement | null;
-        const cardWidth = firstCard ? firstCard.offsetWidth + 16 : scrollContainerRef.current.clientWidth * 0.85;
-        scrollContainerRef.current.scrollTo({
-          left: nextIdx * cardWidth,
-          behavior: 'smooth'
-        });
+        const cardWidth = firstCard ? firstCard.offsetWidth + 16 : scrollContainerRef.current.clientWidth * 0.5;
+        const maxScroll = scrollContainerRef.current.scrollWidth - scrollContainerRef.current.clientWidth;
+        
+        // If reached end, loop back to start
+        if (scrollContainerRef.current.scrollLeft >= maxScroll - 20) {
+          scrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          scrollContainerRef.current.scrollBy({ left: cardWidth, behavior: 'smooth' });
+        }
       }
     }, 6000);
     return () => clearInterval(interval);
-  }, [activeIndex, isHovered, displayBanners.length]);
+  }, [isHovered, displayBanners.length]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
       const firstCard = scrollContainerRef.current.firstElementChild as HTMLElement | null;
-      const scrollAmount = firstCard ? firstCard.offsetWidth + 16 : scrollContainerRef.current.clientWidth * 0.85;
+      const scrollAmount = firstCard ? firstCard.offsetWidth + 16 : scrollContainerRef.current.clientWidth * 0.5;
       scrollContainerRef.current.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth'
@@ -145,7 +148,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
   const scrollToBanner = (idx: number) => {
     if (scrollContainerRef.current) {
       const firstCard = scrollContainerRef.current.firstElementChild as HTMLElement | null;
-      const cardWidth = firstCard ? firstCard.offsetWidth + 16 : scrollContainerRef.current.clientWidth * 0.85;
+      const cardWidth = firstCard ? firstCard.offsetWidth + 16 : scrollContainerRef.current.clientWidth * 0.5;
       scrollContainerRef.current.scrollTo({
         left: idx * cardWidth,
         behavior: 'smooth'
@@ -226,12 +229,12 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
       <div className="absolute top-1/3 -right-20 w-[500px] h-[350px] bg-[#5FBEFF]/15 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-1/4 -left-20 w-[450px] h-[300px] bg-[#0073C1]/15 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 relative z-10">
-        {/* Scrollable Horizontal Track of Banners */}
+      <div className="max-w-[1440px] mx-auto space-y-3 sm:space-y-4 relative z-10">
+        {/* Scrollable Horizontal Track of Banners (Always 2 banners visible on desktop/laptop >= md) */}
         <div
           ref={scrollContainerRef}
           onScroll={checkScroll}
-          className="flex gap-3 sm:gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0"
+          className="flex gap-3 sm:gap-4 lg:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0"
         >
           {displayBanners.map((banner, index) => {
             // Mode 1: Full-Image Banner with Hyperlink Support
@@ -245,7 +248,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                 <div
                   key={banner.id || index}
                   onClick={() => handleBannerAction(banner)}
-                  className="w-full min-w-full snap-start rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl hover:shadow-cyan-500/20 transition-all duration-300 relative group cursor-pointer border border-white/15 bg-slate-900 shrink-0 select-none"
+                  className="w-full sm:w-[calc(50%-10px)] lg:w-[calc(50%-10px)] min-w-[300px] sm:min-w-[calc(50%-10px)] snap-start rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl hover:shadow-cyan-500/20 transition-all duration-300 relative group cursor-pointer border border-white/15 bg-slate-900 shrink-0 select-none flex flex-col justify-between"
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
@@ -258,7 +261,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                   <img
                     src={img}
                     alt={banner.title || 'TWings Banner'}
-                    className="w-full h-[190px] sm:h-[260px] lg:h-[300px] xl:h-[330px] object-cover group-hover:scale-[1.015] transition-transform duration-700"
+                    className="w-full h-[180px] sm:h-[220px] lg:h-[250px] xl:h-[270px] object-cover group-hover:scale-[1.015] transition-transform duration-700"
                   />
                   {/* Subtle hyperlink indicator on hover if linkUrl exists */}
                   {banner.linkUrl && (
@@ -314,7 +317,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
               return (
                 <div
                   key={banner.id || index}
-                  className={`w-full min-w-full snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 xl:p-7 flex flex-col justify-between shadow-[0_12px_45px_rgba(0,115,193,0.35)] relative overflow-hidden group border border-cyan-400/40 hover:border-cyan-300 ring-1 ring-cyan-400/25 transition-all duration-300 shrink-0 backdrop-blur-2xl`}
+                  className={`w-full md:w-[calc(50%-8px)] min-w-[300px] md:min-w-[calc(50%-8px)] snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 lg:p-5 flex flex-col justify-between shadow-[0_12px_45px_rgba(0,115,193,0.35)] relative overflow-hidden group border border-cyan-400/40 hover:border-cyan-300 ring-1 ring-cyan-400/25 transition-all duration-300 shrink-0 backdrop-blur-2xl`}
                 >
                   {/* Glass Specular Reflections */}
                   <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-transparent to-black/45 pointer-events-none" />
@@ -328,82 +331,76 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                   <div className="absolute -top-16 -right-16 w-80 h-80 bg-cyan-400/20 rounded-full blur-3xl pointer-events-none group-hover:bg-cyan-400/30 transition-colors duration-700" />
                   <div className="absolute -bottom-16 -left-16 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
 
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-center relative z-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center relative z-10">
                     {/* Left Column */}
-                    <div className="lg:col-span-7 xl:col-span-8 space-y-2.5 sm:space-y-3.5">
+                    <div className="sm:col-span-8 space-y-2 sm:space-y-2.5">
                       {/* Cyber Telemetry Status Chip */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/85 backdrop-blur-md border border-cyan-400/50 text-cyan-300 font-mono text-[10px] sm:text-[11px] font-black uppercase tracking-wider shadow-sm">
-                          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                          <span>SYS: AI & FINTECH FRONTIER 2026</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cyan-950/85 backdrop-blur-md border border-cyan-400/50 text-cyan-300 font-mono text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-sm">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                          <span>SYS: AI FRONTIER</span>
                         </span>
-                        {partners.map((p, pIdx) => (
+                        {partners.slice(0, 2).map((p, pIdx) => (
                           <span
                             key={pIdx}
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-cyan-200 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-cyan-200 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider"
                           >
-                            <Zap className="w-3 h-3 text-cyan-400" />
+                            <Zap className="w-2.5 h-2.5 text-cyan-400" />
                             <span>{p.name}</span>
                           </span>
                         ))}
                       </div>
 
                       {/* Neon Cyber Headline */}
-                      <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-[2rem] font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-100 via-white to-sky-200 leading-[1.15] drop-shadow-md">
+                      <h2 className="text-base sm:text-lg lg:text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-100 via-white to-sky-200 leading-[1.2] drop-shadow-md line-clamp-2">
                         {banner.title}
                       </h2>
 
                       {banner.subtitle && (
-                        <p className="text-xs sm:text-sm text-cyan-100/90 leading-relaxed max-w-2xl font-mono line-clamp-2">
+                        <p className="text-[11px] sm:text-xs text-cyan-100/90 leading-relaxed font-mono line-clamp-2">
                           {banner.subtitle}
                         </p>
                       )}
 
                       {/* Code-styled Cyber Badges */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5 text-xs font-mono text-cyan-200">
-                        <div className="flex items-center gap-2 bg-cyan-950/60 border border-cyan-400/35 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-xs">
-                          <Cpu className="w-3.5 h-3.5 text-cyan-400 shrink-0 animate-pulse" />
+                      <div className="flex flex-wrap gap-1.5 pt-0.5 text-[10px] font-mono text-cyan-200">
+                        <div className="flex items-center gap-1.5 bg-cyan-950/60 border border-cyan-400/35 rounded-lg px-2.5 py-1 backdrop-blur-md shadow-xs max-w-full">
+                          <Cpu className="w-3 h-3 text-cyan-400 shrink-0" />
                           <span className="truncate">// {tag1}</span>
                         </div>
-                        <div className="flex items-center gap-2 bg-cyan-950/60 border border-cyan-400/35 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-xs">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <div className="flex items-center gap-1.5 bg-cyan-950/60 border border-cyan-400/35 rounded-lg px-2.5 py-1 backdrop-blur-md shadow-xs max-w-full">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
                           <span className="truncate">// {tag2}</span>
                         </div>
                       </div>
 
                       {/* Action buttons */}
-                      <div className="pt-1.5 flex flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="pt-1 flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => handleBannerAction(banner)}
-                          className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#0073C1] via-[#0284C7] to-[#00A3FF] hover:brightness-110 text-white font-extrabold rounded-xl text-xs sm:text-sm shadow-xl hover:shadow-cyan-400/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 bg-gradient-to-r from-[#0073C1] via-[#0284C7] to-[#00A3FF] hover:brightness-110 text-white font-extrabold rounded-xl text-xs shadow-lg hover:shadow-cyan-400/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <span>{banner.buttonText || 'Khám phá lộ trình AI'}</span>
-                          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          <span>{banner.buttonText || 'Khám phá AI'}</span>
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                         </button>
 
                         <button
                           onClick={() => onOpenYouTubeTrial('sal78ACtGTc', banner.title)}
-                          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-cyan-950/70 hover:bg-cyan-900/70 text-cyan-200 rounded-xl text-xs sm:text-sm font-bold backdrop-blur-md border border-cyan-400/40 hover:border-cyan-300 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-cyan-950/70 hover:bg-cyan-900/70 text-cyan-200 rounded-xl text-xs font-bold backdrop-blur-md border border-cyan-400/40 hover:border-cyan-300 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
                         >
-                          <Play className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+                          <Play className="w-3 h-3 text-rose-400 fill-rose-400" />
                           <span>Học thử 0đ</span>
                         </button>
                       </div>
                     </div>
 
                     {/* Right Cyber Holographic Frame */}
-                    <div className="lg:col-span-5 xl:col-span-4 flex justify-center lg:justify-end pt-2 lg:pt-0">
-                      <div className="relative w-full max-w-[240px] sm:max-w-[260px] lg:max-w-[260px] xl:max-w-[280px] bg-gradient-to-b from-cyan-950/60 via-slate-900/70 to-slate-950/80 backdrop-blur-xl border border-cyan-400/40 rounded-2xl p-3 sm:p-3.5 shadow-2xl transition-transform duration-500 hover:scale-[1.02] ring-1 ring-cyan-400/20">
+                    <div className="sm:col-span-4 flex justify-end">
+                      <div className="relative w-full max-w-[150px] sm:max-w-[170px] lg:max-w-[190px] bg-gradient-to-b from-cyan-950/60 via-slate-900/70 to-slate-950/80 backdrop-blur-xl border border-cyan-400/40 rounded-xl p-2 sm:p-2.5 shadow-xl transition-transform duration-500 hover:scale-[1.02] ring-1 ring-cyan-400/20">
                         {/* Ambient Aura */}
-                        <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl blur-xl opacity-30 -z-10" />
+                        <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-xl blur-lg opacity-30 -z-10" />
 
-                        {/* Top & Bottom corner brackets */}
-                        <div className="absolute top-2 left-2 w-2.5 h-2.5 border-t-2 border-l-2 border-cyan-400 pointer-events-none" />
-                        <div className="absolute top-2 right-2 w-2.5 h-2.5 border-t-2 border-r-2 border-cyan-400 pointer-events-none" />
-                        <div className="absolute bottom-2 left-2 w-2.5 h-2.5 border-b-2 border-l-2 border-cyan-400 pointer-events-none" />
-                        <div className="absolute bottom-2 right-2 w-2.5 h-2.5 border-b-2 border-r-2 border-cyan-400 pointer-events-none" />
-
-                        <div className="relative aspect-[4/3] rounded-xl overflow-hidden border border-cyan-400/30 shadow-lg bg-slate-900 mb-2.5">
+                        <div className="relative aspect-[4/3] rounded-lg overflow-hidden border border-cyan-400/30 shadow-md bg-slate-900 mb-1.5">
                           <img
                             src={facultyImg}
                             alt={banner.title}
@@ -412,27 +409,23 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-transparent" />
                           
-                          <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-slate-950/90 backdrop-blur-md border border-cyan-400/50 text-[10px] font-mono font-bold text-cyan-300 flex items-center gap-1 shadow-md">
+                          <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-slate-950/90 backdrop-blur-md border border-cyan-400/50 text-[9px] font-mono font-bold text-cyan-300 flex items-center gap-1 shadow-md">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            <span>COHORT 2026</span>
+                            <span>MSB</span>
                           </span>
 
-                          <div className="absolute bottom-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-950/85 backdrop-blur-md border border-cyan-400/30 text-[10px] font-mono font-bold text-cyan-200 shadow-sm">
-                            <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
-                            <span>AI & FINTECH MENTOR</span>
+                          <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-950/85 backdrop-blur-md border border-cyan-400/30 text-[9px] font-mono font-bold text-cyan-200 shadow-sm">
+                            <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                            <span>AI MENTOR</span>
                           </div>
                         </div>
 
                         <div className="space-y-0.5 text-left">
-                          <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-cyan-400 flex items-center gap-1">
-                            <Terminal className="w-3 h-3 text-cyan-400" />
-                            <span>AI ARCHITECTURE & QUANT</span>
+                          <div className="text-[9px] font-mono font-bold uppercase text-cyan-400 truncate">
+                            Giám Đốc Khối MSB
                           </div>
-                          <div className="text-sm font-extrabold text-white">
-                            Giám Đốc Khối & Tech Lead MSB
-                          </div>
-                          <div className="text-[11px] text-cyan-100/70 font-mono leading-snug line-clamp-1">
-                            Mô hình hóa dữ liệu, Credit Scoring & Algorithmic Banking.
+                          <div className="text-[10px] text-cyan-100/70 font-mono leading-tight line-clamp-1">
+                            Mô hình hóa dữ liệu & Quant
                           </div>
                         </div>
                       </div>
@@ -449,7 +442,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
               return (
                 <div
                   key={banner.id || index}
-                  className={`w-full min-w-full snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 xl:p-7 flex flex-col justify-between shadow-[0_12px_45px_rgba(245,158,11,0.25)] relative overflow-hidden group border border-amber-400/35 hover:border-amber-300 ring-1 ring-amber-400/20 transition-all duration-300 shrink-0 backdrop-blur-2xl`}
+                  className={`w-full md:w-[calc(50%-8px)] min-w-[300px] md:min-w-[calc(50%-8px)] snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 lg:p-5 flex flex-col justify-between shadow-[0_12px_45px_rgba(245,158,11,0.25)] relative overflow-hidden group border border-amber-400/35 hover:border-amber-300 ring-1 ring-amber-400/20 transition-all duration-300 shrink-0 backdrop-blur-2xl`}
                 >
                   {/* Glass Specular Reflections */}
                   <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-transparent to-black/45 pointer-events-none" />
@@ -460,19 +453,19 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                   <div className="absolute top-1/2 -translate-y-1/2 right-6 sm:right-16 w-80 h-80 rounded-full bg-gradient-to-tr from-amber-500/25 via-purple-500/20 to-[#5FBEFF]/25 blur-3xl pointer-events-none group-hover:scale-110 transition-transform duration-700" />
                   <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
 
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-center relative z-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center relative z-10">
                     {/* Left Column */}
-                    <div className="lg:col-span-7 xl:col-span-8 space-y-2.5 sm:space-y-3.5">
+                    <div className="sm:col-span-8 space-y-2 sm:space-y-2.5">
                       {/* Masterclass Badge */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-300 text-[10px] sm:text-[11px] font-black uppercase tracking-wider shadow-xs">
-                          <Award className="w-3.5 h-3.5 text-amber-400" />
-                          <span>CHƯƠNG TRÌNH MASTERCLASS ĐỘC QUYỀN</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-300 text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-xs">
+                          <Award className="w-3 h-3 text-amber-400" />
+                          <span>MASTERCLASS</span>
                         </span>
-                        {partners.map((p, pIdx) => (
+                        {partners.slice(0, 2).map((p, pIdx) => (
                           <span
                             key={pIdx}
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider"
                           >
                             <span>{p.name}</span>
                           </span>
@@ -480,56 +473,56 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                       </div>
 
                       {/* Headline with golden/cyan contrast */}
-                      <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-[2rem] font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-white to-amber-200 leading-[1.15] drop-shadow-md">
+                      <h2 className="text-base sm:text-lg lg:text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-white to-amber-200 leading-[1.2] drop-shadow-md line-clamp-2">
                         {banner.title}
                       </h2>
 
                       {banner.subtitle && (
-                        <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-2xl font-medium line-clamp-2">
+                        <p className="text-[11px] sm:text-xs text-slate-200 leading-relaxed font-medium line-clamp-2">
                           {banner.subtitle}
                         </p>
                       )}
 
                       {/* Mentorship Highlights */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5 text-xs font-semibold text-slate-200">
-                        <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-xs">
-                          <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                      <div className="flex flex-wrap gap-1.5 pt-0.5 text-[10px] font-semibold text-slate-200">
+                        <div className="flex items-center gap-1.5 bg-white/10 border border-white/15 rounded-lg px-2.5 py-1 backdrop-blur-md shadow-xs max-w-full">
+                          <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
                           <span className="truncate">{tag1}</span>
                         </div>
-                        <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-xs">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <div className="flex items-center gap-1.5 bg-white/10 border border-white/15 rounded-lg px-2.5 py-1 backdrop-blur-md shadow-xs max-w-full">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
                           <span className="truncate">{tag2}</span>
                         </div>
                       </div>
 
                       {/* Buttons */}
-                      <div className="pt-1.5 flex flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="pt-1 flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => handleBannerAction(banner)}
-                          className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#FF6B35] via-[#EA580C] to-[#C23010] hover:from-[#FF7A47] hover:to-[#B02808] text-white font-extrabold rounded-xl text-xs sm:text-sm shadow-xl hover:shadow-orange-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 bg-gradient-to-r from-[#FF6B35] via-[#EA580C] to-[#C23010] hover:from-[#FF7A47] hover:to-[#B02808] text-white font-extrabold rounded-xl text-xs shadow-lg hover:shadow-orange-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <span>{banner.buttonText || 'Đăng ký tư vấn trực tiếp'}</span>
-                          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          <span>{banner.buttonText || 'Đăng ký tư vấn'}</span>
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                         </button>
 
                         <button
                           onClick={() => onOpenYouTubeTrial('sal78ACtGTc', banner.title)}
-                          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs sm:text-sm font-bold backdrop-blur-md border border-white/25 hover:border-white/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold backdrop-blur-md border border-white/25 hover:border-white/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
                         >
-                          <Play className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+                          <Play className="w-3 h-3 text-rose-400 fill-rose-400" />
                           <span>Học thử 0đ</span>
                         </button>
                       </div>
                     </div>
 
                     {/* Right Spotlight Portrait with Floating Badges */}
-                    <div className="lg:col-span-5 xl:col-span-4 flex justify-center lg:justify-end pt-2 lg:pt-0">
-                      <div className="relative w-40 h-40 sm:w-48 sm:h-48 lg:w-48 lg:h-48 xl:w-52 xl:h-52">
+                    <div className="sm:col-span-4 flex justify-end">
+                      <div className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32">
                         {/* Glowing Circular Halo */}
                         <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-[#0073C1] animate-pulse blur-md opacity-70" />
                         
                         {/* Circular Portrait Frame */}
-                        <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white/90 shadow-2xl bg-slate-900 ring-2 ring-amber-400/40">
+                        <div className="relative w-full h-full rounded-full overflow-hidden border-2 sm:border-3 border-white/90 shadow-xl bg-slate-900 ring-2 ring-amber-400/40">
                           <img
                             src={facultyImg}
                             alt={banner.title}
@@ -539,15 +532,15 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                         </div>
 
                         {/* Floating Badge Top-Left */}
-                        <div className="absolute -top-2 -left-2 bg-slate-950/90 backdrop-blur-md border border-amber-400/50 px-2.5 py-1 rounded-full text-[10px] font-bold text-amber-300 shadow-xl flex items-center gap-1.5 animate-bounce duration-1000">
-                          <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
-                          <span>Chuyên gia MSB</span>
+                        <div className="absolute -top-1.5 -left-1.5 bg-slate-950/90 backdrop-blur-md border border-amber-400/50 px-2 py-0.5 rounded-full text-[9px] font-bold text-amber-300 shadow-lg flex items-center gap-1">
+                          <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                          <span>MSB Lead</span>
                         </div>
 
                         {/* Floating Badge Bottom-Right */}
-                        <div className="absolute -bottom-2 -right-2 bg-slate-950/90 backdrop-blur-md border border-emerald-400/50 px-2.5 py-1 rounded-full text-[10px] font-bold text-emerald-300 shadow-xl flex items-center gap-1.5">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Bảo lãnh việc làm</span>
+                        <div className="absolute -bottom-1.5 -right-1.5 bg-slate-950/90 backdrop-blur-md border border-emerald-400/50 px-2 py-0.5 rounded-full text-[9px] font-bold text-emerald-300 shadow-lg flex items-center gap-1">
+                          <ShieldCheck className="w-2.5 h-2.5 text-emerald-400" />
+                          <span>Bảo lãnh</span>
                         </div>
                       </div>
                     </div>
@@ -563,64 +556,64 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
               return (
                 <div
                   key={banner.id || index}
-                  className={`w-full min-w-full snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 xl:p-7 flex flex-col justify-between shadow-[0_12px_45px_rgba(0,115,193,0.25)] relative overflow-hidden group border border-white/20 hover:border-white/35 ring-1 ring-white/10 transition-all duration-300 shrink-0 backdrop-blur-2xl`}
+                  className={`w-full md:w-[calc(50%-8px)] min-w-[300px] md:min-w-[calc(50%-8px)] snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 lg:p-5 flex flex-col justify-between shadow-[0_12px_45px_rgba(0,115,193,0.25)] relative overflow-hidden group border border-white/20 hover:border-white/35 ring-1 ring-white/10 transition-all duration-300 shrink-0 backdrop-blur-2xl`}
                 >
                   {/* Glass Specular Reflections */}
                   <div className="absolute inset-0 bg-gradient-to-b from-white/[0.06] via-transparent to-black/45 pointer-events-none" />
                   <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
                   <div className="absolute top-0 right-1/4 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-center relative z-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center relative z-10">
                     {/* Left Column with Vertical Accent Line */}
-                    <div className="lg:col-span-7 xl:col-span-8 border-l-2 border-[#5FBEFF]/90 pl-4 sm:pl-5 space-y-2.5 sm:space-y-3.5">
-                      <div className="text-[10px] sm:text-[11px] font-mono font-bold tracking-widest uppercase text-[#5FBEFF] flex items-center gap-1.5">
-                        <Sparkles className="w-3 h-3 text-[#5FBEFF]" />
-                        <span>TWINGS ACADEMY // STRATEGIC EXECUTIVE EDUCATION</span>
+                    <div className="sm:col-span-8 border-l-2 border-[#5FBEFF]/90 pl-3 sm:pl-4 space-y-2 sm:space-y-2.5">
+                      <div className="text-[9px] sm:text-[10px] font-mono font-bold tracking-widest uppercase text-[#5FBEFF] flex items-center gap-1.5 truncate">
+                        <Sparkles className="w-3 h-3 text-[#5FBEFF] shrink-0" />
+                        <span>TWINGS ACADEMY // EXECUTIVE</span>
                       </div>
 
-                      <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-[2rem] font-extrabold tracking-tight text-white leading-[1.15]">
+                      <h2 className="text-base sm:text-lg lg:text-xl font-extrabold tracking-tight text-white leading-[1.2] line-clamp-2">
                         {banner.title}
                       </h2>
 
                       {banner.subtitle && (
-                        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl font-normal line-clamp-2">
+                        <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed font-normal line-clamp-2">
                           {banner.subtitle}
                         </p>
                       )}
 
                       {/* Editorial Minimalist Pills */}
-                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                        <span className="px-3 py-1 rounded-lg bg-white/10 border border-white/20 text-xs text-slate-200 font-medium backdrop-blur-md">
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        <span className="px-2.5 py-0.5 rounded-lg bg-white/10 border border-white/20 text-[10px] text-slate-200 font-medium backdrop-blur-md truncate max-w-full">
                           ✦ {tag1}
                         </span>
-                        <span className="px-3 py-1 rounded-lg bg-white/10 border border-white/20 text-xs text-slate-200 font-medium backdrop-blur-md">
+                        <span className="px-2.5 py-0.5 rounded-lg bg-white/10 border border-white/20 text-[10px] text-slate-200 font-medium backdrop-blur-md truncate max-w-full">
                           ✦ {tag2}
                         </span>
                       </div>
 
                       {/* Minimalist Action Buttons */}
-                      <div className="pt-1.5 flex flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="pt-1 flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => handleBannerAction(banner)}
-                          className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-white text-slate-900 hover:bg-slate-100 font-bold rounded-xl text-xs sm:text-sm shadow-xl transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 bg-white text-slate-900 hover:bg-slate-100 font-bold rounded-xl text-xs shadow-lg transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                         >
                           <span>{banner.buttonText || 'Khám phá ngay'}</span>
-                          <ArrowRight className="w-4 h-4" />
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </button>
 
                         <button
                           onClick={() => onOpenYouTubeTrial('sal78ACtGTc', banner.title)}
-                          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs sm:text-sm font-medium backdrop-blur-md border border-white/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-medium backdrop-blur-md border border-white/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <Play className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+                          <Play className="w-3 h-3 text-rose-400 fill-rose-400" />
                           <span>Học thử 0đ</span>
                         </button>
                       </div>
                     </div>
 
                     {/* Right Column: Clean Editorial Framed Photo */}
-                    <div className="lg:col-span-5 xl:col-span-4 flex justify-center lg:justify-end pt-2 lg:pt-0">
-                      <div className="relative w-full max-w-[210px] sm:max-w-[230px] lg:max-w-[240px] rounded-2xl overflow-hidden border border-white/25 shadow-2xl bg-slate-900 group-hover:border-white/45 transition-colors ring-1 ring-white/10">
+                    <div className="sm:col-span-4 flex justify-end">
+                      <div className="relative w-full max-w-[130px] sm:max-w-[150px] lg:max-w-[170px] rounded-xl overflow-hidden border border-white/25 shadow-xl bg-slate-900 group-hover:border-white/45 transition-colors ring-1 ring-white/10">
                         <div className="aspect-[4/4] overflow-hidden">
                           <img
                             src={facultyImg}
@@ -629,9 +622,9 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                             loading="lazy"
                           />
                         </div>
-                        <div className="p-2.5 bg-slate-950/85 backdrop-blur-md border-t border-white/15 text-center space-y-0.5">
-                          <div className="text-xs font-bold text-white">Chuyên Gia Giảng Dạy Trực Tiếp</div>
-                          <div className="text-[10px] text-slate-400">Chứng chỉ & Đào tạo thực chiến MSB</div>
+                        <div className="p-2 bg-slate-950/85 backdrop-blur-md border-t border-white/15 text-center space-y-0.5">
+                          <div className="text-[11px] font-bold text-white truncate">Chuyên Gia MSB</div>
+                          <div className="text-[9px] text-slate-400 truncate">Thực chiến & Cố vấn</div>
                         </div>
                       </div>
                     </div>
@@ -647,7 +640,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
               return (
                 <div
                   key={banner.id || index}
-                  className={`w-full min-w-full snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 xl:p-7 flex flex-col justify-between shadow-[0_12px_45px_rgba(16,185,129,0.25)] relative overflow-hidden group border border-emerald-400/40 hover:border-emerald-300 ring-1 ring-emerald-500/25 transition-all duration-300 shrink-0 backdrop-blur-2xl`}
+                  className={`w-full md:w-[calc(50%-8px)] min-w-[300px] md:min-w-[calc(50%-8px)] snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 lg:p-5 flex flex-col justify-between shadow-[0_12px_45px_rgba(16,185,129,0.25)] relative overflow-hidden group border border-emerald-400/40 hover:border-emerald-300 ring-1 ring-emerald-500/25 transition-all duration-300 shrink-0 backdrop-blur-2xl`}
                 >
                   {/* Glass Specular Reflections */}
                   <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-transparent to-black/45 pointer-events-none" />
@@ -658,69 +651,61 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                   <div className="absolute -top-16 -right-16 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/30 transition-colors duration-700" />
                   <div className="absolute -bottom-16 -left-16 w-80 h-80 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
 
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-center relative z-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center relative z-10">
                     {/* Left Column */}
-                    <div className="lg:col-span-7 xl:col-span-8 space-y-2.5 sm:space-y-3.5">
+                    <div className="sm:col-span-8 space-y-2 sm:space-y-2.5">
                       {/* Career Guarantee Header Stamp */}
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/85 backdrop-blur-md border border-emerald-400/50 text-emerald-300 text-[10px] sm:text-[11px] font-black uppercase tracking-wider shadow-sm">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>BẢO LÃNH ĐẦU RA 100% — ĐỐI TÁC CHIẾN LƯỢC MSB BANK</span>
+                      <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-950/85 backdrop-blur-md border border-emerald-400/50 text-emerald-300 text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-sm truncate max-w-full">
+                        <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span className="truncate">BẢO LÃNH ĐẦU RA 100% — MSB BANK</span>
                       </div>
 
-                      <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-[2rem] font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-100 via-white to-emerald-200 leading-[1.15] drop-shadow-md">
+                      <h2 className="text-base sm:text-lg lg:text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-100 via-white to-emerald-200 leading-[1.2] drop-shadow-md line-clamp-2">
                         {banner.title}
                       </h2>
 
                       {banner.subtitle && (
-                        <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-2xl font-medium line-clamp-2">
+                        <p className="text-[11px] sm:text-xs text-slate-200 leading-relaxed font-medium line-clamp-2">
                           {banner.subtitle}
                         </p>
                       )}
 
-                      {/* 4-point Checklist Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5 text-xs font-semibold text-slate-200">
-                        <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-400/35 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-xs">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span>Phỏng vấn trực tiếp tại Hội sở MSB</span>
+                      {/* 2-point Checklist Grid */}
+                      <div className="flex flex-wrap gap-1.5 pt-0.5 text-[10px] font-semibold text-slate-200">
+                        <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-400/35 rounded-lg px-2.5 py-1 backdrop-blur-md shadow-xs max-w-full">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                          <span className="truncate">Phỏng vấn trực tiếp tại MSB</span>
                         </div>
-                        <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-400/35 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-xs">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span>Hoàn 100% học phí nếu không đạt</span>
-                        </div>
-                        <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-400/35 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-xs">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-400/35 rounded-lg px-2.5 py-1 backdrop-blur-md shadow-xs max-w-full">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
                           <span className="truncate">{tag1}</span>
-                        </div>
-                        <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-400/35 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-xs">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span className="truncate">{tag2}</span>
                         </div>
                       </div>
 
                       {/* Action buttons */}
-                      <div className="pt-1.5 flex flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="pt-1 flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => handleBannerAction(banner)}
-                          className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#FF6B35] via-[#EA580C] to-[#C23010] hover:from-[#FF7A47] hover:to-[#B02808] text-white font-extrabold rounded-xl text-xs sm:text-sm shadow-xl hover:shadow-orange-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 bg-gradient-to-r from-[#FF6B35] via-[#EA580C] to-[#C23010] hover:from-[#FF7A47] hover:to-[#B02808] text-white font-extrabold rounded-xl text-xs shadow-lg hover:shadow-orange-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <span>{banner.buttonText || 'Đăng ký tư vấn trực tiếp'}</span>
-                          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          <span>{banner.buttonText || 'Đăng ký tư vấn'}</span>
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                         </button>
 
                         <button
                           onClick={() => onOpenYouTubeTrial('sal78ACtGTc', banner.title)}
-                          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs sm:text-sm font-bold backdrop-blur-md border border-white/25 hover:border-white/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold backdrop-blur-md border border-white/25 hover:border-white/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
                         >
-                          <Play className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+                          <Play className="w-3 h-3 text-rose-400 fill-rose-400" />
                           <span>Học thử 0đ</span>
                         </button>
                       </div>
                     </div>
 
                     {/* Right Column: Verification Card with Official Seal */}
-                    <div className="lg:col-span-5 xl:col-span-4 flex justify-center lg:justify-end pt-2 lg:pt-0">
-                      <div className="relative w-full max-w-[240px] sm:max-w-[260px] lg:max-w-[260px] xl:max-w-[280px] bg-gradient-to-b from-emerald-950/70 via-slate-900/75 to-slate-950/85 backdrop-blur-xl border border-emerald-400/40 rounded-2xl p-3 sm:p-3.5 shadow-2xl transition-transform duration-500 hover:scale-[1.02] ring-1 ring-emerald-400/25">
-                        <div className="relative aspect-[4/3] rounded-xl overflow-hidden border border-emerald-400/35 shadow-lg bg-slate-900 mb-2.5">
+                    <div className="sm:col-span-4 flex justify-end">
+                      <div className="relative w-full max-w-[150px] sm:max-w-[170px] lg:max-w-[190px] bg-gradient-to-b from-emerald-950/70 via-slate-900/75 to-slate-950/85 backdrop-blur-xl border border-emerald-400/40 rounded-xl p-2 sm:p-2.5 shadow-xl transition-transform duration-500 hover:scale-[1.02] ring-1 ring-emerald-400/25">
+                        <div className="relative aspect-[4/3] rounded-lg overflow-hidden border border-emerald-400/35 shadow-md bg-slate-900 mb-1.5">
                           <img
                             src={facultyImg}
                             alt={banner.title}
@@ -729,27 +714,24 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-transparent" />
 
-                          <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-emerald-950/90 backdrop-blur-md border border-emerald-400/50 text-[10px] font-bold text-emerald-300 flex items-center gap-1 shadow-md">
-                            <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                            <span>MSB VERIFIED</span>
+                          <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-emerald-950/90 backdrop-blur-md border border-emerald-400/50 text-[9px] font-bold text-emerald-300 flex items-center gap-1 shadow-md">
+                            <ShieldCheck className="w-2.5 h-2.5 text-emerald-400" />
+                            <span>MSB</span>
                           </span>
 
-                          <div className="absolute bottom-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-950/85 backdrop-blur-md border border-emerald-400/30 text-[10px] font-bold text-emerald-300 shadow-sm">
-                            <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
-                            <span>100% TIẾP NHẬN VIỆC LÀM</span>
+                          <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-950/85 backdrop-blur-md border border-emerald-400/30 text-[9px] font-bold text-emerald-300 shadow-sm">
+                            <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                            <span>100% VIỆC LÀM</span>
                           </div>
                         </div>
 
                         <div className="space-y-0.5 text-left">
-                          <div className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-400 flex items-center gap-1">
-                            <BookmarkCheck className="w-3 h-3 text-emerald-400" />
-                            <span>HỢP ĐỒNG BẢO LÃNH ĐẦU RA</span>
+                          <div className="text-[9px] font-extrabold uppercase text-emerald-400 truncate flex items-center gap-1">
+                            <BookmarkCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                            <span className="truncate">HỢP ĐỒNG BẢO LÃNH</span>
                           </div>
-                          <div className="text-sm font-extrabold text-white">
-                            Hội đồng Khảo thí & Chuyên gia MSB
-                          </div>
-                          <div className="text-[11px] text-slate-300 font-medium leading-snug line-clamp-1">
-                            Cam kết bằng văn bản tiếp nhận trực tiếp vào chi nhánh.
+                          <div className="text-xs font-extrabold text-white truncate">
+                            Khảo thí & MSB
                           </div>
                         </div>
                       </div>
@@ -765,7 +747,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
             return (
               <div
                 key={banner.id || index}
-                className={`w-full min-w-full snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 xl:p-7 flex flex-col justify-between shadow-[0_12px_45px_rgba(0,115,193,0.3)] relative overflow-hidden group border border-white/25 hover:border-[#5FBEFF]/60 ring-1 ring-white/10 transition-all duration-300 shrink-0 backdrop-blur-2xl`}
+                className={`w-full md:w-[calc(50%-8px)] min-w-[300px] md:min-w-[calc(50%-8px)] snap-start bg-gradient-to-br ${bgGrad} text-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 lg:p-5 flex flex-col justify-between shadow-[0_12px_45px_rgba(0,115,193,0.3)] relative overflow-hidden group border border-white/25 hover:border-[#5FBEFF]/60 ring-1 ring-white/10 transition-all duration-300 shrink-0 backdrop-blur-2xl`}
               >
                 {/* Glass Specular Reflections */}
                 <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-transparent to-black/45 pointer-events-none" />
@@ -776,9 +758,9 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                 <div className="absolute -top-16 -right-16 w-80 h-80 bg-[#5FBEFF]/20 rounded-full blur-3xl pointer-events-none group-hover:bg-[#5FBEFF]/30 transition-colors duration-700" />
                 <div className="absolute -bottom-16 -left-16 w-80 h-80 bg-[#0073C1]/20 rounded-full blur-3xl pointer-events-none" />
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-center relative z-10">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center relative z-10">
                   {/* Left Content Column */}
-                  <div className="lg:col-span-7 xl:col-span-8 space-y-2.5 sm:space-y-3.5">
+                  <div className="sm:col-span-8 space-y-2 sm:space-y-2.5">
                     {/* Partner Badges */}
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#EA580C]/20 border border-[#EA580C]/40 text-[#FFA07A] text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider">
@@ -788,7 +770,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                       {partners.map((badge, bIdx) => (
                         <span
                           key={bIdx}
-                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider shadow-xs"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#5FBEFF] text-[10px] font-extrabold uppercase tracking-wider shadow-xs"
                         >
                           <span>{badge.name}</span>
                         </span>
@@ -796,7 +778,7 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                     </div>
 
                     {/* Headline with vibrant gradient highlights */}
-                    <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-[2rem] font-black tracking-tight text-white leading-[1.15] drop-shadow-md">
+                    <h2 className="text-base sm:text-lg lg:text-xl font-black tracking-tight text-white leading-[1.2] drop-shadow-md line-clamp-2">
                       {banner.title.includes('Ngân hàng') ? (
                         <>
                           {banner.title.split('Ngân hàng')[0]}
@@ -811,60 +793,60 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                     </h2>
 
                     {banner.subtitle && (
-                      <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-2xl font-medium line-clamp-2">
+                      <p className="text-xs text-slate-200 leading-relaxed font-medium line-clamp-2">
                         {banner.subtitle}
                       </p>
                     )}
 
                     {/* Value-add highlights (Taglines) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5 text-xs font-semibold text-slate-200">
-                      <div className="flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-xs">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#5FBEFF] shrink-0" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5 text-[11px] font-semibold text-slate-200">
+                      <div className="flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-lg px-2.5 py-1 backdrop-blur-md shadow-xs">
+                        <CheckCircle2 className="w-3 h-3 text-[#5FBEFF] shrink-0" />
                         <span className="truncate">{tag1}</span>
                       </div>
-                      <div className="flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-xs">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <div className="flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-lg px-2.5 py-1 backdrop-blur-md shadow-xs">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
                         <span className="truncate">{tag2}</span>
                       </div>
                     </div>
 
                     {/* Action buttons row */}
-                    <div className="pt-1.5 flex flex-wrap items-center gap-2.5 sm:gap-3">
+                    <div className="pt-1 flex flex-wrap items-center gap-2">
                       {banner.buttonStyle === 'primary' ? (
                         <button
                           onClick={() => handleBannerAction(banner)}
-                          className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#FF6B35] via-[#EA580C] to-[#C23010] hover:from-[#FF7A47] hover:to-[#B02808] text-white font-extrabold rounded-xl text-xs sm:text-sm shadow-xl hover:shadow-orange-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 bg-gradient-to-r from-[#FF6B35] via-[#EA580C] to-[#C23010] hover:from-[#FF7A47] hover:to-[#B02808] text-white font-extrabold rounded-lg text-xs shadow-lg hover:shadow-orange-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <span>{banner.buttonText || 'Đăng ký tư vấn trực tiếp'}</span>
-                          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          <span>{banner.buttonText || 'Đăng ký tư vấn'}</span>
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                         </button>
                       ) : (
                         <button
                           onClick={() => handleBannerAction(banner)}
-                          className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#0073C1] to-[#2C93E8] hover:brightness-110 text-white font-extrabold rounded-xl text-xs sm:text-sm shadow-xl hover:shadow-cyan-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 bg-gradient-to-r from-[#0073C1] to-[#2C93E8] hover:brightness-110 text-white font-extrabold rounded-lg text-xs shadow-lg hover:shadow-cyan-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                         >
                           <span>{banner.buttonText || 'Khám phá ngay'}</span>
-                          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                         </button>
                       )}
 
                       <button
                         onClick={() => onOpenYouTubeTrial('sal78ACtGTc', banner.title)}
-                        className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs sm:text-sm font-bold backdrop-blur-md border border-white/25 hover:border-white/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold backdrop-blur-md border border-white/25 hover:border-white/40 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-xs"
                         title="Xem thử video bài giảng miễn phí trên YouTube"
                       >
-                        <Play className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+                        <Play className="w-3 h-3 text-rose-400 fill-rose-400" />
                         <span>Học thử 0đ</span>
                       </button>
                     </div>
                   </div>
 
                   {/* Right Graphic Column: Prestigious Faculty Profile Showcase Card */}
-                  <div className="lg:col-span-5 xl:col-span-4 flex justify-center lg:justify-end pt-2 lg:pt-0">
-                    <div className="relative w-full max-w-[240px] sm:max-w-[260px] lg:max-w-[260px] xl:max-w-[280px] bg-gradient-to-b from-white/15 via-slate-900/60 to-slate-950/80 backdrop-blur-xl border border-white/25 rounded-2xl p-3 sm:p-3.5 shadow-2xl shadow-blue-950/60 transition-transform duration-500 hover:scale-[1.02] ring-1 ring-white/15">
-                      <div className="absolute -inset-1 bg-gradient-to-r from-[#0073C1] to-[#5FBEFF] rounded-2xl blur-xl opacity-30 -z-10" />
+                  <div className="sm:col-span-4 flex justify-end">
+                    <div className="relative w-full max-w-[150px] sm:max-w-[160px] lg:max-w-[170px] bg-gradient-to-b from-white/15 via-slate-900/60 to-slate-950/80 backdrop-blur-xl border border-white/25 rounded-xl p-2 sm:p-2.5 shadow-xl shadow-blue-950/60 transition-transform duration-500 hover:scale-[1.02] ring-1 ring-white/15">
+                      <div className="absolute -inset-1 bg-gradient-to-r from-[#0073C1] to-[#5FBEFF] rounded-xl blur-lg opacity-30 -z-10" />
 
-                      <div className="relative aspect-[4/3] rounded-xl overflow-hidden border border-white/20 shadow-lg bg-slate-900 mb-2.5">
+                      <div className="relative aspect-[4/3] rounded-lg overflow-hidden border border-white/20 shadow-md bg-slate-900 mb-1.5">
                         <img
                           src={facultyImg}
                           alt={banner.title}
@@ -873,26 +855,26 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
                         
-                        <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-slate-950/90 backdrop-blur-md border border-white/25 text-[10px] font-extrabold text-[#5FBEFF] flex items-center gap-1 shadow-md">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#EA580C]" />
-                          <span>MSB Bank</span>
+                        <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded-full bg-slate-950/90 backdrop-blur-md border border-white/25 text-[9px] font-extrabold text-[#5FBEFF] flex items-center gap-0.5 shadow-xs">
+                          <span className="w-1 h-1 rounded-full bg-[#EA580C]" />
+                          <span>MSB</span>
                         </span>
 
-                        <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-950/85 backdrop-blur-md border border-white/15 text-[10px] font-bold text-amber-300">
-                          <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
-                          <span>4.9 / 5 (1.500+ học viên)</span>
+                        <div className="absolute bottom-1 left-1 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-950/85 backdrop-blur-md border border-white/15 text-[9px] font-bold text-amber-300">
+                          <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                          <span>4.9★</span>
                         </div>
                       </div>
 
                       <div className="space-y-0.5 text-left">
-                        <div className="text-[10px] font-extrabold tracking-wider uppercase text-[#5FBEFF]">
-                          Đội Ngũ Giảng Viên Thực Chiến
+                        <div className="text-[9px] font-extrabold tracking-wider uppercase text-[#5FBEFF]">
+                          Giảng Viên Chuyên Gia
                         </div>
-                        <div className="text-sm font-extrabold text-white">
-                          Giám Đốc Khối & Chuyên Gia MSB
+                        <div className="text-xs font-extrabold text-white line-clamp-1">
+                          Giám Đốc Khối MSB
                         </div>
-                        <div className="text-[11px] text-slate-300 font-medium leading-snug line-clamp-1">
-                          Đào tạo trực tiếp tại Hội sở, bảo lãnh tiếp nhận việc làm.
+                        <div className="text-[10px] text-slate-300 font-medium leading-snug line-clamp-1">
+                          Đào tạo trực tiếp Hội sở
                         </div>
                       </div>
                     </div>
