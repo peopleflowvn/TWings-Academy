@@ -13,7 +13,7 @@ from apps.accounts.models import User
 from apps.accounts.rbac import Role
 from apps.catalog.models import Cohort, Course, Program
 from apps.crm.assignment import assign_new_lead
-from apps.crm.models import AdmissionCampaign, CampaignPosition, Order
+from apps.crm.models import Order
 from apps.crm.services import flag_duplicates
 
 PASSWORD = "E2e-Test-Passw0rd!"
@@ -33,13 +33,20 @@ rm = Course.objects.create(
 gdv = Course.objects.create(status="published", is_published=True, slug="e2e-gdv", title="E2E Giao dịch viên", price=5_000_000)
 Course.objects.create(status="draft", slug="e2e-draft", title="E2E Khóa nháp", price=1)  # not on sale
 Program.objects.create(slug="e2e-goi", title="E2E Gói RM", price=12_000_000, is_published=True)
-k9 = Cohort.objects.create(course=rm, name="E2E K9", start_date=timezone.localdate() + timedelta(days=20), status="opening")
-Cohort.objects.create(course=gdv, name="E2E GDV K3", start_date=timezone.localdate() + timedelta(days=10), status="opening")
-camp = AdmissionCampaign.objects.create(
-    code="CAMP-E2E", name="Chiến dịch E2E", status="active", target_headcount=10, is_published=True,
+k9 = Cohort.objects.create(
+    course=rm,
+    name="E2E K9",
+    start_date=timezone.localdate() + timedelta(days=20),
+    registration_deadline=timezone.localdate() + timedelta(days=15),
+    status="opening",
+    code="CAMP-E2E",
+    slug="chien-dich-e2e",
+    capacity=10,
+    is_published=True,
+    show_quota=True,
     summary="Đợt tuyển sinh thử nghiệm E2E",
 )
-CampaignPosition.objects.create(campaign=camp, course=rm, target_quota=10)
+Cohort.objects.create(course=gdv, name="E2E GDV K3", start_date=timezone.localdate() + timedelta(days=10), status="opening")
 
 
 def lead(name, phone, email, course, **extra):
@@ -52,7 +59,7 @@ def lead(name, phone, email, course, **extra):
     return order
 
 
-lead("Nguyễn Văn An", "0912000001", "an@example.com", rm, cohort=k9, campaign=camp, campaign_code="CAMP-E2E")
+lead("Nguyễn Văn An", "0912000001", "an@example.com", rm, cohort=k9, campaign_code="CAMP-E2E")
 lead("Nguyễn Văn An", "0912000001", "an@example.com", gdv)  # the same learner, a second course
 lead("Trần Thị Bình", "0912000002", "binh@example.com", rm, crm_status="3. Đang tư vấn")
 lead("Lê Văn Cường", "0912000003", "", gdv, interest_level="Cao")

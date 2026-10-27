@@ -1,5 +1,7 @@
 from django.db.models import F, Q
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from rest_framework import mixins, viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
@@ -36,10 +38,6 @@ class PublicArticleViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
         response = super().retrieve(request, *args, **kwargs)
         Article.objects.filter(slug=kwargs["slug"]).update(views_count=F("views_count") + 1)
         return response
-
-
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import never_cache
 
 
 @method_decorator(never_cache, name="dispatch")
