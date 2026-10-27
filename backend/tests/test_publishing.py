@@ -132,6 +132,43 @@ def test_course_with_orders_or_intakes_cannot_be_deleted(staff_client, ready_cou
     assert res.status_code == 400 and "Ngừng bán" in res.json()["detail"]
 
 
+def test_the_course_editor_creates_and_saves_what_the_page_shows(staff_client):
+    """The /app form: a blank draft, then its syllabus, objectives and instructors as the page reads them."""
+    admin = staff_client(Role.SUPER_ADMIN)
+    res = admin.post(
+        URL,
+        {
+            "slug": "khoa-hoc-moi-1",
+            "title": "Khóa học mới",
+            "deliveryFormat": "online_external_lms",
+            "price": 0,
+        },
+        format="json",
+    )
+    assert res.status_code == 201, res.content
+    course = res.json()
+    assert course["status"] == "draft" and course["syllabus"] == []
+    teacher = Instructor.objects.create(name="GV B", title="Giám đốc")
+    lessons = [
+        {"id": f"l{i}", "title": f"Bài {i}", "type": "quiz", "isFreePreview": i == 0} for i in range(3)
+    ]
+    saved = admin.patch(
+        f"{URL}{course['id']}/",
+        {
+            "syllabus": [{"id": "m1", "title": "Học phần 1", "lessons": lessons}],
+            "objectives": ["Một", "Hai", "Ba"],
+            "instructorIds": [teacher.pk],
+        },
+        format="json",
+    )
+    assert saved.status_code == 200, saved.content
+    body = saved.json()
+    assert body["syllabus"][0]["lessons"][0]["isFreePreview"] is True
+    assert [i["name"] for i in body["instructors"]] == ["GV B"]
+    ready = {i["key"]: i["ok"] for i in body["readiness"]}
+    assert ready["syllabus"] and ready["objectives"] and ready["instructors"]
+
+
 def test_journey_audit_command_runs(ready_course):
     import json
     from io import StringIO

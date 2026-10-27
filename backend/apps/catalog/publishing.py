@@ -93,7 +93,14 @@ def readiness(course, *, moodle_template: bool | None = None) -> list[dict]:
             upcoming.exists(),
             "Học trực tiếp / kết hợp cần ít nhất 1 lớp sắp mở: mở ở mục Lớp tuyển sinh bên dưới",
         ),
-        ("objectives", "≥ 3 mục tiêu đầu ra", False, len(course.learning_objectives or []) >= 3, ""),
+        (
+            "objectives",
+            "≥ 3 mục tiêu đầu ra",
+            False,
+            # The course page shows `objectives` (edited in /app), else the imported learning objectives.
+            len(course.objectives or course.learning_objectives or []) >= 3,
+            "",
+        ),
         (
             "original_price",
             "Giá gạch là khuyến mại có hạn (đặt ngày kết thúc, giảm tối đa 50%)",

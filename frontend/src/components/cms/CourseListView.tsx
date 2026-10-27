@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BookOpen, CalendarDays, ChevronRight, Clock, LayoutGrid, Plus, Search, Table as TableIcon, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, ChevronRight, Clock, LayoutGrid, Loader2, Plus, Search, Table as TableIcon, Users } from 'lucide-react';
 import { Course } from '../../types';
 import { formatDate } from '../../lib/commerce';
 import { rank } from '../../lib/search';
@@ -10,7 +10,10 @@ interface CourseListViewProps {
   /** Every class (null while loading): what each course is recruiting for. */
   classes?: IntakeRow[] | null;
   onOpenCourse: (courseId: string) => void;
-  onCreateCourse: () => void;
+  /** Absent when the user may not create courses. */
+  onCreateCourse?: () => void;
+  /** A new course is being saved. */
+  creating?: boolean;
 }
 
 const statusLabel: Record<string, string> = {
@@ -52,7 +55,7 @@ const ClassesLine: React.FC<{ course: Course; summary?: ClassSummary; loading: b
 };
 
 /** Catalogue landing view. Editing is deliberately one click deeper, like CRM campaigns → pipeline. */
-export const CourseListView: React.FC<CourseListViewProps> = ({ courses, classes, onOpenCourse, onCreateCourse }) => {
+export const CourseListView: React.FC<CourseListViewProps> = ({ courses, classes, onOpenCourse, onCreateCourse, creating }) => {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [category, setCategory] = useState('all');
@@ -109,9 +112,11 @@ export const CourseListView: React.FC<CourseListViewProps> = ({ courses, classes
                 <TableIcon className="w-4 h-4" /><span className="hidden sm:inline">Bảng</span>
               </button>
             </div>
-            <button type="button" onClick={onCreateCourse} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-2">
-              <Plus className="w-4 h-4" />Tạo khóa học mới
-            </button>
+            {onCreateCourse && (
+              <button type="button" onClick={onCreateCourse} disabled={creating} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60">
+                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}Tạo khóa học mới
+              </button>
+            )}
           </div>
         </div>
         <div className="pt-3 border-t border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs">

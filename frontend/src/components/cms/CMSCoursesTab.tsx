@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  BookOpen,
   Play,
   Award,
   Star,
@@ -13,21 +13,13 @@ import {
   AlertCircle,
   Video,
   FileText,
-  HelpCircle,
   Layers,
-  ChevronDown,
-  ChevronUp,
-  MapPin,
-  Clock,
-  Sparkles,
   Users,
   ShieldCheck,
   Check,
-  Search,
-  RefreshCw,
   Eye,
-  Sliders,
-  Image as ImageIcon,
+  Loader2,
+  Sparkles,
   ArrowLeft
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -44,13 +36,62 @@ import { viDateToIso } from '../../lib/serverCollection';
 interface CMSCoursesTabProps {
   courses: Course[];
   /** Saves a new course; resolves to the saved course (its server id) or nothing when it failed. */
-  onAddCourse: (newCourse: Course) => Promise<Course | undefined> | void;
-  onUpdateCourse: (updatedCourse: Course) => void;
-  onDeleteCourse: (courseId: string) => void;
+  onAddCourse: (newCourse: Course) => Promise<Course | undefined>;
+  /** Saves the course; resolves to what the server stored, or nothing when it failed (the error was shown). */
+  onUpdateCourse: (updatedCourse: Course) => Promise<Course | undefined>;
+  /** Deletes the course; resolves to false when the server refused (the error was shown). */
+  onDeleteCourse: (courseId: string) => Promise<boolean>;
   onPreviewCourse?: (course: Course) => void;
   /** Reload the course list (after a publishing step changed the course on the server). */
   onReload?: () => void;
 }
+
+const SUBTABS = ['info', 'youtube', 'instructors', 'modules', 'reviews', 'guarantees'] as const;
+type SubTab = (typeof SUBTABS)[number];
+const readSubTab = (): SubTab => {
+  const t = new URLSearchParams(window.location.search).get('subtab') as SubTab | null;
+  return t && SUBTABS.includes(t) ? t : 'info';
+};
+
+const STATUS_LABEL: Record<string, string> = { draft: 'Nháp', review: 'Chờ duyệt', published: 'Đang bán', archived: 'Ngừng bán' };
+// Suggestions; a course keeps whatever category / level it already has.
+const CATEGORIES = [
+  'Ngân Hàng & Tín Dụng',
+  'Quản Trị & Lãnh Đạo (OKR/MBO)',
+  'Tư Duy & Đột Phá',
+  'Trí tuệ nhân tạo (AI)',
+  'Dữ Liệu & Phân Tích',
+  'Chứng chỉ Chuyên môn'
+];
+const LEVELS = ['Người mới bắt đầu', 'Chuyên viên Mới (Fresher)', 'Chuyên viên Chính', 'Quản lý / Trưởng nhóm', 'Nâng cao', 'Mọi cấp độ'];
+const LESSON_TYPES: [Lesson['type'], string][] = [
+  ['video', 'Video'],
+  ['reading', 'Bài đọc'],
+  ['quiz', 'Trắc nghiệm'],
+  ['project', 'Bài tập / dự án'],
+  ['audio_listening', 'Nghe'],
+  ['flashcard', 'Flashcard'],
+  ['pdf_material', 'Tài liệu PDF']
+];
+const withCurrent = (options: string[], current: string | undefined, more: string[] = []) =>
+  [...new Set([...options, ...more, ...(current ? [current] : [])].filter(Boolean))];
+
+/** The editable copy of a course: the syllabus is edited as `syllabus` (what the server stores). */
+const formOf = (course: Course): Course => {
+  const form: Course = JSON.parse(JSON.stringify(course));
+  form.syllabus = course.syllabus || course.chapters || [];
+  delete form.chapters;
+  return form;
+};
+
+const extractYouTubeId = (input: string): string => {
+  const trimmed = (input || '').trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+  return match ? match[1] : trimmed;
+};
+
+const formatVND = (num: number) => new Intl.NumberFormat('vi-VN').format(num || 0) + ' ₫';
 
 export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
   courses,
@@ -64,60 +105,69 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
   const requestedCourseId = appSearch.get('id');
   const isDetailView = !!requestedCourseId && courses.some((course) => course.id === requestedCourseId);
   const canPrice = useStaffCan('courses.pricing');
+  const canEditInfo = useStaffCan('courses.edit_info');
+  const canCurriculum = useStaffCan('courses.curriculum');
+  const canEdit = canEditInfo || canCurriculum;
+  const canDelete = useStaffCan('courses.delete');
   // The classes of every course: counts on the list, the classes panel on a course's page.
   const classes = useClasses();
-  // Currently selected course to edit
-  const [selectedCourseId, setSelectedCourseId] = useState<string>(() => {
-    const p = requestedCourseId;
-    return p && courses.some((c) => c.id === p) ? p : (courses[0]?.id || '');
-  });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeSubTab, setActiveSubTab] = useState<'info' | 'youtube' | 'instructors' | 'modules' | 'reviews' | 'guarantees'>(() => {
-    const t = new URLSearchParams(window.location.search).get('subtab') as any;
-    return t && ['info', 'youtube', 'instructors', 'modules', 'reviews', 'guarantees'].includes(t) ? t : 'info';
-  });
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(() =>
+    requestedCourseId && courses.some((c) => c.id === requestedCourseId) ? requestedCourseId : courses[0]?.id || ''
+  );
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>(readSubTab);
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState<'' | 'save' | 'create' | 'copy' | 'delete'>('');
+  const flash = (ok: boolean, text: string) => {
+    setNotice({ ok, text });
+    setTimeout(() => setNotice((n) => (n?.text === text ? null : n)), ok ? 3500 : 8000);
+  };
 
-  // Keep URL query params synchronized with course selection and sub-tab
+  // Keep the URL in step with the course and sub-tab.
   useEffect(() => {
     if (!isDetailView || !selectedCourseId || selectedCourseId !== requestedCourseId) return;
     const params = new URLSearchParams(window.location.search);
-    let changed = false;
-    if (params.get('id') !== selectedCourseId) {
-      params.set('id', selectedCourseId);
-      changed = true;
-    }
-    if (params.get('subtab') !== activeSubTab) {
-      params.set('subtab', activeSubTab);
-      changed = true;
-    }
-    if (changed) {
-      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
-    }
+    if (params.get('id') === selectedCourseId && params.get('subtab') === activeSubTab) return;
+    params.set('id', selectedCourseId);
+    params.set('subtab', activeSubTab);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
   }, [selectedCourseId, activeSubTab, isDetailView, requestedCourseId]);
 
   // `navigate()` dispatches the app-router event rather than a browser popstate event.
-  // Keep the editor buffer pointed at the card/table row the staff member selected.
   useEffect(() => {
-    if (requestedCourseId && courses.some((course) => course.id === requestedCourseId)) {
-      setSelectedCourseId(requestedCourseId);
-    }
+    if (requestedCourseId && courses.some((course) => course.id === requestedCourseId)) setSelectedCourseId(requestedCourseId);
   }, [requestedCourseId, courses]);
 
   useEffect(() => {
-    const sync = () => {
-      const p = new URLSearchParams(window.location.search).get('id');
-      const t = new URLSearchParams(window.location.search).get('subtab') as any;
-      if (p && courses.some((c) => c.id === p)) setSelectedCourseId(p);
-      if (t && ['info', 'youtube', 'instructors', 'modules', 'reviews', 'guarantees'].includes(t)) setActiveSubTab(t);
-    };
+    const sync = () => setActiveSubTab(readSubTab());
     window.addEventListener('popstate', sync);
     return () => window.removeEventListener('popstate', sync);
-  }, [courses]);
+  }, []);
 
-  // Editable buffer for the selected course
+  // Editable copy of the selected course, and what it was when loaded (unsaved changes = they differ).
   const currentCourse = courses.find((c) => c.id === selectedCourseId) || courses[0];
   const [editForm, setEditForm] = useState<Course | null>(null);
+  const [baseline, setBaseline] = useState('');
+  const dirty = !!editForm && JSON.stringify(editForm) !== baseline;
+  const loadForm = (course: Course) => {
+    const form = formOf(course);
+    setEditForm(form);
+    setBaseline(JSON.stringify(form));
+  };
+  // Another course, or this one changed on the server (saved, published…): reload unless edits are pending.
+  useEffect(() => {
+    if (!currentCourse) return;
+    if (!editForm || editForm.id !== currentCourse.id || !dirty) loadForm(currentCourse);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentCourse?.id, currentCourse?.updatedAt]);
+  // Closing or reloading the tab with unsaved changes asks first.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+  const confirmLeave = () => !dirty || window.confirm('Khóa học có thay đổi chưa lưu. Bỏ các thay đổi này?');
+
   // A course on sale keeps its approved price unless the user may set prices (server enforces it too).
   const priceLocked = currentCourse?.status === 'published' && !canPrice;
   // Instructors managed on the "Giảng viên" page: the only ones a course can be linked to (saved by id).
@@ -130,19 +180,40 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
       .catch(() => setStaffInstructors(null));
   }, []);
 
-  // Sync edit form whenever selected course changes
-  useEffect(() => {
-    if (currentCourse) {
-      setEditForm(JSON.parse(JSON.stringify(currentCourse)));
-    }
-  }, [selectedCourseId, courses.length]);
+  /** Open a course just saved on the server (it has its server id now). */
+  const openSaved = (saved: Course | undefined, text: string) => {
+    if (!saved) return;
+    loadForm(saved);
+    setSelectedCourseId(saved.id);
+    setActiveSubTab('info');
+    navigate(`/catalog/courses?id=${encodeURIComponent(saved.id)}&subtab=info`);
+    flash(true, text);
+  };
+
+  // A new course is a blank draft: the readiness checklist says what to fill in before review.
+  const handleCreateNewCourse = async () => {
+    if (busy) return;
+    const stamp = Date.now();
+    const draft = {
+      slug: `khoa-hoc-moi-${stamp}`,
+      title: 'Khóa học mới',
+      deliveryFormat: 'online_external_lms',
+      price: 0,
+      originalPrice: 0
+    } as Course;
+    setBusy('create');
+    const saved = await onAddCourse(draft);
+    setBusy('');
+    openSaved(saved, 'Đã tạo khóa học nháp. Điền các mục còn thiếu trong danh sách kiểm tra rồi gửi duyệt.');
+  };
 
   if (!isDetailView) {
     return (
       <CourseListView
         courses={courses}
         classes={classes.rows}
-        onCreateCourse={handleCreateNewCourse}
+        creating={busy === 'create'}
+        onCreateCourse={canEdit ? handleCreateNewCourse : undefined}
         onOpenCourse={(courseId) => {
           setSelectedCourseId(courseId);
           navigate(`/catalog/courses?id=${encodeURIComponent(courseId)}&subtab=info`);
@@ -152,253 +223,155 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
   }
 
   if (!editForm) {
-    return (
-      <div className="p-8 text-center text-slate-500">
-        Đang tải dữ liệu khóa học...
-      </div>
-    );
+    return <div className="p-8 text-center text-slate-500">Đang tải dữ liệu khóa học...</div>;
   }
 
-  // Format VND currency
-  const formatVND = (num: number) => {
-    return new Intl.NumberFormat('vi-VN').format(num) + ' ₫';
-  };
+  const syllabus: Module[] = editForm.syllabus || [];
+  const setSyllabus = (next: Module[]) => setEditForm({ ...editForm, syllabus: next });
+  const lessonCount = syllabus.reduce((n, m) => n + (m.lessons?.length || 0), 0);
+  const instructors = editForm.instructors || [];
 
-  // Helper to extract YouTube ID from any link or raw ID
-  const extractYouTubeId = (input: string): string => {
-    if (!input) return '';
-    const trimmed = input.trim();
-    // Check if raw 11-char ID
-    if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
-      return trimmed;
-    }
-    // Match watch?v=ID or youtu.be/ID or embed/ID
-    const match = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-    return match ? match[1] : trimmed;
-  };
-
-  // Handle saving the edited course
-  const handleSaveAll = () => {
-    if (!editForm) return;
-
-    // Standardize instructors & reviews
-    const cleaned: Course = {
+  const handleSaveAll = async () => {
+    if (!editForm || busy) return;
+    const videoId = extractYouTubeId(editForm.youtubeVideoId || '');
+    const payload = {
       ...editForm,
-      youtubeVideoId: extractYouTubeId(editForm.youtubeVideoId || ''),
-      youtubeTrialUrl: editForm.youtubeVideoId 
-        ? `https://www.youtube.com/watch?v=${extractYouTubeId(editForm.youtubeVideoId)}`
-        : editForm.youtubeTrialUrl,
-      instructor: editForm.instructors?.[0] || editForm.instructor,
-    };
-    // Persist the course's instructors (the API links them by id); unknown entries are ignored.
-    if (staffInstructors) {
-      const known = new Set(staffInstructors.map((i) => i.id));
-      (cleaned as Course & { instructorIds?: string[] }).instructorIds = (editForm.instructors || [])
-        .map((i) => i.id)
-        .filter((id) => known.has(id));
+      title: editForm.title.trim(),
+      youtubeVideoId: videoId,
+      youtubeTrialUrl: videoId ? `https://www.youtube.com/watch?v=${videoId}` : '',
+      // The API links instructors by id (their profiles are edited on the "Giảng viên" page).
+      instructorIds: instructors.map((i) => i.id),
+      objectives: (editForm.objectives || []).map((o) => o.trim()).filter(Boolean),
+      guarantees: (editForm.guarantees || []).map((g) => g.trim()).filter(Boolean)
+    } as Course & { instructorIds: string[] };
+    if (!payload.title) {
+      flash(false, 'Khóa học cần có tên.');
+      return;
     }
-
-    onUpdateCourse(cleaned);
-    setSaveSuccessMsg(true);
-    confetti({
-      particleCount: 50,
-      spread: 60,
-      origin: { y: 0.6 }
-    });
-    setTimeout(() => setSaveSuccessMsg(false), 3000);
+    setBusy('save');
+    const saved = await onUpdateCourse(payload);
+    setBusy('');
+    if (!saved) {
+      flash(false, 'Chưa lưu được. Sửa theo thông báo lỗi rồi lưu lại – các thay đổi vẫn còn trên form.');
+      return;
+    }
+    loadForm(saved);
+    flash(true, saved.status === 'published' ? 'Đã lưu – trang khóa học trên website đã cập nhật.' : 'Đã lưu.');
+    confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
   };
-
-  /** Open a course just saved on the server (it has its server id now). */
-  const openSaved = (saved: Course | undefined | void) => {
-    if (!saved) return;
-    setSelectedCourseId(saved.id);
-    navigate(`/catalog/courses?id=${encodeURIComponent(saved.id)}&subtab=info`);
-    setSaveSuccessMsg(true);
-    setTimeout(() => setSaveSuccessMsg(false), 3000);
-  };
-
-  // A new course is a blank draft: the readiness checklist says what to fill in before review.
-  async function handleCreateNewCourse() {
-    const stamp = Date.now();
-    const newCourse: Course = {
-      id: `course-new-${stamp}`,
-      slug: `khoa-hoc-moi-${stamp}`,
-      title: 'Khóa học mới',
-      subtitle: '',
-      overview: '',
-      category: '',
-      level: 'Mọi cấp độ',
-      deliveryFormat: 'online_external_lms',
-      locationText: '',
-      price: 0,
-      originalPrice: 0,
-      rating: 0, // computed by the server from approved learner reviews
-      reviewsCount: 0,
-      duration: '',
-      lessonsCount: 0,
-      badgeType: 'new',
-      thumbnail: '',
-      youtubeVideoId: '',
-      youtubeTrialUrl: '',
-      instructors: [],
-      reviews: [], // only real learner reviews are shown publicly
-      guarantees: [], // only promises the institute has in writing
-      objectives: [],
-      chapters: []
-    };
-    openSaved(await onAddCourse(newCourse));
-  }
 
   // A copy of the course as a new draft (its classes, learners and reviews stay with the original).
   const handleDuplicateCourse = async () => {
-    if (!editForm) return;
+    if (busy || !confirmLeave()) return;
     const stamp = Date.now();
-    const duplicated: Course = {
-      ...JSON.parse(JSON.stringify(editForm)),
-      id: `course-copy-${stamp}`,
+    const { id: _id, status: _status, ...content } = formOf(currentCourse);
+    const copy = {
+      ...content,
       slug: `${editForm.slug}-ban-sao-${stamp}`.slice(0, 200),
-      title: `${editForm.title} (Bản sao)`,
-      status: 'draft',
-      reviews: []
-    };
-    openSaved(await onAddCourse(duplicated));
+      title: `${currentCourse.title} (Bản sao)`,
+      instructorIds: (currentCourse.instructors || []).map((i) => i.id)
+    } as unknown as Course;
+    setBusy('copy');
+    const saved = await onAddCourse(copy);
+    setBusy('');
+    openSaved(saved, 'Đã tạo bản sao (nháp). Bản sao không mang theo lớp, học viên và đánh giá.');
   };
 
-  // Handle deleting current course
-  const handleDeleteCurrentCourse = () => {
-    if (courses.length <= 1) {
-      alert('Hệ thống cần duy trì ít nhất 1 khóa học trong danh mục.');
-      return;
-    }
-    if (window.confirm(`Bạn có chắc chắn muốn xóa khóa học "${editForm.title}"?`)) {
-      const nextCourse = courses.find((c) => c.id !== editForm.id);
-      onDeleteCourse(editForm.id);
-      if (nextCourse) {
-        setSelectedCourseId(nextCourse.id);
-      }
-    }
+  const handleDeleteCurrentCourse = async () => {
+    if (busy) return;
+    if (!window.confirm(`Xóa hẳn khóa học "${currentCourse.title}"? Không hoàn tác được.\n\nKhóa đã có lớp hoặc học viên thì không xóa được – hãy dùng "Ngừng bán".`)) return;
+    setBusy('delete');
+    const ok = await onDeleteCourse(currentCourse.id);
+    setBusy('');
+    if (ok) navigate('/catalog/courses');
   };
 
-  // Filtered course list for selector
-  const filteredCourses = courses.filter((c) =>
-    c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const categoryOptions = withCurrent(CATEGORIES, editForm.category, courses.map((c) => c.category));
+  const levelOptions = withCurrent(LEVELS, editForm.level);
+  const btn = 'px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50 disabled:cursor-not-allowed';
 
   return (
     <div className="space-y-6 animate-fadeIn pb-24">
-      {/* 1. TOP BAR — shared visual language with the CRM campaign catalogue */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-indigo-600" />
-              <span>Danh mục khóa học</span>
-            </h2>
-            <p className="text-xs text-slate-500 max-w-3xl">
-              Chọn một khóa học để quản lý nội dung, học phí, giảng viên, lộ trình và thông tin hiển thị trên website.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleCreateNewCourse}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Khóa học mới</span>
-          </button>
-        </div>
-
-        <div className="pt-3 border-t border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-3 text-xs">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm theo tên hoặc danh mục khóa học..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 min-w-0 xl:max-w-3xl xl:flex-1 xl:justify-end">
-            <select
-              value={selectedCourseId}
-              onChange={(e) => {
-                const courseId = e.target.value;
-                setSelectedCourseId(courseId);
-                navigate(`/catalog/courses?id=${encodeURIComponent(courseId)}&subtab=${activeSubTab}`);
-              }}
-              className="min-w-0 w-full sm:max-w-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-              aria-label="Chọn khóa học đang chỉnh sửa"
-            >
-              {filteredCourses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {{ draft: '[Nháp]', review: '[Chờ duyệt]', published: '[Đang bán]', archived: '[Ngừng bán]' }[c.status || 'draft']}{' '}
-                  {c.title} — {formatVND(c.price)}
-                </option>
-              ))}
-            </select>
-
-            {/* Navigation / preview, secondary course actions, then one primary save action. */}
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <button
-                type="button"
-                onClick={() => navigate('/catalog/courses')}
-                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Danh sách</span>
-              </button>
-            {onPreviewCourse && (
-              <button
-                type="button"
-                onClick={() => onPreviewCourse(editForm)}
-                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <Eye className="w-4 h-4 text-blue-600" />
-                <span className="hidden 2xl:inline">Xem trước</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={handleDuplicateCourse}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
-              title="Nhân bản khóa học này"
-              aria-label="Nhân bản khóa học"
-            >
-              <Copy className="w-4 h-4" />
+      {/* Unsaved changes: save from anywhere on the page (the top bar scrolls away). In <body>: an animated
+          (transformed) ancestor would pin a fixed bar to itself instead of the screen. */}
+      {dirty && canEdit && createPortal(
+        <div data-unsaved-bar className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-6 z-40 flex items-center justify-between gap-3 bg-slate-900 text-white rounded-2xl shadow-lg px-4 py-3 text-xs">
+          <span className="font-bold">Có thay đổi chưa lưu</span>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => window.confirm('Bỏ mọi thay đổi chưa lưu của khóa này?') && loadForm(currentCourse)}
+              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 font-bold cursor-pointer">Hoàn tác</button>
+            <button type="button" onClick={handleSaveAll} disabled={!!busy}
+              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-60">
+              {busy === 'save' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Lưu
             </button>
+          </div>
+        </div>,
+        document.body
+      )}
 
-              <button
-                type="button"
-                onClick={handleDeleteCurrentCourse}
-                className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-all cursor-pointer"
-                title="Xóa khóa học này"
-                aria-label="Xóa khóa học"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-
-            <button
-              type="button"
-              onClick={handleSaveAll}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
-            >
-              <Save className="w-4 h-4" />
-              <span>Lưu thay đổi</span>
+      {/* 1. TOP BAR: the course, switching course, its actions and the save button */}
+      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button type="button" onClick={() => confirmLeave() && navigate('/catalog/courses')} className={`${btn} bg-slate-100 hover:bg-slate-200 text-slate-700`}>
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Danh sách</span>
             </button>
+            <div className="min-w-0">
+              <div className="text-[11px] text-slate-500">
+                {dirty ? <span className="text-amber-700 font-bold">Có thay đổi chưa lưu</span> : 'Khóa học đang sửa'}
+              </div>
+              <select
+                value={selectedCourseId}
+                onChange={(e) => {
+                  if (!confirmLeave()) return;
+                  const courseId = e.target.value;
+                  setSelectedCourseId(courseId);
+                  navigate(`/catalog/courses?id=${encodeURIComponent(courseId)}&subtab=${activeSubTab}`);
+                }}
+                className="max-w-full sm:max-w-md text-base sm:text-lg font-bold text-slate-900 bg-transparent border-0 p-0 pr-6 focus:outline-none focus:ring-0 cursor-pointer truncate"
+                aria-label="Chọn khóa học đang chỉnh sửa"
+              >
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title} [{STATUS_LABEL[c.status || 'draft']}]
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {onPreviewCourse && (
+              <button type="button" onClick={() => onPreviewCourse(editForm)} className={`${btn} bg-slate-100 hover:bg-slate-200 text-slate-700`}>
+                <Eye className="w-4 h-4 text-blue-600" />
+                <span>Xem trước</span>
+              </button>
+            )}
+            {canEdit && (
+              <button type="button" onClick={handleDuplicateCourse} disabled={!!busy} className={`${btn} bg-slate-100 hover:bg-slate-200 text-slate-700`} title="Tạo bản sao nháp của khóa này">
+                {busy === 'copy' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                <span className="hidden sm:inline">Nhân bản</span>
+              </button>
+            )}
+            {canDelete && (
+              <button type="button" onClick={handleDeleteCurrentCourse} disabled={!!busy} className={`${btn} bg-red-50 hover:bg-red-100 text-red-600`} title="Xóa khóa học này" aria-label="Xóa khóa học">
+                {busy === 'delete' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              </button>
+            )}
+            {canEdit && (
+              <button type="button" onClick={handleSaveAll} disabled={!!busy || !dirty} className={`${btn} px-4 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs`}>
+                {busy === 'save' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>{dirty ? 'Lưu thay đổi' : 'Đã lưu'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Notification Toast */}
-        {saveSuccessMsg && (
-          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-xs font-bold animate-fadeIn">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Đã lưu thành công toàn bộ thông tin khóa học "{editForm.title}"! Trang chi tiết đã được cập nhật ngay lập tức.</span>
+        {notice && (
+          <div role="status" className={`p-3 border rounded-xl flex items-center gap-2 text-xs font-bold animate-fadeIn ${notice.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+            {notice.ok ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+            <span>{notice.text}</span>
           </div>
         )}
       </div>
@@ -426,7 +399,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>1. Giới Thiệu & Thông Tin Cơ Bản</span>
+            <span>1. Thông tin & học phí</span>
           </button>
 
           <button
@@ -439,7 +412,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
             }`}
           >
             <Play className="w-4 h-4 text-red-500 fill-current" />
-            <span>2. Nhúng YouTube & Video Học Thử</span>
+            <span>2. Video học thử</span>
             {editForm.youtubeVideoId && (
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
             )}
@@ -455,7 +428,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>3. Đội Ngũ Giảng Viên ({editForm.instructors?.length || 1})</span>
+            <span>3. Giảng viên ({instructors.length})</span>
           </button>
 
           <button
@@ -468,7 +441,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>4. Các Module & Lộ Trình ({editForm.chapters?.length || 0})</span>
+            <span>4. Đề cương ({lessonCount} bài)</span>
           </button>
 
           <button
@@ -481,7 +454,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
             }`}
           >
             <Star className="w-4 h-4 text-amber-500 fill-current" />
-            <span>5. Đánh giá học viên</span>
+            <span>5. Đánh giá</span>
           </button>
 
           <button
@@ -494,7 +467,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>6. Cam Kết & Quyền Lợi</span>
+            <span>6. Cam kết</span>
           </button>
         </div>
       </div>
@@ -549,16 +522,12 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Danh mục đào tạo *</label>
                   <select
-                    value={editForm.category}
+                    value={editForm.category || ''}
                     onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-semibold bg-slate-50"
                   >
-                    <option value="Ngân Hàng & Tín Dụng">Ngân Hàng & Tín Dụng</option>
-                    <option value="Quản Trị & Lãnh Đạo (OKR/MBO)">Quản Trị & Lãnh Đạo (OKR/MBO)</option>
-                    <option value="Tư Duy & Đột Phá">Tư Duy & Đột Phá</option>
-                    <option value="Trí tuệ nhân tạo (AI)">Trí tuệ nhân tạo (AI)</option>
-                    <option value="Dữ Liệu & Phân Tích">Dữ Liệu & Phân Tích</option>
-                    <option value="Chứng chỉ Chuyên môn">Chứng chỉ Chuyên môn</option>
+                    <option value="">– Chọn danh mục –</option>
+                    {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
 
@@ -566,16 +535,12 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Trình độ khóa học *</label>
                   <select
-                    value={editForm.level}
-                    onChange={(e) => setEditForm({ ...editForm, level: e.target.value as any })}
+                    value={editForm.level || ''}
+                    onChange={(e) => setEditForm({ ...editForm, level: e.target.value as Course['level'] })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-semibold bg-slate-50"
                   >
-                    <option value="Chuyên viên Mới (Fresher)">Chuyên viên Mới (Fresher)</option>
-                    <option value="Chuyên viên Chính">Chuyên viên Chính</option>
-                    <option value="Quản lý / Trưởng nhóm">Quản lý / Trưởng nhóm</option>
-                    <option value="Tất cả cấp bậc">Tất cả cấp bậc</option>
-                    <option value="Mới bắt đầu">Mới bắt đầu</option>
-                    <option value="Nâng cao">Nâng cao</option>
+                    <option value="">– Chọn trình độ –</option>
+                    {levelOptions.map((l) => <option key={l} value={l}>{l}</option>)}
                   </select>
                 </div>
 
@@ -587,10 +552,13 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                     onChange={(e) => setEditForm({ ...editForm, deliveryFormat: e.target.value as any })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-slate-50 text-[#0073C1]"
                   >
-                    <option value="online_external_lms">Online qua LMS chuyên biệt (Cấp tài khoản & kèm 1-1)</option>
-                    <option value="offline">Trực tiếp tại Trung tâm (Tòa ROX Tower 54A Nguyễn Chí Thanh)</option>
-                    <option value="hybrid">Hybrid (Học LMS + Workshop thực địa tại Ngân hàng)</option>
+                    <option value="online_external_lms">Online qua LMS (không cần mở lớp)</option>
+                    <option value="offline">Trực tiếp (học theo lớp)</option>
+                    <option value="hybrid">Kết hợp online + trực tiếp (học theo lớp)</option>
                   </select>
+                  {(editForm.deliveryFormat === 'offline' || editForm.deliveryFormat === 'hybrid') && (
+                    <p className="text-[11px] text-slate-500 mt-1">Học theo lớp: cần ít nhất 1 lớp đang tuyển (mục Lớp tuyển sinh) để mở bán.</p>
+                  )}
                 </div>
 
                 {/* Duration */}
@@ -607,25 +575,27 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
 
                 {/* Tuition Fee (Price) */}
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Học phí ưu đãi (VND) *</label>
+                  <label className="font-bold text-slate-700 block mb-1">Học phí (VND) *{priceLocked && <span className="font-normal text-slate-500"> – khóa đang bán, đổi giá cần quyền Định giá</span>}</label>
                   <input
                     type="number"
                     disabled={priceLocked}
                     title={priceLocked ? 'Khóa đang bán: đổi giá cần quyền Định giá' : ''}
-                    value={editForm.price}
-                    onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })}
+                    min={0}
+                    value={editForm.price ?? 0}
+                    onChange={(e) => setEditForm({ ...editForm, price: Math.max(0, Number(e.target.value) || 0) })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-mono font-bold text-slate-900"
                   />
                 </div>
 
                 {/* Original Price */}
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Giá gốc trước khuyến mãi (gạch ngang)</label>
+                  <label className="font-bold text-slate-700 block mb-1">Giá niêm yết (gạch ngang khi khuyến mãi)</label>
                   <input
                     type="number"
                     disabled={priceLocked}
-                    value={editForm.originalPrice}
-                    onChange={(e) => setEditForm({ ...editForm, originalPrice: Number(e.target.value) })}
+                    min={0}
+                    value={editForm.originalPrice ?? 0}
+                    onChange={(e) => setEditForm({ ...editForm, originalPrice: Math.max(0, Number(e.target.value) || 0) })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-slate-600"
                   />
                 </div>
@@ -694,7 +664,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                     value={editForm.locationText || ''}
                     onChange={(e) => setEditForm({ ...editForm, locationText: e.target.value })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl"
-                    placeholder="VD: Tòa ROX Tower, 54A Nguyễn Chí Thanh, Hà Nội & Hệ thống LMS"
+                    placeholder="VD: 54A Nguyễn Chí Thanh, Hà Nội · hoặc: Học trên LMS"
                   />
                 </div>
 
@@ -708,37 +678,30 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                     value={editForm.overview || editForm.description || ''}
                     onChange={(e) => setEditForm({ ...editForm, overview: e.target.value, description: e.target.value })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl leading-relaxed text-xs"
-                    placeholder="Mô tả mục tiêu khóa học, các giá trị thực chiến, đội ngũ MSB dẫn dắt..."
+                    placeholder="Khóa học dành cho ai, học xong làm được gì, học như thế nào (tối thiểu 200 ký tự)…"
                   />
                 </div>
 
-                {/* Thumbnail Image URL */}
+                {/* Thumbnail: upload or link */}
                 <div className="sm:col-span-2">
-                  <label className="font-bold text-slate-700 block mb-1">Link Ảnh Bìa Khóa Học (Thumbnail URL)</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={editForm.thumbnail}
-                      onChange={(e) => setEditForm({ ...editForm, thumbnail: e.target.value })}
-                      className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-[11px]"
-                    />
-                    <img
-                      src={editForm.thumbnail}
-                      alt="Thumbnail preview"
-                      className="w-12 h-10 object-cover rounded-xl border border-slate-200 shrink-0"
-                    />
-                  </div>
+                  <ImageUploadField
+                    label="Ảnh bìa khóa học *"
+                    value={editForm.thumbnail || ''}
+                    onChange={(url) => setEditForm({ ...editForm, thumbnail: url })}
+                    hint="Ảnh ngang 16:9, tối đa 5 MB."
+                    previewClassName="w-32 h-[72px] object-cover rounded-xl border border-slate-200"
+                  />
                 </div>
 
                 {/* Learning Objectives List */}
                 <div className="sm:col-span-2 space-y-2 pt-2 border-t border-slate-100">
                   <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-700">Mục tiêu cốt lõi bạn sẽ đạt được ({editForm.objectives?.length || 0})</label>
+                    <label className="font-bold text-slate-700">Học xong, học viên làm được gì ({editForm.objectives?.length || 0}, nên có ≥ 3)</label>
                     <button
                       type="button"
                       onClick={() => {
                         const currentObjs = editForm.objectives || [];
-                        setEditForm({ ...editForm, objectives: [...currentObjs, 'Mục tiêu thực chiến mới...'] });
+                        setEditForm({ ...editForm, objectives: [...currentObjs, ''] });
                       }}
                       className="text-[11px] text-[#0073C1] font-bold hover:underline flex items-center gap-1 cursor-pointer"
                     >
@@ -760,6 +723,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                           updated[idx] = e.target.value;
                           setEditForm({ ...editForm, objectives: updated });
                         }}
+                        placeholder="VD: Tự thẩm định một hồ sơ vay cá nhân"
                         className="w-full p-2 border border-slate-300 rounded-xl text-xs"
                       />
                       <button
@@ -768,6 +732,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                           const updated = (editForm.objectives || []).filter((_, i) => i !== idx);
                           setEditForm({ ...editForm, objectives: updated });
                         }}
+                        aria-label="Xóa mục tiêu"
                         className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -801,7 +766,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
               <div className="space-y-4 text-xs">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
-                    YouTube Video ID hoặc Link YouTube đầy đủ *
+                    Link hoặc ID video YouTube
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -813,30 +778,15 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                         setEditForm({
                           ...editForm,
                           youtubeVideoId: parsedId,
-                          youtubeTrialUrl: `https://www.youtube.com/watch?v=${parsedId}`
+                          youtubeTrialUrl: parsedId ? `https://www.youtube.com/watch?v=${parsedId}` : ''
                         });
                       }}
                       className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                      placeholder="VD: sal78ACtGTc hoặc https://www.youtube.com/watch?v=sal78ACtGTc"
+                      placeholder="Dán link YouTube (watch, youtu.be, shorts) hoặc ID 11 ký tự"
                     />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Quick reset to MSB demo video
-                        setEditForm({
-                          ...editForm,
-                          youtubeVideoId: 'sal78ACtGTc',
-                          youtubeTrialUrl: 'https://www.youtube.com/watch?v=sal78ACtGTc'
-                        });
-                      }}
-                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 font-bold shrink-0 cursor-pointer"
-                      title="Sử dụng video MSB mẫu chuẩn"
-                    >
-                      Dùng Video Mẫu
-                    </button>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-1">
-                    Hệ thống tự động bóc tách ID (11 ký tự) kể cả khi bạn dán link URL đầy đủ.
+                    Không bắt buộc. Để trống nếu chưa có video học thử của chính khóa này.
                   </p>
                 </div>
 
@@ -887,370 +837,177 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
           )}
 
           {/* ======================================================== */}
-          {/* SUB-TAB 3: ĐỘI NGŨ GIẢNG VIÊN THỰC CHIẾN */}
+          {/* SUB-TAB 3: GIẢNG VIÊN (chọn từ trang Giảng viên) */}
           {/* ======================================================== */}
           {activeSubTab === 'instructors' && (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-6">
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-5 text-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
                   <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                     <Award className="w-4 h-4 text-amber-500" />
-                    <span>Quản Lý Đội Ngũ Giảng Viên Phụ Trách ({editForm.instructors?.length || 1})</span>
+                    <span>Giảng viên của khóa ({instructors.length})</span>
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Thêm và chỉnh sửa thông tin các Giám đốc Khối, Giám đốc Vùng giảng dạy khóa học này.
+                  <p className="text-slate-500 mt-0.5">
+                    Chọn từ danh sách giảng viên. Hồ sơ (ảnh, chức danh, tiểu sử) sửa ở trang Giảng viên, dùng chung cho mọi khóa.
                   </p>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Add new instructor blank
-                      const newInst: Instructor = {
-                        id: `inst-${Date.now()}`,
-                        name: '',
-                        title: '',
-                        avatar: '',
-                        bio: ''
-                      };
-                      const current = editForm.instructors || (editForm.instructor ? [editForm.instructor] : []);
-                      setEditForm({ ...editForm, instructors: [...current, newInst] });
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0073C1] text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Thêm Giảng Viên</span>
-                  </button>
-                </div>
+                <button type="button" onClick={() => confirmLeave() && navigate('/catalog/instructors')}
+                  className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0073C1] font-bold flex items-center gap-1 cursor-pointer shrink-0">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Trang Giảng viên</span>
+                </button>
               </div>
 
-              {/* Quick Pick from MSB standard instructors */}
-              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2">
-                <span className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">
-                  Thêm giảng viên vào khóa (danh sách từ trang “Giảng viên”; sửa hồ sơ giảng viên tại trang đó):
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {(staffInstructors || []).length === 0 && (
-                    <span className="text-slate-500">Chưa có giảng viên nào – thêm tại trang Giảng viên.</span>
-                  )}
-                  {(staffInstructors || []).map((realInst) => (
-                    <button
-                      key={realInst.id}
-                      type="button"
-                      onClick={() => {
-                        const current = editForm.instructors || (editForm.instructor ? [editForm.instructor] : []);
-                        if (!current.some((i) => i.id === realInst.id)) {
-                          setEditForm({ ...editForm, instructors: [...current, realInst] });
-                        }
-                      }}
-                      className="px-2.5 py-1 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-[#0073C1] rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-2xs"
-                    >
-                      <img src={realInst.avatar} alt="" className="w-5 h-5 rounded-full object-cover" />
-                      <span>{realInst.name}{realInst.title ? ` (${realInst.title.split(' ')[0]})` : ''}</span>
-                      <Plus className="w-3 h-3 text-slate-400" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* List of instructors in this course */}
-              <div className="space-y-5">
-                {(editForm.instructors || (editForm.instructor ? [editForm.instructor] : [])).map((inst, idx) => (
-                  <div
-                    key={inst.id || idx}
-                    className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 shadow-2xs space-y-4 text-xs"
-                  >
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <span className="font-bold text-slate-900 flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-[#0073C1] text-white flex items-center justify-center text-[10px]">
-                          {idx + 1}
-                        </span>
-                        <span>{inst.name}</span>
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const current = editForm.instructors || (editForm.instructor ? [editForm.instructor] : []);
-                          const updated = current.filter((_, i) => i !== idx);
-                          setEditForm({ ...editForm, instructors: updated, instructor: updated[0] });
-                        }}
-                        className="text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Xóa</span>
-                      </button>
+              {instructors.length === 0 && (
+                <p className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">Chưa gán giảng viên – cần ít nhất 1 người để gửi duyệt.</p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {instructors.map((inst, idx) => (
+                  <div key={inst.id} className="p-3 rounded-2xl border border-slate-200 flex items-start gap-3">
+                    {inst.avatar ? (
+                      <img src={inst.avatar} alt="" className="w-11 h-11 rounded-full object-cover border border-slate-200 shrink-0" />
+                    ) : (
+                      <span className="w-11 h-11 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold shrink-0">{inst.name?.[0] || '?'}</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-slate-900">{idx === 0 && <span className="text-[10px] text-[#0073C1] mr-1">CHÍNH</span>}{inst.name}</div>
+                      <div className="text-slate-500 line-clamp-2">{inst.title}</div>
                     </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Họ và tên giảng viên *</label>
-                        <input
-                          type="text"
-                          value={inst.name}
-                          onChange={(e) => {
-                            const current = [...(editForm.instructors || [inst])];
-                            current[idx] = { ...current[idx], name: e.target.value };
-                            setEditForm({ ...editForm, instructors: current });
-                          }}
-                          className="w-full p-2 border border-slate-300 rounded-xl font-bold"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Chức danh / Vị trí *</label>
-                        <input
-                          type="text"
-                          value={inst.title}
-                          onChange={(e) => {
-                            const current = [...(editForm.instructors || [inst])];
-                            current[idx] = { ...current[idx], title: e.target.value };
-                            setEditForm({ ...editForm, instructors: current });
-                          }}
-                          className="w-full p-2 border border-slate-300 rounded-xl"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Huy hiệu chứng chỉ / Thâm niên</label>
-                        <input
-                          type="text"
-                          value={inst.credential || ''}
-                          onChange={(e) => {
-                            const current = [...(editForm.instructors || [inst])];
-                            current[idx] = { ...current[idx], credential: e.target.value };
-                            setEditForm({ ...editForm, instructors: current });
-                          }}
-                          className="w-full p-2 border border-slate-300 rounded-xl"
-                          placeholder="VD: 25+ năm KN Ngân hàng"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">Link Ảnh Avatar</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="url"
-                            value={inst.avatar}
-                            onChange={(e) => {
-                              const current = [...(editForm.instructors || [inst])];
-                              current[idx] = { ...current[idx], avatar: e.target.value };
-                              setEditForm({ ...editForm, instructors: current });
-                            }}
-                            className="w-full p-2 border border-slate-300 rounded-xl font-mono text-[11px]"
-                          />
-                          <img src={inst.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0" />
-                        </div>
-                      </div>
-
-                      <div className="sm:col-span-2">
-                        <label className="font-bold text-slate-700 block mb-1">Tiểu sử chuyên môn & kinh nghiệm (Bio) *</label>
-                        <textarea
-                          rows={3}
-                          value={inst.bio}
-                          onChange={(e) => {
-                            const current = [...(editForm.instructors || [inst])];
-                            current[idx] = { ...current[idx], bio: e.target.value };
-                            setEditForm({ ...editForm, instructors: current });
-                          }}
-                          className="w-full p-2 border border-slate-300 rounded-xl leading-relaxed text-xs"
-                        />
-                      </div>
+                    <div className="flex flex-col gap-1 shrink-0">
+                      {idx > 0 && (
+                        <button type="button" title="Đặt làm giảng viên chính (hiện đầu tiên)"
+                          onClick={() => setEditForm({ ...editForm, instructors: [inst, ...instructors.filter((i) => i.id !== inst.id)] })}
+                          className="px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-bold text-slate-600 cursor-pointer">Lên đầu</button>
+                      )}
+                      <button type="button" aria-label={`Bỏ ${inst.name} khỏi khóa`}
+                        onClick={() => setEditForm({ ...editForm, instructors: instructors.filter((i) => i.id !== inst.id) })}
+                        className="px-2 py-1 rounded-lg text-red-500 hover:bg-red-50 text-[11px] font-bold cursor-pointer flex items-center gap-1">
+                        <Trash2 className="w-3.5 h-3.5" /> Bỏ
+                      </button>
                     </div>
                   </div>
                 ))}
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <span className="font-bold text-slate-700 block">Thêm giảng viên vào khóa</span>
+                <div className="flex flex-wrap gap-2">
+                  {staffInstructors === null && <span className="text-slate-500">Đang tải danh sách…</span>}
+                  {staffInstructors?.length === 0 && <span className="text-slate-500">Chưa có giảng viên nào – thêm tại trang Giảng viên.</span>}
+                  {(staffInstructors || [])
+                    .filter((s) => !instructors.some((i) => i.id === s.id))
+                    .map((s) => (
+                      <button key={s.id} type="button" onClick={() => setEditForm({ ...editForm, instructors: [...instructors, s] })}
+                        className="px-2.5 py-1 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-[#0073C1] rounded-xl font-semibold flex items-center gap-2 cursor-pointer">
+                        {s.avatar && <img src={s.avatar} alt="" className="w-5 h-5 rounded-full object-cover" />}
+                        <span>{s.name}</span>
+                        {s.status === 'on_leave' && <span className="text-[10px] text-amber-700">(tạm nghỉ)</span>}
+                        <Plus className="w-3 h-3 text-slate-400" />
+                      </button>
+                    ))}
+                </div>
               </div>
             </div>
           )}
 
           {/* ======================================================== */}
-          {/* SUB-TAB 4: CÁC MODULE & LỘ TRÌNH ĐÀO TẠO */}
+          {/* SUB-TAB 4: ĐỀ CƯƠNG (syllabus) */}
           {/* ======================================================== */}
           {activeSubTab === 'modules' && (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-6">
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-5 text-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
                   <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                     <Layers className="w-4 h-4 text-[#0073C1]" />
-                    <span>Lộ Trình Các Module & Danh Sách Bài Học ({editForm.chapters?.length || 0} Module)</span>
+                    <span>Đề cương: {syllabus.length} học phần · {lessonCount} bài</span>
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Quản lý các học phần, bài giảng video, bài tập và gắn huy hiệu "Học thử miễn phí".
+                  <p className="text-slate-500 mt-0.5">
+                    Hiện trên trang khóa học. Bài đánh dấu “Học thử” mở cho mọi người; nội dung học thật nằm trên Moodle (có thể lấy đề cương từ khóa mẫu Moodle).
                   </p>
                 </div>
-
                 <button
                   type="button"
                   onClick={() => {
-                    const currentMods = editForm.chapters || [];
-                    const newMod: Module = {
-                      id: `mod-${Date.now()}`,
-                      title: `Chương ${currentMods.length + 1}: Học phần chuyên sâu mới`,
-                      order: currentMods.length + 1,
-                      duration: '8 giờ học',
-                      description: 'Nội dung thực hành và xử lý hồ sơ tín dụng nghiệp vụ.',
-                      lessons: [
-                        {
-                          id: `les-${Date.now()}-1`,
-                          title: 'Bài 1: Giới thiệu nghiệp vụ thực hành',
-                          duration: '25 phút',
-                          type: 'video',
-                          isFreePreview: true
-                        }
-                      ]
-                    };
-                    setEditForm({ ...editForm, chapters: [...currentMods, newMod] });
+                    const stamp = Date.now();
+                    setSyllabus([
+                      ...syllabus,
+                      { id: `mod-${stamp}`, title: `Học phần ${syllabus.length + 1}`, order: syllabus.length + 1, duration: '', description: '',
+                        lessons: [{ id: `les-${stamp}`, title: `Bài ${syllabus.length + 1}.1`, duration: '', type: 'video', isFreePreview: false }] }
+                    ]);
                   }}
-                  className="px-3.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0073C1] text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0073C1] font-bold flex items-center gap-1 cursor-pointer shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Thêm Module Mới</span>
+                  <span>Thêm học phần</span>
                 </button>
               </div>
 
-              {/* Modules Accordion List */}
+              {syllabus.length === 0 && <p className="text-slate-500">Chưa có học phần nào. Cần ít nhất 3 bài để gửi duyệt.</p>}
               <div className="space-y-4">
-                {(editForm.chapters || []).map((mod, modIdx) => (
-                  <div
-                    key={mod.id}
-                    className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50/50 shadow-2xs text-xs space-y-3 p-4"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="w-6 h-6 rounded-full bg-[#0073C1] text-white flex items-center justify-center font-bold text-xs shrink-0">
-                          {modIdx + 1}
-                        </span>
-                        <input
-                          type="text"
-                          value={mod.title}
-                          onChange={(e) => {
-                            const updatedMods = [...(editForm.chapters || [])];
-                            updatedMods[modIdx] = { ...updatedMods[modIdx], title: e.target.value };
-                            setEditForm({ ...editForm, chapters: updatedMods });
-                          }}
-                          className="w-full p-1.5 border border-slate-300 rounded-lg font-bold text-slate-900 bg-white"
-                          placeholder="Tiêu đề Module..."
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <input
-                          type="text"
-                          value={mod.duration || ''}
-                          onChange={(e) => {
-                            const updatedMods = [...(editForm.chapters || [])];
-                            updatedMods[modIdx] = { ...updatedMods[modIdx], duration: e.target.value };
-                            setEditForm({ ...editForm, chapters: updatedMods });
-                          }}
-                          placeholder="VD: 3 giờ học"
-                          className="w-24 p-1.5 border border-slate-300 rounded-lg text-slate-600 bg-white text-[11px]"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updatedMods = (editForm.chapters || []).filter((_, i) => i !== modIdx);
-                            setEditForm({ ...editForm, chapters: updatedMods });
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg"
-                          title="Xóa module"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Module lessons list */}
-                    <div className="space-y-2 pt-1 pl-2">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-600">
-                        <span>Danh sách bài học trong module ({mod.lessons.length}):</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updatedMods = [...(editForm.chapters || [])];
-                            const currentLessons = updatedMods[modIdx].lessons;
-                            updatedMods[modIdx].lessons = [
-                              ...currentLessons,
-                              {
-                                id: `les-${Date.now()}`,
-                                title: `Bài ${modIdx + 1}.${currentLessons.length + 1}: Bài giảng nghiệp vụ mới`,
-                                duration: '20 phút',
-                                type: 'video',
-                                isFreePreview: false
-                              }
-                            ];
-                            setEditForm({ ...editForm, chapters: updatedMods });
-                          }}
-                          className="text-[#0073C1] hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3" />
-                          <span>Thêm bài học</span>
-                        </button>
-                      </div>
-
-                      {mod.lessons.map((les, lesIdx) => (
-                        <div
-                          key={les.id}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-xl bg-white border border-slate-200"
-                        >
-                          <div className="flex items-center gap-2 flex-1">
-                            <Play className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                            <input
-                              type="text"
-                              value={les.title}
-                              onChange={(e) => {
-                                const updatedMods = [...(editForm.chapters || [])];
-                                updatedMods[modIdx].lessons[lesIdx].title = e.target.value;
-                                setEditForm({ ...editForm, chapters: updatedMods });
-                              }}
-                              className="w-full p-1 text-xs border border-transparent hover:border-slate-200 focus:border-blue-400 rounded"
-                            />
-                          </div>
-
-                          <div className="flex items-center gap-3 shrink-0 text-[11px]">
-                            <input
-                              type="text"
-                              value={les.duration}
-                              onChange={(e) => {
-                                const updatedMods = [...(editForm.chapters || [])];
-                                updatedMods[modIdx].lessons[lesIdx].duration = e.target.value;
-                                setEditForm({ ...editForm, chapters: updatedMods });
-                              }}
-                              className="w-20 p-1 border border-slate-200 rounded font-mono text-slate-500 text-center"
-                            />
-
-                            <label className="flex items-center gap-1 cursor-pointer font-bold text-emerald-700">
-                              <input
-                                type="checkbox"
-                                checked={!!les.isFreePreview}
-                                onChange={(e) => {
-                                  const updatedMods = [...(editForm.chapters || [])];
-                                  updatedMods[modIdx].lessons[lesIdx].isFreePreview = e.target.checked;
-                                  setEditForm({ ...editForm, chapters: updatedMods });
-                                }}
-                                className="rounded text-emerald-600"
-                              />
-                              <span>Học thử</span>
-                            </label>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updatedMods = [...(editForm.chapters || [])];
-                                updatedMods[modIdx].lessons = updatedMods[modIdx].lessons.filter((_, i) => i !== lesIdx);
-                                setEditForm({ ...editForm, chapters: updatedMods });
-                              }}
-                              className="p-1 text-slate-400 hover:text-red-500 rounded"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                {syllabus.map((mod, modIdx) => {
+                  const setModule = (patch: Partial<Module>) => setSyllabus(syllabus.map((m, i) => (i === modIdx ? { ...m, ...patch } : m)));
+                  const lessons = mod.lessons || [];
+                  const setLesson = (lesIdx: number, patch: Partial<Lesson>) =>
+                    setModule({ lessons: lessons.map((l, i) => (i === lesIdx ? { ...l, ...patch } : l)) });
+                  const move = (to: number) => {
+                    const next = [...syllabus];
+                    next.splice(to, 0, ...next.splice(modIdx, 1));
+                    setSyllabus(next.map((m, i) => ({ ...m, order: i + 1 })));
+                  };
+                  return (
+                    <div key={mod.id || modIdx} className="border border-slate-200 rounded-2xl bg-slate-50/50 space-y-3 p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="w-6 h-6 rounded-full bg-[#0073C1] text-white flex items-center justify-center font-bold shrink-0">{modIdx + 1}</span>
+                          <input type="text" value={mod.title} onChange={(e) => setModule({ title: e.target.value })} aria-label="Tên học phần"
+                            className="w-full p-1.5 border border-slate-300 rounded-lg font-bold text-slate-900 bg-white" placeholder="Tên học phần" />
                         </div>
-                      ))}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <input type="text" value={mod.duration || ''} onChange={(e) => setModule({ duration: e.target.value })}
+                            placeholder="VD: 3 giờ" aria-label="Thời lượng học phần" className="w-24 p-1.5 border border-slate-300 rounded-lg text-slate-600 bg-white text-[11px]" />
+                          <button type="button" disabled={modIdx === 0} onClick={() => move(modIdx - 1)} title="Lên trên" className="px-1.5 py-1 rounded-lg border border-slate-200 bg-white disabled:opacity-30 cursor-pointer">↑</button>
+                          <button type="button" disabled={modIdx === syllabus.length - 1} onClick={() => move(modIdx + 1)} title="Xuống dưới" className="px-1.5 py-1 rounded-lg border border-slate-200 bg-white disabled:opacity-30 cursor-pointer">↓</button>
+                          <button type="button" title="Xóa học phần" aria-label="Xóa học phần"
+                            onClick={() => (!lessons.length || window.confirm(`Xóa học phần "${mod.title}" và ${lessons.length} bài trong đó?`)) && setSyllabus(syllabus.filter((_, i) => i !== modIdx))}
+                            className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg cursor-pointer">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pl-2">
+                        {lessons.map((les, lesIdx) => (
+                          <div key={les.id || lesIdx} className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 rounded-xl bg-white border border-slate-200">
+                            <div className="flex items-center gap-2 flex-1">
+                              <Play className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                              <input type="text" value={les.title} onChange={(e) => setLesson(lesIdx, { title: e.target.value })} aria-label="Tên bài"
+                                className="w-full p-1 border border-transparent hover:border-slate-200 focus:border-blue-400 rounded" />
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 text-[11px]">
+                              <select value={les.type || 'video'} onChange={(e) => setLesson(lesIdx, { type: e.target.value as Lesson['type'] })} aria-label="Loại bài" className="p-1 border border-slate-200 rounded bg-white">
+                                {LESSON_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                              </select>
+                              <input type="text" value={les.duration || ''} onChange={(e) => setLesson(lesIdx, { duration: e.target.value })} placeholder="20 phút" aria-label="Thời lượng bài"
+                                className="w-20 p-1 border border-slate-200 rounded text-slate-500 text-center" />
+                              <label className="flex items-center gap-1 cursor-pointer font-bold text-emerald-700">
+                                <input type="checkbox" checked={!!les.isFreePreview} onChange={(e) => setLesson(lesIdx, { isFreePreview: e.target.checked })} />
+                                <span>Học thử</span>
+                              </label>
+                              <button type="button" aria-label="Xóa bài" onClick={() => setModule({ lessons: lessons.filter((_, i) => i !== lesIdx) })} className="p-1 text-slate-400 hover:text-red-500 rounded cursor-pointer">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        <button type="button"
+                          onClick={() => setModule({ lessons: [...lessons, { id: `les-${Date.now()}`, title: `Bài ${modIdx + 1}.${lessons.length + 1}`, duration: '', type: 'video', isFreePreview: false }] })}
+                          className="text-[#0073C1] font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                          <Plus className="w-3 h-3" /> Thêm bài
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1287,20 +1044,16 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
               <div className="border-b border-slate-100 pb-3">
                 <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-purple-600" />
-                  <span>Cam Kết Đầu Ra, Quyền Lợi & Bảo Lãnh MSB</span>
+                  <span>Cam kết & quyền lợi của khóa</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Các tiêu chuẩn độc quyền của TWings Academy giúp học viên yên tâm đăng ký.
+                  Hiện trên trang khóa học. Chỉ ghi điều viện cam kết bằng văn bản (hợp đồng, thỏa thuận với đối tác).
                 </p>
               </div>
 
               <div className="space-y-3 text-xs">
-                {(editForm.guarantees || [
-                  'Bảo lãnh cơ hội thực tập & tuyển dụng tại MSB',
-                  'Chứng nhận hoàn thành có giá trị trong hồ sơ nhân sự',
-                  'Cố vấn 1-1 cùng Giám đốc Khối ngân hàng',
-                  'Cấp tài khoản cá nhân trên hệ thống LMS chuyên biệt'
-                ]).map((g, gIdx) => (
+                {(editForm.guarantees || []).length === 0 && <p className="text-slate-500">Chưa có cam kết nào (không bắt buộc).</p>}
+                {(editForm.guarantees || []).map((g, gIdx) => (
                   <div key={gIdx} className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
                     <input
@@ -1330,7 +1083,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                   type="button"
                   onClick={() => {
                     const current = editForm.guarantees || [];
-                    setEditForm({ ...editForm, guarantees: [...current, 'Cam kết đầu ra mới...'] });
+                    setEditForm({ ...editForm, guarantees: [...current, ''] });
                   }}
                   className="text-[#0073C1] font-bold text-xs hover:underline flex items-center gap-1 pt-2 cursor-pointer"
                 >
@@ -1350,18 +1103,18 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Thẻ Tóm Tắt Khóa Học
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-[#0073C1] text-[10px] font-bold">
-                {editForm.category}
-              </span>
+              {editForm.category && (
+                <span className="px-2 py-0.5 rounded-full bg-blue-100 text-[#0073C1] text-[10px] font-bold truncate max-w-[60%]">{editForm.category}</span>
+              )}
             </div>
 
             {/* Thumbnail */}
-            <div className="aspect-video w-full rounded-2xl overflow-hidden relative shadow-xs">
-              <img
-                src={editForm.thumbnail}
-                alt={editForm.title}
-                className="w-full h-full object-cover"
-              />
+            <div className="aspect-video w-full rounded-2xl overflow-hidden relative shadow-xs bg-slate-100">
+              {editForm.thumbnail ? (
+                <img src={editForm.thumbnail} alt={editForm.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[11px] text-slate-400">Chưa có ảnh bìa</div>
+              )}
               {editForm.youtubeVideoId && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <div className="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg">
@@ -1382,7 +1135,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
 
               <div className="pt-2 flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] text-slate-400 font-bold uppercase">Học phí ưu đãi</div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase">Học phí</div>
                   <div className="text-base font-black text-slate-900 font-mono">
                     {formatVND(editForm.price)}
                   </div>
@@ -1404,40 +1157,43 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
               <div className="pt-3 border-t border-slate-100 space-y-1.5 text-[11px] text-slate-600">
                 <div className="flex items-center justify-between">
                   <span>Trình độ:</span>
-                  <span className="font-bold text-slate-800">{editForm.level}</span>
+                  <span className="font-bold text-slate-800">{editForm.level || '–'}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Thời lượng:</span>
-                  <span className="font-bold text-slate-800">{editForm.duration}</span>
+                  <span className="font-bold text-slate-800">{editForm.duration || '–'}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Module bài học:</span>
-                  <span className="font-bold text-slate-800">{editForm.chapters?.length || 0} học phần</span>
+                  <span>Đề cương:</span>
+                  <span className="font-bold text-slate-800">{syllabus.length} học phần · {lessonCount} bài</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>YouTube ID:</span>
-                  <span className="font-mono text-red-600 font-bold">{editForm.youtubeVideoId || 'Chưa có'}</span>
+                  <span>Video học thử:</span>
+                  <span className="font-bold text-slate-800">{editForm.youtubeVideoId ? 'Có' : 'Chưa có'}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Giảng viên:</span>
-                  <span className="font-bold text-[#0073C1]">{editForm.instructors?.[0]?.name || editForm.instructor?.name || 'Giảng viên MSB'}</span>
+                  <span className="font-bold text-[#0073C1] truncate max-w-[60%]">{instructors.length ? instructors.map((i) => i.name).join(', ') : 'Chưa gán'}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Đánh giá cựu học viên:</span>
-                  <span className="font-bold text-amber-600">{editForm.reviews?.length || 0} phản hồi</span>
+                  <span>Đánh giá đã duyệt:</span>
+                  <span className="font-bold text-amber-600">{currentCourse.reviewsCount || 0}</span>
                 </div>
               </div>
             </div>
 
             {/* Save CTA */}
-            <button
-              type="button"
-              onClick={handleSaveAll}
-              className="w-full py-2.5 px-4 bg-[#0073C1] hover:bg-[#005fa3] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-            >
-              <Save className="w-4 h-4" />
-              <span>Lưu Toàn Bộ Thay Đổi Khóa Học</span>
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={handleSaveAll}
+                disabled={!!busy || !dirty}
+                className="w-full py-2.5 px-4 bg-[#0073C1] hover:bg-[#005fa3] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {busy === 'save' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>{dirty ? 'Lưu thay đổi' : 'Không có thay đổi'}</span>
+              </button>
+            )}
           </div>
         </div>
 

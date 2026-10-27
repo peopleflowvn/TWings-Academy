@@ -199,6 +199,29 @@ def classes_on_the_course_page(page: Page):
 
 
 @step
+def create_a_course_and_save_its_syllabus(page: Page):
+    # "Tạo khóa học mới" opens the new draft; what is typed is saved (and kept after a reload).
+    page.goto(f"{BASE}/app/catalog/courses")
+    page.locator("button:has-text('Tạo khóa học mới')").click()
+    page.wait_for_selector("text=Đã tạo khóa học nháp", timeout=20000)
+    assert "id=" in page.url, page.url
+    page.locator("label:has-text('Tên khóa học') + input").fill("E2E Khóa tạo từ form")
+    page.locator("button:has-text('4. Đề cương')").click()
+    page.locator("button:has-text('Thêm học phần')").click()
+    page.locator("input[aria-label='Tên học phần']").fill("E2E Học phần một")
+    bar = page.locator("[data-unsaved-bar]")
+    bar.wait_for(timeout=5000)
+    assert bar.is_visible() and bar.bounding_box()["y"] < page.viewport_size["height"], "save bar on screen"
+    bar.locator("button:has-text('Lưu')").click()
+    page.wait_for_selector("text=Đã lưu.", timeout=20000)
+    page.reload()
+    page.wait_for_selector("input[aria-label='Tên học phần']", timeout=20000)
+    assert page.locator("input[aria-label='Tên học phần']").input_value() == "E2E Học phần một"
+    picked = page.locator("select[aria-label='Chọn khóa học đang chỉnh sửa'] option:checked").inner_text()
+    assert picked.startswith("E2E Khóa tạo từ form"), picked
+
+
+@step
 def class_on_the_website_like_a_job_posting(page: Page):
     # Recruiting classes are listed on the course catalogue (/tuyen-sinh shows it too).
     page.goto(f"{BASE}/tuyen-sinh")

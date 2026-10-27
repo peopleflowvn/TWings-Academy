@@ -125,20 +125,24 @@ export function useCourses(enabled: boolean) {
       return undefined;
     }
   };
-  const update = async (course: Course) => {
+  const update = async (course: Course): Promise<Course | undefined> => {
     try {
       const saved = await api.patch<Course>(`/staff/courses/${course.id}/`, course);
       setCourses((list) => list.map((c) => (c.id === saved.id ? saved : c)));
+      return saved;
     } catch (err) {
       reportError(err);
+      return undefined;
     }
   };
-  const remove = async (id: string) => {
+  const remove = async (id: string): Promise<boolean> => {
     try {
       await api.delete(`/staff/courses/${id}/`);
       setCourses((list) => list.filter((c) => c.id !== id));
+      return true;
     } catch (err) {
       reportError(err);
+      return false;
     }
   };
   return { courses, reload, add, update, remove };
