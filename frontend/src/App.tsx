@@ -191,7 +191,8 @@ export default function App() {
     setTimeout(() => donePageLoading(), 150);
   };
 
-  // /tuyen-sinh (the old campaigns list) is the catalogue now; the search follows the address.
+  // /tuyen-sinh (the old campaigns list) is the catalogue on its recruiting courses; the search follows the address.
+  const [catalogRecruiting, setCatalogRecruiting] = useState(() => /^\/tuyen-sinh\/?$/.test(window.location.pathname));
   useEffect(() => {
     if (/^\/tuyen-sinh\/?$/.test(window.location.pathname)) window.history.replaceState(null, '', '/khoa-hoc');
   }, []);
@@ -294,7 +295,10 @@ export default function App() {
     trackView(window.location.pathname);
   }, [currentView, selectedCourse, selectedArticle]);
 
-  const handleNavigate = (view: View) => go(view);
+  const handleNavigate = (view: View) => {
+    setCatalogRecruiting(false);
+    go(view);
+  };
 
   const handleSelectCourse = (course: Course) => {
     setSelectedCourse(course);
@@ -369,6 +373,7 @@ export default function App() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           initialCategory={searchCategory}
+          initialRecruitingOnly={catalogRecruiting}
           onOpenCampaign={openCampaign}
           onOpenConsultation={() => handleOpenRegistration()}
           onSelectCourse={handleSelectCourse}
@@ -476,7 +481,13 @@ export default function App() {
           )}
 
           {/* Campaigns recruiting now (nothing shown when none is open) */}
-          <CampaignsStrip onOpen={openCampaign} onSeeAll={() => handleNavigate('catalog')} />
+          <CampaignsStrip
+            onOpen={openCampaign}
+            onSeeAll={() => {
+              handleNavigate('catalog');
+              setCatalogRecruiting(true);
+            }}
+          />
 
           {/* Institutional Partners Bar (Managed in CMS) */}
           {cmsSections.partners.enabled && (

@@ -28,6 +28,12 @@ export function installmentLine(course: Course, price: number): string {
   return `Trả góp ${n} kỳ · kỳ đầu ${vnd(installmentPreview(price, n)[0])}`;
 }
 
+/** "Hạn đăng ký dd/mm/yyyy" of the next class taking registrations, or ''. */
+export function deadlineLine(course: Course): string {
+  const next = openIntakes(course)[0];
+  return next?.registrationDeadline ? `Hạn đăng ký ${viDate(next.registrationDeadline)}` : '';
+}
+
 /** One line about when the learner can start, for cards and the buy bar. */
 export function startLine(course: Course): string {
   const next = openIntakes(course)[0];

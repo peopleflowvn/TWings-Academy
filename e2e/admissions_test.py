@@ -229,6 +229,11 @@ def class_on_the_website_like_a_job_posting(page: Page):
     page.goto(f"{BASE}/tuyen-sinh")
     page.wait_for_selector("h2:has-text('Đang tuyển sinh')", timeout=20000)
     assert page.url.endswith("/khoa-hoc"), page.url
+    # The catalogue opens on its courses (filtered to those recruiting), the class postings come after.
+    toggle = page.locator("button[aria-pressed]:has-text('Đang tuyển sinh')")
+    assert toggle.get_attribute("aria-pressed") == "true", "/tuyen-sinh opens the recruiting courses"
+    strip = page.locator("h2:has-text('Đang tuyển sinh')")
+    assert toggle.bounding_box()["y"] < strip.bounding_box()["y"], "courses and filters before the postings"
     page.wait_for_selector("text=E2E RM Doanh nghiệp · E2E K9", timeout=20000)
     assert page.locator("text=Còn 10/10 suất").count() >= 1, "places left on the card"
     # The course card offers the same class (its start date), as the class list says "Trên website".

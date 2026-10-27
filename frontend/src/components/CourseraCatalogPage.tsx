@@ -25,7 +25,9 @@ interface CourseraCatalogPageProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   initialCategory?: string;
-  /** Admission campaigns open now are listed first; a campaign has its own page. */
+  /** Show only the courses with a class recruiting now (/tuyen-sinh, "Xem tất cả" of the homepage strip). */
+  initialRecruitingOnly?: boolean;
+  /** Class postings recruiting now are listed after the courses; each has its own page. */
   onOpenCampaign: (slug: string) => void;
   onOpenConsultation: () => void;
   onSelectCourse: (course: Course) => void;
@@ -46,6 +48,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
   searchQuery,
   onSearchChange: setSearchQuery,
   initialCategory = 'Tất cả',
+  initialRecruitingOnly = false,
   onOpenCampaign,
   onOpenConsultation,
   onSelectCourse,
@@ -57,7 +60,10 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
   const [selectedType, setSelectedType] = useState<string>('Tất cả');
   const [selectedFormat, setSelectedFormat] = useState<string>('Tất cả');
   const [selectedPartner, setSelectedPartner] = useState<string>('Tất cả');
+  const [recruitingOnly, setRecruitingOnly] = useState(initialRecruitingOnly);
   const [sortBy, setSortBy] = useState<'start' | 'price-asc' | 'price-desc'>('start');
+  // Courses with a class taking registrations now (the classes the site lists as recruiting).
+  const recruitingCount = useMemo(() => courses.filter((c) => openIntakes(c).length > 0).length, [courses]);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   // Extract unique categories & partners
@@ -105,6 +111,8 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
   const filteredCourses = useMemo(() => {
     const sorted = courses
       .filter((course) => {
+        if (recruitingOnly && !openIntakes(course).length) return false;
+
         // Category filter
         if (selectedCategory !== 'Tất cả' && course.category !== selectedCategory) {
           return false;
@@ -140,7 +148,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
       });
     // A search ranks by relevance (the chosen order breaks ties): see lib/search.
     return searchQuery.trim() ? rank(sorted, searchQuery, courseFields) : sorted;
-  }, [courses, searchQuery, selectedCategory, selectedLevel, selectedType, selectedFormat, selectedPartner, sortBy]);
+  }, [courses, searchQuery, recruitingOnly, selectedCategory, selectedLevel, selectedType, selectedFormat, selectedPartner, sortBy]);
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -149,11 +157,13 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
     setSelectedType('Tất cả');
     setSelectedFormat('Tất cả');
     setSelectedPartner('Tất cả');
+    setRecruitingOnly(false);
     setSortBy('start');
   };
 
   const hasActiveFilters =
     searchQuery ||
+    recruitingOnly ||
     selectedCategory !== 'Tất cả' ||
     selectedLevel !== 'Tất cả' ||
     selectedType !== 'Tất cả' ||
@@ -215,10 +225,6 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
         </div>
       </div>
 
-      {/* Open admission campaigns, then programs (bundles), then the course grid */}
-      <CampaignsStrip onOpen={onOpenCampaign} />
-      <ProgramsStrip />
-
       {/* Main Content: Left Filter Sidebar + Right Course Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -267,13 +273,35 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
           <main className={`${groups.length > 0 ? 'lg:col-span-9' : 'lg:col-span-12'} space-y-6`}>
             {/* Results bar & Sorting */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200">
-              <div className="text-xs sm:text-sm font-semibold text-slate-700">
-                Hiển thị <span className="font-bold text-[#0073C1]">{filteredCourses.length}</span> khóa học phù hợp
-                {hasActiveFilters && <span className="text-slate-400"> (đã áp dụng bộ lọc)</span>}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                {recruitingCount > 0 && (
+                  <button
+                    type="button"
+                    aria-pressed={recruitingOnly}
+                    onClick={() => setRecruitingOnly(!recruitingOnly)}
+                    title="Chỉ hiện khóa có lớp đang nhận đăng ký"
+                    className={`px-3 py-1.5 rounded-full border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                      recruitingOnly ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${recruitingOnly ? 'bg-white' : 'bg-emerald-500 animate-pulse'}`} />
+                    Đang tuyển sinh
+                    <span className={recruitingOnly ? 'text-emerald-100' : 'text-emerald-600'}>{recruitingCount}</span>
+                    {recruitingOnly && <X className="w-3.5 h-3.5" />}
+                  </button>
+                )}
+                <span className="text-xs sm:text-sm font-semibold text-slate-700">
+                  <span className="font-bold text-[#0073C1]">{filteredCourses.length}</span> khóa học phù hợp
+                  {hasActiveFilters && (
+                    <button type="button" onClick={resetFilters} className="ml-2 text-[11px] font-bold text-slate-400 hover:text-red-600 hover:underline cursor-pointer">
+                      Bỏ lọc
+                    </button>
+                  )}
+                </span>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="text-xs font-medium text-slate-500 whitespace-nowrap">Sắp xếp theo:</span>
+                <span className="hidden sm:inline text-xs font-medium text-slate-500 whitespace-nowrap">Sắp xếp:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
@@ -361,6 +389,12 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
           </main>
         </div>
       </div>
+
+      {/* After the courses: the class postings recruiting now (deadline, places, scholarship) and the programs */}
+      <div className="mt-6">
+        <CampaignsStrip onOpen={onOpenCampaign} />
+      </div>
+      <ProgramsStrip />
     </div>
   );
 };

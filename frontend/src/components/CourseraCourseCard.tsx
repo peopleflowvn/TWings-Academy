@@ -10,7 +10,7 @@ import {
   Flame,
   ArrowRight
 } from 'lucide-react';
-import { canBuy, installmentLine, openIntakes, priceFor, startLine, vnd } from '../lib/selling';
+import { canBuy, deadlineLine, installmentLine, openIntakes, priceFor, startLine, vnd } from '../lib/selling';
 import { Course } from '../types';
 
 interface CourseraCourseCardProps {
@@ -186,6 +186,7 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
               <span className="truncate" title={startLine(course)}>{startLine(course)}</span>
             </div>
           )}
+          {deadlineLine(course) && <div className="-mt-2 pl-5 text-[11px] text-slate-500">{deadlineLine(course)}</div>}
           
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
