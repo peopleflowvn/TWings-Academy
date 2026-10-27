@@ -236,6 +236,11 @@ def class_on_the_website_like_a_job_posting(page: Page):
     today = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date()  # the seed's local date
     k9_start = (today + timedelta(days=20)).strftime("%d/%m/%Y")
     page.wait_for_selector(f"text=Khai giảng {k9_start}", timeout=20000)
+    # Filtered to recruiting, one card per class, named as the class list in /app names it.
+    card = page.locator("[data-intake='E2E K9']")
+    assert card.count() == 1 and "E2E K9" in card.inner_text(), "the class by its name"
+    shown = page.locator("[data-intake]").count()
+    assert toggle.inner_text().split()[-1] == str(shown), "the filter counts classes"
     # The class has its own page (homepage strip, shared links).
     page.goto(f"{BASE}/tuyen-sinh/chien-dich-e2e")
     page.wait_for_selector("h1:has-text('E2E K9')", timeout=20000)

@@ -11,7 +11,7 @@ import {
   Check, 
   RotateCcw 
 } from 'lucide-react';
-import { canBuy, openIntakes, priceFor } from '../lib/selling';
+import { canBuy, Intake, openIntakes, priceFor } from '../lib/selling';
 import { Course, CourseLevel, CourseType } from '../types';
 import { CourseraCourseCard } from './CourseraCourseCard';
 import { ProgramsStrip } from './ProgramsStrip';
@@ -28,7 +28,7 @@ interface CourseraCatalogPageProps {
   initialRecruitingOnly?: boolean;
   onOpenConsultation: () => void;
   onSelectCourse: (course: Course) => void;
-  onEnrollCourse: (course: Course) => void;
+  onEnrollCourse: (course: Course, intakeName?: string) => void;
   onOpenYouTubeTrial?: (course: Course) => void;
 }
 
@@ -58,8 +58,8 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
   const [selectedPartner, setSelectedPartner] = useState<string>('Tất cả');
   const [recruitingOnly, setRecruitingOnly] = useState(initialRecruitingOnly);
   const [sortBy, setSortBy] = useState<'start' | 'price-asc' | 'price-desc'>('start');
-  // Courses with a class taking registrations now (the classes the site lists as recruiting).
-  const recruitingCount = useMemo(() => courses.filter((c) => openIntakes(c).length > 0).length, [courses]);
+  // Classes taking registrations now: the classes /app lists "Trên website".
+  const recruitingCount = useMemo(() => courses.reduce((n, c) => n + openIntakes(c).length, 0), [courses]);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   // Extract unique categories & partners
@@ -145,6 +145,15 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
     // A search ranks by relevance (the chosen order breaks ties): see lib/search.
     return searchQuery.trim() ? rank(sorted, searchQuery, courseFields) : sorted;
   }, [courses, searchQuery, recruitingOnly, selectedCategory, selectedLevel, selectedType, selectedFormat, selectedPartner, sortBy]);
+
+  // One card per course, or, filtered to recruiting, one card per class (named as in /app).
+  const cards = useMemo(() => {
+    if (!recruitingOnly) return filteredCourses.map((course) => ({ course, intake: undefined as Intake | undefined }));
+    const rows = filteredCourses.flatMap((course) => openIntakes(course).map((intake) => ({ course, intake: intake as Intake | undefined })));
+    if (searchQuery.trim() || sortBy !== 'start') return rows; // relevance / price order of the courses
+    const start = (i?: Intake) => (i?.startDate ? new Date(i.startDate).getTime() : 8e15);
+    return [...rows].sort((a, b) => start(a.intake) - start(b.intake));
+  }, [filteredCourses, recruitingOnly, searchQuery, sortBy]);
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -275,7 +284,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
                     type="button"
                     aria-pressed={recruitingOnly}
                     onClick={() => setRecruitingOnly(!recruitingOnly)}
-                    title="Chỉ hiện khóa có lớp đang nhận đăng ký"
+                    title="Các lớp đang nhận đăng ký"
                     className={`px-3 py-1.5 rounded-full border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
                       recruitingOnly ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
                     }`}
@@ -287,7 +296,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
                   </button>
                 )}
                 <span className="text-xs sm:text-sm font-semibold text-slate-700">
-                  <span className="font-bold text-[#0073C1]">{filteredCourses.length}</span> khóa học phù hợp
+                  <span className="font-bold text-[#0073C1]">{cards.length}</span> {recruitingOnly ? 'lớp đang tuyển' : 'khóa học phù hợp'}
                   {hasActiveFilters && (
                     <button type="button" onClick={resetFilters} className="ml-2 text-[11px] font-bold text-slate-400 hover:text-red-600 hover:underline cursor-pointer">
                       Bỏ lọc
@@ -344,7 +353,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
             )}
 
             {/* Empty State */}
-            {filteredCourses.length === 0 ? (
+            {cards.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 space-y-4">
                 <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
                 <h3 className="text-base font-bold text-slate-800">
@@ -371,10 +380,11 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
             ) : (
               /* Grid of Cards */
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredCourses.map((course) => (
+                {cards.map(({ course, intake }) => (
                   <CourseraCourseCard
-                    key={course.id}
+                    key={`${course.id}:${intake?.name || ''}`}
                     course={course}
+                    intake={intake}
                     onSelectCourse={onSelectCourse}
                     onEnrollCourse={onEnrollCourse}
                     isEnrolled={enrolledCourseIds.includes(course.id)}

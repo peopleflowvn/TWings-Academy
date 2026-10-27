@@ -28,19 +28,16 @@ export function installmentLine(course: Course, price: number): string {
   return `Trả góp ${n} kỳ · kỳ đầu ${vnd(installmentPreview(price, n)[0])}`;
 }
 
-/** "Hạn đăng ký dd/mm/yyyy" of the next class taking registrations, or ''. */
-export function deadlineLine(course: Course): string {
-  const next = openIntakes(course)[0];
-  return next?.registrationDeadline ? `Hạn đăng ký ${viDate(next.registrationDeadline)}` : '';
+/** "Khai giảng dd/mm/yyyy · còn N chỗ" of one class (places only when staff show them). */
+export function intakeLine(intake: Intake): string {
+  const when = intake.startDate ? `Khai giảng ${viDate(intake.startDate)}` : 'Sắp công bố ngày khai giảng';
+  return intake.showQuota === false ? `${when} · đang nhận đăng ký` : `${when} · còn ${intake.seatsLeft} chỗ`;
 }
 
 /** One line about when the learner can start, for cards and the buy bar. */
 export function startLine(course: Course): string {
   const next = openIntakes(course)[0];
-  if (next) {
-    const when = next.startDate ? `Khai giảng ${viDate(next.startDate)}` : `${next.name} · sắp công bố ngày`;
-    return next.showQuota === false ? `${when} · đang nhận đăng ký` : `${when} · còn ${next.seatsLeft} chỗ`;
-  }
+  if (next) return `${next.name} · ${intakeLine(next)}`;
   if (!canBuy(course)) return 'Chưa có lịch khai giảng mới';
   return course.deliveryFormat === 'online_external_lms' ? 'Học online, vào học ngay sau khi thanh toán' : '';
 }

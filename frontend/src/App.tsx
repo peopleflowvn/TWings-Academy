@@ -318,9 +318,9 @@ export default function App() {
   };
 
   /** "Đăng ký học": straight to payment when the course is on sale, else the consultation form. */
-  const handleBuy = (course: Course) => {
+  const handleBuy = (course: Course, intakeName?: string) => {
     if (LIVE && canBuy(course)) {
-      setCheckoutPrefill(undefined);
+      setCheckoutPrefill(intakeName ? { intakeName } : undefined);
       setCheckoutCourse(course);
     } else handleOpenRegistration(course);
   };

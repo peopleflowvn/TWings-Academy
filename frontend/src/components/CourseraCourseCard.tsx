@@ -10,15 +10,18 @@ import {
   Flame,
   ArrowRight
 } from 'lucide-react';
-import { canBuy, deadlineLine, installmentLine, openIntakes, priceFor, startLine, vnd } from '../lib/selling';
+import { canBuy, Intake, installmentLine, intakeLine, openIntakes, priceFor, startLine, viDate, vnd } from '../lib/selling';
 import { Course } from '../types';
 
 interface CourseraCourseCardProps {
   course: Course;
   onSelectCourse: (course: Course) => void;
-  onEnrollCourse: (course: Course) => void;
+  /** Buy the course, in this class when given. */
+  onEnrollCourse: (course: Course, intakeName?: string) => void;
   onOpenYouTubeTrial?: (course: Course) => void;
   isEnrolled?: boolean;
+  /** The class this card is about (catalogue filtered to recruiting classes); default: the next one. */
+  intake?: Intake;
 }
 
 export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
@@ -27,9 +30,13 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
   onEnrollCourse,
   onOpenYouTubeTrial,
   isEnrolled = false,
+  intake,
 }) => {
-  // Today's price of the next intake (early bird included).
-  const price = priceFor(course, openIntakes(course)[0]);
+  // The class offered (named as in /app: "Khóa học 10 …") and today's price in it (early bird included).
+  const open = openIntakes(course);
+  const shown = intake ?? open[0];
+  const otherClasses = intake ? 0 : Math.max(open.length - 1, 0);
+  const price = priceFor(course, shown);
   const discountPercent = course.originalPrice > price 
     ? Math.round(((course.originalPrice - price) / course.originalPrice) * 100)
     : 0;
@@ -180,13 +187,24 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
 
         {/* Footer: when it starts, price (installments), actions */}
         <div className="pt-3 border-t border-[#E1E6EA] space-y-3 mt-auto">
-          {startLine(course) && (
-            <div className={`flex items-center gap-1.5 text-xs font-semibold ${canBuy(course) ? 'text-emerald-700' : 'text-slate-500'}`}>
-              <CalendarDays className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate" title={startLine(course)}>{startLine(course)}</span>
+          {shown ? (
+            <div data-intake={shown.name} className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs space-y-0.5">
+              <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate" title={shown.name}>{shown.name}</span>
+                {otherClasses > 0 && <span className="shrink-0 font-semibold text-emerald-700">+{otherClasses} lớp</span>}
+              </div>
+              <div className="pl-5 text-emerald-700 font-semibold">{intakeLine(shown)}</div>
+              {shown.registrationDeadline && <div className="pl-5 text-[11px] text-slate-500">Hạn đăng ký {viDate(shown.registrationDeadline)}</div>}
             </div>
+          ) : (
+            startLine(course) && (
+              <div className={`flex items-center gap-1.5 text-xs font-semibold ${canBuy(course) ? 'text-emerald-700' : 'text-slate-500'}`}>
+                <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate" title={startLine(course)}>{startLine(course)}</span>
+              </div>
+            )
           )}
-          {deadlineLine(course) && <div className="-mt-2 pl-5 text-[11px] text-slate-500">{deadlineLine(course)}</div>}
           
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
@@ -210,7 +228,7 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
               Xem chi tiết
             </button>
             <button
-              onClick={() => onEnrollCourse(course)}
+              onClick={() => onEnrollCourse(course, shown?.name)}
               className="py-2.5 bg-gradient-to-r from-[#5FBEFF] via-[#0073C1] to-[#0E6BBB] hover:brightness-110 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-[#0073C1]/20 cursor-pointer whitespace-nowrap text-center flex items-center justify-center gap-1"
             >
               <span>{canBuy(course) ? 'Đăng ký học' : 'Nhận tư vấn'}</span>
