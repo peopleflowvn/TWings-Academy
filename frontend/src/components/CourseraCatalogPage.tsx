@@ -15,7 +15,6 @@ import { canBuy, openIntakes, priceFor } from '../lib/selling';
 import { Course, CourseLevel, CourseType } from '../types';
 import { CourseraCourseCard } from './CourseraCourseCard';
 import { ProgramsStrip } from './ProgramsStrip';
-import { CampaignsStrip } from './CampaignPages';
 import { courseFields, rank } from '../lib/search';
 
 interface CourseraCatalogPageProps {
@@ -27,8 +26,6 @@ interface CourseraCatalogPageProps {
   initialCategory?: string;
   /** Show only the courses with a class recruiting now (/tuyen-sinh, "Xem tất cả" of the homepage strip). */
   initialRecruitingOnly?: boolean;
-  /** Class postings recruiting now are listed after the courses; each has its own page. */
-  onOpenCampaign: (slug: string) => void;
   onOpenConsultation: () => void;
   onSelectCourse: (course: Course) => void;
   onEnrollCourse: (course: Course) => void;
@@ -49,7 +46,6 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
   onSearchChange: setSearchQuery,
   initialCategory = 'Tất cả',
   initialRecruitingOnly = false,
-  onOpenCampaign,
   onOpenConsultation,
   onSelectCourse,
   onEnrollCourse,
@@ -390,10 +386,7 @@ export const CourseraCatalogPage: React.FC<CourseraCatalogPageProps> = ({
         </div>
       </div>
 
-      {/* After the courses: the class postings recruiting now (deadline, places, scholarship) and the programs */}
-      <div className="mt-6">
-        <CampaignsStrip onOpen={onOpenCampaign} />
-      </div>
+      {/* After the courses: the programs (bundles). Recruiting classes are the "Đang tuyển sinh" filter. */}
       <ProgramsStrip />
     </div>
   );

@@ -374,7 +374,6 @@ export default function App() {
           onSearchChange={setSearchQuery}
           initialCategory={searchCategory}
           initialRecruitingOnly={catalogRecruiting}
-          onOpenCampaign={openCampaign}
           onOpenConsultation={() => handleOpenRegistration()}
           onSelectCourse={handleSelectCourse}
           onEnrollCourse={handleBuy}

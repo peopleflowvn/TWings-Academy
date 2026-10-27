@@ -225,23 +225,21 @@ def create_a_course_and_save_its_syllabus(page: Page):
 
 @step
 def class_on_the_website_like_a_job_posting(page: Page):
-    # Recruiting classes are listed on the course catalogue (/tuyen-sinh shows it too).
+    # /tuyen-sinh is the catalogue filtered to the courses recruiting now (one "Đang tuyển sinh": the filter).
     page.goto(f"{BASE}/tuyen-sinh")
-    page.wait_for_selector("h2:has-text('Đang tuyển sinh')", timeout=20000)
-    assert page.url.endswith("/khoa-hoc"), page.url
-    # The catalogue opens on its courses (filtered to those recruiting), the class postings come after.
     toggle = page.locator("button[aria-pressed]:has-text('Đang tuyển sinh')")
+    toggle.wait_for(timeout=20000)
+    assert page.url.endswith("/khoa-hoc"), page.url
     assert toggle.get_attribute("aria-pressed") == "true", "/tuyen-sinh opens the recruiting courses"
-    strip = page.locator("h2:has-text('Đang tuyển sinh')")
-    assert toggle.bounding_box()["y"] < strip.bounding_box()["y"], "courses and filters before the postings"
-    page.wait_for_selector("text=E2E RM Doanh nghiệp · E2E K9", timeout=20000)
-    assert page.locator("text=Còn 10/10 suất").count() >= 1, "places left on the card"
-    # The course card offers the same class (its start date), as the class list says "Trên website".
+    assert page.locator("h2:has-text('Đang tuyển sinh')").count() == 0, "no second 'Đang tuyển sinh' list"
+    # The course card offers the class (its start date), as the class list says "Trên website".
     today = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date()  # the seed's local date
     k9_start = (today + timedelta(days=20)).strftime("%d/%m/%Y")
-    assert page.locator(f"text=Khai giảng {k9_start}").count() >= 1, "the class on its course card"
-    page.locator("text=E2E RM Doanh nghiệp · E2E K9").first.click()
+    page.wait_for_selector(f"text=Khai giảng {k9_start}", timeout=20000)
+    # The class has its own page (homepage strip, shared links).
+    page.goto(f"{BASE}/tuyen-sinh/chien-dich-e2e")
     page.wait_for_selector("h1:has-text('E2E K9')", timeout=20000)
+    assert page.locator("text=Còn 10/10 suất").count() >= 1, "places left on the class page"
     page.locator("button:has-text('Đăng ký')").first.click()
     page.wait_for_selector("text=ĐĂNG KÝ TƯ VẤN KHÓA HỌC", timeout=20000)
     # Staff take it off the website: the page leaves the site.
@@ -258,7 +256,6 @@ def class_on_the_website_like_a_job_posting(page: Page):
     page.goto(f"{BASE}/khoa-hoc")
     page.wait_for_selector("text=E2E RM Doanh nghiệp", timeout=20000)
     page.wait_for_timeout(500)
-    assert page.locator("text=E2E RM Doanh nghiệp · E2E K9").count() == 0, "not in the strip"
     assert page.locator(f"text=Khai giảng {k9_start}").count() == 0, "not on the course card"
     # Back on: offered again (the checkout suite buys this class).
     page.goto(f"{BASE}/app/sales/crm?view=campaigns")
@@ -269,8 +266,7 @@ def class_on_the_website_like_a_job_posting(page: Page):
     page.locator("button:has-text('Lưu')").last.click()
     page.wait_for_selector("text=Tuyển sinh & website", state="detached", timeout=20000)
     page.goto(f"{BASE}/khoa-hoc")
-    page.wait_for_selector("text=E2E RM Doanh nghiệp · E2E K9", timeout=20000)
-    assert page.locator(f"text=Khai giảng {k9_start}").count() >= 1, "back on its course card"
+    page.wait_for_selector(f"text=Khai giảng {k9_start}", timeout=20000)  # back on its course card
 
 
 @step
