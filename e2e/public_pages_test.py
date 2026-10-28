@@ -85,6 +85,10 @@ def main() -> int:
                 page.on("pageerror", lambda e, errors=errors: errors.append(f"JS error: {e}"))
                 page.on("response", lambda r, errors=errors: r.status >= 500 and errors.append(f"HTTP {r.status} {r.url}"))
                 page.goto(BASE + path, wait_until="load", timeout=60000)
+                if path == "/":
+                    # The live homepage remains on its loader until all public API calls settle.
+                    # Two seconds is occasionally too short on shared CI runners.
+                    page.wait_for_selector("section[id$='-shelf']", timeout=20000)
                 page.wait_for_timeout(2000)
                 height = page.evaluate("document.body.scrollHeight")
                 width = page.evaluate("document.documentElement.scrollWidth")
