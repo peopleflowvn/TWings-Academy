@@ -62,9 +62,7 @@ def test_bundled_demo_products_are_removed_but_real_courses_remain(course):
 def test_seed_content_does_not_create_demo_products_by_default():
     call_command("seed_content", verbosity=0)
 
-    assert not Course.objects.filter(
-        pk__in={"twings-qhkh-doanh-nghiep", "twings-qhkh-ca-nhan"}
-    ).exists()
+    assert not Course.objects.filter(pk__in={"twings-qhkh-doanh-nghiep", "twings-qhkh-ca-nhan"}).exists()
 
 
 def test_demo_banners_and_seo_placeholders_are_cleaned(settings):
