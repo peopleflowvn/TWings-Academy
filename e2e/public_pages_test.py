@@ -57,15 +57,16 @@ def search_works(page) -> list[str]:
     return problems
 
 
-def homepage_offers_every_course(page) -> list[str]:
+def homepage_offers_every_course(page, courses) -> list[str]:
     """On the loaded homepage: every course on sale is on a shelf, also one staff put on none (e2e-gdv)."""
     shelves = page.locator("section[id$='-shelf']").all_inner_texts()
-    return [f"{c['slug']} not on any homepage shelf" for c in get("/api/v1/public/courses/") if not any(c["title"] in t for t in shelves)]
+    return [f"{c['slug']} not on any homepage shelf" for c in courses if not any(c["title"] in t for t in shelves)]
 
 
 def main() -> int:
     paths = ["/", "/khoa-hoc", "/tin-tuc", "/ve-chung-toi", "/tuyen-sinh", "/chuong-trinh", "/dieu-khoan", "/chinh-sach-bao-mat"]
-    paths += [f"/khoa-hoc/{c['slug']}" for c in get("/api/v1/public/courses/")]
+    courses = get("/api/v1/public/courses/")
+    paths += [f"/khoa-hoc/{c['slug']}" for c in courses]
     paths += [f"/tin-tuc/{a['slug']}" for a in get("/api/v1/public/articles/")]
     paths += [f"/chuong-trinh/{p['slug']}" for p in get("/api/v1/public/programs/")]
     failures = 0
@@ -94,7 +95,7 @@ def main() -> int:
                     errors.append(f"horizontal scroll ({width}px)")
                 errors += [f"raw value on screen: {v}" for v in RAW_VALUES if v in text]
                 if path == "/":
-                    errors += homepage_offers_every_course(page)
+                    errors += homepage_offers_every_course(page, courses)
                 print(f"{'FAIL' if errors else 'OK  '} {device:7} {path} {'; '.join(errors)}")
                 failures += bool(errors)
                 page.close()
