@@ -793,6 +793,30 @@ export const ClassesView: React.FC<{
         </div>
       </div>
 
+      {courses.length === 0 && (
+        <section className="rounded-2xl border border-dashed border-amber-300 bg-amber-50 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-sm font-black text-amber-950">Chưa thể mở lớp vì chưa có khóa học</h2>
+            <p className="text-xs leading-relaxed text-amber-900">
+              Mỗi lớp tuyển sinh phải thuộc một khóa học để lấy học phí, nội dung đào tạo và tạo khóa Moodle. Hãy tạo khóa học trước, sau đó quay lại đây để mở lớp.
+            </p>
+          </div>
+          {canTraining ? (
+            <button
+              type="button"
+              onClick={() => navigate('/catalog/courses')}
+              className="shrink-0 px-4 py-2.5 rounded-xl bg-[#0073C1] hover:bg-[#005fa3] text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Tạo khóa học đầu tiên
+            </button>
+          ) : (
+            <p className="shrink-0 text-xs font-bold text-amber-900 sm:max-w-52">
+              Cần người có quyền Quản lý khóa học tạo khóa học trước.
+            </p>
+          )}
+        </section>
+      )}
+
       {/* The admissions at a glance (classes being recruited) */}
       <div className="flex gap-2 overflow-x-auto snap-x pb-1 -mx-1 px-1 lg:grid lg:grid-cols-5 lg:overflow-visible text-xs">
         <button type="button" onClick={() => setFilter('attention')}
