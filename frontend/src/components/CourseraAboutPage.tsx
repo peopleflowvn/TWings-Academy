@@ -21,16 +21,22 @@ import {
   PhoneCall
 } from 'lucide-react';
 import { CMSSectionsConfig } from '../types';
-import { REAL_INSTRUCTORS, REAL_GALLERY, REAL_PARTNERS } from '../data/coursesData';
 
 interface CourseraAboutPageProps {
   aboutData?: CMSSectionsConfig['about'];
+  /** The instructors, photos and partners staff manage in /app (homepage sections); empty: not shown. */
+  instructors: CMSSectionsConfig['instructors']['items'];
+  photos: CMSSectionsConfig['gallery']['photos'];
+  partners: CMSSectionsConfig['partners']['items'];
   onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about') => void;
   onOpenConsultation: () => void;
 }
 
 export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({ 
   aboutData, 
+  instructors,
+  photos,
+  partners,
   onNavigate,
   onOpenConsultation 
 }) => {
@@ -321,6 +327,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
         </div>
 
         {/* 6. Đội ngũ Giảng viên Chuyên gia Thực chiến (Expert Faculty Showcase) */}
+        {instructors.length > 0 && (
         <div className="space-y-8">
           <div className="text-center max-w-2xl mx-auto space-y-2.5">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D7F5FF] text-[#0073C1] text-xs font-bold uppercase tracking-wider">
@@ -335,7 +342,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {REAL_INSTRUCTORS.map((inst) => (
+            {instructors.map((inst) => (
               <div 
                 key={inst.id}
                 className="bg-white rounded-3xl border border-[#E1E6EA] hover:border-[#0073C1] overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col group"
@@ -373,8 +380,10 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
             ))}
           </div>
         </div>
+        )}
 
         {/* 7. Hình ảnh Học viên & Hoạt động Đào tạo (Gallery Showcase) */}
+        {photos.length > 0 && (
         <div className="space-y-8">
           <div className="text-center max-w-2xl mx-auto space-y-2.5">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D7F5FF] text-[#0073C1] text-xs font-bold uppercase tracking-wider">
@@ -389,7 +398,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {REAL_GALLERY.slice(0, 6).map((photo) => (
+            {photos.slice(0, 6).map((photo) => (
               <div 
                 key={photo.id}
                 className="bg-white rounded-2xl sm:rounded-3xl border border-[#E1E6EA] overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 group"
@@ -412,8 +421,10 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
             ))}
           </div>
         </div>
+        )}
 
         {/* 8. Đối tác đồng hành chiến lược */}
+        {partners.length > 0 && (
         <div className="bg-white rounded-3xl p-6 sm:p-10 border border-[#E1E6EA] space-y-6">
           <div className="text-center space-y-2">
             <h3 className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">
@@ -425,7 +436,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 pt-2">
-            {REAL_PARTNERS.map((p) => (
+            {partners.map((p) => (
               <div 
                 key={p.id}
                 className="px-5 py-3 rounded-2xl bg-slate-50 border border-[#E1E6EA] flex items-center gap-3 select-none"
@@ -439,6 +450,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
             ))}
           </div>
         </div>
+        )}
 
         {/* 9. Final Call to Action Banner: Brand Gradient */}
         <div className="bg-gradient-to-br from-[#182046] via-[#263060] to-[#0E6BBB] text-white rounded-3xl p-8 sm:p-14 lg:p-16 shadow-2xl relative overflow-hidden border border-[#5FBEFF]/20">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Building2, ExternalLink, Handshake, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
 import { PartnerItem } from '../types';
+import { isBackendEnabled } from '../lib/api';
 
 interface CourseraPartnersBarProps {
   partners?: PartnerItem[];
@@ -63,7 +64,8 @@ export const CourseraPartnersBar: React.FC<CourseraPartnersBarProps> = ({
   title,
 }) => {
   const activePartners = partners.filter((p: any) => p.is_active !== false);
-  const basePartners = activePartners.length > 0 ? activePartners : DEFAULT_PARTNERS;
+  // The bundled list only styles known partners (and fills the local demo); live, the partners staff list.
+  const basePartners = activePartners.length > 0 || isBackendEnabled() ? activePartners : DEFAULT_PARTNERS;
 
   // Enrich items with default tags/logos if cms items don't provide them yet
   const displayPartners = basePartners.map((p) => {

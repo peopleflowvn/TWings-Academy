@@ -156,10 +156,16 @@ export default function App() {
   }, []);
 
   // Shelves
-  const mostPopularCourses = courses.filter((c) => c.badgeSection === 'most_popular' || c.reviewsCount > 50000);
   const trendingAICourses = courses.filter((c) => c.category === 'Trí tuệ nhân tạo (AI)' || c.badgeSection === 'trending_ai');
   const professionalCertificates = courses.filter((c) => c.type === 'Chứng chỉ Chuyên môn');
   const degreePrograms = courses.filter((c) => c.type === 'Bằng cấp Trực tuyến' || c.badgeSection === 'hot_new');
+  // "Nổi bật": the courses staff put there, and every course on sale no other shelf shows (a new course
+  // is on the homepage as soon as it is on sale, whatever staff filled in).
+  const mostPopularCourses = courses.filter(
+    (c) =>
+      c.badgeSection === 'most_popular' ||
+      !(trendingAICourses.includes(c) || professionalCertificates.includes(c) || degreePrograms.includes(c))
+  );
   // A shelf shows when it has courses that an earlier shelf did not already show as a whole.
   const visibleShelves: Record<string, number> = {};
   {
@@ -436,6 +442,9 @@ export default function App() {
       {currentView === 'about' && (
         <CourseraAboutPage
           aboutData={cmsSections.about}
+          instructors={cmsSections.instructors?.items || []}
+          photos={cmsSections.gallery?.photos || []}
+          partners={cmsSections.partners?.items || []}
           onNavigate={handleNavigate}
           onOpenConsultation={() => handleOpenRegistration()}
         />

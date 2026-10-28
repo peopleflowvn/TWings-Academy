@@ -266,6 +266,22 @@ for k in Cohort.objects.select_related(\"course\").order_by(\"course__title\", \
 '"
     ;;
 
+  purge-drafts-preview|purge-drafts)
+    # The demo / test courses (drafts: Google, Meta, iMBA, AI Agents, ML Stanford, 2 x "Khóa Học Nghiệp
+    # Vụ Mới 2026") with their classes, orders and leads, and the 2 default "Banner Chương Trình Mới 2026"
+    # banners. The preview changes nothing; purge-drafts takes a backup first.
+    purge="python manage.py purge_courses --with-payments"
+    for slug in phan-tich-du-lieu-google chuyen-nganh-lap-trinh-frontend-meta       bang-thac-si-quan-tri-kinh-doanh-imba-illinois xay-dung-cac-dai-ly-ai-agents       chuyen-nganh-machine-learning-stanford khoa-hoc-moi-1791267908310 khoa-hoc-moi-1791267902631; do
+      purge="$purge --course $slug"
+    done
+    purge="$purge --banner ce0f90eb95388bcc --banner 424e6f1c55368433"
+    if [[ "$TASK" == purge-drafts ]]; then
+      remote "sudo $APP/bin/backup.sh && cd $APP && sudo docker compose exec -T backend $purge --apply"
+    else
+      remote "cd $APP && sudo docker compose exec -T backend $purge"
+    fi
+    ;;
+
   smoke-host)
     # Like smoke, but the domains are forced to this VPS's IP: checks a new / moved machine before DNS points to it.
     ip=$(ssh -G vps | awk '/^hostname /{print $2}')

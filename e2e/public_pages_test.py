@@ -57,6 +57,14 @@ def search_works(page) -> list[str]:
     return problems
 
 
+def homepage_offers_every_course(page) -> list[str]:
+    """Every course on sale is on a homepage shelf, also one staff did not put on a shelf (e2e-gdv)."""
+    page.goto(BASE + "/", wait_until="load")
+    page.wait_for_selector("#popular-shelf", timeout=20000)
+    shelves = page.locator("[id$='-shelf']").all_inner_texts()
+    return [f"{c['slug']} not on any homepage shelf" for c in get("/api/v1/public/courses/") if not any(c["title"] in t for t in shelves)]
+
+
 def main() -> int:
     paths = ["/", "/khoa-hoc", "/tin-tuc", "/ve-chung-toi", "/tuyen-sinh", "/chuong-trinh", "/dieu-khoan", "/chinh-sach-bao-mat"]
     paths += [f"/khoa-hoc/{c['slug']}" for c in get("/api/v1/public/courses/")]
@@ -70,6 +78,11 @@ def main() -> int:
         search_page.close()
         print(f"{'FAIL' if search_problems else 'OK  '} search {'; '.join(search_problems)}")
         failures += bool(search_problems)
+        home_page = browser.new_page(viewport={"width": 1440, "height": 900}, locale="vi-VN")
+        home_problems = homepage_offers_every_course(home_page)
+        home_page.close()
+        print(f"{'FAIL' if home_problems else 'OK  '} homepage shelves {'; '.join(home_problems)}")
+        failures += bool(home_problems)
         for device, viewport in (("desktop", {"width": 1440, "height": 900}), ("phone", {"width": 390, "height": 844})):
             ctx = browser.new_context(viewport=viewport, locale="vi-VN", is_mobile=device == "phone", has_touch=device == "phone")
             for path in paths:

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { HeroBannerItem } from '../types';
 import { HERO_BANNERS } from '../data/courseraData';
+import { isBackendEnabled } from '../lib/api';
 import { ThreeHeroBackground } from './ThreeHeroBackground';
 
 interface CourseraHeroBannersProps {
@@ -87,7 +88,8 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
   onOpenYouTubeTrial,
   onScrollToShelf,
 }) => {
-  const displayBanners = banners && banners.length > 0 ? banners : HERO_BANNERS;
+  // The bundled demo banners only without a backend (local demo); live, the banners staff publish.
+  const displayBanners = banners && banners.length > 0 ? banners : isBackendEnabled() ? [] : HERO_BANNERS;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -213,6 +215,8 @@ export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
       }
     }
   };
+
+  if (displayBanners.length === 0) return null;
 
   return (
     <section 

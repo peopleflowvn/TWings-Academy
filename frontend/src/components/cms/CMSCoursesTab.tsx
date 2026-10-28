@@ -23,7 +23,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Course, Module, Lesson, Instructor } from '../../types';
+import { Course, CourseType, Module, Lesson, Instructor, Partner } from '../../types';
 import { api, isBackendEnabled, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { CoursePublishingPanel } from './CoursePublishingPanel';
@@ -62,6 +62,14 @@ const CATEGORIES = [
   'Trí tuệ nhân tạo (AI)',
   'Dữ Liệu & Phân Tích',
   'Chứng chỉ Chuyên môn'
+];
+const TYPES: CourseType[] = ['Chứng chỉ Chuyên môn', 'Khóa học', 'Chuyên ngành', 'Bằng cấp Trực tuyến'];
+// The homepage shelf a course is shown on (a course on sale is always on the homepage: "Nổi bật" by default).
+const SHELVES: [NonNullable<Course['badgeSection']> | '', string][] = [
+  ['most_popular', 'Nổi bật (kệ đầu trang chủ)'],
+  ['trending_ai', 'AI & Công nghệ'],
+  ['hot_new', 'Chương trình dài hạn / Bằng cấp'],
+  ['', 'Tự động']
 ];
 const LEVELS = ['Người mới bắt đầu', 'Chuyên viên Mới (Fresher)', 'Chuyên viên Chính', 'Quản lý / Trưởng nhóm', 'Nâng cao', 'Mọi cấp độ'];
 const LESSON_TYPES: [Lesson['type'], string][] = [
@@ -179,6 +187,15 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
       .then((res) => setStaffInstructors(Array.isArray(res) ? res : res.results))
       .catch(() => setStaffInstructors(null));
   }, []);
+  // Training partners (shown on the course card and the catalogue's "Đối tác" filter; none = TWings Academy).
+  const [partners, setPartners] = useState<Partner[]>([]);
+  useEffect(() => {
+    if (!isBackendEnabled()) return;
+    api
+      .get<Paginated<Partner> | Partner[]>('/staff/partners/?pageSize=200')
+      .then((res) => setPartners(Array.isArray(res) ? res : res.results))
+      .catch(() => setPartners([]));
+  }, []);
 
   /** Open a course just saved on the server (it has its server id now). */
   const openSaved = (saved: Course | undefined, text: string) => {
@@ -197,6 +214,8 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
     const draft = {
       slug: `khoa-hoc-moi-${stamp}`,
       title: 'Khóa học mới',
+      type: 'Chứng chỉ Chuyên môn',
+      badgeSection: 'most_popular',
       deliveryFormat: 'online_external_lms',
       price: 0,
       originalPrice: 0
@@ -241,9 +260,11 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
       youtubeTrialUrl: videoId ? `https://www.youtube.com/watch?v=${videoId}` : '',
       // The API links instructors by id (their profiles are edited on the "Giảng viên" page).
       instructorIds: instructors.map((i) => i.id),
+      partnerId: editForm.partner?.id || null,
+      skills: (editForm.skills || []).map((s) => s.trim()).filter(Boolean),
       objectives: (editForm.objectives || []).map((o) => o.trim()).filter(Boolean),
       guarantees: (editForm.guarantees || []).map((g) => g.trim()).filter(Boolean)
-    } as Course & { instructorIds: string[] };
+    } as Course & { instructorIds: string[]; partnerId: string | null };
     if (!payload.title) {
       flash(false, 'Khóa học cần có tên.');
       return;
@@ -542,6 +563,69 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                     <option value="">– Chọn trình độ –</option>
                     {levelOptions.map((l) => <option key={l} value={l}>{l}</option>)}
                   </select>
+                </div>
+
+                {/* Where the course shows on the website: homepage shelf, catalogue filters, card */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Kệ trên trang chủ</label>
+                  <select
+                    value={editForm.badgeSection || ''}
+                    onChange={(e) => setEditForm({ ...editForm, badgeSection: (e.target.value || undefined) as Course['badgeSection'] })}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl font-semibold bg-slate-50"
+                  >
+                    {SHELVES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+                  </select>
+                  <p className="text-[11px] text-slate-500 mt-1">Khóa đang bán luôn hiện trên trang chủ; mục này chọn kệ.</p>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Loại chương trình</label>
+                  <select
+                    value={editForm.type || ''}
+                    onChange={(e) => setEditForm({ ...editForm, type: (e.target.value || undefined) as CourseType })}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl font-semibold bg-slate-50"
+                  >
+                    <option value="">– Chọn loại –</option>
+                    {withCurrent(TYPES, editForm.type).map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <p className="text-[11px] text-slate-500 mt-1">Bộ lọc "Loại" ở trang Khóa học; "Chứng chỉ Chuyên môn" có kệ riêng.</p>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Đối tác đào tạo</label>
+                  <select
+                    value={editForm.partner?.id || ''}
+                    onChange={(e) => setEditForm({ ...editForm, partner: partners.find((p) => p.id === e.target.value) })}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl font-semibold bg-slate-50"
+                  >
+                    <option value="">TWings Academy</option>
+                    {[...partners, ...(editForm.partner && !partners.some((p) => p.id === editForm.partner?.id) ? [editForm.partner] : [])].map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500 mt-1">Hiện trên thẻ khóa học và bộ lọc "Đối tác".</p>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Vị trí nghề nghiệp</label>
+                  <input
+                    type="text"
+                    value={editForm.careerRole || ''}
+                    onChange={(e) => setEditForm({ ...editForm, careerRole: e.target.value })}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl"
+                    placeholder="VD: Chuyên viên Quan hệ Khách hàng"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="font-bold text-slate-700 block mb-1">Kỹ năng (mỗi dòng một kỹ năng; thẻ khóa học hiện 3 kỹ năng đầu)</label>
+                  <textarea
+                    rows={3}
+                    value={(editForm.skills || []).join('\n')}
+                    onChange={(e) => setEditForm({ ...editForm, skills: e.target.value.split('\n') })}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl"
+                    placeholder={'VD: Thẩm định tín dụng\nPhân tích báo cáo tài chính\nChốt sale'}
+                  />
                 </div>
 
                 {/* Delivery Format */}
