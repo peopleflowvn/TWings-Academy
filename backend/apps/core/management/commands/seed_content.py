@@ -1,5 +1,8 @@
 """
-Load public demo content (catalogue, CMS, email templates) from fixtures/seed_content.json.
+Load starter CMS and email content from fixtures/seed_content.json.
+
+The bundled catalogue is only for local/E2E demonstrations.  Production deployments run this
+command too, so demo products must be explicitly requested with ``--include-demo-catalog``.
 
 Idempotent: records are upserted by id, so it can be re-run safely. CRM leads and staff users are
 never seeded. Regenerate the fixture from the frontend with `node frontend/scripts/export-seed.mjs`.
@@ -44,10 +47,15 @@ def pick(model, data: dict, exclude=()) -> dict:
 
 
 class Command(BaseCommand):
-    help = "Seed public demo content (idempotent)."
+    help = "Seed starter public content (idempotent; demo catalogue is opt-in)."
 
     def add_arguments(self, parser):
         parser.add_argument("--file", default=str(DEFAULT_FIXTURE))
+        parser.add_argument(
+            "--include-demo-catalog",
+            action="store_true",
+            help="Also load the bundled sample partners, instructors, courses and cohorts (local/E2E only).",
+        )
 
     @transaction.atomic
     def handle(self, *args, **opts):
@@ -69,47 +77,47 @@ class Command(BaseCommand):
             bump("instructors")
             return i["id"]
 
-        for p in data.get("partners", []):
-            upsert_partner(p)
-        for i in data.get("instructors", []):
-            upsert_instructor(i)
+        if opts["include_demo_catalog"]:
+            for p in data.get("partners", []):
+                upsert_partner(p)
+            for i in data.get("instructors", []):
+                upsert_instructor(i)
 
-        for c in data.get("courses", []):
-            defaults = pick(Course, c, exclude={"partner", "instructors"})
-            defaults["syllabus"] = c.get("syllabus") or c.get("chapters") or []
-            defaults["partner_id"] = upsert_partner(c.get("partner"))
-            # Seeded courses are the real catalogue: on sale when first created, untouched afterwards.
-            course, _ = Course.objects.update_or_create(
-                id=c["id"], defaults=defaults, create_defaults={**defaults, "status": "published"}
-            )
-            people = c.get("instructors") or ([c["instructor"]] if c.get("instructor") else [])
-            course.instructors.set([upsert_instructor(i) for i in people if i.get("id")])
-            bump("courses")
+            for c in data.get("courses", []):
+                defaults = pick(Course, c, exclude={"partner", "instructors"})
+                defaults["syllabus"] = c.get("syllabus") or c.get("chapters") or []
+                defaults["partner_id"] = upsert_partner(c.get("partner"))
+                course, _ = Course.objects.update_or_create(
+                    id=c["id"], defaults=defaults, create_defaults={**defaults, "status": "published"}
+                )
+                people = c.get("instructors") or ([c["instructor"]] if c.get("instructor") else [])
+                course.instructors.set([upsert_instructor(i) for i in people if i.get("id")])
+                bump("courses")
 
-        known_courses = set(Course.objects.values_list("id", flat=True))
-        cohorts = [c for c in data.get("cohorts", []) if c.get("course_id") in known_courses]
-        for skipped in [c for c in data.get("cohorts", []) if c.get("course_id") not in known_courses]:
-            self.stdout.write(
-                self.style.WARNING(f"Skip cohort {skipped['id']}: unknown course {skipped['course_id']}")
-            )
-        for c in cohorts:
-            Cohort.objects.update_or_create(
-                id=c["id"],
-                defaults={
-                    **pick(Cohort, c, exclude={"course", "next_cohort", "lead_instructor"}),
-                    "course_id": c["course_id"],
-                    "start_date": parse_date(c.get("start_date")),
-                    "registration_deadline": parse_date(c.get("registration_deadline")),
-                    "lead_instructor_id": c.get("lead_instructor_id")
-                    if Instructor.objects.filter(id=c.get("lead_instructor_id") or "").exists()
-                    else None,
-                },
-            )
-            bump("cohorts")
-        cohort_ids = {c["id"] for c in cohorts}
-        for c in cohorts:  # second pass once every cohort exists
-            nxt = c.get("next_cohort_id")
-            Cohort.objects.filter(id=c["id"]).update(next_cohort_id=nxt if nxt in cohort_ids else None)
+            known_courses = set(Course.objects.values_list("id", flat=True))
+            cohorts = [c for c in data.get("cohorts", []) if c.get("course_id") in known_courses]
+            for skipped in [c for c in data.get("cohorts", []) if c.get("course_id") not in known_courses]:
+                self.stdout.write(
+                    self.style.WARNING(f"Skip cohort {skipped['id']}: unknown course {skipped['course_id']}")
+                )
+            for c in cohorts:
+                Cohort.objects.update_or_create(
+                    id=c["id"],
+                    defaults={
+                        **pick(Cohort, c, exclude={"course", "next_cohort", "lead_instructor"}),
+                        "course_id": c["course_id"],
+                        "start_date": parse_date(c.get("start_date")),
+                        "registration_deadline": parse_date(c.get("registration_deadline")),
+                        "lead_instructor_id": c.get("lead_instructor_id")
+                        if Instructor.objects.filter(id=c.get("lead_instructor_id") or "").exists()
+                        else None,
+                    },
+                )
+                bump("cohorts")
+            cohort_ids = {c["id"] for c in cohorts}
+            for c in cohorts:  # second pass once every cohort exists
+                nxt = c.get("next_cohort_id")
+                Cohort.objects.filter(id=c["id"]).update(next_cohort_id=nxt if nxt in cohort_ids else None)
 
         for cp in data.get("coupons", []):
             Coupon.objects.update_or_create(

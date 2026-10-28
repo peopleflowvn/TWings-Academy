@@ -36,7 +36,8 @@ python scripts/generate_secrets.py
 
 python manage.py migrate
 python manage.py createcachetable
-python manage.py seed_content     # nạp khóa học, bài viết, banner, mẫu email mẫu
+python manage.py seed_content     # nạp nội dung CMS/email; không tạo sản phẩm demo
+# Chỉ local/E2E: thêm --include-demo-catalog để nạp khóa học mẫu
 python manage.py createsuperuser
 python manage.py runserver        # http://127.0.0.1:8000/api/v1/health/
 ```

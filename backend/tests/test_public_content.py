@@ -5,6 +5,7 @@ from importlib import import_module
 
 import pytest
 from django.apps import apps as django_apps
+from django.core.management import call_command
 from django.utils import timezone
 
 from apps.catalog.models import Cohort, Course, Instructor, Partner
@@ -40,6 +41,30 @@ def test_demo_catalog_is_hidden_not_deleted(course):
     assert not foreign.is_published and not draft.is_published
     assert edited.is_published and course.is_published  # real content stays
     assert not Partner.objects.get(pk=google.pk).is_active and Partner.objects.get(pk=msb.pk).is_active
+
+
+def test_bundled_demo_products_are_removed_but_real_courses_remain(course):
+    demo = Course.objects.create(
+        id="twings-qhkh-ca-nhan",
+        slug="quan-he-khach-hang-ca-nhan",
+        title="KhÃ³a há»c máº«u",
+        status="published",
+        badge_section="most_popular",
+    )
+    Cohort.objects.create(course=demo, name="Lá»›p máº«u", status="opening")
+
+    _migration("catalog", "0012_remove_demo_catalog").remove_demo_catalog(django_apps, None)
+
+    assert not Course.objects.filter(pk=demo.pk).exists()
+    assert Course.objects.filter(pk=course.pk, status="published").exists()
+
+
+def test_seed_content_does_not_create_demo_products_by_default():
+    call_command("seed_content", verbosity=0)
+
+    assert not Course.objects.filter(
+        pk__in={"twings-qhkh-doanh-nghiep", "twings-qhkh-ca-nhan"}
+    ).exists()
 
 
 def test_demo_banners_and_seo_placeholders_are_cleaned(settings):

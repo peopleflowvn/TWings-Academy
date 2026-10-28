@@ -18,7 +18,7 @@ from apps.crm.services import flag_duplicates
 
 PASSWORD = "E2e-Test-Passw0rd!"
 
-call_command("seed_content")
+call_command("seed_content", include_demo_catalog=True)
 User.objects.create_superuser(email="admin@e2e.test", password=PASSWORD, name="Quản trị")
 sale = User.objects.create_user(
     email="tuvan@e2e.test", password=PASSWORD, name="Tư vấn Lan", role=Role.SALES_CRM, is_staff=True
