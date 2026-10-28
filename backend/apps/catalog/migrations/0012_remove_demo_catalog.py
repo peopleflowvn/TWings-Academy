@@ -3,7 +3,6 @@
 from django.db import migrations
 from django.db.models import Q
 
-
 DEMO_COURSE_IDS = [
     "e2e-draft",
     "e2e-gdv",
