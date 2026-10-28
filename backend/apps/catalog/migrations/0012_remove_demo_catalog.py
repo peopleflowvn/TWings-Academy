@@ -1,6 +1,7 @@
 """Remove bundled sample products that were accidentally published in production."""
 
 from django.db import migrations
+from django.db.models import Q
 
 
 DEMO_COURSE_IDS = [
@@ -20,14 +21,14 @@ DEMO_COURSE_IDS = [
 def remove_demo_catalog(apps, schema_editor):
     Course = apps.get_model("catalog", "Course")
     Cohort = apps.get_model("catalog", "Cohort")
-    from django.db.models import Q
-
+    ProgramCourse = apps.get_model("catalog", "ProgramCourse")
     demo_courses = Course.objects.filter(Q(id__in=DEMO_COURSE_IDS) | Q(slug__startswith="e2e-"))
     demo_ids = list(demo_courses.values_list("id", flat=True))
 
     # Cohorts protect their course. These IDs belong to the bundled fixture, while orders use
     # SET_NULL and retain their historical course title if test/demo orders happened to exist.
     Cohort.objects.filter(course_id__in=demo_ids).delete()
+    ProgramCourse.objects.filter(course_id__in=demo_ids).delete()
     demo_courses.delete()
 
 

@@ -8,7 +8,7 @@ from django.apps import apps as django_apps
 from django.core.management import call_command
 from django.utils import timezone
 
-from apps.catalog.models import Cohort, Course, Instructor, Partner
+from apps.catalog.models import Cohort, Course, Instructor, Partner, Program, ProgramCourse
 from apps.cms.models import HeroBanner
 from apps.core.models import SiteConfig
 from apps.lms import moodle
@@ -52,10 +52,13 @@ def test_bundled_demo_products_are_removed_but_real_courses_remain(course):
         badge_section="most_popular",
     )
     Cohort.objects.create(course=demo, name="Lá»›p máº«u", status="opening")
+    program = Program.objects.create(slug="chuong-trinh-mau", title="ChÆ°Æ¡ng trÃ¬nh máº«u")
+    ProgramCourse.objects.create(program=program, course=demo)
 
     _migration("catalog", "0012_remove_demo_catalog").remove_demo_catalog(django_apps, None)
 
     assert not Course.objects.filter(pk=demo.pk).exists()
+    assert not ProgramCourse.objects.filter(program=program).exists()
     assert Course.objects.filter(pk=course.pk, status="published").exists()
 
 
