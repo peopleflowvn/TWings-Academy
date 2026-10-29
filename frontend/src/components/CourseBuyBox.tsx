@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { CalendarDays, CheckCircle2, MapPin, MessageCircle, QrCode, ShieldCheck, Clock3 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Award, Briefcase, CalendarDays, CheckCircle2, Flame, MapPin, MessageCircle, QrCode, ShieldCheck, Clock3 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Course, Order } from '../types';
 import { api, ApiError, isBackendEnabled } from '../lib/api';
 import { getAttribution } from '../lib/attribution';
-import { canBuy, installmentLine, Intake, openIntakes, priceFor, viDate, vnd } from '../lib/selling';
+import { canBuy, chosenIntake, classSlugInUrl, deadlineLine, installmentLine, Intake, openIntakes, priceFor, viDate, vnd } from '../lib/selling';
 import type { CheckoutPrefill } from './CourseraCheckoutModal';
 
 interface CourseBuyBoxProps {
@@ -16,13 +16,31 @@ interface CourseBuyBoxProps {
 /**
  * The course page's buying panel: price today, the intake to join, "Đăng ký học" (payment) first and a
  * short consultation form second. A course with no intake taking learners only takes consultations.
+ * A class's link (?lop=<slug>, from the "Đang tuyển sinh" cards and links staff share) opens it chosen,
+ * with what the class adds (scholarship, the job it leads to, its details); the address follows the choice.
  */
 export const CourseBuyBox: React.FC<CourseBuyBoxProps> = ({ course, onCheckout, onConsultSent }) => {
   const intakes = course.upcomingCohorts || [];
   const open = openIntakes(course);
   const buyable = canBuy(course);
-  const [intakeName, setIntakeName] = useState(open[0]?.name || '');
+  const [intakeName, setIntakeName] = useState(() => chosenIntake(course)?.name || '');
   const intake: Intake | undefined = open.find((c) => c.name === intakeName);
+  // A class's link whose class no longer takes registrations (full, closed, past its deadline).
+  const [linkedGone] = useState(() => !!classSlugInUrl() && !open.some((c) => c.slug === classSlugInUrl()));
+  // The class's views (staff see them in /app), once per opening of its link.
+  useEffect(() => {
+    const slug = classSlugInUrl();
+    if (slug && isBackendEnabled() && open.some((c) => c.slug === slug)) {
+      api.get(`/public/classes/${encodeURIComponent(slug)}/?view=1`).catch(() => undefined);
+    }
+  }, [course.id]);
+  const choose = (c: Intake) => {
+    setIntakeName(c.name);
+    if (!c.slug) return;
+    const params = new URLSearchParams(window.location.search);
+    params.set('lop', c.slug);
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}?${params}`);
+  };
   const price = priceFor(course, intake);
   const struck = course.originalPrice > price ? course.originalPrice : 0;
   const plan = installmentLine(course, price);
@@ -122,6 +140,12 @@ export const CourseBuyBox: React.FC<CourseBuyBoxProps> = ({ course, onCheckout, 
           {plan && <div className="mt-1 text-xs text-slate-600">Hoặc {plan.charAt(0).toLowerCase() + plan.slice(1)}, vào học ngay</div>}
         </div>
 
+        {linkedGone && (
+          <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+            Lớp trong đường link đã ngừng nhận đăng ký.{open.length ? ' Bạn có thể chọn lớp khác bên dưới.' : ''}
+          </div>
+        )}
+
         {/* Intake to join */}
         {intakes.length > 0 && (
           <fieldset className="space-y-2">
@@ -138,7 +162,7 @@ export const CourseBuyBox: React.FC<CourseBuyBoxProps> = ({ course, onCheckout, 
                     full ? 'opacity-50 cursor-not-allowed border-slate-200' : selected ? 'border-[#0073C1] bg-blue-50/60 cursor-pointer' : 'border-slate-200 hover:border-slate-300 cursor-pointer'
                   }`}
                 >
-                  <input type="radio" name="intake" className="mt-0.5" disabled={full} checked={selected} onChange={() => setIntakeName(c.name)} />
+                  <input type="radio" name="intake" className="mt-0.5" disabled={full} checked={selected} onChange={() => choose(c)} />
                   <span className="flex-1 min-w-0">
                     <span className="flex items-center justify-between gap-2">
                       <span className="font-bold text-slate-900">{c.startDate ? `Khai giảng ${viDate(c.startDate)}` : c.name}</span>
@@ -161,11 +185,43 @@ export const CourseBuyBox: React.FC<CourseBuyBoxProps> = ({ course, onCheckout, 
                         Ưu đãi sớm {vnd(c.price)} đến {viDate(c.earlyBirdDeadline)}
                       </span>
                     )}
+                    {!full && deadlineLine(c) && <span className="block text-slate-500">{deadlineLine(c)}</span>}
+                    {(c.isFeatured || c.hasScholarship) && (
+                      <span className="flex flex-wrap gap-1 pt-1">
+                        {c.isFeatured && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                            <Flame className="w-3 h-3" /> Nổi bật
+                          </span>
+                        )}
+                        {c.hasScholarship && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                            <Award className="w-3 h-3" /> Có học bổng
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </span>
                 </label>
               );
             })}
           </fieldset>
+        )}
+
+        {/* What the chosen class adds to the course (an admission campaign: the job, its details) */}
+        {intake && (intake.summary || intake.description || intake.jobTitle) && (
+          <div data-class-details className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1.5">
+            <div className="font-bold text-slate-900">Về lớp {intake.name}</div>
+            {intake.jobTitle && (
+              <div className="flex items-start gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#0073C1]" />
+                <span>Định hướng việc làm: <strong>{intake.jobTitle}</strong>{intake.income ? ` · ${intake.income}` : ''}</span>
+              </div>
+            )}
+            {intake.summary && <p>{intake.summary}</p>}
+            {intake.description && intake.description !== intake.summary && (
+              <p className="whitespace-pre-line leading-relaxed text-slate-600">{intake.description}</p>
+            )}
+          </div>
         )}
 
         {/* Actions */}

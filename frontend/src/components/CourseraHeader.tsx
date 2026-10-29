@@ -20,6 +20,7 @@ import { routePath, View } from '../lib/routes';
 import { BrandLogo } from './BrandLogo';
 import { SiteSearch } from './SiteSearch';
 import { Course } from '../types';
+import type { Intake } from '../lib/selling';
 
 interface CourseraHeaderProps {
   currentView: View;
@@ -30,7 +31,7 @@ interface CourseraHeaderProps {
   onOpenConsultation: () => void;
   /** Published courses, for search suggestions. */
   courses?: Course[];
-  onOpenCourse?: (course: Course) => void;
+  onOpenCourse?: (course: Course, intake?: Intake) => void;
 }
 
 export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
@@ -112,7 +113,7 @@ export const CourseraHeader: React.FC<CourseraHeaderProps> = ({
             href={routePath('catalog')}
             onClick={navClick('catalog')}
             className={`hidden lg:inline hover:text-[#0073C1] transition-colors cursor-pointer ${
-              currentView === 'catalog' || currentView === 'campaign-detail' ? 'text-[#0073C1] font-bold' : ''
+              currentView === 'catalog' || currentView === 'class-link' ? 'text-[#0073C1] font-bold' : ''
             }`}
           >
             Khóa học

@@ -4,22 +4,20 @@ import { api, isBackendEnabled, Paginated } from '../lib/api';
 import { commerceApi, Program } from '../lib/commerce';
 import { routePath } from '../lib/routes';
 import { courseFields, rank } from '../lib/search';
-import { startLine, vnd, priceFor, openIntakes } from '../lib/selling';
+import { classPath, deadlineLine, Intake, intakeLine, recruitingClasses, startLine, vnd, priceFor, openIntakes } from '../lib/selling';
 import { Article, Course } from '../types';
-import type { CampaignCard } from './CampaignPages';
 
-/** Programs, campaigns and articles are loaded once, the first time a visitor uses the search. */
-let extrasCache: Promise<{ programs: Program[]; campaigns: CampaignCard[]; articles: Article[] }> | null = null;
+/** Programs and articles are loaded once, the first time a visitor uses the search (classes come with the courses). */
+let extrasCache: Promise<{ programs: Program[]; articles: Article[] }> | null = null;
 const loadExtras = () => {
-  if (!isBackendEnabled()) return Promise.resolve({ programs: [], campaigns: [], articles: [] });
+  if (!isBackendEnabled()) return Promise.resolve({ programs: [], articles: [] });
   extrasCache ??= Promise.all([
     commerceApi.publicPrograms().catch(() => [] as Program[]),
-    api.get<CampaignCard[]>('/public/campaigns/').catch(() => [] as CampaignCard[]),
     api
       .get<Paginated<Article> | Article[]>('/public/articles/')
       .then((r) => (Array.isArray(r) ? r : r.results))
       .catch(() => [] as Article[])
-  ]).then(([programs, campaigns, articles]) => ({ programs, campaigns, articles }));
+  ]).then(([programs, articles]) => ({ programs, articles }));
   return extrasCache;
 };
 
@@ -30,6 +28,7 @@ interface Suggestion {
   meta: string;
   href: string;
   course?: Course;
+  intake?: Intake;
 }
 
 const KIND = {
@@ -46,7 +45,7 @@ interface SiteSearchProps {
   onSubmit: () => void;
   courses: Course[];
   /** Open a course inside the app (otherwise its link loads the page). */
-  onOpenCourse?: (course: Course) => void;
+  onOpenCourse?: (course: Course, intake?: Intake) => void;
   onOpenConsultation?: () => void;
   placeholder?: string;
   autoFocus?: boolean;
@@ -73,9 +72,8 @@ export const SiteSearch: React.FC<SiteSearchProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  const [extras, setExtras] = useState<{ programs: Program[]; campaigns: CampaignCard[]; articles: Article[] }>({
+  const [extras, setExtras] = useState<{ programs: Program[]; articles: Article[] }>({
     programs: [],
-    campaigns: [],
     articles: []
   });
   const box = useRef<HTMLDivElement>(null);
@@ -117,18 +115,21 @@ export const SiteSearch: React.FC<SiteSearchProps> = ({
         meta: `${p.courses.length} khóa học · ${vnd(p.price)}`,
         href: `/chuong-trinh/${p.slug}`
       }));
-    const campaigns = rank(extras.campaigns, query, (c) => [
-      { text: c.name, weight: 3 },
-      { text: c.summary, weight: 2 },
-      { text: c.courses.map((x) => x.title).join(' '), weight: 1 }
+    // Classes recruiting now: open their course page on the class.
+    const campaigns = rank(recruitingClasses(courses), query, ({ course, intake }) => [
+      { text: intake.name, weight: 3 },
+      { text: `${intake.summary || ''} ${intake.jobTitle || ''} ${intake.location || ''}`, weight: 2 },
+      { text: course.title, weight: 1 }
     ])
       .slice(0, 2)
-      .map((c) => ({
-        key: `t-${c.slug}`,
+      .map(({ course, intake }) => ({
+        key: `t-${course.id}-${intake.name}`,
         kind: 'campaign' as const,
-        title: c.name,
-        meta: c.daysLeft != null ? `Còn ${c.daysLeft} ngày nhận hồ sơ` : 'Đang nhận hồ sơ',
-        href: routePath('campaign-detail', c.slug)
+        title: `${course.title} · ${intake.name}`,
+        meta: deadlineLine(intake) || intakeLine(intake),
+        href: classPath(course, intake),
+        course,
+        intake
       }));
     const articles = rank(extras.articles, query, (a) => [
       { text: a.title, weight: 3 },
@@ -152,7 +153,7 @@ export const SiteSearch: React.FC<SiteSearchProps> = ({
     if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0)) return; // new tab
     if (s.course && onOpenCourse) {
       e?.preventDefault();
-      onOpenCourse(s.course);
+      onOpenCourse(s.course, s.intake);
     } else if (!e) {
       window.location.href = s.href;
     }

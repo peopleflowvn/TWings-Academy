@@ -105,7 +105,9 @@ class CourseSerializer(serializers.ModelSerializer):
 def upcoming_cohorts(course) -> list[dict]:
     """
     Classes a visitor can join, as the class list in /app shows them "Trên website" (Cohort.listed):
-    the homepage, course card, course page and checkout offer the same classes.
+    the homepage, course card, course page and checkout offer the same classes. A class is also an
+    admission campaign: its link is the course page with the class chosen (/khoa-hoc/<course>?lop=<slug>),
+    and what it adds to the course (summary, scholarship, the job it leads to) is shown with it.
     """
     from django.utils import timezone
 
@@ -125,6 +127,13 @@ def upcoming_cohorts(course) -> list[dict]:
             "schedule_text": c.schedule_text,
             "price": c.price(today),
             "early_bird_deadline": c.early_bird_deadline.isoformat() if c.early_bird_active(today) else None,
+            "slug": c.slug,
+            "is_featured": c.is_featured,
+            "has_scholarship": c.scholarship_budget > 0,
+            "summary": c.summary,
+            "description": c.description,
+            "job_title": c.job_title,
+            "income": c.salary_range,
         }
         for c in rows.select_related("course")
     ]

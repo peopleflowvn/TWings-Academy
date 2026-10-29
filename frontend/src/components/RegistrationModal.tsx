@@ -39,8 +39,6 @@ interface RegistrationModalProps {
   onClose: () => void;
   onSubmitSuccess: (newOrder: Order) => void;
   onOpenVietQR?: (course: Course, prefill?: CheckoutPrefill) => void;
-  /** Registering from a campaign page: the lead belongs to that campaign. */
-  campaignCode?: string;
 }
 
 const QUICK_TOPICS = [
@@ -57,7 +55,6 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   onClose,
   onSubmitSuccess,
   onOpenVietQR,
-  campaignCode,
 }) => {
   const seo = useSiteSeo();
   const hotlineText = seo?.hotline || '1900 633 898';
@@ -193,8 +190,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
           educationLevel,
           major,
           consultNeed: consultNote,
-          source: campaignCode ? 'Website · Trang tuyển sinh' : 'Website Form Tư vấn',
-          campaignCode: campaignCode || '',
+          source: 'Website Form Tư vấn',
           privacyConsent,
           attribution: getAttribution(),
           website: honeypot

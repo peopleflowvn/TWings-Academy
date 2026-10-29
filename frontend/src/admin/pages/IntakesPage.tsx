@@ -394,11 +394,11 @@ export const IntakeEditor: React.FC<{
           <label className="sm:col-span-2">Giới thiệu ngắn trên thẻ (tối đa 300 ký tự)
             <input maxLength={300} className={input} value={d.summary || ''} onChange={(e) => setD({ ...d, summary: e.target.value })} />
           </label>
-          <label className="sm:col-span-2">Mô tả trên trang tuyển sinh
+          <label className="sm:col-span-2">Mô tả lớp (hiện trên trang khóa học khi chọn lớp này)
             <textarea rows={3} className={input} value={d.description || ''} onChange={(e) => setD({ ...d, description: e.target.value })} />
           </label>
           <label>Đường dẫn
-            <div className="flex items-center gap-1"><span className="text-slate-400">/tuyen-sinh/</span>
+            <div className="flex items-center gap-1"><span className="text-slate-400 truncate">/khoa-hoc/{course?.slug || '…'}?lop=</span>
               <input className={`${input} font-mono`} value={d.slug || ''} placeholder="tự tạo khi đăng" onChange={(e) => setD({ ...d, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} />
             </div>
           </label>
@@ -428,11 +428,18 @@ export const IntakeEditor: React.FC<{
 
 const JOINABLE = ['opening', 'upcoming'];
 
-/** The UTM link of a class: its page when it is on the website, else its course page. */
+/** A class on the website: its course page with the class chosen (the visitor sees the course and the class). */
+function classPage(r: IntakeRow, courseSlug?: string) {
+  if (!courseSlug) return '/khoa-hoc';
+  const page = `/khoa-hoc/${encodeURIComponent(courseSlug)}`;
+  return r.websiteState === 'live' && r.slug ? `${page}?lop=${encodeURIComponent(r.slug)}` : page;
+}
+
+/** The UTM link of a class (its code is the campaign: the leads it brings are counted on the class). */
 function classLink(r: IntakeRow, courseSlug?: string) {
   const params = new URLSearchParams({ utm_source: 'twings', utm_medium: 'crm', utm_campaign: r.code || r.name });
-  const page = r.websiteState === 'live' && r.slug ? `/tuyen-sinh/${encodeURIComponent(r.slug)}` : courseSlug ? `/khoa-hoc/${encodeURIComponent(courseSlug)}` : '/khoa-hoc';
-  return `${window.location.origin}${page}?${params}`;
+  const page = classPage(r, courseSlug);
+  return `${window.location.origin}${page}${page.includes('?') ? '&' : '?'}${params}`;
 }
 
 // ---------------------------------------------------------------- what needs doing on a class
@@ -670,7 +677,7 @@ export const ClassesView: React.FC<{
           <div className="fixed inset-0 z-30" onClick={() => setMenu(null)} />
           <div className="absolute right-0 top-full mt-1 z-40 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 text-xs text-left">
             {r.websiteState === 'live' && r.slug && (
-              <a href={`/tuyen-sinh/${encodeURIComponent(r.slug)}`} target="_blank" rel="noopener" onClick={() => setMenu(null)} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50">
+              <a href={classPage(r, courses.find((c) => c.id === r.courseId)?.slug)} target="_blank" rel="noopener" onClick={() => setMenu(null)} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50">
                 <ExternalLink className="w-3.5 h-3.5" /> Xem trên website
               </a>
             )}

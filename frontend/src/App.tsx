@@ -13,7 +13,7 @@ import {
 } from './data/courseraData';
 import { DEFAULT_CMS_SECTIONS } from './data/coursesData';
 import { api, isBackendEnabled, Paginated } from './lib/api';
-import { canBuy } from './lib/selling';
+import { canBuy, Intake, recruitingClasses } from './lib/selling';
 import { parseRoute, routePath, View } from './lib/routes';
 import { applyPageMeta } from './lib/siteSeo';
 import { trackView } from './lib/attribution';
@@ -39,7 +39,6 @@ import { CourseraArticleDetailPage } from './components/CourseraArticleDetailPag
 import { CourseraAboutPage } from './components/CourseraAboutPage';
 import { CourseraCheckoutModal, CheckoutPrefill } from './components/CourseraCheckoutModal';
 import { RegistrationModal } from './components/RegistrationModal';
-import { CampaignDetailPage, CampaignsStrip } from './components/CampaignPages';
 import { YouTubeTrialModal } from './components/YouTubeTrialModal';
 import { FloatingContact } from './components/FloatingContact';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -106,11 +105,6 @@ export default function App() {
   const [checkoutPrefill, setCheckoutPrefill] = useState<CheckoutPrefill | undefined>(undefined);
   const [registrationCourse, setRegistrationCourse] = useState<Course | null>(null);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
-  // Registration opened from a campaign page carries its code (the lead belongs to the campaign).
-  const [registrationCampaign, setRegistrationCampaign] = useState('');
-  const [campaignSlug, setCampaignSlug] = useState<string | undefined>(
-    initialRoute.view === 'campaign-detail' ? initialRoute.slug : undefined
-  );
   const [trialVideo, setTrialVideo] = useState<{ videoId: string; title: string; course?: Course } | null>(null);
 
   // Enrolled courses state
@@ -187,9 +181,9 @@ export default function App() {
   }
 
   // ---- Routing: state <-> URL ----
-  const go = (view: View, slug?: string) => {
+  const go = (view: View, slug?: string, search = '') => {
     startPageLoading();
-    const query = view === 'catalog' && searchQuery.trim() ? `?q=${encodeURIComponent(searchQuery.trim())}` : '';
+    const query = view === 'catalog' && searchQuery.trim() ? `?q=${encodeURIComponent(searchQuery.trim())}` : search;
     const path = routePath(view, slug) + query;
     if (path !== window.location.pathname + window.location.search) window.history.pushState(null, '', path);
     setCurrentView(view);
@@ -216,7 +210,6 @@ export default function App() {
       const route = parseRoute(window.location.pathname) ?? { view: 'home' as View };
       setCurrentView(route.view);
       setPendingSlug(route.slug);
-      if (route.view === 'campaign-detail') setCampaignSlug(route.slug);
       setTimeout(() => donePageLoading(), 150);
     };
     window.addEventListener('popstate', onPopState);
@@ -306,11 +299,34 @@ export default function App() {
     go(view);
   };
 
-  const handleSelectCourse = (course: Course) => {
+  /** The course page; a class card opens it on that class (?lop=<class>: the class's link). */
+  const handleSelectCourse = (course: Course, intake?: Intake) => {
     setSelectedCourse(course);
     setPendingSlug(undefined);
-    go('course-detail', course.slug);
+    go('course-detail', course.slug, intake?.slug ? `?lop=${encodeURIComponent(intake.slug)}` : '');
   };
+
+  // A class's old link (/tuyen-sinh/<class>): its course page with the class chosen; a class no longer
+  // on the site: the classes recruiting now.
+  useEffect(() => {
+    if (currentView !== 'class-link' || !pendingSlug) return;
+    const slug = pendingSlug;
+    const toCatalog = () => {
+      window.history.replaceState(null, '', '/khoa-hoc');
+      setPendingSlug(undefined);
+      setCatalogRecruiting(true);
+      setCurrentView('catalog');
+    };
+    if (!isBackendEnabled()) return toCatalog();
+    api
+      .get<{ slug: string; courseSlug: string }>(`/public/classes/${encodeURIComponent(slug)}/`)
+      .then((c) => {
+        window.history.replaceState(null, '', `/khoa-hoc/${encodeURIComponent(c.courseSlug)}?lop=${encodeURIComponent(c.slug)}`);
+        setPendingSlug(c.courseSlug);
+        setCurrentView('course-detail');
+      })
+      .catch(toCatalog);
+  }, [currentView, pendingSlug]);
 
   const handleSelectArticle = (article: Article) => {
     setSelectedArticle(article);
@@ -318,10 +334,6 @@ export default function App() {
     go('article-detail', article.slug);
   };
 
-  const openCampaign = (slug: string) => {
-    setCampaignSlug(slug);
-    go('campaign-detail', slug);
-  };
 
   /** "Đăng ký học": straight to payment when the course is on sale, else the consultation form. */
   const handleBuy = (course: Course, intakeName?: string) => {
@@ -331,8 +343,7 @@ export default function App() {
     } else handleOpenRegistration(course);
   };
 
-  const handleOpenRegistration = (course?: Course, campaignCode = '') => {
-    setRegistrationCampaign(campaignCode);
+  const handleOpenRegistration = (course?: Course) => {
     setRegistrationCourse(course || selectedCourse || courses[0]);
     setShowRegistrationModal(true);
   };
@@ -450,17 +461,9 @@ export default function App() {
         />
       )}
 
-      {/* Admission campaigns (like job postings): what the server lists as recruiting now */}
-      {currentView === 'campaign-detail' && campaignSlug && (
-        <CampaignDetailPage
-          slug={campaignSlug}
-          onBack={() => handleNavigate('catalog')}
-          onOpenCourse={(slug) => {
-            const found = courses.find((c) => c.slug === slug);
-            if (found) handleSelectCourse(found);
-          }}
-          onRegister={(courseId, code) => handleOpenRegistration(courses.find((c) => c.id === courseId), code)}
-        />
+      {/* A class's old link, on its way to the course page */}
+      {currentView === 'class-link' && (
+        <main className="flex-1 max-w-3xl mx-auto px-4 py-20 text-center text-slate-500 text-sm">Đang tải…</main>
       )}
 
       {/* 5. Subpage: Coursera Official Homepage */}
@@ -488,10 +491,19 @@ export default function App() {
             />
           )}
 
-          {/* Campaigns recruiting now (nothing shown when none is open) */}
-          <CampaignsStrip
-            onOpen={openCampaign}
-            onSeeAll={() => {
+          {/* Classes recruiting now (nothing shown when none is): the same card as the courses, opening
+              the course page on the class */}
+          <CourseraShelf
+            id="tuyen-sinh"
+            badgeTag="Lớp sắp khai giảng"
+            title="Đang tuyển sinh"
+            subtitle="Các lớp đang nhận đăng ký: ngày khai giảng, hạn đăng ký và số chỗ còn lại."
+            classes={recruitingClasses(courses)}
+            enrolledCourseIds={enrolledCourseIds}
+            onSelectCourse={handleSelectCourse}
+            onEnrollCourse={handleBuy}
+            onOpenYouTubeTrial={(c) => (c.youtubeVideoId ? handleOpenYouTubeTrial(c.youtubeVideoId, c.title, c) : handleOpenRegistration(c))}
+            onViewAll={() => {
               handleNavigate('catalog');
               setCatalogRecruiting(true);
             }}
@@ -628,7 +640,6 @@ export default function App() {
         <RegistrationModal
           course={registrationCourse}
           allCourses={courses}
-          campaignCode={registrationCampaign}
           onClose={() => setShowRegistrationModal(false)}
           onSubmitSuccess={(order) => {
             handleRegistrationSuccess(order);

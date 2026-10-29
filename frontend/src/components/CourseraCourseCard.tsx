@@ -8,19 +8,22 @@ import {
   Laptop, 
   CalendarDays,
   Flame,
-  ArrowRight
+  ArrowRight,
+  Briefcase,
+  Award
 } from 'lucide-react';
-import { canBuy, Intake, installmentLine, intakeLine, openIntakes, priceFor, startLine, viDate, vnd } from '../lib/selling';
+import { canBuy, deadlineLine, Intake, installmentLine, intakeLine, openIntakes, priceFor, startLine, vnd } from '../lib/selling';
 import { Course } from '../types';
 
 interface CourseraCourseCardProps {
   course: Course;
-  onSelectCourse: (course: Course) => void;
+  /** Open the course page (on this card's class when the card is about one). */
+  onSelectCourse: (course: Course, intake?: Intake) => void;
   /** Buy the course, in this class when given. */
   onEnrollCourse: (course: Course, intakeName?: string) => void;
   onOpenYouTubeTrial?: (course: Course) => void;
   isEnrolled?: boolean;
-  /** The class this card is about (catalogue filtered to recruiting classes); default: the next one. */
+  /** The class this card is about ("Đang tuyển sinh": homepage, catalogue filter); default: the next one. */
   intake?: Intake;
 }
 
@@ -77,7 +80,7 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
     <div className="group bg-white rounded-2xl sm:rounded-3xl border border-[#E1E6EA] overflow-hidden hover:border-[#0073C1] hover:shadow-xl hover:shadow-[#0073C1]/10 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full select-none">
       {/* Thumbnail with overlay & badge */}
       <div 
-        onClick={() => onSelectCourse(course)}
+        onClick={() => onSelectCourse(course, intake)}
         className="relative aspect-video w-full overflow-hidden bg-gradient-to-tr from-[#263060] via-[#0E6BBB] to-[#0073C1] cursor-pointer"
       >
         {course.thumbnail ? (
@@ -150,12 +153,15 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
 
           {/* Course Title */}
           <h3
-            onClick={() => onSelectCourse(course)}
+            onClick={() => onSelectCourse(course, intake)}
             className="text-sm sm:text-base font-extrabold text-[#263060] group-hover:text-[#0073C1] transition-colors leading-snug cursor-pointer line-clamp-2 min-h-[2.6rem]"
             title={course.title}
           >
             {course.title}
           </h3>
+
+          {/* The class's hook (a class card) */}
+          {intake?.summary && <p className="text-xs text-slate-600 line-clamp-2">{intake.summary}</p>}
 
           {/* Skills Preview */}
           {course.skills && course.skills.length > 0 && (
@@ -195,7 +201,27 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
                 {otherClasses > 0 && <span className="shrink-0 font-semibold text-emerald-700">+{otherClasses} lớp</span>}
               </div>
               <div className="pl-5 text-emerald-700 font-semibold">{intakeLine(shown)}</div>
-              {shown.registrationDeadline && <div className="pl-5 text-[11px] text-slate-500">Hạn đăng ký {viDate(shown.registrationDeadline)}</div>}
+              {deadlineLine(shown) && <div className="pl-5 text-[11px] text-slate-500">{deadlineLine(shown)}</div>}
+              {shown.jobTitle && (
+                <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-slate-700">
+                  <Briefcase className="w-3 h-3 shrink-0 text-[#0073C1]" />
+                  <span className="truncate" title={shown.jobTitle}>Việc làm: {shown.jobTitle}{shown.income ? ` · ${shown.income}` : ''}</span>
+                </div>
+              )}
+              {(shown.isFeatured || shown.hasScholarship) && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {shown.isFeatured && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                      <Flame className="w-3 h-3" /> Nổi bật
+                    </span>
+                  )}
+                  {shown.hasScholarship && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                      <Award className="w-3 h-3" /> Có học bổng
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             startLine(course) && (
@@ -222,7 +248,7 @@ export const CourseraCourseCard: React.FC<CourseraCourseCardProps> = ({
 
           <div className="grid grid-cols-2 gap-2 pt-0.5">
             <button
-              onClick={() => onSelectCourse(course)}
+              onClick={() => onSelectCourse(course, intake)}
               className="py-2.5 text-xs font-bold text-[#424242] bg-slate-50 hover:bg-[#D7F5FF]/50 hover:text-[#0073C1] border border-[#E1E6EA] rounded-xl transition-all cursor-pointer text-center"
             >
               Xem chi tiết

@@ -27,7 +27,7 @@ import {
 import { ShareButtons } from './ShareButtons';
 import { CourseBuyBar, CourseBuyBox } from './CourseBuyBox';
 import type { CheckoutPrefill } from './CourseraCheckoutModal';
-import { openIntakes } from '../lib/selling';
+import { chosenIntake } from '../lib/selling';
 import { Course, Module, Lesson, Order, Instructor, CourseReview } from '../types';
 import { api, ApiError, isBackendEnabled } from '../lib/api';
 import { getAttribution } from '../lib/attribution';
@@ -485,6 +485,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
           {/* RIGHT COLUMN (sticky on desktop): price, intake, "Đăng ký học", consultation */}
           <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-24 space-y-6">
             <CourseBuyBox
+              key={course.id}
               course={course}
               onCheckout={(c, prefill) => (onCheckout ? onCheckout(c, prefill) : onEnrollCourse(c))}
               onConsultSent={onQuickRegisterSuccess}
@@ -494,7 +495,7 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
         </div>
       </div>
 
-      <CourseBuyBar course={course} onBuy={() => (onCheckout ? onCheckout(course, { intakeName: openIntakes(course)[0]?.name }) : onEnrollCourse(course))} />
+      <CourseBuyBar course={course} onBuy={() => (onCheckout ? onCheckout(course, { intakeName: chosenIntake(course)?.name }) : onEnrollCourse(course))} />
     </div>
   );
 };

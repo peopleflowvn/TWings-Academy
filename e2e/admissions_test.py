@@ -241,12 +241,19 @@ def class_on_the_website_like_a_job_posting(page: Page):
     assert card.count() == 1 and "E2E K9" in card.inner_text(), "the class by its name"
     shown = page.locator("[data-intake]").count()
     assert toggle.inner_text().split()[-1] == str(shown), "the filter counts classes"
-    # The class has its own page (homepage strip, shared links).
+    # The homepage's "Đang tuyển sinh" is the same card, and it opens the course page on the class.
+    page.goto(f"{BASE}/")
+    strip = page.locator("section#tuyen-sinh")
+    strip.locator("[data-intake='E2E K9']").wait_for(timeout=20000)
+    strip.locator("div.group:has([data-intake='E2E K9']) button:has-text('Xem chi tiết')").click()
+    page.wait_for_url("**/khoa-hoc/*?lop=chien-dich-e2e", timeout=20000)
+    chosen = page.locator("label:has(input[name='intake']:checked)")
+    chosen.wait_for(timeout=20000)
+    assert "E2E K9" in chosen.inner_text() and "Còn 10 chỗ" in chosen.inner_text(), chosen.inner_text()
+    # A link shared before (/tuyen-sinh/<class>) lands there too.
     page.goto(f"{BASE}/tuyen-sinh/chien-dich-e2e")
-    page.wait_for_selector("h1:has-text('E2E K9')", timeout=20000)
-    assert page.locator("text=Còn 10/10 suất").count() >= 1, "places left on the class page"
-    page.locator("button:has-text('Đăng ký')").first.click()
-    page.wait_for_selector("text=ĐĂNG KÝ TƯ VẤN KHÓA HỌC", timeout=20000)
+    page.wait_for_url("**/khoa-hoc/*?lop=chien-dich-e2e", timeout=20000)
+    page.locator("label:has(input[name='intake']:checked):has-text('E2E K9')").wait_for(timeout=20000)
     # Staff take it off the website: the page leaves the site.
     page.goto(f"{BASE}/app/sales/crm?view=campaigns")
     page.wait_for_selector("text=CAMP-E2E", timeout=20000)
@@ -256,8 +263,8 @@ def class_on_the_website_like_a_job_posting(page: Page):
     page.locator("button:has-text('Lưu')").last.click()
     page.wait_for_selector("text=Tuyển sinh & website", state="detached", timeout=20000)
     page.goto(f"{BASE}/tuyen-sinh/chien-dich-e2e")
-    page.wait_for_selector("text=Đợt tuyển sinh không còn mở", timeout=20000)
-    # Off the website means off everywhere: the strip and the course card no longer offer it.
+    page.wait_for_selector("text=Lớp trong đường link đã ngừng nhận đăng ký", timeout=20000)
+    # Off the website means off everywhere: the homepage strip and the course card no longer offer it.
     page.goto(f"{BASE}/khoa-hoc")
     page.wait_for_selector("text=E2E RM Doanh nghiệp", timeout=20000)
     page.wait_for_timeout(500)

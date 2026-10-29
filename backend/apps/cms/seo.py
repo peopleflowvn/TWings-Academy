@@ -21,7 +21,7 @@ from html import unescape
 
 from django.conf import settings
 from django.db.models import Q
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, HttpResponsePermanentRedirect
 from django.shortcuts import render
 from django.utils import timezone
 from django.utils.html import escape, strip_tags
@@ -55,6 +55,14 @@ class Page:
     canonical: str = ""
     noindex: bool = False
     published: str = ""
+
+
+class Moved(Exception):
+    """The path now lives at `location` (a permanent redirect for bots, the target's metadata for the SPA)."""
+
+    def __init__(self, location: str):
+        super().__init__(location)
+        self.location = location
 
 
 # ---------------------------------------------------------------- helpers
@@ -186,8 +194,7 @@ def _catalog(seo) -> Page:
         ),
         image=default_image(seo),
         heading="Khóa học & Chương trình đào tạo",
-        links=[(c.display_name, f"/tuyen-sinh/{c.slug}") for c in _campaigns()]
-        + [(p.title, f"/chuong-trinh/{p.slug}") for p in _programs()]
+        links=[(p.title, f"/chuong-trinh/{p.slug}") for p in _programs()]
         + [(c.title, f"/khoa-hoc/{c.slug}") for c in courses],
         jsonld=[
             {
@@ -227,6 +234,12 @@ def _course(seo, slug) -> Page:
         body.append("<p>" + " · ".join(facts) + "</p>")
     if course.price:
         body.append(f"<p>Học phí: {course.price:,}đ</p>".replace(",", "."))
+    classes = [
+        escape(c.name + (f": khai giảng {c.start_date:%d/%m/%Y}" if c.start_date else ""))
+        for c in course.cohorts.on_website().order_by("start_date")
+    ]
+    if classes:
+        body.append("<h2>Lớp đang tuyển sinh</h2><ul>" + "".join(f"<li>{c}</li>" for c in classes) + "</ul>")
     return Page(
         path=f"/khoa-hoc/{course.slug}",
         title=f"{course.title} | {SITE_NAME}",
@@ -297,34 +310,6 @@ def _program(seo, slug) -> Page:
                 ],
             }
         ],
-    )
-
-
-def _campaigns():
-    """Classes recruiting on the site (a class is an admission campaign)."""
-    from apps.catalog.models import Cohort
-
-    return (
-        Cohort.objects.on_website().select_related("course").order_by("-is_featured", "registration_deadline")
-    )
-
-
-def _campaign(seo, slug) -> Page:
-    c = _campaigns().filter(slug=slug).first()
-    if c is None:
-        raise Http404
-    when = f" Khai giảng {c.start_date:%d/%m/%Y}." if c.start_date else ""
-    deadline = f" Hạn đăng ký {c.registration_deadline:%d/%m/%Y}." if c.registration_deadline else ""
-    image = c.image or c.course.thumbnail
-    return Page(
-        path=f"/tuyen-sinh/{c.slug}",
-        title=f"{c.display_name} | {SITE_NAME}",
-        description=plain((c.summary or c.description or c.course.subtitle) + when + deadline),
-        image=absolute(image) if image else default_image(seo),
-        heading=c.display_name,
-        body_html=f"<p>{escape(plain(c.description, 2000))}</p>" if c.description else "",
-        links=[(c.course.title, f"/khoa-hoc/{c.course.slug}"), ("Khóa học & tuyển sinh", "/khoa-hoc")],
-        jsonld=[_breadcrumb([("Khóa học", "/khoa-hoc"), (c.display_name, f"/tuyen-sinh/{c.slug}")])],
     )
 
 
@@ -441,7 +426,13 @@ def resolve(path: str) -> Page:
         case ["tuyen-sinh"]:
             return _catalog(seo)  # campaigns are listed on the catalogue (canonical /khoa-hoc)
         case ["tuyen-sinh", slug]:
-            return _campaign(seo, slug)
+            # A class's old page: the class is shown on its course page now.
+            from apps.crm.public_classes import class_course
+
+            c = class_course(slug)
+            if c is None:
+                raise Http404
+            raise Moved(f"/khoa-hoc/{c.course.slug}?lop={c.slug}")
         case ["ve-chung-toi"]:
             return _about(seo)
         case ["tin-tuc"]:
@@ -480,6 +471,8 @@ def prerender(request, path=""):
     try:
         page = resolve(path)
         status = 200
+    except Moved as moved:
+        return HttpResponsePermanentRedirect(moved.location)
     except Http404:
         page, status = (
             Page(path="/" + path.strip("/"), title=f"Không tìm thấy trang | {SITE_NAME}", noindex=True),
@@ -513,8 +506,12 @@ def prerender(request, path=""):
 @on_request_domain
 def page_meta(request):
     """Metadata of a site path for the SPA (title, description, canonical, share image, JSON-LD)."""
+    path = request.query_params.get("path", "/")[:300]
     try:
-        page = resolve(request.query_params.get("path", "/")[:300])
+        try:
+            page = resolve(path)
+        except Moved as moved:
+            page = resolve(moved.location.split("?")[0])
     except Http404:
         return Response({"detail": "Không tìm thấy trang."}, status=404)
     return Response(meta(page))
@@ -531,7 +528,6 @@ def sitemap(request):
     urls += [(f"{base}/khoa-hoc/{c.slug}", c.updated_at) for c in _courses()]
     urls += [(f"{base}/chuong-trinh/{p.slug}", p.updated_at) for p in _programs()]
     urls += [(f"{base}/tin-tuc/{a.slug}", a.updated_at) for a in _articles()]
-    urls += [(f"{base}/tuyen-sinh/{c.slug}", c.updated_at) for c in _campaigns()]
     rows = "".join(
         f"<url><loc>{loc}</loc>" + (f"<lastmod>{at.date().isoformat()}</lastmod>" if at else "") + "</url>"
         for loc, at in urls

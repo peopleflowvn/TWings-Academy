@@ -288,6 +288,15 @@ export interface Course {
     /** Price for this intake today (early bird until earlyBirdDeadline). */
     price?: number;
     earlyBirdDeadline?: string | null;
+    /** The class's link: /khoa-hoc/<course>?lop=<slug> (a class is an admission campaign). */
+    slug?: string;
+    isFeatured?: boolean;
+    hasScholarship?: boolean;
+    /** What the class adds to the course: the hook, its details, the job it leads to. */
+    summary?: string;
+    description?: string;
+    jobTitle?: string;
+    income?: string;
   }[];
   youtubeTrialUrl?: string; // e.g. "https://www.youtube.com/watch?v=sal78ACtGTc"
   youtubeVideoId?: string;  // e.g. "sal78ACtGTc"

@@ -1,16 +1,19 @@
 import React from 'react';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { Course } from '../types';
+import { Intake } from '../lib/selling';
 import { CourseraCourseCard } from './CourseraCourseCard';
 
 interface CourseraShelfProps {
   id?: string;
   title: string;
   subtitle?: string;
-  courses: Course[];
+  courses?: Course[];
+  /** A shelf of classes ("Đang tuyển sinh"): one card per class, the same card as a course's. */
+  classes?: { course: Course; intake: Intake }[];
   enrolledCourseIds: string[];
-  onSelectCourse: (course: Course) => void;
-  onEnrollCourse: (course: Course) => void;
+  onSelectCourse: (course: Course, intake?: Intake) => void;
+  onEnrollCourse: (course: Course, intakeName?: string) => void;
   onOpenYouTubeTrial?: (course: Course) => void;
   onViewAll?: () => void;
   badgeTag?: string;
@@ -21,6 +24,7 @@ export const CourseraShelf: React.FC<CourseraShelfProps> = ({
   title,
   subtitle,
   courses,
+  classes,
   enrolledCourseIds,
   onSelectCourse,
   onEnrollCourse,
@@ -28,7 +32,9 @@ export const CourseraShelf: React.FC<CourseraShelfProps> = ({
   onViewAll,
   badgeTag,
 }) => {
-  if (!courses || courses.length === 0) return null;
+  const cards: { course: Course; intake?: Intake }[] = classes ?? (courses || []).map((course) => ({ course }));
+  if (cards.length === 0) return null;
+  const count = `${cards.length} ${classes ? 'lớp' : 'khóa học'}`;
 
   return (
     <section id={id} className="py-8 sm:py-14 border-b border-[#E1E6EA] scroll-mt-6">
@@ -57,7 +63,7 @@ export const CourseraShelf: React.FC<CourseraShelfProps> = ({
               onClick={onViewAll}
               className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#0073C1] hover:text-[#0E6BBB] group transition-colors cursor-pointer shrink-0 pt-1 sm:pt-0 whitespace-nowrap"
             >
-              <span>Xem tất cả ({courses.length})</span>
+              <span>Xem tất cả ({cards.length})</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </button>
           )}
@@ -65,13 +71,14 @@ export const CourseraShelf: React.FC<CourseraShelfProps> = ({
 
         {/* Courses: Horizontal Touch-Swipe Rail on Mobile (< sm), 4-Col Grid on Desktop */}
         <div className="flex overflow-x-auto -mx-4 px-4 gap-4 pb-3 no-scrollbar snap-x snap-mandatory sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:mx-0 sm:px-0 sm:gap-6">
-          {courses.slice(0, 4).map((course) => (
+          {cards.slice(0, 4).map(({ course, intake }) => (
             <div
-              key={course.id}
+              key={`${course.id}:${intake?.name || ''}`}
               className="w-[80vw] max-w-[300px] shrink-0 snap-start sm:w-auto sm:shrink flex flex-col"
             >
               <CourseraCourseCard
                 course={course}
+                intake={intake}
                 onSelectCourse={onSelectCourse}
                 onEnrollCourse={onEnrollCourse}
                 onOpenYouTubeTrial={onOpenYouTubeTrial}
@@ -93,7 +100,7 @@ export const CourseraShelf: React.FC<CourseraShelfProps> = ({
                 Xem tất cả
               </div>
               <div className="text-[10px] text-slate-500 font-medium">
-                {courses.length} khóa học
+                {count}
               </div>
             </div>
           )}

@@ -27,7 +27,7 @@ interface CourseraCatalogPageProps {
   /** Show only the courses with a class recruiting now (/tuyen-sinh, "Xem tất cả" of the homepage strip). */
   initialRecruitingOnly?: boolean;
   onOpenConsultation: () => void;
-  onSelectCourse: (course: Course) => void;
+  onSelectCourse: (course: Course, intake?: Intake) => void;
   onEnrollCourse: (course: Course, intakeName?: string) => void;
   onOpenYouTubeTrial?: (course: Course) => void;
 }

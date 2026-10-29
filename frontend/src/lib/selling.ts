@@ -41,3 +41,46 @@ export function startLine(course: Course): string {
   if (!canBuy(course)) return 'Chưa có lịch khai giảng mới';
   return course.deliveryFormat === 'online_external_lms' ? 'Học online, vào học ngay sau khi thanh toán' : '';
 }
+
+/** Days left to register (0 = today), or null without a deadline. */
+export function daysLeft(intake: Intake, today = new Date()): number | null {
+  if (!intake.registrationDeadline) return null;
+  const end = new Date(`${intake.registrationDeadline.slice(0, 10)}T00:00:00`).getTime();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  return Math.max(Math.round((end - start) / 86400000), 0);
+}
+
+/** "Hạn đăng ký dd/mm/yyyy · còn N ngày" (the countdown in the last two weeks), or ''. */
+export function deadlineLine(intake: Intake): string {
+  const left = daysLeft(intake);
+  if (left === null) return '';
+  if (left === 0) return `Hạn đăng ký hôm nay (${viDate(intake.registrationDeadline)})`;
+  return `Hạn đăng ký ${viDate(intake.registrationDeadline)}${left <= 14 ? ` · còn ${left} ngày` : ''}`;
+}
+
+/** The class's link: its course page with the class chosen. */
+export const classPath = (course: Course, intake?: Intake) =>
+  `/khoa-hoc/${encodeURIComponent(course.slug)}${intake?.slug ? `?lop=${encodeURIComponent(intake.slug)}` : ''}`;
+
+/** Every class taking registrations, one row each: featured first, then the nearest deadline, then start. */
+export function recruitingClasses(courses: Course[]): { course: Course; intake: Intake }[] {
+  const time = (iso?: string | null) => (iso ? new Date(iso).getTime() : 8e15);
+  return courses
+    .flatMap((course) => openIntakes(course).map((intake) => ({ course, intake })))
+    .sort(
+      (a, b) =>
+        Number(!!b.intake.isFeatured) - Number(!!a.intake.isFeatured) ||
+        time(a.intake.registrationDeadline) - time(b.intake.registrationDeadline) ||
+        time(a.intake.startDate) - time(b.intake.startDate)
+    );
+}
+
+/** The class named in the address (?lop=<slug>: a class's link), if any. */
+export const classSlugInUrl = () => new URLSearchParams(window.location.search).get('lop') || '';
+
+/** The class the course page is on: the one in the address while it takes learners, else the next one. */
+export const chosenIntake = (course: Course): Intake | undefined => {
+  const open = openIntakes(course);
+  const slug = classSlugInUrl();
+  return (slug && open.find((c) => c.slug === slug)) || open[0];
+};

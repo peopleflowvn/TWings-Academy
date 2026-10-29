@@ -2,7 +2,7 @@
  * URLs of the public site (homepage app). Keep in step with backend/apps/cms/seo.py, which renders the
  * same paths for link-preview / search bots and lists them in the sitemap.
  */
-export type View = 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'campaign-detail';
+export type View = 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about' | 'class-link';
 
 export interface Route {
   view: View;
@@ -15,8 +15,9 @@ export function parseRoute(pathname: string): Route | null {
   if (parts[0] === 'khoa-hoc') return parts[1] ? { view: 'course-detail', slug: parts[1] } : { view: 'catalog' };
   if (parts[0] === 'tin-tuc') return parts[1] ? { view: 'article-detail', slug: parts[1] } : { view: 'articles' };
   if (parts[0] === 've-chung-toi' && parts.length === 1) return { view: 'about' };
-  // Campaigns are listed on the course catalogue; each keeps its own page (shared links).
-  if (parts[0] === 'tuyen-sinh') return parts[1] ? { view: 'campaign-detail', slug: parts[1] } : { view: 'catalog' };
+  // A class (admission campaign) is shown on its course page (/khoa-hoc/<course>?lop=<class>); its old
+  // link /tuyen-sinh/<class> is sent there, /tuyen-sinh is the catalogue on the recruiting classes.
+  if (parts[0] === 'tuyen-sinh') return parts[1] ? { view: 'class-link', slug: parts[1] } : { view: 'catalog' };
   return null;
 }
 
@@ -32,7 +33,7 @@ export function routePath(view: View, slug?: string): string {
       return slug ? `/tin-tuc/${encodeURIComponent(slug)}` : '/tin-tuc';
     case 'about':
       return '/ve-chung-toi';
-    case 'campaign-detail':
+    case 'class-link':
       return slug ? `/tuyen-sinh/${encodeURIComponent(slug)}` : '/khoa-hoc';
     default:
       return '/';

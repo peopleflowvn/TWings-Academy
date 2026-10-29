@@ -24,40 +24,58 @@ def _class(course, **extra):
     return Cohort.objects.create(course=course, **{**fields, **extra})
 
 
+def _classes(api, course):
+    """The classes the website offers on the course (homepage strip, card, course page)."""
+    card = next(c for c in api.get("/api/v1/public/courses/").json() if c["slug"] == course.slug)
+    return card["upcomingCohorts"]
+
+
 def test_a_class_is_posted_on_the_website_like_a_job(api, course):
-    k10 = _class(course)
+    k10 = _class(course, summary="Học xong đi làm", job_title="RM KHDN", salary_range="15-20 triệu")
     assert k10.code == "CAMP-WEB" and k10.slug == "rm-doanh-nghiep-khoa-10-da-nang"
-    listed = api.get("/api/v1/public/campaigns/").json()
-    assert [c["slug"] for c in listed] == [k10.slug]
-    assert listed[0]["placesLeft"] == 20 and listed[0]["name"] == f"{course.title} · {k10.name}"
-    detail = api.get(f"/api/v1/public/campaigns/{k10.slug}/").json()
-    assert (
-        detail["courses"][0]["title"] == course.title
-        and detail["courses"][0]["nextIntake"]["name"] == k10.name
+    [row] = _classes(api, course)
+    assert (row["slug"], row["name"], row["seatsLeft"], row["summary"], row["jobTitle"], row["income"]) == (
+        k10.slug,
+        k10.name,
+        20,
+        "Học xong đi làm",
+        "RM KHDN",
+        "15-20 triệu",
     )
+    # Its link is the course page with the class chosen; opening it counts a view.
+    link = api.get(f"/api/v1/public/classes/{k10.slug}/?view=1").json()
+    assert link == {"slug": k10.slug, "courseSlug": course.slug, "listed": True}
     k10.refresh_from_db()
     assert k10.view_count == 1
-    page = api.get(f"/_seo/tuyen-sinh/{k10.slug}").content.decode()
-    assert k10.display_name in page
-    assert f"/tuyen-sinh/{k10.slug}</loc>" in api.get("/sitemap.xml").content.decode()
+    # The old class page sends bots and shared links to the course page; one page per course for search.
+    old = api.get(f"/_seo/tuyen-sinh/{k10.slug}")
+    assert old.status_code == 301 and old["Location"] == f"/khoa-hoc/{course.slug}?lop={k10.slug}"
+    assert (
+        api.get(f"/api/v1/public/seo/?path=/tuyen-sinh/{k10.slug}")
+        .json()["canonical"]
+        .endswith(f"/khoa-hoc/{course.slug}")
+    )
+    assert k10.name in api.get(f"/_seo/khoa-hoc/{course.slug}").content.decode()
+    assert "/tuyen-sinh/" not in api.get("/sitemap.xml").content.decode()
 
     learner = Order.objects.create(customer_name="A", course=course, cohort=k10)
     Order.objects.filter(pk=learner.pk).update(learning_access=True)  # save() derives it from payments
-    assert api.get("/api/v1/public/campaigns/").json()[0]["placesLeft"] == 19  # the capacity is the quota
-    k10.show_quota = False
-    k10.save()
-    assert "placesLeft" not in api.get("/api/v1/public/campaigns/").json()[0]
+    assert _classes(api, course)[0]["seatsLeft"] == 19  # the capacity is the quota
 
     Cohort.objects.filter(pk=k10.pk).update(registration_deadline=timezone.localdate() - timedelta(days=1))
-    assert api.get("/api/v1/public/campaigns/").json() == []  # past its deadline: off the same day
+    assert _classes(api, course) == []  # past its deadline: off the same day
     k10.refresh_from_db()
     assert k10.website_state()[0] == "off"
+    # A link shared before still opens the course (the course page says the class no longer recruits).
+    assert api.get(f"/api/v1/public/classes/{k10.slug}/?view=1").json()["listed"] is False
+    k10.refresh_from_db()
+    assert k10.view_count == 1
 
     k10.registration_deadline, k10.status = None, "closed"  # a class not taking registrations comes off
     k10.save()
     k10.refresh_from_db()
     assert not k10.is_published
-    assert api.get(f"/api/v1/public/campaigns/{k10.slug}/").status_code == 404
+    assert api.get("/api/v1/public/classes/no-such-class/").status_code == 404
 
 
 def test_registering_with_the_code_joins_that_class(api, course, registration_payload):
@@ -69,6 +87,18 @@ def test_registering_with_the_code_joins_that_class(api, course, registration_pa
     assert res.status_code == 201, res.content
     order = Order.objects.get(order_code=res.json()["registrationCode"])
     assert order.cohort == k10 and order.campaign_code == "CAMP-WEB"
+
+
+def test_choosing_a_class_on_the_course_page_tags_the_lead_with_it(api, course, registration_payload):
+    _class(course)
+    res = api.post(
+        "/api/v1/public/registrations/",
+        {**registration_payload, "batchCohort": "Khóa 10 Đà Nẵng"},
+        format="json",
+    )
+    assert res.status_code == 201, res.content
+    order = Order.objects.get(order_code=res.json()["registrationCode"])
+    assert order.cohort.code == "CAMP-WEB" and order.campaign_code == "CAMP-WEB"
 
 
 def test_admissions_staff_edit_the_recruiting_part_only(staff_client, course):
@@ -96,8 +126,8 @@ def test_a_class_of_a_course_off_sale_is_not_on_the_website(api, staff_client, c
     k10.refresh_from_db()
     state, label = k10.website_state()
     assert state == "off" and "khóa học" in label  # staff see why, not "Đang hiện trên website"
-    assert api.get("/api/v1/public/campaigns/").json() == []
-    assert f"/tuyen-sinh/{k10.slug}" not in api.get("/sitemap.xml").content.decode()
+    assert not Cohort.objects.on_website().exists()
+    assert api.get(f"/api/v1/public/classes/{k10.slug}/").status_code == 404  # the course is not on sale
     row = staff_client(Role.SUPER_ADMIN).get("/api/v1/staff/intakes/").json()["intakes"][0]
     assert row["courseStatus"] == "draft" and row["websiteState"] == "off"
 
@@ -131,7 +161,6 @@ def test_the_homepage_offers_the_classes_the_class_list_shows_on_the_website(api
     assert [k["name"] for k in card["upcomingCohorts"]] == [listed.name] and card["upcomingCohorts"][0][
         "showQuota"
     ]
-    assert [c["slug"] for c in api.get("/api/v1/public/campaigns/").json()] == [listed.slug]
     from apps.crm.services import resolve_cohort
 
     assert resolve_cohort(course)[0] == listed  # online checkout: a class the buyer was shown

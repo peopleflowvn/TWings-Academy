@@ -446,7 +446,7 @@ lms/public/local/twings/   # hàm WS QR (classes/external/…, db/services.php, 
 | `backend/apps/lms/models.py`, `services.py`, `completion.py`, `emails.py`, `tasks.py` | `LmsEnrollment` dùng chung, accessor, phân nhánh email B2C/B2B |
 | `backend/apps/sso/services.py` | `identity_for_email` nhận `CorporateEnrollment` còn hiệu lực (`sync_account` tự theo) |
 | `backend/apps/catalog/models.py`, `intakes.py`, `views.py`, `serializers.py` | `Cohort.audience`, manager `public()`, `seats_taken` theo loại |
-| `backend/apps/crm/public_campaigns.py`, checkout, SEO/sitemap | Chỉ dùng `Cohort.objects.public()` |
+| `backend/apps/crm/public_classes.py`, checkout, SEO/sitemap | Chỉ dùng `Cohort.objects.public()` |
 | `backend/apps/notifications/resend.py`, `models.py`, `layout.py`, `views.py` | CC/BCC/reply-to/đính kèm/người gửi; `EmailLog.cc/bcc`; khung theo thương hiệu |
 | `backend/apps/core/reports.py` | Lọc B2C `order__isnull=False`; thêm phân đoạn B2B |
 | `backend/apps/core/schedule.py` | Job B2B (nhắc việc, đồng bộ khảo sát) có giới hạn tần suất |

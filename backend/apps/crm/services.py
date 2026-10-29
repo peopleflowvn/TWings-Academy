@@ -172,6 +172,10 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
 
     data = apply_attribution({**data, "source": source}, attribution)
     source = data.pop("source")
+    # One class = one campaign: the class the visitor chose tags the lead.
+    chosen = cohort is not None and cohort.code and cohort.name == preferred_cohort
+    if chosen and not data.get("campaign_code"):
+        data["campaign_code"] = cohort.code
     order = Order(
         **data,
         **consent,
