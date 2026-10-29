@@ -161,6 +161,8 @@ jobs:
       DJANGO_CSRF_TRUSTED_ORIGINS: http://127.0.0.1:3005
       E2E_BASE: http://127.0.0.1:3005
       VIETQR_ACCOUNT_NUMBER: "0123456789"  # test account: online checkout is open in the e2e stack
+      # One browser sweeps every public page in a minute or two: above the visitor's 120/min (429 = flaky runs).
+      THROTTLE_ANON: 6000/min
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
