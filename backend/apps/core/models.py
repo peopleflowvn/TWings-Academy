@@ -57,6 +57,12 @@ class AuditLog(models.Model):
 
 
 def audit(request, action: str, obj=None, **details) -> AuditLog:
+    import json
+
+    from django.core.serializers.json import DjangoJSONEncoder
+
+    # Values as JSON stores them: a date / decimal (e.g. a promotion end in a price change) as text.
+    details = json.loads(json.dumps(details, cls=DjangoJSONEncoder))
     user = getattr(request, "user", None) if request is not None else None
     user = user if user is not None and getattr(user, "is_authenticated", False) else None
     return AuditLog.objects.create(

@@ -2,7 +2,7 @@
 
 import pytest
 
-from apps.catalog.models import Cohort, Course, Instructor, Program
+from apps.catalog.models import Cohort, Course, Instructor, Partner, Program
 from apps.core.models import AuditLog
 from tests.conftest import Role
 
@@ -158,11 +158,20 @@ def test_the_course_editor_creates_and_saves_what_the_page_shows(staff_client):
             "syllabus": [{"id": "m1", "title": "Học phần 1", "lessons": lessons}],
             "objectives": ["Một", "Hai", "Ba"],
             "instructorIds": [teacher.pk],
+            # The homepage / card / filter fields, and a promotion (its end date goes in the price log).
+            "type": "Chứng chỉ Chuyên môn",
+            "badgeSection": "most_popular",
+            "partnerId": Partner.objects.create(id="msb", name="MSB").pk,
+            "skills": ["Thẩm định", "Chốt sale"],
+            "originalPrice": 0,
+            "saleEndsOn": "2026-12-31",
         },
         format="json",
     )
     assert saved.status_code == 200, saved.content
     body = saved.json()
+    assert body["partner"]["name"] == "MSB" and body["skills"] == ["Thẩm định", "Chốt sale"]
+    assert body["saleEndsOn"] == "31/12/2026" and body["badgeSection"] == "most_popular"
     assert body["syllabus"][0]["lessons"][0]["isFreePreview"] is True
     assert [i["name"] for i in body["instructors"]] == ["GV B"]
     ready = {i["key"]: i["ok"] for i in body["readiness"]}
