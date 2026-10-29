@@ -41,45 +41,6 @@ const QUICK_CATEGORIES = [
   { id: 'degrees', label: 'Bằng cấp Cử nhân & Thạc sĩ', shelfId: 'degrees-shelf', icon: GraduationCap },
 ];
 
-const TRUST_STATS = [
-  {
-    icon: Users,
-    number: '5.000+',
-    label: 'Học viên đã tốt nghiệp',
-    subtext: 'Gia nhập các Ngân hàng lớn',
-    color: 'text-[#5FBEFF]',
-    glowBg: 'bg-[#0073C1]/20',
-    borderColor: 'border-[#5FBEFF]/30',
-  },
-  {
-    icon: Briefcase,
-    number: '95%',
-    label: 'Tỷ lệ có việc làm',
-    subtext: 'Bảo lãnh & giới thiệu tại MSB',
-    color: 'text-emerald-400',
-    glowBg: 'bg-emerald-500/20',
-    borderColor: 'border-emerald-400/30',
-  },
-  {
-    icon: Award,
-    number: '100%',
-    label: 'Giảng viên Giám đốc Khối',
-    subtext: '20+ năm nghiệp vụ thực chiến',
-    color: 'text-amber-400',
-    glowBg: 'bg-amber-500/20',
-    borderColor: 'border-amber-400/30',
-  },
-  {
-    icon: PlayCircle,
-    number: 'Miễn phí',
-    label: 'Học thử Video YouTube',
-    subtext: 'Kiểm tra chất lượng trước khi mua',
-    color: 'text-rose-400',
-    glowBg: 'bg-rose-500/20',
-    borderColor: 'border-rose-400/30',
-  },
-];
-
 export const CourseraHeroBanners: React.FC<CourseraHeroBannersProps> = ({
   banners,
   onExploreAI,

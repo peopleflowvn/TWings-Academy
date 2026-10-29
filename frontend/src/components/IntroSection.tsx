@@ -30,6 +30,7 @@ const TRUST_STATS = [
     glowBg: 'bg-blue-500/10',
     borderColor: 'border-blue-200/80',
     badgeColor: 'bg-blue-50 text-[#0073C1]',
+    badgeText: 'Thực chiến',
   },
   {
     icon: Briefcase,
@@ -40,6 +41,7 @@ const TRUST_STATS = [
     glowBg: 'bg-emerald-500/10',
     borderColor: 'border-emerald-200/80',
     badgeColor: 'bg-emerald-50 text-emerald-700',
+    badgeText: 'Cam kết đầu ra',
   },
   {
     icon: Award,
@@ -50,6 +52,7 @@ const TRUST_STATS = [
     glowBg: 'bg-amber-500/10',
     borderColor: 'border-amber-200/80',
     badgeColor: 'bg-amber-50 text-amber-700',
+    badgeText: 'Chuyên gia đầu ngành',
   },
   {
     icon: PlayCircle,
@@ -60,6 +63,7 @@ const TRUST_STATS = [
     glowBg: 'bg-rose-500/10',
     borderColor: 'border-rose-200/80',
     badgeColor: 'bg-rose-50 text-rose-700',
+    badgeText: 'Trải nghiệm ngay',
   },
 ];
 
@@ -159,7 +163,7 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
                         <Icon className="w-6 h-6" />
                       </div>
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${stat.badgeColor} border border-current/20`}>
-                        {stat.subtext.split(' ')[0] || 'Chứng thực'}
+                        {stat.badgeText}
                       </span>
                     </div>
                     <div>
