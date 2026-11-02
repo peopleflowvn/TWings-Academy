@@ -282,6 +282,18 @@ for k in Cohort.objects.select_related(\"course\").order_by(\"course__title\", \
     fi
     ;;
 
+  import-courses-preview|import-courses|import-courses-publish)
+    # The courses of docs/Thong tin khoa hoc*.{xlsx,pdf} (backend/apps/catalog/data/khoa_hoc_2026_11.json):
+    # created or updated by slug. import-courses leaves new courses as drafts, import-courses-publish also
+    # puts on sale those that pass the checklist; both take a backup first. The preview changes nothing.
+    import="python manage.py import_courses"
+    case "$TASK" in
+      import-courses) remote "sudo $APP/bin/backup.sh && cd $APP && sudo docker compose exec -T backend $import --apply" ;;
+      import-courses-publish) remote "sudo $APP/bin/backup.sh && cd $APP && sudo docker compose exec -T backend $import --apply --publish" ;;
+      *) remote "cd $APP && sudo docker compose exec -T backend $import" ;;
+    esac
+    ;;
+
   smoke-host)
     # Like smoke, but the domains are forced to this VPS's IP: checks a new / moved machine before DNS points to it.
     ip=$(ssh -G vps | awk '/^hostname /{print $2}')

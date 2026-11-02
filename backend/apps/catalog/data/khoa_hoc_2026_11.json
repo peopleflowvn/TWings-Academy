@@ -1,0 +1,1886 @@
+{
+ "partners": [
+  {
+   "name": "MSB",
+   "type": "company",
+   "logo_text": "MSB",
+   "logo_color": "#E8501F",
+   "slogan": "Ngân hàng TMCP Hàng Hải Việt Nam",
+   "description": "Ngân hàng TMCP Hàng Hải Việt Nam (MSB): đối tác đào tạo và thực chiến của các chương trình Quan hệ Khách hàng.",
+   "website_url": "https://www.msb.com.vn"
+  }
+ ],
+ "instructors": [
+  {
+   "name": "Vũ Thu Phương",
+   "title": "Giám đốc Phân khúc KH Doanh nghiệp MSB",
+   "organization": "MSB",
+   "bank_position": "Giám đốc Phân khúc KH Doanh nghiệp",
+   "bio": "Giám đốc Phân khúc Khách hàng Doanh nghiệp tại MSB, trực tiếp chia sẻ thực tiễn bán hàng và quản trị khách hàng doanh nghiệp."
+  },
+  {
+   "name": "Đặng Văn Thành",
+   "title": "Giám đốc Giám sát, Thúc đẩy và Nâng cao năng lực bán Ngân hàng Doanh nghiệp",
+   "organization": "MSB",
+   "bank_position": "Giám đốc Giám sát, Thúc đẩy và Nâng cao năng lực bán NHDN",
+   "bio": "Phụ trách giám sát, thúc đẩy và nâng cao năng lực bán của khối Ngân hàng Doanh nghiệp tại MSB."
+  },
+  {
+   "name": "Nguyễn Kim Chi",
+   "title": "Giám đốc Quản trị dự án chiến lược MSB",
+   "organization": "MSB",
+   "bank_position": "Giám đốc Quản trị dự án chiến lược",
+   "bio": "Giám đốc Quản trị dự án chiến lược tại MSB, chia sẻ về lập kế hoạch, quản trị thực thi và tư duy chiến lược."
+  },
+  {
+   "name": "Tạ Hoàng Thùy Linh",
+   "title": "Chuyên gia thiết kế chiến lược Khối Chuyển đổi số",
+   "organization": "MSB",
+   "bank_position": "Chuyên gia thiết kế chiến lược, Khối Chuyển đổi số",
+   "bio": "Chuyên gia thiết kế chiến lược thuộc Khối Chuyển đổi số, chia sẻ về ngân hàng số và tư duy Design Thinking."
+  },
+  {
+   "name": "Đội ngũ chuyên gia TWings Academy",
+   "title": "Chuyên gia đào tạo kỹ năng & quản trị",
+   "organization": "TWings Academy",
+   "status": "adjunct",
+   "bio": "Đội ngũ chuyên gia đào tạo của TWings Academy và đối tác (giảng viên cụ thể của từng khóa sẽ được cập nhật)."
+  }
+ ],
+ "courses": [
+  {
+   "code": "KH01",
+   "title": "Khai phóng sức mạnh tư duy Agile",
+   "subtitle": "Làm việc linh hoạt, phản ứng nhanh và tạo giá trị liên tục với tư duy Agile",
+   "description": "Trong thế giới biến động không ngừng, khả năng thích nghi nhanh chính là \"vũ khí\" sống còn của mọi cá nhân và doanh nghiệp. Đừng để những quy trình cũ kỹ và tư duy lối mòn kìm hãm tốc độ phát triển cũng như hiệu suất công việc của bạn.\n\nKhóa học \"Khai phóng sức mạnh tư duy Agile\" được thiết kế để giúp bạn bứt phá giới hạn, tối ưu hóa nguồn lực và làm chủ mọi thay đổi một cách linh hoạt nhất. Hãy sẵn sàng chuyển mình từ cách làm việc truyền thống sang mô hình hiện đại, nơi sự sáng tạo và hiệu quả được đặt lên hàng đầu.",
+   "overview": "Trong thế giới biến động không ngừng, khả năng thích nghi nhanh chính là \"vũ khí\" sống còn của mọi cá nhân và doanh nghiệp. Đừng để những quy trình cũ kỹ và tư duy lối mòn kìm hãm tốc độ phát triển cũng như hiệu suất công việc của bạn.\n\nKhóa học \"Khai phóng sức mạnh tư duy Agile\" được thiết kế để giúp bạn bứt phá giới hạn, tối ưu hóa nguồn lực và làm chủ mọi thay đổi một cách linh hoạt nhất. Hãy sẵn sàng chuyển mình từ cách làm việc truyền thống sang mô hình hiện đại, nơi sự sáng tạo và hiệu quả được đặt lên hàng đầu.",
+   "category": "Tư Duy & Đột Phá",
+   "level": "Mọi cấp độ",
+   "type": "Khóa học",
+   "badge_section": "most_popular",
+   "delivery_format": "online_external_lms",
+   "location_text": "",
+   "career_role": "Thành viên / Trưởng nhóm dự án",
+   "duration": "4 chương · 8 bài · khoảng 2 giờ học online",
+   "price": 1290000,
+   "installment_count": 1,
+   "thumbnail": "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&q=80&auto=format&fit=crop",
+   "skills": [
+    "Tư duy Agile",
+    "Làm việc nhóm linh hoạt",
+    "Ưu tiên công việc",
+    "Thích ứng thay đổi"
+   ],
+   "highlights": [
+    "Tối ưu hóa hiệu suất, làm chủ thời gian: Thay vì loay hoay với mớ hỗn độn, bạn sẽ biết cách ưu tiên công việc thông minh, giúp hoàn thành mục tiêu nhanh hơn 30% - 50% mà không cần tăng ca.",
+    "Thích nghi linh hoạt trước mọi biến động: Trang bị bộ công cụ để phản ứng nhanh nhạy với các thay đổi bất ngờ từ thị trường hoặc khách hàng, biến thách thức thành cơ hội bứt phá.",
+    "Kiến tạo văn hóa kết nối và sáng tạo: Xóa bỏ rào cản giao tiếp, giúp đội nhóm gắn kết chặt chẽ, cùng nhau tạo ra những sản phẩm/dịch vụ giá trị cao trong thời gian ngắn nhất."
+   ],
+   "objectives": [
+    "Hiểu được Agile thực sự là gì bao gồm tuyên ngôn và nguyên tắc, Từ đó nắm được giá trị của Agile",
+    "Nắm được các nguyên tắc của Agile và hiểu đúng về các hành vi theo tư duy Agile"
+   ],
+   "target_audience": [
+    "Người làm dự án, phát triển sản phẩm các lĩnh vực công việc.",
+    "Sinh viên có nhu cầu phát triển tư duy và phương pháp làm việc linh hoạt, hiệu quả, đổi mới sáng tạo",
+    "Các tổ chức, doanh nghiệp đang tìm kiếm giải pháp nâng cao hiệu quả hoạt động.",
+    "Nhà quản lý các cấp và đội ngũ nhân sự nguồn.",
+    "Người làm nhân sự phụ trách vận hành, chuyển đổi số, quản lý dự án và đổi mới sáng tạo."
+   ],
+   "requirements": [
+    "Máy tính hoặc điện thoại có kết nối Internet",
+    "Không yêu cầu kiến thức chuyên môn trước"
+   ],
+   "guarantees": [
+    "Học online trên TWings LMS, chủ động thời gian, xem lại bài giảng trong 12 tháng",
+    "Chứng nhận hoàn thành khóa học khi đạt bài kiểm tra cuối khóa",
+    "Tài liệu và bộ công cụ thực hành đi kèm từng chương"
+   ],
+   "syllabus": [
+    {
+     "id": "kh01-m1",
+     "title": "Chương 1: Khái niệm về Agile",
+     "order": 1,
+     "lessons": [
+      {
+       "id": "kh01-m1-l1",
+       "title": "Agile là gì? và Mục tiêu của Agile",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh01-m1-l2",
+       "title": "Lịch sử hình thành Agile",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh01-m1-l3",
+       "title": "Một dự án Agile sẽ như thế nào?",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh01-m2",
+     "title": "Chương 2: Tuyên ngôn Agile",
+     "order": 2,
+     "lessons": [
+      {
+       "id": "kh01-m2-l1",
+       "title": "Bản tuyên ngôn Agile",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh01-m2-l2",
+       "title": "Giá trị tuyên ngôn Agile",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh01-m3",
+     "title": "Chương 3: Nguyên tắc Agile",
+     "order": 3,
+     "lessons": [
+      {
+       "id": "kh01-m3-l1",
+       "title": "12 nguyên tắc Agile",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh01-m4",
+     "title": "Chương 4: Tư duy áp dụng Agile trong công việc hàng ngày",
+     "order": 4,
+     "lessons": [
+      {
+       "id": "kh01-m4-l1",
+       "title": "Tư duy áp dụng Agile",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh01-quiz",
+       "title": "Bài kiểm tra cuối khóa",
+       "type": "quiz",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    }
+   ],
+   "instructors": [
+    "Đội ngũ chuyên gia TWings Academy"
+   ],
+   "partner": "",
+   "mall_name": "Agile mindset"
+  },
+  {
+   "code": "KH02",
+   "title": "Làm chủ dữ liệu, dẫn đầu xu thế",
+   "subtitle": "Hiểu, quản trị và khai thác dữ liệu để ra quyết định chính xác hơn",
+   "description": "Trong kỷ nguyên kinh tế số, dữ liệu chính là \"nguồn dầu mỏ\" mới giúp doanh nghiệp bứt phá và dẫn đầu thị trường. Đừng để bản thân bị bỏ lại phía sau khi mọi quyết định quan trọng đều đang dần được dịch chuyển dựa trên những con số biết nói.\n\nKhóa học \"Làm chủ dữ liệu, dẫn đầu xu thế\" sẽ giúp bạn phá bỏ rào cản kỹ thuật để khai thác tối đa sức mạnh của thông tin trong công việc hàng ngày. Bạn sẽ học được cách đọc vị thị trường, dự báo tương lai và tối ưu hóa hiệu suất chỉ từ những bảng biểu khô khan nhất.",
+   "overview": "Trong kỷ nguyên kinh tế số, dữ liệu chính là \"nguồn dầu mỏ\" mới giúp doanh nghiệp bứt phá và dẫn đầu thị trường. Đừng để bản thân bị bỏ lại phía sau khi mọi quyết định quan trọng đều đang dần được dịch chuyển dựa trên những con số biết nói.\n\nKhóa học \"Làm chủ dữ liệu, dẫn đầu xu thế\" sẽ giúp bạn phá bỏ rào cản kỹ thuật để khai thác tối đa sức mạnh của thông tin trong công việc hàng ngày. Bạn sẽ học được cách đọc vị thị trường, dự báo tương lai và tối ưu hóa hiệu suất chỉ từ những bảng biểu khô khan nhất.",
+   "category": "Dữ Liệu & Phân Tích",
+   "level": "Mọi cấp độ",
+   "type": "Khóa học",
+   "badge_section": "trending_ai",
+   "delivery_format": "online_external_lms",
+   "location_text": "",
+   "career_role": "Chuyên viên phân tích / quản trị dữ liệu",
+   "duration": "2 chương · 13 bài · khoảng 4 giờ học online",
+   "price": 1490000,
+   "installment_count": 1,
+   "thumbnail": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80&auto=format&fit=crop",
+   "skills": [
+    "Quản trị dữ liệu",
+    "Data Storytelling",
+    "Đọc hiểu báo cáo",
+    "Tuân thủ dữ liệu cá nhân"
+   ],
+   "highlights": [
+    "Đọc vị con số, dự báo xu hướng: Thay vì nhìn bảng biểu một cách thụ động, học viên sẽ biết cách bóc tách các chỉ số cốt lõi để nhận diện cơ hội kinh doanh và dự đoán các rủi ro tiềm ẩn trước khi chúng xảy ra.",
+    "Kể chuyện bằng dữ liệu (Data Storytelling): Kỹ năng chuyển hóa những con số khô khan thành biểu đồ trực quan và báo cáo thuyết phục, giúp việc trình bày ý tưởng với sếp hoặc khách hàng trở nên sắc bén và có tỉ lệ phê duyệt cao hơn.",
+    "Tối ưu hóa quy trình bằng chứng thực tế: Biết cách sử dụng dữ liệu để tìm ra \"điểm nghẽn\" trong công việc hàng ngày, từ đó đưa ra các giải pháp cải tiến dựa trên sự thật khách quan thay vì chỉ dựa vào cảm tính cá nhân."
+   ],
+   "objectives": [
+    "Hiểu lợi ích của Quản trị dữ liệu",
+    "Nắm vững các khái niệm, thuật ngữ và nguyên tắc quản trị dữ liệu cần áp dụng trong các hoạt động liên quan đến dữ liệu."
+   ],
+   "target_audience": [
+    "Nhà quản lý các cấp và đội ngũ nhân sự nguồn.",
+    "Sinh viên, cá nhân thường xuyên làm việc với dữ liệu, báo cáo và công tác phân tích phục vụ hoạt động quản trị.",
+    "Nhân sự thuộc các lĩnh vực kinh doanh, marketing, tài chính kế toán, vận hành, sản xuất, nhân sự",
+    "Nhân sự phụ trách HR, L&D, tuyển dụng, C&B và phát triển tổ chức.",
+    "Tổ chức, doanh nghiệp mong muốn nâng cao năng lực quản trị dữ liệu và hiệu quả vận hành.",
+    "Những người mong muốn sử dụng dữ liệu một cách khoa học để hỗ trợ ra quyết định và nâng cao hiệu quả kinh doanh."
+   ],
+   "requirements": [
+    "Máy tính hoặc điện thoại có kết nối Internet",
+    "Không yêu cầu kiến thức chuyên môn trước"
+   ],
+   "guarantees": [
+    "Học online trên TWings LMS, chủ động thời gian, xem lại bài giảng trong 12 tháng",
+    "Chứng nhận hoàn thành khóa học khi đạt bài kiểm tra cuối khóa",
+    "Tài liệu và bộ công cụ thực hành đi kèm từng chương"
+   ],
+   "syllabus": [
+    {
+     "id": "kh02-m1",
+     "title": "Chương 1: Tại sao cần quản trị dữ liệu trong tổ chức?",
+     "order": 1,
+     "lessons": [
+      {
+       "id": "kh02-m1-l1",
+       "title": "Tổng quan: Tại sao cần quản trị dữ liệu trong tổ chức?",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh02-m1-l2",
+       "title": "Lợi ích của quản trị dữ liệu",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh02-m1-l3",
+       "title": "Các quy định pháp lý toàn cầu và Việt Nam về quản trị dữ liệu",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh02-m2",
+     "title": "Chương 2: Các khái niệm trong quản trị dữ liệu",
+     "order": 2,
+     "lessons": [
+      {
+       "id": "kh02-m2-l1",
+       "title": "Tổng quan: Các khái niệm trong quản trị dữ liệu",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh02-m2-l2",
+       "title": "Dữ liệu số, dữ liệu cá nhân, tài sản dữ liệu",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh02-m2-l3",
+       "title": "Dữ liệu chủ và dữ liệu tham chiếu",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh02-m2-l4",
+       "title": "Thành tố dữ liệu trọng yếu",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh02-m2-l5",
+       "title": "Siêu dữ liệu",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh02-m2-l6",
+       "title": "Nguồn dữ liệu chuẩn",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh02-m2-l7",
+       "title": "Truy xuất nguồn gốc dữ liệu",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh02-m2-l8",
+       "title": "Lợi ích của công cụ và công nghệ quản trị dữ liệu",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh02-m2-l9",
+       "title": "Một số công cụ hỗ trợ quản trị dữ liệu",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh02-quiz",
+       "title": "Bài kiểm tra cuối khóa",
+       "type": "quiz",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    }
+   ],
+   "instructors": [
+    "Đội ngũ chuyên gia TWings Academy"
+   ],
+   "partner": "",
+   "mall_name": "Data (Quản trị dữ liệu)"
+  },
+  {
+   "code": "KH03",
+   "title": "Tư duy thiết kế, đột phá giải pháp (Design Thinking)",
+   "subtitle": "Giải quyết vấn đề phức tạp bằng sự thấu hiểu con người và sáng tạo có phương pháp",
+   "description": "Khi những phương pháp cũ không còn mang lại kết quả mới, đã đến lúc bạn cần một tư duy đột phá để thay đổi cuộc chơi. \"Tư duy thiết kế, đột phá giải pháp\" không dành riêng cho dân thiết kế, mà là chìa khóa giúp bất kỳ ai cũng có thể giải quyết những vấn đề phức tạp nhất bằng sự thấu hiểu và sáng tạo.\n\nThay vì loay hoay với những giả định mơ hồ, bạn sẽ học được cách đặt con người làm trọng tâm để tạo ra những sản phẩm và dịch vụ thực sự chạm đến nhu cầu khách hàng. Khóa học này là hành trình giúp bạn biến những ý tưởng \"điên rồ\" nhất thành các giải pháp thực tiễn, khả thi và mang lại giá trị kinh tế cao.",
+   "overview": "Khi những phương pháp cũ không còn mang lại kết quả mới, đã đến lúc bạn cần một tư duy đột phá để thay đổi cuộc chơi. \"Tư duy thiết kế, đột phá giải pháp\" không dành riêng cho dân thiết kế, mà là chìa khóa giúp bất kỳ ai cũng có thể giải quyết những vấn đề phức tạp nhất bằng sự thấu hiểu và sáng tạo.\n\nThay vì loay hoay với những giả định mơ hồ, bạn sẽ học được cách đặt con người làm trọng tâm để tạo ra những sản phẩm và dịch vụ thực sự chạm đến nhu cầu khách hàng. Khóa học này là hành trình giúp bạn biến những ý tưởng \"điên rồ\" nhất thành các giải pháp thực tiễn, khả thi và mang lại giá trị kinh tế cao.",
+   "category": "Tư Duy & Đột Phá",
+   "level": "Mọi cấp độ",
+   "type": "Khóa học",
+   "badge_section": "most_popular",
+   "delivery_format": "online_external_lms",
+   "location_text": "",
+   "career_role": "Chuyên viên sản phẩm / đổi mới sáng tạo",
+   "duration": "3 chương · 11 bài · khoảng 3 giờ học online",
+   "price": 1290000,
+   "installment_count": 1,
+   "thumbnail": "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=1200&q=80&auto=format&fit=crop",
+   "skills": [
+    "Design Thinking",
+    "Thấu hiểu khách hàng",
+    "Tư duy phân kỳ – hội tụ",
+    "Thử nghiệm nhanh"
+   ],
+   "highlights": [
+    "Thấu hiểu sâu sắc khách hàng (Empathy): Nắm vững bộ công cụ để \"đọc vị\" những nhu cầu thầm kín nhất của khách hàng/đối tác mà họ chưa bao giờ nói ra.",
+    "Tốc độ thử nghiệm và cải tiến (Prototyping): Học cách hiện thực hóa ý tưởng nhanh chóng với chi phí thấp nhất, giúp giảm thiểu rủi ro thất bại khi triển khai thực tế.",
+    "Xóa bỏ rào cản sáng tạo: Trang bị phương pháp tư duy đa chiều để luôn tìm ra ít nhất 3 giải pháp khác nhau cho cùng một vấn đề hóc búa."
+   ],
+   "objectives": [
+    "Nắm được kiến thức nền tảng về Design thinking",
+    "Áp dụng Design thinking để tìm kiếm giải pháp sáng tạo cho công việc và đời sống, trong bối cảnh xã hội và công nghệ phát triển hiện nay",
+    "Khơi gợi mong muốn tìm hiểu xa hơn về Design thinking"
+   ],
+   "target_audience": [
+    "Nhân sự phụ trách sản phẩm, kinh doanh, marketing, chăm sóc khách hàng và phát triển thị trường.",
+    "Sinh viên, cá nhân mong muốn nâng cao năng lực đổi mới, tối ưu trải nghiệm khách hàng và tạo ra giá trị kinh doanh bền vững.",
+    "Người làm lĩnh vực HR, L&D, phát triển tổ chức và văn hóa doanh nghiệp.",
+    "Quản lý dự án, vận hành, cải tiến quy trình và chuyển đổi doanh nghiệp",
+    "Nhà quản lý các cấp và đội ngũ nhân sự nguồn."
+   ],
+   "requirements": [
+    "Máy tính hoặc điện thoại có kết nối Internet",
+    "Không yêu cầu kiến thức chuyên môn trước"
+   ],
+   "guarantees": [
+    "Học online trên TWings LMS, chủ động thời gian, xem lại bài giảng trong 12 tháng",
+    "Chứng nhận hoàn thành khóa học khi đạt bài kiểm tra cuối khóa",
+    "Tài liệu và bộ công cụ thực hành đi kèm từng chương"
+   ],
+   "syllabus": [
+    {
+     "id": "kh03-m1",
+     "title": "Chương 1: Design Thinking là gì?",
+     "order": 1,
+     "lessons": [
+      {
+       "id": "kh03-m1-l1",
+       "title": "Tổng quan: Design Thinking là gì?",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh03-m1-l2",
+       "title": "Design Thinking qua các từ khóa",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh03-m1-l3",
+       "title": "Áp dụng Design Thinking để giải quyết các vấn đề chưa được xác định rõ ràng hoặc chưa biết",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh03-m1-l4",
+       "title": "Các lỗi thường gặp trong quá trình giải quyết vấn đề, tìm kiếm giải pháp sáng tạo",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh03-m1-l5",
+       "title": "Tư duy thiết kế hướng tới mục tiêu là tạo ra giải pháp được mong đợi, có khả năng tồn tại & có thể thực hiện được",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh03-m1-l6",
+       "title": "Thiết kế giải pháp sáng tạo là…",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh03-m2",
+     "title": "Chương 2: Quy trình Design Thinking",
+     "order": 2,
+     "lessons": [
+      {
+       "id": "kh03-m2-l1",
+       "title": "Quy trình Design Thinking: Triple Diamond",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh03-m2-l2",
+       "title": "Tư duy phân kỳ & Tư duy hội tụ",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh03-m2-l3",
+       "title": "Thiết kế lấy Con người làm Trung tâm",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh03-m3",
+     "title": "Chương 3: Các cấp độ & lộ trình trưởng thành về Design Thinking",
+     "order": 3,
+     "lessons": [
+      {
+       "id": "kh03-m3-l1",
+       "title": "Đặc điểm & Trọng tâm 05 cấp độ trưởng thành",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh03-quiz",
+       "title": "Bài kiểm tra cuối khóa",
+       "type": "quiz",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    }
+   ],
+   "instructors": [
+    "Đội ngũ chuyên gia TWings Academy"
+   ],
+   "partner": "",
+   "mall_name": "Design Thinking"
+  },
+  {
+   "code": "KH04",
+   "title": "Quản trị thực thi, làm chủ mục tiêu",
+   "subtitle": "Biến kế hoạch thành kết quả: lập lộ trình, giao việc và dẫn dắt thực thi",
+   "description": "Một kế hoạch hoàn hảo trên giấy sẽ trở nên vô nghĩa nếu thiếu đi năng lực thực thi sắc bén để biến nó thành kết quả. Bạn đã bao giờ rơi vào cảnh \"đầu voi đuôi chuột\" hay kiệt sức vì những mục tiêu dở dang dù đã nỗ lực hết mình?\nKhóa học \"Quản trị thực thi, làm chủ mục tiêu\" chính là chiếc la bàn giúp bạn chuẩn bị lộ trình chuẩn xác và làm chủ mọi nguồn lực để hiện thực hóa ý tưởng. Hãy trang bị ngay bộ công cụ quản trị hiện đại để chuyển hóa mọi áp lực thành những thành tựu xứng đáng và bền vững.",
+   "overview": "Một kế hoạch hoàn hảo trên giấy sẽ trở nên vô nghĩa nếu thiếu đi năng lực thực thi sắc bén để biến nó thành kết quả. Bạn đã bao giờ rơi vào cảnh \"đầu voi đuôi chuột\" hay kiệt sức vì những mục tiêu dở dang dù đã nỗ lực hết mình?\nKhóa học \"Quản trị thực thi, làm chủ mục tiêu\" chính là chiếc la bàn giúp bạn chuẩn bị lộ trình chuẩn xác và làm chủ mọi nguồn lực để hiện thực hóa ý tưởng. Hãy trang bị ngay bộ công cụ quản trị hiện đại để chuyển hóa mọi áp lực thành những thành tựu xứng đáng và bền vững.",
+   "category": "Quản Trị & Lãnh Đạo (OKR/MBO)",
+   "level": "Quản lý / Trưởng nhóm",
+   "type": "Khóa học",
+   "badge_section": "most_popular",
+   "delivery_format": "online_external_lms",
+   "location_text": "",
+   "career_role": "Trưởng nhóm / Quản lý dự án",
+   "duration": "3 chương · 13 bài · khoảng 4 giờ học online",
+   "price": 1490000,
+   "installment_count": 1,
+   "thumbnail": "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=1200&q=80&auto=format&fit=crop",
+   "skills": [
+    "Lập kế hoạch",
+    "WBS & Gantt",
+    "Kanban",
+    "Giao việc & theo dõi tiến độ"
+   ],
+   "highlights": [
+    "Xây dựng lộ trình hành động khoa học: Nắm vững các công cụ lập kế hoạch kinh điển để phân rã mục tiêu lớn thành các bước nhỏ khả thi.",
+    "Kỹ năng kiểm soát và tháo gỡ điểm nghẽn: Biết cách giám sát tiến độ thời gian thực, nhận diện rủi ro sớm và đưa ra giải pháp điều chỉnh kịp thời để không bị chệch hướng.",
+    "Tối ưu hóa nguồn lực và con người: Học cách phân bổ công việc đúng người, đúng việc, giúp đội ngũ làm việc tự giác và đạt hiệu suất cao nhất mà không cần \"cầm tay chỉ việc\"."
+   ],
+   "objectives": [
+    "Nắm vững quy trình lập kế hoạch",
+    "Thiết kế bản hành động chi tiết",
+    "Theo dõi và dẫn dắt quá trình thực thi"
+   ],
+   "target_audience": [
+    "Quản lý cấp trung: Trưởng phòng, Trưởng bộ phận, Quản lý dự án",
+    "Nhân sự nòng cốt & Team Leader: Tổ trưởng, Nhóm trưởng kinh doanh, Chuyên viên cao cấp",
+    "Nhân viên tiềm năng",
+    "Chủ doanh nghiệp",
+    "Nhà quản lý các cấp và đội ngũ nhân sự nguồn."
+   ],
+   "requirements": [
+    "Máy tính hoặc điện thoại có kết nối Internet",
+    "Không yêu cầu kiến thức chuyên môn trước"
+   ],
+   "guarantees": [
+    "Học online trên TWings LMS, chủ động thời gian, xem lại bài giảng trong 12 tháng",
+    "Chứng nhận hoàn thành khóa học khi đạt bài kiểm tra cuối khóa",
+    "Tài liệu và bộ công cụ thực hành đi kèm từng chương"
+   ],
+   "syllabus": [
+    {
+     "id": "kh04-m1",
+     "title": "Chương 1: Tư duy nền tảng - La bàn định hướng",
+     "order": 1,
+     "lessons": [
+      {
+       "id": "kh04-m1-l1",
+       "title": "Chẩn đoán vấn đề",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh04-m1-l2",
+       "title": "La bàn tư duy",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh04-m2",
+     "title": "Chương 2: Xây dựng kế hoạch - Từ ý tưởng đến bản vẽ",
+     "order": 2,
+     "lessons": [
+      {
+       "id": "kh04-m2-l1",
+       "title": "Sắp xếp theo trình tự",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh04-m2-l2",
+       "title": "Từ tổng thể đến chi tiết",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh04-m2-l3",
+       "title": "Nguyên tắc \"vừa đủ\" của WBS",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh04-m2-l4",
+       "title": "Lập trình với biểu đồ GANTT",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh04-m2-l5",
+       "title": "Sức mạnh của sự phụ thuộc",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh04-m2-l6",
+       "title": "Giao việc và truyền thông",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh04-m3",
+     "title": "Chương 3: Dẫn dắt thực thi - Từ bản vẽ đến thực tế",
+     "order": 3,
+     "lessons": [
+      {
+       "id": "kh04-m3-l1",
+       "title": "Phong cách quản lý",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh04-m3-l2",
+       "title": "Quản lý linh hoạt với KANBAN",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh04-m3-l3",
+       "title": "Nhận diện điểm nghẽn trong dự án",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh04-m3-l4",
+       "title": "Nguyên tắc vàng khi thực thi kế hoạch",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh04-quiz",
+       "title": "Bài kiểm tra cuối khóa",
+       "type": "quiz",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    }
+   ],
+   "instructors": [
+    "Đội ngũ chuyên gia TWings Academy"
+   ],
+   "partner": "",
+   "mall_name": "Lập kế hoạch và quản trị thực thi"
+  },
+  {
+   "code": "KH05",
+   "title": "Khai mở sức mạnh AI",
+   "subtitle": "Hiểu AI từ nền tảng đến ứng dụng: làm việc thông minh hơn cùng trợ lý AI",
+   "description": "Trong kỷ nguyên số hiện nay, trí tuệ nhân tạo không còn là viễn cảnh xa xôi mà đã trở thành \"trợ lý\" đắc lực thay đổi hoàn toàn cách chúng ta làm việc. Bạn đang đứng trước cơ hội làm chủ công nghệ để đột phá năng suất, hay chấp nhận bị tụt lại phía sau trong cuộc đua hiệu suất?\n\nKhóa học \"Khai mở sức mạnh AI\" được thiết kế để giúp bạn biến những công cụ phức tạp thành kỹ năng thực chiến chỉ trong thời gian ngắn. Hãy cùng chúng tôi giải mã tư duy cộng tác cùng AI và nắm bắt chìa khóa mở ra cánh cửa tương lai ngay hôm nay.",
+   "overview": "Trong kỷ nguyên số hiện nay, trí tuệ nhân tạo không còn là viễn cảnh xa xôi mà đã trở thành \"trợ lý\" đắc lực thay đổi hoàn toàn cách chúng ta làm việc. Bạn đang đứng trước cơ hội làm chủ công nghệ để đột phá năng suất, hay chấp nhận bị tụt lại phía sau trong cuộc đua hiệu suất?\n\nKhóa học \"Khai mở sức mạnh AI\" được thiết kế để giúp bạn biến những công cụ phức tạp thành kỹ năng thực chiến chỉ trong thời gian ngắn. Hãy cùng chúng tôi giải mã tư duy cộng tác cùng AI và nắm bắt chìa khóa mở ra cánh cửa tương lai ngay hôm nay.",
+   "category": "Trí tuệ nhân tạo (AI)",
+   "level": "Người mới bắt đầu",
+   "type": "Khóa học",
+   "badge_section": "trending_ai",
+   "delivery_format": "online_external_lms",
+   "location_text": "",
+   "career_role": "Nhân sự văn phòng ứng dụng AI",
+   "duration": "4 chương · 13 bài · khoảng 4 giờ học online",
+   "price": 1290000,
+   "installment_count": 1,
+   "thumbnail": "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&q=80&auto=format&fit=crop",
+   "skills": [
+    "Prompt Engineering",
+    "Machine Learning cơ bản",
+    "Ứng dụng AI tạo sinh",
+    "Triển khai dự án AI"
+   ],
+   "highlights": [
+    "Giải phóng thời gian khỏi việc lặp lại: Thay vì tiêu tốn hàng giờ cho những công việc lặp đi lặp lại, bạn sẽ biết cách điều khiển AI xử lý dữ liệu, soạn thảo nội dung và lập kế hoạch chỉ trong tích tắc. Điều này giúp bạn giải phóng 70% khối lượng công việc để tập trung vào những chiến lược quan trọng hơn",
+    "Làm chủ kỹ thuật viết Prompt: Không chỉ là dùng công cụ, khóa học trang bị cho bạn tư duy đặt câu hỏi và ra lệnh chuẩn xác để AI hiểu đúng ý đồ. Bạn sẽ nắm giữ kỹ thuật viết \"Prompt\" bậc thầy để khai thác tối đa trí tuệ của các mô hình hàng đầu hiện nay.",
+    "Biến ý tưởng thành sản phẩm cùng AI: AI sẽ trở thành cộng sự đắc lực giúp bạn vượt qua rào cản \"bí ý tưởng\". Từ việc thiết kế hình ảnh, sản xuất video đến xây dựng kịch bản marketing, bạn có thể biến mọi ý tưởng sơ khai thành sản phẩm chuyên nghiệp mà không cần quá nhiều kỹ năng kỹ thuật phức tạp."
+   ],
+   "objectives": [
+    "Hiểu đúng AI, Machine Learning và Deep Learning ở mức nền tảng",
+    "Nắm được vai trò của dữ liệu và các “giác quan” của AI (thị giác máy tính, giọng nói)",
+    "Biết quy trình và tiêu chí thành công khi triển khai một dự án AI trong tổ chức",
+    "Ứng dụng ngay các công cụ AI để làm việc nhanh và sáng tạo hơn"
+   ],
+   "target_audience": [
+    "Nhân viên văn phòng & Freelancer",
+    "Người làm Content & Marketing",
+    "Chủ doanh nghiệp & Quản lý",
+    "Học sinh, Sinh viên & Người yêu công nghệ"
+   ],
+   "requirements": [
+    "Máy tính hoặc điện thoại có kết nối Internet",
+    "Không yêu cầu kiến thức chuyên môn trước"
+   ],
+   "guarantees": [
+    "Học online trên TWings LMS, chủ động thời gian, xem lại bài giảng trong 12 tháng",
+    "Chứng nhận hoàn thành khóa học khi đạt bài kiểm tra cuối khóa",
+    "Tài liệu và bộ công cụ thực hành đi kèm từng chương"
+   ],
+   "syllabus": [
+    {
+     "id": "kh05-m1",
+     "title": "Chương 1: Khái niệm về AI",
+     "order": 1,
+     "lessons": [
+      {
+       "id": "kh05-m1-l1",
+       "title": "AI là gì?",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh05-m1-l2",
+       "title": "Machine Learning – Học có giám sát",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh05-m1-l3",
+       "title": "Deep learning",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh05-m2",
+     "title": "Chương 2: Hiểu về AI",
+     "order": 2,
+     "lessons": [
+      {
+       "id": "kh05-m2-l1",
+       "title": "Dữ liệu & các giác quan của AI",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh05-m2-l2",
+       "title": "Dữ liệu – yếu tố cốt lõi của AI",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh05-m2-l3",
+       "title": "Các giác quan của AI – Computer Vision",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh05-m2-l4",
+       "title": "Các giác quan của AI – Speech AI",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh05-m3",
+     "title": "Chương 3: Bắt tay vào triển khai dự án AI",
+     "order": 3,
+     "lessons": [
+      {
+       "id": "kh05-m3-l1",
+       "title": "5 hành động để 1 tổ chức chuyển mình với AI",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh05-m3-l2",
+       "title": "Quy trình triển khai dự án AI",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh05-m3-l3",
+       "title": "Xác định tiêu chí thành công của dự án AI",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh05-m4",
+     "title": "Chương 4: Bí kíp WORK SMART, NOT HARD cùng AI",
+     "order": 4,
+     "lessons": [
+      {
+       "id": "kh05-m4-l1",
+       "title": "Sáng tạo nhạc với SUNO",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh05-m4-l2",
+       "title": "Hệ thống hóa ý tưởng với Mapify",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh05-quiz",
+       "title": "Bài kiểm tra cuối khóa",
+       "type": "quiz",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    }
+   ],
+   "instructors": [
+    "Đội ngũ chuyên gia TWings Academy"
+   ],
+   "partner": "",
+   "mall_name": "Hướng dẫn AI cơ bản"
+  },
+  {
+   "code": "KH06",
+   "title": "Khai Phóng Quyền Năng Số",
+   "subtitle": "Chuyển đổi số trong ngân hàng: xu hướng, ngân hàng số và hệ sinh thái sản phẩm số",
+   "description": "Ngân hàng đang chuyển mình mạnh mẽ: giao dịch dịch chuyển lên ứng dụng, quy trình giấy tờ được số hóa và dữ liệu khách hàng trở thành lợi thế cạnh tranh quan trọng nhất. Người làm ngân hàng hiểu và làm chủ chuyển đổi số sẽ là người đi trước.\n\nKhóa học \"Khai Phóng Quyền Năng Số\" giúp bạn hiểu chuyển đổi số là gì, vì sao ngân hàng buộc phải chuyển đổi, các xu hướng ngân hàng số và hệ sinh thái sản phẩm số đang diễn ra, để ứng dụng ngay vào công việc hằng ngày và bắt kịp tốc độ của thị trường.",
+   "overview": "Ngân hàng đang chuyển mình mạnh mẽ: giao dịch dịch chuyển lên ứng dụng, quy trình giấy tờ được số hóa và dữ liệu khách hàng trở thành lợi thế cạnh tranh quan trọng nhất. Người làm ngân hàng hiểu và làm chủ chuyển đổi số sẽ là người đi trước.\n\nKhóa học \"Khai Phóng Quyền Năng Số\" giúp bạn hiểu chuyển đổi số là gì, vì sao ngân hàng buộc phải chuyển đổi, các xu hướng ngân hàng số và hệ sinh thái sản phẩm số đang diễn ra, để ứng dụng ngay vào công việc hằng ngày và bắt kịp tốc độ của thị trường.",
+   "category": "Ngân Hàng & Tín Dụng",
+   "level": "Mọi cấp độ",
+   "type": "Khóa học",
+   "badge_section": "trending_ai",
+   "delivery_format": "online_external_lms",
+   "location_text": "",
+   "career_role": "Nhân sự ngân hàng số",
+   "duration": "2 chương · 7 bài · khoảng 2 giờ học online",
+   "price": 1490000,
+   "installment_count": 1,
+   "thumbnail": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&q=80&auto=format&fit=crop",
+   "skills": [
+    "Chuyển đổi số",
+    "Ngân hàng số",
+    "Khai thác dữ liệu khách hàng",
+    "Quy trình số"
+   ],
+   "highlights": [
+    "Làm việc không giấy tờ, phê duyệt nhanh: Thay vì phải ôm chồng hồ sơ giấy tờ, chạy đi chạy lại xin chữ ký hay nhập liệu thủ công vào hệ thống cũ kỹ, bạn sẽ được hướng dẫn cách sử dụng các công cụ quản lý công việc và quy trình trực tuyến. Mọi thứ được phê duyệt nhanh gọn trên máy tính hoặc điện thoại, giúp bạn giải phóng đôi tay và bớt áp lực sổ sách.",
+    "Bán đúng khách hàng nhờ dữ liệu: Bạn sẽ biết cách khai thác kho dữ liệu sẵn có của ngân hàng để biết khách hàng của mình thực sự muốn gì. Thay vì gọi điện tư vấn \"mò\" hay mời chào tất cả mọi người, bạn sẽ biết chọn đúng người cần vay, đúng người cần gửi tiết kiệm để tư vấn. Điều này giúp tăng tỷ lệ chốt giao dịch mà không tốn quá nhiều công sức thuyết phục.",
+    "Đi trước đồng nghiệp trên hệ thống số: Trong lúc đồng nghiệp còn đang loay hoay với các phần mềm mới hay quy trình số phức tạp, bạn đã thành thạo và làm chủ chúng. Khả năng thích ứng nhanh với các hệ thống ngân hàng số hiện đại giúp bạn luôn hoàn thành KPI sớm, ghi điểm tuyệt đối trong mắt lãnh đạo và mở rộng con đường thăng tiến."
+   ],
+   "objectives": [
+    "Hiểu đúng chuyển đổi số và lý do ngân hàng phải chuyển đổi số",
+    "Nắm các xu hướng ngân hàng số và hệ sinh thái sản phẩm số hiện nay",
+    "Ứng dụng công cụ số và dữ liệu khách hàng để làm việc và bán hàng hiệu quả hơn"
+   ],
+   "target_audience": [
+    "Sinh viên, cá nhân quan tâm đến chuyển đổi số, ngân hàng số và sự phát triển của hệ sinh thái tài chính số",
+    "Nhân sự các khối kinh doanh, vận hành, sản phẩm, công nghệ, dịch vụ khách hàng và các đơn vị hỗ trợ.",
+    "Nhân sự phụ trách chuyển đổi số, đổi mới sáng tạo và phát triển sản phẩm số.",
+    "Cán bộ nguồn, nhân sự tiềm năng cần cập nhật xu hướng ngân hàng số.",
+    "Lãnh đạo, quản lý các cấp trong lĩnh vực tài chính - ngân hàng."
+   ],
+   "requirements": [
+    "Máy tính hoặc điện thoại có kết nối Internet",
+    "Không yêu cầu kiến thức chuyên môn trước"
+   ],
+   "guarantees": [
+    "Học online trên TWings LMS, chủ động thời gian, xem lại bài giảng trong 12 tháng",
+    "Chứng nhận hoàn thành khóa học khi đạt bài kiểm tra cuối khóa",
+    "Tài liệu và bộ công cụ thực hành đi kèm từng chương"
+   ],
+   "syllabus": [
+    {
+     "id": "kh06-m1",
+     "title": "Chương 1: Tổng quan về chuyển đổi số",
+     "order": 1,
+     "lessons": [
+      {
+       "id": "kh06-m1-l1",
+       "title": "Chuyển đổi số là gì?",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh06-m1-l2",
+       "title": "Tại sao ngân hàng cần chuyển đổi số",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh06-m1-l3",
+       "title": "Lợi ích của Ngân hàng khi chuyển đổi số",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh06-m2",
+     "title": "Chương 2: Xu hướng chuyển đổi số trong lĩnh vực ngân hàng",
+     "order": 2,
+     "lessons": [
+      {
+       "id": "kh06-m2-l1",
+       "title": "Các xu hướng mới đang diễn ra",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh06-m2-l2",
+       "title": "Ngân hàng số",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh06-m2-l3",
+       "title": "Phát triển sản phẩm và hệ sinh thái số",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh06-quiz",
+       "title": "Bài kiểm tra cuối khóa",
+       "type": "quiz",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    }
+   ],
+   "instructors": [
+    "Đội ngũ chuyên gia TWings Academy"
+   ],
+   "partner": "",
+   "mall_name": "Chuyển đổi số"
+  },
+  {
+   "code": "KH07",
+   "title": "Bản Lĩnh Thép Trong Kỷ Nguyên Số",
+   "subtitle": "Chân dung nhà quản lý hiện đại: vai trò, năng lực và phong cách dẫn dắt đội ngũ",
+   "description": "Trong làn sóng chuyển đổi số, cách quản lý \"ra lệnh – kiểm tra\" không còn đủ để giữ chân người giỏi và đưa đội ngũ về đích. Nhà quản lý hôm nay cần hiểu rõ vai trò của mình, có đủ năng lực nền tảng và một phong cách dẫn dắt phù hợp với từng con người, từng tình huống.\n\nKhóa học \"Bản Lĩnh Thép Trong Kỷ Nguyên Số\" giúp bạn trả lời ba câu hỏi: quản lý thực sự là làm gì, nhà quản lý cần những năng lực nào, và phong cách lãnh đạo nào là của riêng bạn, để tự tin dẫn dắt đội ngũ bằng uy tín thay vì mệnh lệnh.",
+   "overview": "Trong làn sóng chuyển đổi số, cách quản lý \"ra lệnh – kiểm tra\" không còn đủ để giữ chân người giỏi và đưa đội ngũ về đích. Nhà quản lý hôm nay cần hiểu rõ vai trò của mình, có đủ năng lực nền tảng và một phong cách dẫn dắt phù hợp với từng con người, từng tình huống.\n\nKhóa học \"Bản Lĩnh Thép Trong Kỷ Nguyên Số\" giúp bạn trả lời ba câu hỏi: quản lý thực sự là làm gì, nhà quản lý cần những năng lực nào, và phong cách lãnh đạo nào là của riêng bạn, để tự tin dẫn dắt đội ngũ bằng uy tín thay vì mệnh lệnh.",
+   "category": "Quản Trị & Lãnh Đạo (OKR/MBO)",
+   "level": "Quản lý / Trưởng nhóm",
+   "type": "Khóa học",
+   "badge_section": "most_popular",
+   "delivery_format": "online_external_lms",
+   "location_text": "",
+   "career_role": "Quản lý mới / Trưởng nhóm",
+   "duration": "3 chương · 8 bài · khoảng 2 giờ học online",
+   "price": 1690000,
+   "installment_count": 1,
+   "thumbnail": "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=1200&q=80&auto=format&fit=crop",
+   "skills": [
+    "Tư duy quản lý",
+    "Lãnh đạo đội nhóm",
+    "Ủy quyền",
+    "Phát triển nhân viên"
+   ],
+   "highlights": [
+    "Từ “người giám sát” thành người dẫn dắt: Giúp bạn thoát khỏi cái bóng của \"người giám sát\" để xây dựng một chân dung nhà quản lý có sức ảnh hưởng, biết cách truyền cảm hứng và dẫn dắt đội ngũ bằng uy tín cá nhân.",
+    "Bộ “hệ điều hành” tư duy quản lý: Từ tư duy chiến lược, điều phối nhân sự đến giải quyết xung đột. Bạn sẽ được trang bị \"hệ điều hành\" tư duy mới để xử lý mọi tình huống quản lý một cách điềm tĩnh và chuyên nghiệp.",
+    "Ủy quyền và phát triển đội ngũ: Bạn sẽ học được cách ủy quyền và phát triển nhân viên hiệu quả, giúp đội ngũ tự giác làm việc ngay cả khi bạn không có mặt, từ đó giải phóng chính mình khỏi những sự vụ lặt vặt."
+   ],
+   "objectives": [
+    "Chuẩn hóa chân dung: Giúp học viên hiểu rõ những tố chất và kỹ năng cần có của một nhà quản lý hiện đại trong kỷ nguyên số.",
+    "Thành thạo công cụ: Sử dụng thành thạo các mô hình quản trị mục tiêu và nhân sự thực chiến",
+    "Gia tăng hiệu suất: Chuyển hóa từ quản lý bằng mệnh lệnh sang quản trị bằng mục tiêu và sự thấu hiểu"
+   ],
+   "target_audience": [
+    "Nhân sự nguồn và đội ngũ kế cận.",
+    "Những người muốn phát triển năng lực quản lý, lãnh đạo và xây dựng phong cách dẫn dắt đội ngũ hiệu quả.",
+    "Trưởng nhóm, tổ trưởng, quản lý dự án.",
+    "Quản lý mới, quản lý cấp cơ sở và quản lý cấp trung.",
+    "Chủ doanh nghiệp và người trực tiếp quản lý nhân sự."
+   ],
+   "requirements": [
+    "Máy tính hoặc điện thoại có kết nối Internet",
+    "Không yêu cầu kiến thức chuyên môn trước"
+   ],
+   "guarantees": [
+    "Học online trên TWings LMS, chủ động thời gian, xem lại bài giảng trong 12 tháng",
+    "Chứng nhận hoàn thành khóa học khi đạt bài kiểm tra cuối khóa",
+    "Tài liệu và bộ công cụ thực hành đi kèm từng chương"
+   ],
+   "syllabus": [
+    {
+     "id": "kh07-m1",
+     "title": "Chương 1: Quản lý là làm gì",
+     "order": 1,
+     "lessons": [
+      {
+       "id": "kh07-m1-l1",
+       "title": "Nền tảng quản lý",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh07-m1-l2",
+       "title": "3 nhóm vai trò quản lý",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh07-m2",
+     "title": "Chương 2: Các năng lực cần có",
+     "order": 2,
+     "lessons": [
+      {
+       "id": "kh07-m2-l1",
+       "title": "Khoảng trống năng lực",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh07-m2-l2",
+       "title": "Bộ 3 kỹ năng nền tảng",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh07-m2-l3",
+       "title": "Quản lý và lãnh đạo",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh07-m3",
+     "title": "Chương 3: Định hình phong cách cá nhân",
+     "order": 3,
+     "lessons": [
+      {
+       "id": "kh07-m3-l1",
+       "title": "Phong cách lãnh đạo",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh07-m3-l2",
+       "title": "Thực hành phong cách",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh07-quiz",
+       "title": "Bài kiểm tra cuối khóa",
+       "type": "quiz",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    }
+   ],
+   "instructors": [
+    "Đội ngũ chuyên gia TWings Academy"
+   ],
+   "partner": "",
+   "mall_name": "Chân dung quản lý"
+  },
+  {
+   "code": "KH08",
+   "title": "Di Sản Từ MBO Đến Kỷ Nguyên OKR",
+   "subtitle": "Từ quản trị theo mục tiêu (MBO) đến OKR: đặt mục tiêu đúng, đo kết quả rõ",
+   "description": "Trong bối cảnh kinh tế biến động, những mô hình quản trị cũ kỹ đang dần khiến doanh nghiệp hụt hơi trước các mục tiêu tăng trưởng đầy áp lực. Bạn đang nắm giữ những nền tảng MBO vững chắc, nhưng liệu bấy nhiêu đã đủ để dẫn dắt đội ngũ bứt phá trong kỷ nguyên số đòi hỏi sự linh hoạt tuyệt đối?\n\nKhóa học \"Di Sản Từ MBO Đến Kỷ Nguyên OKR\" chính là cầu nối chiến lược giúp bạn nâng tầm tư duy quản trị từ \"kiểm soát mục tiêu\" sang \"truyền cảm hứng thực thi\". Hãy cùng chúng tôi giải mã công thức kết hợp tinh hoa quản trị truyền thống và sức mạnh của OKR để tạo nên một hệ thống vận hành không thể đánh bại. Đã đến lúc viết tiếp chương mới cho sự nghiệp lãnh đạo của bạn với những kỷ lục hiệu suất chưa từng có!",
+   "overview": "Trong bối cảnh kinh tế biến động, những mô hình quản trị cũ kỹ đang dần khiến doanh nghiệp hụt hơi trước các mục tiêu tăng trưởng đầy áp lực. Bạn đang nắm giữ những nền tảng MBO vững chắc, nhưng liệu bấy nhiêu đã đủ để dẫn dắt đội ngũ bứt phá trong kỷ nguyên số đòi hỏi sự linh hoạt tuyệt đối?\n\nKhóa học \"Di Sản Từ MBO Đến Kỷ Nguyên OKR\" chính là cầu nối chiến lược giúp bạn nâng tầm tư duy quản trị từ \"kiểm soát mục tiêu\" sang \"truyền cảm hứng thực thi\". Hãy cùng chúng tôi giải mã công thức kết hợp tinh hoa quản trị truyền thống và sức mạnh của OKR để tạo nên một hệ thống vận hành không thể đánh bại. Đã đến lúc viết tiếp chương mới cho sự nghiệp lãnh đạo của bạn với những kỷ lục hiệu suất chưa từng có!",
+   "category": "Quản Trị & Lãnh Đạo (OKR/MBO)",
+   "level": "Quản lý / Trưởng nhóm",
+   "type": "Khóa học",
+   "badge_section": "most_popular",
+   "delivery_format": "online_external_lms",
+   "location_text": "",
+   "career_role": "Quản lý / Nhân sự quản trị hiệu suất",
+   "duration": "4 chương · 11 bài · khoảng 3 giờ học online",
+   "price": 1690000,
+   "installment_count": 1,
+   "thumbnail": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=1200&q=80&auto=format&fit=crop",
+   "skills": [
+    "OKR",
+    "MBO",
+    "Quản trị hiệu suất",
+    "Thiết lập mục tiêu"
+   ],
+   "highlights": [
+    "Chọn đúng công cụ quản trị mục tiêu: Hiểu rõ điểm mạnh, giới hạn của MBO và OKR để áp dụng đúng chỗ, đúng thời điểm cho đội ngũ của bạn.",
+    "Viết OKR chuẩn ngay sau khóa học: Nắm 3 thành phần của OKR, cách đặt Mục tiêu truyền cảm hứng và Kết quả then chốt đo lường được, có bộ OKR mẫu để tham khảo.",
+    "Kết nối mục tiêu từ tổ chức đến từng cá nhân: Biết cách triển khai OKR theo 3 bước, giúp mọi người cùng hướng về một mục tiêu và tự giác theo dõi kết quả."
+   ],
+   "objectives": [
+    "Nắm quy trình quản trị theo mục tiêu và so sánh MBO với OKR",
+    "Hiểu 3 thành phần và 4 “siêu năng lực” của OKR",
+    "Tự xây dựng bộ OKR cho cá nhân / đội nhóm và lộ trình 3 bước áp dụng"
+   ],
+   "target_audience": [
+    "Nhà quản lý các cấp và đội ngũ quản lý kế cận.",
+    "Nhân sự phụ trách quản trị hiệu suất, HR, L&D và phát triển tổ chức.",
+    "Nhân sự các phòng ban mong muốn quản lý công việc theo mục tiêu rõ ràng và hiệu quả.",
+    "Chủ doanh nghiệp, lãnh đạo đơn vị đang tìm kiếm công cụ quản trị hiện đại.",
+    "Những người muốn tìm hiểu và ứng dụng OKR để nâng cao hiệu suất cá nhân, đội nhóm và tổ chức."
+   ],
+   "requirements": [
+    "Máy tính hoặc điện thoại có kết nối Internet",
+    "Không yêu cầu kiến thức chuyên môn trước"
+   ],
+   "guarantees": [
+    "Học online trên TWings LMS, chủ động thời gian, xem lại bài giảng trong 12 tháng",
+    "Chứng nhận hoàn thành khóa học khi đạt bài kiểm tra cuối khóa",
+    "Tài liệu và bộ công cụ thực hành đi kèm từng chương"
+   ],
+   "syllabus": [
+    {
+     "id": "kh08-m1",
+     "title": "Chương 1: MBO & OKR",
+     "order": 1,
+     "lessons": [
+      {
+       "id": "kh08-m1-l1",
+       "title": "Quy trình quản trị theo mục tiêu",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh08-m1-l2",
+       "title": "So sánh MBO & OKR",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh08-m1-l3",
+       "title": "Chọn công cụ phù hợp",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh08-m2",
+     "title": "Chương 2: Giải mã OKR",
+     "order": 2,
+     "lessons": [
+      {
+       "id": "kh08-m2-l1",
+       "title": "3 thành phần của OKR",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh08-m2-l2",
+       "title": "Mục tiêu và kết quả then chốt",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh08-m2-l3",
+       "title": "Khám phá 4 siêu năng lực của OKR",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh08-m3",
+     "title": "Chương 3: Ứng dụng OKR",
+     "order": 3,
+     "lessons": [
+      {
+       "id": "kh08-m3-l1",
+       "title": "OKR mẫu tổng hợp",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh08-m3-l2",
+       "title": "Thực hành",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "kh08-m4",
+     "title": "Chương 4: Tổng kết và hành động",
+     "order": 4,
+     "lessons": [
+      {
+       "id": "kh08-m4-l1",
+       "title": "3 bước áp dụng OKR",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh08-m4-l2",
+       "title": "Faq",
+       "type": "video",
+       "duration": "15 phút",
+       "is_free_preview": false
+      },
+      {
+       "id": "kh08-quiz",
+       "title": "Bài kiểm tra cuối khóa",
+       "type": "quiz",
+       "duration": "15 phút",
+       "is_free_preview": false
+      }
+     ]
+    }
+   ],
+   "instructors": [
+    "Đội ngũ chuyên gia TWings Academy"
+   ],
+   "partner": "",
+   "mall_name": "Quản trị mục tiêu MBO&OKR"
+  },
+  {
+   "code": "RB",
+   "title": "Quan hệ Khách hàng Cá nhân (RB) – Đào tạo thực chiến tại MSB",
+   "subtitle": "64 buổi trong tối đa 2 tháng: kiến thức ngân hàng bán lẻ, kỹ năng tư vấn và 176 giờ thực chiến tại MSB",
+   "description": "Bạn muốn bước vào nghề ngân hàng ở vị trí Chuyên viên Quan hệ Khách hàng Cá nhân nhưng chưa biết bắt đầu từ đâu, hay lo ngại khoảng cách giữa giảng đường và công việc thực tế? Chương trình được xây dựng cùng đội ngũ quản lý đang làm việc tại MSB để rút ngắn khoảng cách đó.\n\nTrong tối đa 2 tháng (64 buổi), bạn đi từ nền tảng tài chính – ngân hàng, tín dụng bán lẻ, tài chính cá nhân, kỹ năng đàm phán và tư duy Design Thinking, đến 176 giờ thực chiến trực tiếp tại đơn vị kinh doanh MSB dưới sự hướng dẫn của Team Lead: thẩm định khách hàng, xử lý hồ sơ tín dụng, lập tờ trình và hoàn thành KPI thực tế. Kết thúc chương trình bằng báo cáo nhóm trước hội đồng.",
+   "overview": "Bạn muốn bước vào nghề ngân hàng ở vị trí Chuyên viên Quan hệ Khách hàng Cá nhân nhưng chưa biết bắt đầu từ đâu, hay lo ngại khoảng cách giữa giảng đường và công việc thực tế? Chương trình được xây dựng cùng đội ngũ quản lý đang làm việc tại MSB để rút ngắn khoảng cách đó.\n\nTrong tối đa 2 tháng (64 buổi), bạn đi từ nền tảng tài chính – ngân hàng, tín dụng bán lẻ, tài chính cá nhân, kỹ năng đàm phán và tư duy Design Thinking, đến 176 giờ thực chiến trực tiếp tại đơn vị kinh doanh MSB dưới sự hướng dẫn của Team Lead: thẩm định khách hàng, xử lý hồ sơ tín dụng, lập tờ trình và hoàn thành KPI thực tế. Kết thúc chương trình bằng báo cáo nhóm trước hội đồng.",
+   "category": "Ngân Hàng & Tín Dụng",
+   "level": "Người mới bắt đầu",
+   "type": "Chứng chỉ Chuyên môn",
+   "badge_section": "most_popular",
+   "delivery_format": "hybrid",
+   "location_text": "Hà Nội: ROX Tower, 54A Nguyễn Chí Thanh, Đống Đa · Thực chiến tại các đơn vị kinh doanh MSB",
+   "career_role": "Chuyên viên Quan hệ Khách hàng Cá nhân",
+   "duration": "64 buổi · tối đa 2 tháng",
+   "price": 8990000,
+   "installment_count": 2,
+   "thumbnail": "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=1200&q=80&auto=format&fit=crop",
+   "skills": [
+    "Tư vấn tài chính cá nhân",
+    "Thẩm định khách hàng cá nhân",
+    "Lập tờ trình tín dụng",
+    "Bán hàng & phát triển khách hàng",
+    "Đàm phán thuyết phục"
+   ],
+   "highlights": [
+    "Học từ người trong nghề: đội ngũ giảng viên là các Giám đốc, chuyên gia đang làm việc tại MSB",
+    "176 giờ thực chiến tại đơn vị kinh doanh MSB: làm việc thật, khách hàng thật, KPI thật",
+    "Lộ trình gọn trong tối đa 2 tháng, kết hợp học trực tiếp và online",
+    "Trang bị trọn bộ kỹ năng của Chuyên viên QHKH Cá nhân: tư vấn, thẩm định, lập tờ trình, bán hàng"
+   ],
+   "objectives": [
+    "Hiểu bức tranh ngành tài chính – ngân hàng và ngân hàng bán lẻ trong kỷ nguyên số",
+    "Nắm các giải pháp tín dụng cho khách hàng cá nhân, quy trình ra quyết định cho vay",
+    "Thẩm định khách hàng, đọc hiểu và xử lý hồ sơ tín dụng, lập tờ trình",
+    "Tư vấn tài chính cá nhân, đàm phán thuyết phục và phát triển khách hàng",
+    "Hoàn thành KPI thực tế trong giai đoạn thực chiến tại MSB"
+   ],
+   "target_audience": [
+    "Sinh viên năm cuối, cử nhân mới tốt nghiệp khối kinh tế, tài chính, ngân hàng",
+    "Người muốn chuyển hướng sang nghề Quan hệ Khách hàng tại ngân hàng",
+    "Nhân sự bán hàng, tư vấn tài chính muốn làm việc chuyên nghiệp trong ngân hàng"
+   ],
+   "requirements": [
+    "Tốt nghiệp hoặc sắp tốt nghiệp đại học",
+    "Tham gia đủ các buổi học trực tiếp và giai đoạn thực chiến"
+   ],
+   "guarantees": [
+    "176 giờ thực chiến trực tiếp tại đơn vị kinh doanh MSB dưới sự hướng dẫn của Team Lead",
+    "Giảng viên là các Giám đốc, chuyên gia đang làm việc tại MSB",
+    "Chứng nhận hoàn thành chương trình khi đạt yêu cầu chuyên cần và báo cáo nhóm"
+   ],
+   "syllabus": [
+    {
+     "id": "rb-m1",
+     "title": "Khóa 1: Tài chính - Ngân hàng có như bạn nghĩ?",
+     "order": 1,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "rb-m1-l1",
+       "title": "Tài chính - Ngân hàng có như bạn nghĩ?",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "rb-m2",
+     "title": "Khóa 2: Tài chính - Ngân hàng và dòng chảy kỷ nguyên số",
+     "order": 2,
+     "duration": "1 buổi · Online",
+     "description": "Hình thức: Online · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "rb-m2-l1",
+       "title": "Tài chính - Ngân hàng và dòng chảy kỷ nguyên số",
+       "type": "video",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "rb-m3",
+     "title": "Khóa 3: Giải pháp tín dụng cho ngành bán lẻ",
+     "order": 3,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "rb-m3-l1",
+       "title": "Giải pháp tín dụng cho ngành bán lẻ",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "rb-m4",
+     "title": "Khóa 4: Tín dụng Doanh nghiệp: Bạn nghĩ và Thực tế?",
+     "order": 4,
+     "duration": "1 buổi · Online",
+     "description": "Hình thức: Online · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "rb-m4-l1",
+       "title": "Tín dụng Doanh nghiệp: Bạn nghĩ và Thực tế?",
+       "type": "video",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "rb-m5",
+     "title": "Khóa 5: Quy trình đưa ra quyết định cho vay doanh nghiệp",
+     "order": 5,
+     "duration": "2 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 2 buổi",
+     "lessons": [
+      {
+       "id": "rb-m5-l1",
+       "title": "Quy trình đưa ra quyết định cho vay doanh nghiệp",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "rb-m6",
+     "title": "Khóa 6: Design Thinking: Đột phá ý tưởng tới giải pháp",
+     "order": 6,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "rb-m6-l1",
+       "title": "Design Thinking: Đột phá ý tưởng tới giải pháp",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "rb-m7",
+     "title": "Khóa 7: Thần thái tự tin - tạo nên dấu ấn",
+     "order": 7,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "rb-m7-l1",
+       "title": "Thần thái tự tin - tạo nên dấu ấn",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "rb-m8",
+     "title": "Khóa 8: Chìa khóa tài chính cá nhân, mở lối thành công",
+     "order": 8,
+     "duration": "6 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 6 buổi",
+     "lessons": [
+      {
+       "id": "rb-m8-l1",
+       "title": "Chìa khóa tài chính cá nhân, mở lối thành công",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "rb-m9",
+     "title": "Khóa 9: Hành trình Tài Chính Toàn Diện",
+     "order": 9,
+     "duration": "4 buổi · Online",
+     "description": "Hình thức: Online · Thời lượng: 4 buổi",
+     "lessons": [
+      {
+       "id": "rb-m9-l1",
+       "title": "Hành trình Tài Chính Toàn Diện",
+       "type": "video",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "rb-m10",
+     "title": "Khóa 10: Nghệ thuật kiến tạo đàm phán thuyết phục",
+     "order": 10,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "rb-m10-l1",
+       "title": "Nghệ thuật kiến tạo đàm phán thuyết phục",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "rb-m11",
+     "title": "Khóa 11: Thực chiến - KPI chỉ là chuyện nhỏ",
+     "order": 11,
+     "duration": "44 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 44 buổi",
+     "lessons": [
+      {
+       "id": "rb-m11-l1",
+       "title": "Trực tiếp thực chiến tại đơn vị kinh doanh MSB trong 176 giờ, dưới sự hướng dẫn của Team Lead",
+       "type": "project",
+       "duration": "",
+       "is_free_preview": false
+      },
+      {
+       "id": "rb-m11-l2",
+       "title": "Rèn luyện kỹ năng thẩm định khách hàng, đọc hiểu, đánh giá và xử lý hồ sơ tín dụng",
+       "type": "project",
+       "duration": "",
+       "is_free_preview": false
+      },
+      {
+       "id": "rb-m11-l3",
+       "title": "Thực hành lập tờ trình, sử dụng hệ thống ngân hàng và hoàn thành KPI mở mới tài khoản",
+       "type": "project",
+       "duration": "",
+       "is_free_preview": false
+      },
+      {
+       "id": "rb-m11-l4",
+       "title": "Phát triển kênh bán, tìm kiếm, tiếp cận, tư vấn và xây dựng quan hệ với khách hàng",
+       "type": "project",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "rb-m12",
+     "title": "Khóa 12: Báo cáo nhóm",
+     "order": 12,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "rb-m12-l1",
+       "title": "Báo cáo nhóm",
+       "type": "project",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    }
+   ],
+   "instructors": [
+    "Vũ Thu Phương",
+    "Đặng Văn Thành",
+    "Nguyễn Kim Chi",
+    "Tạ Hoàng Thùy Linh"
+   ],
+   "partner": "MSB",
+   "class": {
+    "name": "Khóa 1",
+    "start_date": "2026-12-07",
+    "registration_deadline": "2026-11-30",
+    "capacity": 30,
+    "location": "ROX Tower, 54A Nguyễn Chí Thanh, Đống Đa, Hà Nội",
+    "schedule_text": "Học trực tiếp các buổi tối trong tuần và thực chiến tại MSB theo lịch đơn vị",
+    "summary": "64 buổi trong tối đa 2 tháng: kiến thức ngân hàng bán lẻ, kỹ năng tư vấn và 176 giờ thực chiến tại MSB",
+    "job_title": "Chuyên viên Quan hệ Khách hàng Cá nhân"
+   }
+  },
+  {
+   "code": "EB",
+   "title": "Quan hệ Khách hàng Doanh nghiệp (EB) – Đào tạo thực chiến tại MSB",
+   "subtitle": "107 buổi trong tối đa 3 tháng: tín dụng doanh nghiệp, báo cáo tài chính và 352 giờ thực chiến tại MSB",
+   "description": "Quan hệ Khách hàng Doanh nghiệp là vị trí đòi hỏi cả kiến thức tín dụng, khả năng đọc báo cáo tài chính lẫn kỹ năng làm việc với chủ doanh nghiệp. Chương trình được thiết kế cùng đội ngũ quản lý MSB để bạn có đủ cả ba trước khi chính thức vào nghề.\n\nTrong tối đa 3 tháng (107 buổi), bạn học từ nền tảng ngân hàng doanh nghiệp, quy trình – quy định phê duyệt cấp tín dụng, phân tích báo cáo tài chính, quản trị nhịp điệu kinh doanh, đàm phán và quản lý thời gian, rồi bước vào 352 giờ thực chiến tại đơn vị kinh doanh MSB: tìm kiếm và quản trị khách hàng, xử lý hồ sơ, lập tờ trình, tham gia họp tín dụng và hoàn thành KPI thực tế.",
+   "overview": "Quan hệ Khách hàng Doanh nghiệp là vị trí đòi hỏi cả kiến thức tín dụng, khả năng đọc báo cáo tài chính lẫn kỹ năng làm việc với chủ doanh nghiệp. Chương trình được thiết kế cùng đội ngũ quản lý MSB để bạn có đủ cả ba trước khi chính thức vào nghề.\n\nTrong tối đa 3 tháng (107 buổi), bạn học từ nền tảng ngân hàng doanh nghiệp, quy trình – quy định phê duyệt cấp tín dụng, phân tích báo cáo tài chính, quản trị nhịp điệu kinh doanh, đàm phán và quản lý thời gian, rồi bước vào 352 giờ thực chiến tại đơn vị kinh doanh MSB: tìm kiếm và quản trị khách hàng, xử lý hồ sơ, lập tờ trình, tham gia họp tín dụng và hoàn thành KPI thực tế.",
+   "category": "Ngân Hàng & Tín Dụng",
+   "level": "Chuyên viên Mới (Fresher)",
+   "type": "Chứng chỉ Chuyên môn",
+   "badge_section": "most_popular",
+   "delivery_format": "hybrid",
+   "location_text": "Hà Nội: ROX Tower, 54A Nguyễn Chí Thanh, Đống Đa · Thực chiến tại các đơn vị kinh doanh MSB",
+   "career_role": "Chuyên viên Quan hệ Khách hàng Doanh nghiệp",
+   "duration": "107 buổi · tối đa 3 tháng",
+   "price": 12990000,
+   "installment_count": 3,
+   "thumbnail": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&q=80&auto=format&fit=crop",
+   "skills": [
+    "Tín dụng doanh nghiệp",
+    "Phân tích báo cáo tài chính",
+    "Lập tờ trình cấp tín dụng",
+    "Quản trị khách hàng doanh nghiệp",
+    "Đàm phán thuyết phục"
+   ],
+   "highlights": [
+    "Học từ người trong nghề: đội ngũ giảng viên là các Giám đốc, chuyên gia đang làm việc tại MSB",
+    "352 giờ thực chiến tại đơn vị kinh doanh MSB: gặp khách hàng, họp tín dụng, hoàn thành KPI thật",
+    "Làm chủ báo cáo tài chính và quy trình phê duyệt cấp tín dụng doanh nghiệp",
+    "Lộ trình tối đa 3 tháng, kết hợp học trực tiếp và online"
+   ],
+   "objectives": [
+    "Hiểu cơ hội và thách thức của ngân hàng doanh nghiệp, tín dụng doanh nghiệp trong thực tế",
+    "Nắm quy trình, quy định phê duyệt cấp tín dụng cho khách hàng doanh nghiệp",
+    "Đọc và phân tích báo cáo tài chính doanh nghiệp như chuyên gia",
+    "Tìm kiếm, tiếp cận, quản trị khách hàng và lập tờ trình cấp tín dụng",
+    "Hoàn thành KPI thực tế trong giai đoạn thực chiến tại MSB"
+   ],
+   "target_audience": [
+    "Sinh viên năm cuối, cử nhân mới tốt nghiệp khối kinh tế, tài chính, ngân hàng, kế toán",
+    "Chuyên viên ngân hàng bán lẻ muốn chuyển sang mảng khách hàng doanh nghiệp",
+    "Người đã có kinh nghiệm kế toán, tài chính doanh nghiệp muốn làm Quan hệ Khách hàng"
+   ],
+   "requirements": [
+    "Tốt nghiệp hoặc sắp tốt nghiệp đại học",
+    "Tham gia đủ các buổi học trực tiếp và giai đoạn thực chiến"
+   ],
+   "guarantees": [
+    "352 giờ thực chiến trực tiếp tại đơn vị kinh doanh MSB dưới sự hướng dẫn của Team Lead",
+    "Giảng viên là các Giám đốc, chuyên gia đang làm việc tại MSB",
+    "Chứng nhận hoàn thành chương trình khi đạt yêu cầu chuyên cần và báo cáo nhóm"
+   ],
+   "syllabus": [
+    {
+     "id": "eb-m1",
+     "title": "Khóa 1: Tài chính - Ngân hàng có như bạn nghĩ?",
+     "order": 1,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "eb-m1-l1",
+       "title": "Tài chính - Ngân hàng có như bạn nghĩ?",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m2",
+     "title": "Khóa 2: Tài chính - Ngân hàng và dòng chảy kỷ nguyên số",
+     "order": 2,
+     "duration": "1 buổi · Online",
+     "description": "Hình thức: Online · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "eb-m2-l1",
+       "title": "Tài chính - Ngân hàng và dòng chảy kỷ nguyên số",
+       "type": "video",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m3",
+     "title": "Khóa 3: Giải pháp tín dụng cho ngành bán lẻ",
+     "order": 3,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "eb-m3-l1",
+       "title": "Giải pháp tín dụng cho ngành bán lẻ",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m4",
+     "title": "Khóa 4: Tín dụng Doanh nghiệp: Bạn nghĩ và Thực tế?",
+     "order": 4,
+     "duration": "1 buổi · Online",
+     "description": "Hình thức: Online · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "eb-m4-l1",
+       "title": "Tín dụng Doanh nghiệp: Bạn nghĩ và Thực tế?",
+       "type": "video",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m5",
+     "title": "Khóa 5: Quy trình đưa ra quyết định cho vay doanh nghiệp",
+     "order": 5,
+     "duration": "2 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 2 buổi",
+     "lessons": [
+      {
+       "id": "eb-m5-l1",
+       "title": "Quy trình đưa ra quyết định cho vay doanh nghiệp",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m6",
+     "title": "Khóa 6: Design Thinking: Đột phá ý tưởng tới giải pháp",
+     "order": 6,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "eb-m6-l1",
+       "title": "Design Thinking: Đột phá ý tưởng tới giải pháp",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m7",
+     "title": "Khóa 7: Thần thái tự tin - tạo nên dấu ấn",
+     "order": 7,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "eb-m7-l1",
+       "title": "Thần thái tự tin - tạo nên dấu ấn",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m8",
+     "title": "Khóa 8: Ngân hàng Doanh nghiệp: Cơ hội và Thách thức",
+     "order": 8,
+     "duration": "3 buổi · Online",
+     "description": "Hình thức: Online · Thời lượng: 3 buổi",
+     "lessons": [
+      {
+       "id": "eb-m8-l1",
+       "title": "Ngân hàng Doanh nghiệp: Cơ hội và Thách thức",
+       "type": "video",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m9",
+     "title": "Khóa 9: Quy trình - Quy định phê duyệt cấp tín dụng cho khách hàng doanh nghiệp",
+     "order": 9,
+     "duration": "2 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 2 buổi",
+     "lessons": [
+      {
+       "id": "eb-m9-l1",
+       "title": "Quy trình - Quy định phê duyệt cấp tín dụng cho khách hàng doanh nghiệp",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m10",
+     "title": "Khóa 10: Chinh phục Báo cáo Tài chính như Chuyên gia",
+     "order": 10,
+     "duration": "1 buổi · Online",
+     "description": "Hình thức: Online · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "eb-m10-l1",
+       "title": "Chinh phục Báo cáo Tài chính như Chuyên gia",
+       "type": "video",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m11",
+     "title": "Khóa 11: Quản trị nhịp điệu kinh doanh",
+     "order": 11,
+     "duration": "2 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 2 buổi",
+     "lessons": [
+      {
+       "id": "eb-m11-l1",
+       "title": "Quản trị nhịp điệu kinh doanh",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m12",
+     "title": "Khóa 12: Nghệ thuật kiến tạo đàm phán thuyết phục",
+     "order": 12,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "eb-m12-l1",
+       "title": "Nghệ thuật kiến tạo đàm phán thuyết phục",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m13",
+     "title": "Khóa 13: Kiến tạo thời gian - Chìa khóa của thành công",
+     "order": 13,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "eb-m13-l1",
+       "title": "Kiến tạo thời gian - Chìa khóa của thành công",
+       "type": "reading",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m14",
+     "title": "Khóa 14: Thực chiến cùng KPIs tại MSB",
+     "order": 14,
+     "duration": "88 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 88 buổi",
+     "lessons": [
+      {
+       "id": "eb-m14-l1",
+       "title": "Trực tiếp thực chiến tại đơn vị kinh doanh MSB trong 352 giờ, dưới sự hướng dẫn của Team Lead",
+       "type": "project",
+       "duration": "",
+       "is_free_preview": false
+      },
+      {
+       "id": "eb-m14-l2",
+       "title": "Thực hành tìm kiếm, tiếp cận, gọi điện và quản trị khách hàng trên hệ thống ngân hàng",
+       "type": "project",
+       "duration": "",
+       "is_free_preview": false
+      },
+      {
+       "id": "eb-m14-l3",
+       "title": "Rèn luyện kỹ năng đọc, phân tích, xử lý hồ sơ và lập tờ trình cấp tín dụng",
+       "type": "project",
+       "duration": "",
+       "is_free_preview": false
+      },
+      {
+       "id": "eb-m14-l4",
+       "title": "Tham gia gặp khách hàng, họp tín dụng, bán hàng và hoàn thành KPI thực tế",
+       "type": "project",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    },
+    {
+     "id": "eb-m15",
+     "title": "Khóa 15: Báo cáo nhóm",
+     "order": 15,
+     "duration": "1 buổi · Trực tiếp",
+     "description": "Hình thức: Trực tiếp (Offline) · Thời lượng: 1 buổi",
+     "lessons": [
+      {
+       "id": "eb-m15-l1",
+       "title": "Báo cáo nhóm",
+       "type": "project",
+       "duration": "",
+       "is_free_preview": false
+      }
+     ]
+    }
+   ],
+   "instructors": [
+    "Vũ Thu Phương",
+    "Đặng Văn Thành",
+    "Nguyễn Kim Chi",
+    "Tạ Hoàng Thùy Linh"
+   ],
+   "partner": "MSB",
+   "class": {
+    "name": "Khóa 1",
+    "start_date": "2026-12-14",
+    "registration_deadline": "2026-12-07",
+    "capacity": 30,
+    "location": "ROX Tower, 54A Nguyễn Chí Thanh, Đống Đa, Hà Nội",
+    "schedule_text": "Học trực tiếp các buổi tối trong tuần và thực chiến tại MSB theo lịch đơn vị",
+    "summary": "107 buổi trong tối đa 3 tháng: tín dụng doanh nghiệp, báo cáo tài chính và 352 giờ thực chiến tại MSB",
+    "job_title": "Chuyên viên Quan hệ Khách hàng Doanh nghiệp"
+   }
+  }
+ ]
+}
