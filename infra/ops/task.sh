@@ -358,6 +358,26 @@ PHP
     fi
     ;;
 
+  gateway-check)
+    # Read-only: the TWings block in the shared gateway, its certificate log lines, and what each TWings
+    # hostname answers on this VPS (DNS bypassed with --resolve), plus what public DNS says.
+    for h in twings.edu.vn www.twings.edu.vn tuyensinh.twings.edu.vn; do
+      echo "dns $h: $(getent ahostsv4 $h | awk '{print $1}' | sort -u | tr '
+' ' ')"
+    done
+    remote "cd $APP && gw=\$(sudo sed -n 's/^GATEWAY_CONTAINER=//p' env/gateway.env); f=\$(sudo sed -n 's/^GATEWAY_FILE=//p' env/gateway.env)
+      echo '--- gateway block'; sudo sed -n '/>>> twings/,/<<< twings/p' \$f
+      echo '--- vps dns'; for h in twings.edu.vn www.twings.edu.vn tuyensinh.twings.edu.vn; do echo \"\$h: \$(getent ahostsv4 \$h | awk 'NR==1{print \$1}')\"; done
+      echo '--- caddy.env'; sudo grep -E '^(WEB|API|TEST|REDIRECT)_DOMAIN' env/caddy.env
+      echo '--- certificate log'; sudo docker logs --since 3h \$gw 2>&1 | grep -E 'twings\.edu\.vn' | grep -iE 'obtain|certificate|challenge|acme|error' | tail -25 | cut -c1-600"
+    ip=$(ssh -G vps | awk '/^hostname /{print $2}')
+    echo "--- https via vps ip"
+    for h in twings.edu.vn www.twings.edu.vn tuyensinh.twings.edu.vn; do
+      curl -s -o /dev/null -m 30 --resolve "$h:443:$ip" -w "%{http_code} https://$h/ -> %{redirect_url}
+" "https://$h/" || echo "FAIL $h (TLS / no certificate yet)"
+    done
+    ;;
+
   smoke-host)
     # Like smoke, but the domains are forced to this VPS's IP: checks a new / moved machine before DNS points to it.
     ip=$(ssh -G vps | awk '/^hostname /{print $2}')
