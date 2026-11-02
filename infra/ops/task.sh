@@ -383,6 +383,9 @@ for k in Cohort.objects.select_related(\"course\").order_by(\"course__title\", \
   publish-course-08-news)
     remote "cd $APP && sudo docker compose exec -T backend python manage.py publish_course_08_news"
     ;;
+  publish-homepage-cards)
+    remote "cd $APP && sudo docker compose exec -T backend python manage.py publish_homepage_cards"
+    ;;
 
   create-admin)
     # A fresh random password per run, shown only in the encrypted output (never in the repo or the log).
