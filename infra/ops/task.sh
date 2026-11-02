@@ -382,6 +382,8 @@ PHP
   gateway-diff)
     # Read-only: how the gateway Caddyfile on the host differs from the copy the running container sees.
     remote "cd $APP && gw=\$(sudo sed -n 's/^GATEWAY_CONTAINER=//p' env/gateway.env); f=\$(sudo sed -n 's/^GATEWAY_FILE=//p' env/gateway.env)
+      echo '--- gateway mounts (source -> destination)'; sudo docker inspect -f '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}' \$gw
+      echo "--- GATEWAY_FILE=\$f"
       echo '--- imports in host file'; sudo grep -n 'import' \$f || echo none
       sudo docker exec \$gw cat /etc/caddy/Caddyfile > /tmp/gw-container.caddy
       echo '--- diff container -> host'; sudo diff /tmp/gw-container.caddy \$f; rm -f /tmp/gw-container.caddy
