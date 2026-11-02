@@ -12,7 +12,7 @@ from apps.cms.models import Article
 from apps.core.models import SiteConfig
 
 pytestmark = pytest.mark.django_db
-BASE = "https://tuyensinh.twings.edu.vn"
+BASE = "https://twings.edu.vn"
 
 
 @pytest.fixture

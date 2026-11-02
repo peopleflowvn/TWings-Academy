@@ -78,7 +78,7 @@ def base_url() -> str:
     return (
         _REQUEST_BASE.get()
         or getattr(settings, "PUBLIC_SITE_URL", "").rstrip("/")
-        or "https://tuyensinh.twings.edu.vn"
+        or "https://twings.edu.vn"
     )
 
 

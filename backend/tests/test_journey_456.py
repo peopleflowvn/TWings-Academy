@@ -158,7 +158,7 @@ def test_each_payment_emails_a_printable_receipt(
     log = EmailLog.objects.get(template_code="payment_receipt")
     assert "1.000.000" in log.rendered_html and "/bien-nhan/" in log.rendered_html
     payment = order.payments.get()
-    page = client.get(receipt_url(payment).split("tuyensinh.twings.edu.vn")[1])
+    page = client.get(receipt_url(payment).split("twings.edu.vn")[1])
     html = page.content.decode()
     assert page.status_code == 200 and order.order_code in html and "1.000.000 đ" in html
     assert "<script" not in html and page["X-Robots-Tag"] == "noindex"

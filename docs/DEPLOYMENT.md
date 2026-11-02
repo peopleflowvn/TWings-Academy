@@ -5,10 +5,13 @@ Làm một lần theo đúng thứ tự dưới đây. Từ đó về sau, mỗi
 
 | Tên miền | Trỏ tới | Phục vụ |
 |---|---|---|
-| `tuyensinh.twings.edu.vn` | IP VPS (A) | Trang tuyển sinh + CMS (React, Caddy phục vụ file tĩnh) |
-| `api-tuyensinh.twings.edu.vn` | IP VPS (A) | API Django, sau Caddy (HTTPS Let's Encrypt) |
+| `twings.edu.vn` (`@`) | IP VPS (A) | Tên miền chính (`WEB_DOMAIN`): trang tuyển sinh + CMS + LMS `/learn` |
+| `www.twings.edu.vn`, `tuyensinh.twings.edu.vn` | IP VPS (A) | Chuyển hướng 301 về `twings.edu.vn` (`REDIRECT_DOMAINS`) |
+| `api-tuyensinh.twings.edu.vn` | IP VPS (A) | API Django, sau Caddy (HTTPS Let's Encrypt); webhook SePay/Resend |
 
-DNS của `twings.edu.vn` vẫn ở **Mắt Bão**; chỉ cần thêm 2 bản ghi trên, không đụng tới email hay bản ghi khác.
+DNS của `twings.edu.vn` vẫn ở **Mắt Bão**; chỉ thêm các bản ghi A trên, không đụng tới email hay bản ghi khác.
+Bản ghi `@` chỉ được có **một** giá trị A (IP VPS): xóa hẳn bản ghi *URL Redirect*/forwarding cũ, nếu không Mắt Bão
+trả thêm IP của máy chuyển hướng và một phần khách truy cập sẽ không tới được trang.
 
 > **Nguyên tắc vàng:** secret chỉ nằm ở 3 nơi: tệp `.env` ở thư mục gốc repo trên máy quản trị (gitignored, có
 > bản sao trong trình quản lý mật khẩu), tệp `/opt/twings/env/*.env` trên VPS (chmod 600) và mục *Secrets* của

@@ -7,7 +7,7 @@ from apps.notifications.outbox import send_logged
 
 
 def site_url() -> str:
-    return f"https://{settings.MOODLE_HOST or 'tuyensinh.twings.edu.vn'}"
+    return f"https://{settings.MOODLE_HOST or 'twings.edu.vn'}"
 
 
 def learn_url() -> str:

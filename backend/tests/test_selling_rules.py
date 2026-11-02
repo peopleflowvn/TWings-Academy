@@ -119,7 +119,7 @@ def test_seo_links_follow_the_public_domain_reached(client, course, settings):
     assert f"https://thu.twings.edu.vn/khoa-hoc/{course.slug}" in xml
     # internal callers (container name, loopback) get the configured site address
     xml = client.get("/sitemap.xml").content.decode()
-    assert "https://tuyensinh.twings.edu.vn/" in xml and "testserver" not in xml
+    assert "https://twings.edu.vn/" in xml and "testserver" not in xml
 
 
 def test_one_reminder_e_mail_on_the_last_day_of_the_hold(api, registration_payload):
