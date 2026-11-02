@@ -334,3 +334,18 @@ def test_any_enrolment_of_an_external_class_is_skipped_without_moodle(monkeypatc
     enrollment = process(LmsEnrollment.objects.create(order=order, status="waiting"))
     assert enrollment.status == "skipped" and enrollment.access_emailed_at is None
     assert not order.emails.exists()
+
+
+def test_the_enrolment_sweep_leaves_the_old_classes_alone(monkeypatch):
+    from apps.lms import moodle
+    from apps.lms.models import LmsEnrollment
+
+    def no_moodle(*args, **kwargs):
+        raise AssertionError("Moodle must not be called")
+
+    monkeypatch.setattr(moodle, "is_configured", lambda: True)
+    monkeypatch.setattr(moodle, "call", no_moodle)
+    call_command("import_courses", "--apply")
+    _run(apply=True)
+    call_command("sync_lms_enrollments", stdout=io.StringIO())  # the 30-minute job
+    assert not LmsEnrollment.objects.filter(order__cohort__external_lms=True).exists()
