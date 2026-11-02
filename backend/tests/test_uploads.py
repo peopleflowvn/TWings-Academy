@@ -59,9 +59,11 @@ def test_seo_editor_uploads_valid_fonts(staff_client, signature, name, ext):
 
 def test_invalid_font_and_user_without_seo_permission_are_refused(staff_client):
     fake = SimpleUploadedFile("brand.woff2", b"not-a-font")
-    assert staff_client(Role.CONTENT_SEO).post(FONT_URL, {"file": fake}, format="multipart").status_code == 400
+    response = staff_client(Role.CONTENT_SEO).post(FONT_URL, {"file": fake}, format="multipart")
+    assert response.status_code == 400
     font = SimpleUploadedFile("brand.woff", b"wOFFtest-font-data")
-    assert staff_client(Role.FINANCE_ACCOUNTANT).post(FONT_URL, {"file": font}, format="multipart").status_code == 403
+    response = staff_client(Role.FINANCE_ACCOUNTANT).post(FONT_URL, {"file": font}, format="multipart")
+    assert response.status_code == 403
 
 
 def test_public_site_config_exposes_only_public_documents(api):
