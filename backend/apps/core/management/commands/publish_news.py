@@ -12,7 +12,6 @@ from django.db import transaction
 
 from apps.cms.models import Article
 
-
 FIXTURE = Path(settings.BASE_DIR) / "fixtures" / "news_articles.json"
 IMAGES = Path(settings.BASE_DIR) / "fixtures" / "news_images"
 DEMO_SLUGS = {
@@ -34,9 +33,7 @@ class Command(BaseCommand):
         existing_slugs = set(Article.objects.values_list("slug", flat=True))
         unexpected = existing_slugs - DEMO_SLUGS - target_slugs
         if unexpected:
-            raise CommandError(
-                "Refusing to replace non-package articles: " + ", ".join(sorted(unexpected))
-            )
+            raise CommandError("Refusing to replace non-package articles: " + ", ".join(sorted(unexpected)))
 
         image_urls = {}
         for image in sorted(IMAGES.glob("*.webp")):
@@ -70,4 +67,3 @@ class Command(BaseCommand):
         if count != 5:
             raise CommandError(f"Post-publish validation failed: expected 5 published articles, got {count}.")
         self.stdout.write(self.style.SUCCESS("Published 5 articles and 5 images successfully."))
-
