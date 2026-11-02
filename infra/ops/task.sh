@@ -298,6 +298,11 @@ for k in Cohort.objects.select_related(\"course\").order_by(\"course__title\", \
     esac
     ;;
 
+  legacy-crm-audit)
+    # Read-only: the old CRM's imported records checked (counts and order codes only). Changes nothing.
+    remote "cd $APP && sudo docker compose exec -T backend python manage.py legacy_crm_audit"
+    ;;
+
   legacy-crm-preview|legacy-crm)
     # The CRM kept before this system (apps.crm.legacy_import), from the LEGACY_CRM secret of the "ops"
     # environment (never in the repository): legacy-crm takes a backup, then imports; e-mails nobody.
