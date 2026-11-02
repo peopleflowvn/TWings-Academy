@@ -349,3 +349,49 @@ def test_the_enrolment_sweep_leaves_the_old_classes_alone(monkeypatch):
     _run(apply=True)
     call_command("sync_lms_enrollments", stdout=io.StringIO())  # the 30-minute job
     assert not LmsEnrollment.objects.filter(order__cohort__external_lms=True).exists()
+
+
+def test_cleanup_removes_what_reached_moodle_for_the_old_classes(monkeypatch):
+    from apps.lms import moodle
+    from apps.lms.models import LmsEnrollment
+
+    call_command("import_courses", "--apply")
+    _run(apply=True)
+    a = Order.objects.get(customer_name="Nguyễn Văn A")  # EB-K2
+    b = Order.objects.get(customer_name="Trần Thị B")  # RB-K8
+    LmsEnrollment.objects.create(
+        order=a, status="done", moodle_user_id=501, moodle_course_id=35, user_created=True
+    )
+    LmsEnrollment.objects.create(
+        order=b, status="done", moodle_user_id=502, moodle_course_id=36, user_created=True
+    )
+    ids = {Cohort.objects.get(code="EB-K2").id: 35, Cohort.objects.get(code="RB-K8").id: 36}
+    calls = []
+
+    def fake(function, **params):
+        calls.append(function)
+        if function == "core_course_get_courses_by_field":
+            cid = ids.get(params["value"].split(":", 1)[1])
+            return {"courses": [{"id": cid}] if cid else []}
+        if function == "core_enrol_get_users_courses":
+            return (
+                [{"id": 35}] if params["userid"] == 501 else [{"id": 36}, {"id": 99}]
+            )  # 502 studies elsewhere
+        if function == "core_course_delete_courses":
+            raise moodle.MoodleError("not allowed")  # falls back to unenrol + hide
+        return {}
+
+    monkeypatch.setattr(moodle, "is_configured", lambda: True)
+    monkeypatch.setattr(moodle, "call", fake)
+    out = io.StringIO()
+    call_command("cleanup_external_moodle", stdout=out)
+    assert "sẽ xóa 1, giữ 1" in out.getvalue() and LmsEnrollment.objects.filter(status="done").count() == 2
+    assert "core_user_delete_users" not in calls
+    call_command("cleanup_external_moodle", "--apply", stdout=out)
+    assert {"enrol_manual_unenrol_users", "core_course_update_courses", "core_user_delete_users"} <= set(
+        calls
+    )
+    assert set(LmsEnrollment.objects.values_list("status", flat=True)) == {"skipped"}
+    assert LmsEnrollment.objects.get(order=a).moodle_user_id is None  # deleted account
+    assert LmsEnrollment.objects.get(order=b).moodle_user_id == 502  # kept: in another course
+    assert a.timeline_activities.filter(title="Đã gỡ khỏi Moodle").exists()

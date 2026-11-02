@@ -298,6 +298,17 @@ for k in Cohort.objects.select_related(\"course\").order_by(\"course__title\", \
     esac
     ;;
 
+  lms-external-cleanup-preview|lms-external-cleanup)
+    # Moodle courses / accounts made by mistake for classes taught on another platform (02/11/2026):
+    # removed; the apply takes a backup first. Sends nothing.
+    cmd="python manage.py cleanup_external_moodle"
+    if [[ "$TASK" == lms-external-cleanup ]]; then
+      remote "sudo $APP/bin/backup.sh && cd $APP && sudo docker compose exec -T backend $cmd --apply"
+    else
+      remote "cd $APP && sudo docker compose exec -T backend $cmd"
+    fi
+    ;;
+
   legacy-crm-audit)
     # Read-only: the old CRM's imported records checked (counts and order codes only). Changes nothing.
     remote "cd $APP && sudo docker compose exec -T backend python manage.py legacy_crm_audit"
