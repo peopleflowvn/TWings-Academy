@@ -15,6 +15,14 @@ set -a; . "$APP/env/caddy.env"; . "$APP/env/gateway.env"; set +a
 
 log() { echo "gateway-sync: $*"; logger -t twings-deploy "gateway-sync: $*"; }
 
+# 0. GATEWAY_FILE must be the file the gateway really mounts: if the gateway moved to another
+# directory, editing the old copy "succeeds" and reloads the unchanged config without any error.
+mounted="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/etc/caddy/Caddyfile"}}{{.Source}}{{end}}{{end}}' "$GATEWAY_CONTAINER")"
+if [[ "$mounted" != "$GATEWAY_FILE" ]]; then
+  log "FAILED: GATEWAY_FILE is $GATEWAY_FILE but the gateway mounts '${mounted:-nothing}' (fix PROD_GATEWAY__GATEWAY_FILE)"
+  exit 1
+fi
+
 # 1. DNS must already point here, otherwise Caddy would hammer Let's Encrypt with failing challenges.
 public_ip="$(curl -fsS -m 5 https://checkip.amazonaws.com 2>/dev/null | tr -d '[:space:]' || true)"
 points_here() {
