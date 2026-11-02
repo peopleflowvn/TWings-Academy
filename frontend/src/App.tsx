@@ -4,7 +4,8 @@ import {
   Order, 
   CMSSectionsConfig,
   HeroBannerItem,
-  Article
+  Article,
+  Instructor
 } from './types';
 import { 
   COURSES, 
@@ -74,6 +75,7 @@ export default function App() {
   const [courses, setCourses] = useState<Course[]>(LIVE ? [] : COURSES);
   const [orders, setOrders] = useState<Order[]>([]);
   const [articles, setArticles] = useState<Article[]>(LIVE ? [] : INITIAL_ARTICLES);
+  const [instructors, setInstructors] = useState<Instructor[]>(LIVE ? [] : DEFAULT_CMS_SECTIONS.instructors.items);
   const [cmsSections, setCmsSections] = useState<CMSSectionsConfig>(LIVE ? LIVE_SECTIONS : DEFAULT_CMS_SECTIONS);
   const [banners, setBanners] = useState<HeroBannerItem[]>(() => {
     const cached = getCachedBanners();
@@ -119,11 +121,12 @@ export default function App() {
     let cancelled = false;
     const load = async () => {
       const bannerTimestamp = Date.now();
-      const [courseRes, articleRes, bannerRes, sectionsRes] = await Promise.allSettled([
+      const [courseRes, articleRes, bannerRes, sectionsRes, instructorRes] = await Promise.allSettled([
         api.get<Course[]>('/public/courses/'),
         api.get<Paginated<Article>>('/public/articles/'),
         api.get<HeroBannerItem[]>(`/public/banners/?_t=${bannerTimestamp}`),
-        api.get<{ data: CMSSectionsConfig }>('/public/site-config/homepage_sections/')
+        api.get<{ data: CMSSectionsConfig }>('/public/site-config/homepage_sections/'),
+        api.get<Instructor[]>('/public/instructors/')
       ]);
       if (cancelled) return;
       if (courseRes.status === 'fulfilled') {
@@ -140,6 +143,9 @@ export default function App() {
       }
       if (sectionsRes.status === 'fulfilled' && sectionsRes.value.data?.hero) {
         setCmsSections({ ...LIVE_SECTIONS, ...sectionsRes.value.data });
+      }
+      if (instructorRes.status === 'fulfilled') {
+        setInstructors(instructorRes.value);
       }
       setContentLoaded(true);
     };
@@ -453,8 +459,10 @@ export default function App() {
       {currentView === 'about' && (
         <CourseraAboutPage
           aboutData={cmsSections.about}
-          instructors={cmsSections.instructors?.items || []}
+          instructors={instructors}
+          instructorsTitle={cmsSections.instructors?.title}
           photos={cmsSections.gallery?.photos || []}
+          galleryTitle={cmsSections.gallery?.title}
           partners={cmsSections.partners?.items || []}
           onNavigate={handleNavigate}
           onOpenConsultation={() => handleOpenRegistration()}

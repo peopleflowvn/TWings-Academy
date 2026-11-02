@@ -136,6 +136,10 @@ for name, st in ((\"default\", default_storage), (\"private\", storages[\"privat
 '"
     ;;
 
+  publish-about)
+    remote "cd $APP && sudo docker compose exec -T backend python manage.py publish_about_page"
+    ;;
+
   lms-usage)
     # Read-only: how much a vendored Moodle plugin is used, before removing it from lms/.
     remote "cd $APP && sudo docker compose exec -T lms php -r '

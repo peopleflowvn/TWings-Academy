@@ -26,7 +26,9 @@ interface CourseraAboutPageProps {
   aboutData?: CMSSectionsConfig['about'];
   /** The instructors, photos and partners staff manage in /app (homepage sections); empty: not shown. */
   instructors: CMSSectionsConfig['instructors']['items'];
+  instructorsTitle?: string;
   photos: CMSSectionsConfig['gallery']['photos'];
+  galleryTitle?: string;
   partners: CMSSectionsConfig['partners']['items'];
   onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about') => void;
   onOpenConsultation: () => void;
@@ -35,7 +37,9 @@ interface CourseraAboutPageProps {
 export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({ 
   aboutData, 
   instructors,
+  instructorsTitle,
   photos,
+  galleryTitle,
   partners,
   onNavigate,
   onOpenConsultation 
@@ -51,7 +55,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
     'Đồng hành cùng học viên trong quá trình định hướng nghề nghiệp, phát triển kỹ năng và gia tăng lợi thế cạnh tranh trên thị trường tài chính - ngân hàng.'
   ];
 
-  const coreValues = [
+  const defaultCoreValues = [
     {
       name: 'Thấu hiểu (Empathy)',
       desc: 'Lắng nghe nhu cầu học tập, thấu hiểu điểm xuất phát và đồng hành định hướng mục tiêu sự nghiệp riêng của từng học viên.',
@@ -84,14 +88,31 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
     }
   ];
 
-  const stats = [
+  const coreValueIcons = [HeartHandshake, CheckCircle2, Layers, Lightbulb, TrendingUp];
+  const coreValues = aboutData?.coreValues?.length
+    ? aboutData.coreValues.map((value, index) => {
+        const separator = value.indexOf(':');
+        return {
+          name: separator >= 0 ? value.slice(0, separator).trim() : value.trim(),
+          desc: separator >= 0 ? value.slice(separator + 1).trim() : '',
+          icon: coreValueIcons[index % coreValueIcons.length],
+          badge: String(index + 1).padStart(2, '0'),
+        };
+      })
+    : defaultCoreValues;
+
+  const defaultStats = [
     { value: '100%', label: 'Giảng viên cấp Giám đốc', sub: '20+ năm kinh nghiệm ngân hàng', icon: Briefcase },
     { value: '5.000+', label: 'Học viên đã tốt nghiệp', sub: 'Đã và đang làm việc tại các Bank', icon: Users },
     { value: '95%', label: 'Tỷ lệ ứng dụng thực tế', sub: 'Vượt qua vòng phỏng vấn tuyển dụng', icon: TrendingUp },
     { value: 'Độc quyền', label: 'Bảo trợ việc làm tại MSB', sub: 'Hệ sinh thái đối tác ROX Group', icon: Building2 },
   ];
+  const stats = aboutData?.stats?.length ? aboutData.stats.map((row, index) => {
+    const [value, label, sub] = row.split('|').map((part) => part.trim());
+    return { value, label, sub, icon: [Briefcase, Users, TrendingUp, Building2][index % 4] };
+  }) : defaultStats;
 
-  const pillars = [
+  const defaultPillars = [
     {
       title: 'Hồ sơ & Case Study thật 100%',
       desc: 'Học viên trực tiếp xử lý các bộ hồ sơ thẩm định tín dụng, bóc tách báo cáo CIC và tài chính từ các chi nhánh ngân hàng thương mại thực tế.',
@@ -111,6 +132,10 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
       color: 'bg-emerald-50 text-emerald-700'
     }
   ];
+  const pillars = aboutData?.pillars?.length ? aboutData.pillars.map((row, index) => {
+    const [title, desc] = row.split('|').map((part) => part.trim());
+    return { title, desc, icon: [ShieldCheck, Sparkles, Award][index % 3], color: ['bg-[#D7F5FF] text-[#0073C1]', 'bg-orange-50 text-[#EA580C]', 'bg-emerald-50 text-emerald-700'][index % 3] };
+  }) : defaultPillars;
 
   return (
     <div className="min-h-screen bg-slate-50 text-[#424242]">
@@ -123,18 +148,15 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
         <div className="max-w-5xl mx-auto text-center space-y-6 sm:space-y-8 relative z-10">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#D7F5FF]/10 border border-[#5FBEFF]/30 text-[#5FBEFF] text-xs font-bold uppercase tracking-widest backdrop-blur-md shadow-xs">
             <Sparkles className="w-3.5 h-3.5 text-[#5FBEFF] animate-pulse" />
-            <span>Học viện Đào tạo Thực chiến Tài chính – Ngân hàng</span>
+            <span>{aboutData?.heroEyebrow || 'Học viện Đào tạo Thực chiến Tài chính – Ngân hàng'}</span>
           </div>
 
           <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight uppercase font-sans">
-            NÂNG TẦM NĂNG LỰC,{' '}
-            <span className="bg-gradient-to-r from-[#5FBEFF] via-[#2C93E8] to-[#0073C1] bg-clip-text text-transparent">
-              KIẾN TẠO TƯƠNG LAI
-            </span>
+            {aboutData?.heroHeadline || 'NÂNG TẦM NĂNG LỰC, KIẾN TẠO TƯƠNG LAI'}
           </h1>
 
           <p className="max-w-3xl mx-auto text-sm sm:text-base md:text-lg text-slate-200 font-normal leading-relaxed">
-            TWings Academy là học viện tiên phong tại Việt Nam thu hẹp khoảng cách giữa giảng đường lý thuyết và thực tiễn khắt khe của ngành ngân hàng, đào tạo nhân sự thực chiến sẵn sàng bứt phá sự nghiệp.
+            {aboutData?.heroDescription || lead}
           </p>
 
           <div className="pt-2 sm:pt-4 flex flex-wrap justify-center gap-3.5 sm:gap-4">
@@ -142,7 +164,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
               onClick={() => onNavigate('catalog')}
               className="px-6 sm:px-8 py-3.5 bg-gradient-to-r from-[#5FBEFF] via-[#0073C1] to-[#0E6BBB] hover:brightness-110 text-white font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2 cursor-pointer hover:scale-102"
             >
-              <span>Khám phá các khóa học</span>
+              <span>{aboutData?.heroPrimaryButton || 'Khám phá các khóa học'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
@@ -151,7 +173,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
               className="px-6 sm:px-8 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs sm:text-sm rounded-xl transition-all backdrop-blur-md cursor-pointer hover:scale-102 flex items-center gap-2"
             >
               <PhoneCall className="w-4 h-4 text-[#5FBEFF]" />
-              <span>Đăng ký nhận tư vấn 1-1</span>
+              <span>{aboutData?.heroSecondaryButton || 'Đăng ký nhận tư vấn 1-1'}</span>
             </button>
           </div>
         </div>
@@ -184,10 +206,10 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
         <div className="bg-white rounded-3xl p-6 sm:p-12 lg:p-14 shadow-xs border border-[#E1E6EA] space-y-8">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D7F5FF] text-[#0073C1] text-xs font-bold uppercase tracking-wider">
-              <span>Về chúng tôi</span>
+              <span>{subtitle}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#263060] tracking-tight">
-              Học Viện Tiên Phong Mô Hình Đào Tạo Thực Chiến & Hệ Sinh Thái Short Course
+              {title}
             </h2>
           </div>
 
@@ -206,10 +228,10 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
             </div>
             <div className="space-y-1.5">
               <h3 className="font-black text-[#263060] text-base sm:text-lg">
-                Triết lý "Học Đi Đôi Với Hành" (Learn by Doing)
+                {aboutData?.philosophyTitle || 'Học đi đôi với hành'}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Chúng tôi không dạy lý thuyết hàn lâm. Mọi bài học tại TWings Academy đều xoay quanh việc phân tích tình huống thực tế, giải quyết bài toán nghiệp vụ cụ thể và trang bị kỹ năng ứng xử thực chiến giúp học viên đạt chỉ tiêu KPI ngay trong tháng đầu nhận việc.
+                {aboutData?.philosophyDescription || 'Mỗi bài học được xây dựng quanh tình huống và bài toán nghiệp vụ thực tế.'}
               </p>
             </div>
           </div>
@@ -247,14 +269,14 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
                 <Target className="w-6 h-6" />
               </div>
               <h3 className="text-xl sm:text-2xl font-black text-[#263060]">
-                Tầm Nhìn Chiến Lược 2030
+                {aboutData?.visionTitle || 'Tầm nhìn'}
               </h3>
               <p className="text-sm text-slate-600 leading-relaxed text-justify">
                 {vision}
               </p>
             </div>
             <div className="pt-4 border-t border-[#E1E6EA] text-xs font-bold text-[#0073C1] flex items-center gap-1.5">
-              <span>Học viện hàng đầu Việt Nam về đào tạo thực chiến</span>
+              <span>{aboutData?.visionFooter || 'Kiến thức thực tiễn · Năng lực bền vững · Cơ hội rộng mở'}</span>
             </div>
           </div>
 
@@ -265,7 +287,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <h3 className="text-xl sm:text-2xl font-black text-[#263060]">
-                Sứ Mệnh Hành Động
+                {aboutData?.missionTitle || 'Sứ mệnh'}
               </h3>
               <ul className="space-y-3">
                 {mission.map((m, idx) => (
@@ -277,7 +299,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
               </ul>
             </div>
             <div className="pt-4 border-t border-[#E1E6EA] text-xs font-bold text-[#0073C1] flex items-center gap-1.5">
-              <span>Đồng hành cùng sự nghiệp tài chính của học viên</span>
+              <span>{aboutData?.missionFooter || 'Đồng hành cùng sự phát triển nghề nghiệp của học viên'}</span>
             </div>
           </div>
         </div>
@@ -286,13 +308,13 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
         <div className="space-y-8">
           <div className="text-center max-w-2xl mx-auto space-y-2.5">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D7F5FF] text-[#0073C1] text-xs font-bold uppercase tracking-wider">
-              <span>Nền tảng văn hóa</span>
+              <span>{aboutData?.coreValuesEyebrow || 'Nền tảng văn hóa'}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#263060]">
-              5 Giá Trị Cốt Lõi Tại TWings Academy
+              {aboutData?.coreValuesTitle || 'Giá trị cốt lõi tại TWings Academy'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              Kim chỉ nam định hướng toàn bộ hoạt động giảng dạy, nghiên cứu và kết nối doanh nghiệp.
+              {aboutData?.coreValuesDescription || 'Những nguyên tắc định hướng cách TWings đồng hành cùng học viên.'}
             </p>
           </div>
 
@@ -331,13 +353,13 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
         <div className="space-y-8">
           <div className="text-center max-w-2xl mx-auto space-y-2.5">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D7F5FF] text-[#0073C1] text-xs font-bold uppercase tracking-wider">
-              <span>Đội ngũ chuyên gia</span>
+              <span>{aboutData?.instructorsEyebrow || 'Đội ngũ chuyên gia'}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#263060]">
-              Đội Ngũ Giảng Viên Hàng Đầu Tại TWings
+              {instructorsTitle || 'Đội Ngũ Giảng Viên Hàng Đầu Tại TWings'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              Các Giám đốc Khối, Trưởng phòng chiến lược và Chuyên gia cấp cao trực tiếp giảng dạy và cố vấn 1-1.
+              {aboutData?.instructorsDescription || 'Đội ngũ chuyên gia giàu kinh nghiệm trực tiếp giảng dạy và chia sẻ kinh nghiệm thực tế.'}
             </p>
           </div>
 
@@ -372,7 +394,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
                   </div>
 
                   <div className="pt-3 border-t border-[#E1E6EA] flex items-center justify-between text-xs font-bold text-[#0073C1]">
-                    <span>Cố vấn chuyên môn TWings</span>
+                    <span>{aboutData?.instructorCardFooter || 'Chuyên gia đồng hành cùng TWings'}</span>
                     <Check className="w-4 h-4 text-emerald-600" />
                   </div>
                 </div>
@@ -387,13 +409,13 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
         <div className="space-y-8">
           <div className="text-center max-w-2xl mx-auto space-y-2.5">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D7F5FF] text-[#0073C1] text-xs font-bold uppercase tracking-wider">
-              <span>Hình ảnh thực tế</span>
+              <span>{aboutData?.galleryEyebrow || 'Hình ảnh thực tế'}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#263060]">
-              Khoảnh Khắc Học Viên & Hoạt Động Đào Tạo
+              {galleryTitle || 'Khoảnh Khắc Học Viên & Hoạt Động Đào Tạo'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              Những buổi học thực chiến, lễ bảo vệ phương án thẩm định và trao chứng nhận tại TWings Academy.
+              {aboutData?.galleryDescription || 'Những khoảnh khắc học tập và thực hành tại TWings Academy.'}
             </p>
           </div>
 
@@ -428,10 +450,10 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
         <div className="bg-white rounded-3xl p-6 sm:p-10 border border-[#E1E6EA] space-y-6">
           <div className="text-center space-y-2">
             <h3 className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">
-              ĐỐI TÁC CHIẾN LƯỢC ĐỒNG HÀNH
+              {aboutData?.partnersTitle || 'ĐỐI TÁC ĐỒNG HÀNH'}
             </h3>
             <p className="text-base sm:text-lg font-black text-[#263060]">
-              Kết nối tuyển dụng và chuẩn hóa nguồn nhân lực cùng các định chế lớn
+              {aboutData?.partnersDescription || 'Kết nối đào tạo với nhu cầu phát triển nguồn nhân lực của doanh nghiệp.'}
             </p>
           </div>
 
@@ -460,15 +482,15 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
           <div className="max-w-3xl space-y-5 relative z-10">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D7F5FF]/10 border border-[#5FBEFF]/30 text-[#5FBEFF] text-xs font-bold uppercase tracking-widest backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5 text-[#5FBEFF]" />
-              <span>Chắp cánh sự nghiệp 2026</span>
+              <span>{aboutData?.ctaEyebrow || 'BẮT ĐẦU HÀNH TRÌNH PHÁT TRIỂN NĂNG LỰC'}</span>
             </span>
 
             <h3 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-              Sẵn Sàng Bứt Phá Cùng TWings Academy?
+              {aboutData?.ctaTitle || 'Sẵn sàng tiến xa hơn cùng TWings Academy?'}
             </h3>
 
             <p className="text-xs sm:text-base text-slate-200 leading-relaxed max-w-2xl">
-              Dù bạn là sinh viên chuẩn bị bước vào các kỳ thi tuyển ngân hàng hay nhân sự muốn nâng cao nghiệp vụ thẩm định tín dụng, đội ngũ chuyên gia TWings luôn sẵn sàng đồng hành cùng bạn.
+              {aboutData?.ctaDescription || 'Khám phá chương trình phù hợp hoặc để đội ngũ TWings tư vấn lộ trình học tập dành cho bạn.'}
             </p>
 
             <div className="pt-3 flex flex-wrap gap-3.5 items-center">
@@ -476,7 +498,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
                 onClick={() => onNavigate('catalog')}
                 className="px-6 sm:px-8 py-3.5 bg-gradient-to-r from-[#5FBEFF] via-[#0073C1] to-[#0E6BBB] hover:brightness-110 text-white font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg shadow-blue-500/20 cursor-pointer hover:scale-102 flex items-center gap-2"
               >
-                <span>Xem danh mục khóa học</span>
+                <span>{aboutData?.ctaPrimaryButton || 'Xem danh mục khóa học'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -485,7 +507,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
                 className="px-6 sm:px-8 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs sm:text-sm rounded-xl transition-all backdrop-blur-md cursor-pointer hover:scale-102 flex items-center gap-2"
               >
                 <PhoneCall className="w-4 h-4 text-[#5FBEFF]" />
-                <span>Đăng ký nhận tư vấn lộ trình</span>
+                <span>{aboutData?.ctaSecondaryButton || 'Đăng ký nhận tư vấn lộ trình'}</span>
               </button>
             </div>
           </div>

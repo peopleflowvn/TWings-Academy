@@ -29,7 +29,7 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
 }) => {
   const [sections, setSections] = useState<CMSSectionsConfig>(cmsSections);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [activeSubSection, setActiveSubSection] = useState<'intro' | 'shelves' | 'plus' | 'instructors' | 'about' | 'faq' | 'testimonials'>('intro');
+  const [activeSubSection, setActiveSubSection] = useState<'intro' | 'shelves' | 'plus' | 'about' | 'gallery' | 'faq' | 'testimonials'>('intro');
 
   // FAQ questions are edited here; until saved once, the editor starts from the website's default list.
   const faqItems: FAQItem[] = sections.faq?.items?.length ? sections.faq.items : FAQ_ITEMS;
@@ -59,6 +59,16 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
     setTestimonialSection({ items: testimonials.map((t) => (t.id === id ? { ...t, ...patch } : t)) });
   const updateFaq = (id: string, patch: Partial<FAQItem>) =>
     setFaqItems(faqItems.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  const galleryPhotos = sections.gallery?.photos || [];
+  const setGalleryPhotos = (photos: CMSSectionsConfig['gallery']['photos']) =>
+    setSections({
+      ...sections,
+      gallery: {
+        enabled: sections.gallery?.enabled ?? true,
+        title: sections.gallery?.title || 'Hình ảnh học viện TWings',
+        photos,
+      },
+    });
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,12 +149,21 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
         </button>
         <button
           type="button"
+          onClick={() => setActiveSubSection('gallery')}
+          className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+            activeSubSection === 'gallery' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+          }`}
+        >
+          5. Hình ảnh thực tế
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveSubSection('faq')}
           className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             activeSubSection === 'faq' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
           }`}
         >
-          5. Giải Đáp Thắc Mắc (FAQ)
+          6. Giải Đáp Thắc Mắc (FAQ)
         </button>
         <button
           type="button"
@@ -153,9 +172,84 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
             activeSubSection === 'testimonials' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
           }`}
         >
-          6. Cảm Nhận Học Viên
+          7. Cảm Nhận Học Viên
         </button>
       </div>
+
+      {activeSubSection === 'gallery' && (
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-4 text-xs">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="font-bold text-sm text-slate-900">Hình ảnh thực tế trên trang Về chúng tôi</h3>
+              <p className="text-slate-500 mt-1">Trang công khai hiển thị tối đa 6 ảnh đầu tiên theo thứ tự dưới đây.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGalleryPhotos([
+                ...galleryPhotos,
+                { id: `gallery-${Date.now()}`, url: '', caption: '' },
+              ])}
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-slate-900 text-white font-bold whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5" /> Thêm ảnh
+            </button>
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Tiêu đề khối hình ảnh</label>
+            <input
+              type="text"
+              value={sections.gallery?.title || ''}
+              onChange={(e) => setSections({
+                ...sections,
+                gallery: { ...sections.gallery, title: e.target.value }
+              })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+            />
+          </div>
+
+          {galleryPhotos.length === 0 && (
+            <div className="p-6 text-center text-slate-500 border border-dashed border-slate-300 rounded-2xl">
+              Chưa có hình ảnh. Nhấn “Thêm ảnh” để bắt đầu.
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {galleryPhotos.map((photo, index) => (
+              <div key={photo.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-700">Ảnh {index + 1}</span>
+                  <button
+                    type="button"
+                    title="Xóa ảnh"
+                    onClick={() => setGalleryPhotos(galleryPhotos.filter((item) => item.id !== photo.id))}
+                    className="p-2 rounded-lg text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <ImageUploadField
+                  label="Tệp hình ảnh"
+                  value={photo.url || photo.imageUrl || ''}
+                  onChange={(url) => setGalleryPhotos(galleryPhotos.map((item) =>
+                    item.id === photo.id ? { ...item, url, imageUrl: url } : item
+                  ))}
+                  previewClassName="w-full h-36 rounded-xl object-cover"
+                />
+                <textarea
+                  rows={2}
+                  value={photo.caption || ''}
+                  placeholder="Chú thích hình ảnh"
+                  onChange={(e) => setGalleryPhotos(galleryPhotos.map((item) =>
+                    item.id === photo.id ? { ...item, caption: e.target.value } : item
+                  ))}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl bg-white"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {activeSubSection === 'testimonials' && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-4 text-xs">
@@ -479,11 +573,98 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
       {activeSubSection === 'about' && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-4 text-xs">
           <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">
-            Về TWings Academy: Tầm Nhìn, Sứ Mệnh & Giá Trị Cốt Lõi (PDF Trang 11)
+            Trang Về chúng tôi: Nội dung giới thiệu, Tầm nhìn, Sứ mệnh & Giá trị cốt lõi
           </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Tiêu đề giới thiệu</label>
+              <input
+                type="text"
+                value={sections.about?.title || ''}
+                onChange={(e) => setSections({
+                  ...sections,
+                  about: { ...sections.about, title: e.target.value }
+                })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+              />
+            </div>
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Dòng giới thiệu ngắn</label>
+              <input
+                type="text"
+                value={sections.about?.subtitle || ''}
+                onChange={(e) => setSections({
+                  ...sections,
+                  about: { ...sections.about, subtitle: e.target.value }
+                })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Nội dung Về chúng tôi</label>
+            <p className="text-[11px] text-slate-500 mb-1.5">Ngắt hai dòng để tạo đoạn văn mới trên trang công khai.</p>
+            <textarea
+              rows={7}
+              value={sections.about?.lead || ''}
+              onChange={(e) => setSections({
+                ...sections,
+                about: { ...sections.about, lead: e.target.value }
+              })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl leading-relaxed"
+            />
+          </div>
+
+          <div className="border-t border-slate-200 pt-4 space-y-4">
+            <h4 className="font-bold text-sm text-slate-900">Banner đầu trang</h4>
+            {([
+              ['heroEyebrow', 'Dòng nhãn'],
+              ['heroHeadline', 'Tiêu đề chính'],
+              ['heroDescription', 'Mô tả'],
+              ['heroPrimaryButton', 'Nút xem khóa học'],
+              ['heroSecondaryButton', 'Nút nhận tư vấn'],
+            ] as const).map(([key, label]) => (
+              <div key={key}>
+                <label className="font-bold text-slate-700 block mb-1">{label}</label>
+                <textarea rows={key === 'heroDescription' ? 3 : 1} value={sections.about?.[key] || ''}
+                  onChange={(e) => setSections({ ...sections, about: { ...sections.about, [key]: e.target.value } })}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl" />
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Số liệu nổi bật</label>
+            <p className="text-[11px] text-slate-500 mb-1.5">Mỗi dòng: Số liệu | Tiêu đề | Mô tả</p>
+            <textarea rows={5} value={(sections.about?.stats || []).join('\n')}
+              onChange={(e) => setSections({ ...sections, about: { ...sections.about, stats: e.target.value.split('\n').filter(Boolean) } })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs" />
+          </div>
+
+          <div className="border-t border-slate-200 pt-4 space-y-4">
+            <h4 className="font-bold text-sm text-slate-900">Phương pháp đào tạo & trụ cột</h4>
+            <input type="text" value={sections.about?.philosophyTitle || ''} placeholder="Tiêu đề phương pháp"
+              onChange={(e) => setSections({ ...sections, about: { ...sections.about, philosophyTitle: e.target.value } })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold" />
+            <textarea rows={3} value={sections.about?.philosophyDescription || ''} placeholder="Mô tả phương pháp"
+              onChange={(e) => setSections({ ...sections, about: { ...sections.about, philosophyDescription: e.target.value } })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl" />
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Các trụ cột</label>
+              <p className="text-[11px] text-slate-500 mb-1.5">Mỗi dòng: Tiêu đề | Mô tả</p>
+              <textarea rows={4} value={(sections.about?.pillars || []).join('\n')}
+                onChange={(e) => setSections({ ...sections, about: { ...sections.about, pillars: e.target.value.split('\n').filter(Boolean) } })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs" />
+            </div>
+          </div>
 
           <div>
             <label className="font-bold text-slate-700 block mb-1">Tầm nhìn (Vision)</label>
+            <input type="text" value={sections.about?.visionTitle || ''} placeholder="Tiêu đề Tầm nhìn"
+              onChange={(e) => setSections({ ...sections, about: { ...sections.about, visionTitle: e.target.value } })}
+              className="w-full p-2.5 mb-2 border border-slate-300 rounded-xl font-bold" />
             <textarea
               rows={3}
               value={sections.about?.vision || 'Trở thành học viện hàng đầu Việt Nam về đào tạo thực chiến và đào tạo ngắn hạn trong lĩnh vực tài chính - ngân hàng, là cầu nối uy tín giúp học viên, sinh viên và người đi làm nâng cao năng lực nghề nghiệp, sẵn sàng thích ứng với nhu cầu ngày càng khắt khe của thị trường lao động.'}
@@ -493,10 +674,16 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
               })}
               className="w-full p-2.5 border border-slate-300 rounded-xl leading-relaxed"
             />
+            <input type="text" value={sections.about?.visionFooter || ''} placeholder="Dòng nhấn dưới Tầm nhìn"
+              onChange={(e) => setSections({ ...sections, about: { ...sections.about, visionFooter: e.target.value } })}
+              className="w-full p-2.5 mt-2 border border-slate-300 rounded-xl" />
           </div>
 
           <div>
             <label className="font-bold text-slate-700 block mb-1">Sứ mệnh (Mission - Các gạch đầu dòng)</label>
+            <input type="text" value={sections.about?.missionTitle || ''} placeholder="Tiêu đề Sứ mệnh"
+              onChange={(e) => setSections({ ...sections, about: { ...sections.about, missionTitle: e.target.value } })}
+              className="w-full p-2.5 mb-2 border border-slate-300 rounded-xl font-bold" />
             <textarea
               rows={4}
               value={sections.about?.mission?.join('\n') || '• Cung cấp các chương trình đào tạo thực chiến và khóa học Short course ngắn hạn, tập trung vào kiến thức cốt lõi.\n• Xây dựng môi trường học tập năng động, linh hoạt, phù hợp với học viên và người đi làm.\n• Đồng hành cùng học viên trong quá trình định hướng nghề nghiệp và gia tăng lợi thế cạnh tranh.'}
@@ -510,6 +697,12 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
 
           <div>
             <label className="font-bold text-slate-700 block mb-1">Giá trị cốt lõi (Core Values)</label>
+            <input type="text" value={sections.about?.coreValuesTitle || ''} placeholder="Tiêu đề Giá trị cốt lõi"
+              onChange={(e) => setSections({ ...sections, about: { ...sections.about, coreValuesTitle: e.target.value } })}
+              className="w-full p-2.5 mb-2 border border-slate-300 rounded-xl font-bold" />
+            <textarea rows={2} value={sections.about?.coreValuesDescription || ''} placeholder="Mô tả Giá trị cốt lõi"
+              onChange={(e) => setSections({ ...sections, about: { ...sections.about, coreValuesDescription: e.target.value } })}
+              className="w-full p-2.5 mb-2 border border-slate-300 rounded-xl" />
             <textarea
               rows={4}
               value={sections.about?.coreValues?.join('\n') || '• Thấu hiểu: Lắng nghe nhu cầu học tập và định hướng nghề nghiệp.\n• Thực tiễn: Tập trung vào kiến thức và kỹ năng có thể áp dụng ngay.\n• Tinh gọn: Thiết kế nội dung ngắn hạn, cô đọng, đúng trọng tâm.\n• Sáng tạo: Không ngừng đổi mới nội dung và phương pháp đào tạo.\n• Nâng tầm: Đồng hành cùng học viên mở rộng cơ hội nghề nghiệp.'}
@@ -519,6 +712,33 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
               })}
               className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs leading-relaxed"
             />
+          </div>
+
+          <div className="border-t border-slate-200 pt-4 space-y-3">
+            <h4 className="font-bold text-sm text-slate-900">Các khối cuối trang</h4>
+            {([
+              ['instructorsDescription', 'Mô tả đội ngũ giảng viên'],
+              ['instructorsEyebrow', 'Nhãn đội ngũ giảng viên'],
+              ['instructorCardFooter', 'Dòng cuối thẻ giảng viên'],
+              ['galleryDescription', 'Mô tả hình ảnh thực tế'],
+              ['galleryEyebrow', 'Nhãn hình ảnh thực tế'],
+              ['missionFooter', 'Dòng nhấn dưới Sứ mệnh'],
+              ['coreValuesEyebrow', 'Nhãn Giá trị cốt lõi'],
+              ['partnersTitle', 'Tiêu đề đối tác'],
+              ['partnersDescription', 'Mô tả đối tác'],
+              ['ctaEyebrow', 'Nhãn khối kêu gọi hành động'],
+              ['ctaTitle', 'Tiêu đề kêu gọi hành động'],
+              ['ctaDescription', 'Mô tả kêu gọi hành động'],
+              ['ctaPrimaryButton', 'Nút xem khóa học cuối trang'],
+              ['ctaSecondaryButton', 'Nút tư vấn cuối trang'],
+            ] as const).map(([key, label]) => (
+              <div key={key}>
+                <label className="font-bold text-slate-700 block mb-1">{label}</label>
+                <textarea rows={key.endsWith('Description') ? 2 : 1} value={sections.about?.[key] || ''}
+                  onChange={(e) => setSections({ ...sections, about: { ...sections.about, [key]: e.target.value } })}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl" />
+              </div>
+            ))}
           </div>
         </div>
       )}
