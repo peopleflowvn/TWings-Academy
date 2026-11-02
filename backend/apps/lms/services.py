@@ -221,6 +221,12 @@ def process(enrollment: LmsEnrollment) -> LmsEnrollment:
         enrollment.last_error = "Đơn chưa thanh toán" if order else "Học viên không còn trong danh sách lớp"
         enrollment.save()
         return enrollment
+    target = enrollment.target_cohort
+    if target is not None and target.external_lms:
+        # Taught on another platform (a class run before this system): never on Moodle, no e-mail.
+        enrollment.status, enrollment.last_error = "skipped", "Lớp học trên nền tảng khác"
+        enrollment.save()
+        return enrollment
     if not enrollment.learner_email or enrollment.course is None:
         enrollment.status = "skipped"
         enrollment.last_error = "Thiếu email học viên hoặc khóa học"

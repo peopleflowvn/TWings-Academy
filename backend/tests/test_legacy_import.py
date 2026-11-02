@@ -317,3 +317,20 @@ def test_corrections_after_the_import(monkeypatch):
         timezone.localdate(Order.objects.get(customer_name="Đỗ E").first_response_at).isoformat()
         == "2026-03-23"
     )
+
+
+def test_any_enrolment_of_an_external_class_is_skipped_without_moodle(monkeypatch):
+    from apps.lms import moodle
+    from apps.lms.models import LmsEnrollment
+    from apps.lms.services import process
+
+    def no_moodle(*args, **kwargs):
+        raise AssertionError("Moodle must not be called")
+
+    monkeypatch.setattr(moodle, "call", no_moodle)
+    call_command("import_courses", "--apply")
+    _run(apply=True)
+    order = Order.objects.get(customer_name="Nguyễn Văn A")  # in EB-K2, taught elsewhere
+    enrollment = process(LmsEnrollment.objects.create(order=order, status="waiting"))
+    assert enrollment.status == "skipped" and enrollment.access_emailed_at is None
+    assert not order.emails.exists()

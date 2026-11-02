@@ -181,6 +181,40 @@ class Command(BaseCommand):
             "không học viên cũ nào được ghi danh Moodle",
             enrolled.values_list("order__order_code", flat=True),
         )
+        if enrolled.exists() or sent.exists():  # what happened, to put it right
+            local = timezone.localtime
+            out("   ghi danh LMS (trạng thái | lớp | tạo TK | khóa Moodle | giờ tạo → ghi danh):")
+            rows = Counter(
+                (
+                    e.status,
+                    e.order.cohort.code if e.order.cohort else "-",
+                    e.user_created,
+                    e.moodle_course_id,
+                    f"{local(e.created_at):%d/%m %H:%M}",
+                    f"{local(e.enrolled_at):%d/%m %H:%M}" if e.enrolled_at else "-",
+                )
+                for e in enrolled.select_related("order__cohort")
+            )
+            for key, count in sorted(rows.items(), key=lambda kv: kv[0][4]):
+                out(f"     {count:3} × {' | '.join(str(k) for k in key)}")
+            out("   chi tiết email (mẫu | trạng thái | người gửi | giờ):")
+            mails = Counter(
+                (
+                    m.template_code,
+                    m.status,
+                    "nhân viên" if m.sent_by_id else "hệ thống",
+                    f"{local(m.created_at):%d/%m %H}h",
+                )
+                for m in sent
+            )
+            for key, count in sorted(mails.items(), key=lambda kv: kv[0][3]):
+                out(f"     {count:3} × {' | '.join(key)}")
+            from apps.core.models import AuditLog
+
+            for log in AuditLog.objects.filter(at__gte=since, action__startswith="lms").order_by("at")[:20]:
+                out(f"   log {local(log.at):%d/%m %H:%M} {log.action} {str(log.details)[:70]}")
+            courses = sorted({e.moodle_course_id for e in enrolled if e.moodle_course_id})
+            out(f"   khóa Moodle liên quan: {courses}")
         waiting = LmsEnrollment.objects.filter(order__in=legacy, status="waiting").count()
         out(f"   chờ xếp lớp trên LMS (đã đóng phí, chưa có lớp): {waiting}")
         check(
