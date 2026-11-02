@@ -464,6 +464,7 @@ export default function App() {
           photos={cmsSections.gallery?.photos || []}
           galleryTitle={cmsSections.gallery?.title}
           partners={cmsSections.partners?.items || []}
+          partnersTitle={cmsSections.partners?.title}
           onNavigate={handleNavigate}
           onOpenConsultation={() => handleOpenRegistration()}
         />

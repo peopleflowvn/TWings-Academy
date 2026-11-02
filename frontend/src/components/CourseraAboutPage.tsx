@@ -21,6 +21,7 @@ import {
   PhoneCall
 } from 'lucide-react';
 import { CMSSectionsConfig } from '../types';
+import { CourseraPartnersBar } from './CourseraPartnersBar';
 
 interface CourseraAboutPageProps {
   aboutData?: CMSSectionsConfig['about'];
@@ -30,6 +31,7 @@ interface CourseraAboutPageProps {
   photos: CMSSectionsConfig['gallery']['photos'];
   galleryTitle?: string;
   partners: CMSSectionsConfig['partners']['items'];
+  partnersTitle?: string;
   onNavigate: (view: 'home' | 'catalog' | 'course-detail' | 'articles' | 'article-detail' | 'about') => void;
   onOpenConsultation: () => void;
 }
@@ -41,6 +43,7 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
   photos,
   galleryTitle,
   partners,
+  partnersTitle,
   onNavigate,
   onOpenConsultation 
 }) => {
@@ -447,31 +450,9 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
 
         {/* 8. Đối tác đồng hành chiến lược */}
         {partners.length > 0 && (
-        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-[#E1E6EA] space-y-6">
-          <div className="text-center space-y-2">
-            <h3 className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">
-              {aboutData?.partnersTitle || 'ĐỐI TÁC ĐỒNG HÀNH'}
-            </h3>
-            <p className="text-base sm:text-lg font-black text-[#263060]">
-              {aboutData?.partnersDescription || 'Kết nối đào tạo với nhu cầu phát triển nguồn nhân lực của doanh nghiệp.'}
-            </p>
+          <div className="rounded-3xl overflow-hidden border border-[#E1E6EA]">
+            <CourseraPartnersBar partners={partners} title={partnersTitle} />
           </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 pt-2">
-            {partners.map((p) => (
-              <div 
-                key={p.id}
-                className="px-5 py-3 rounded-2xl bg-slate-50 border border-[#E1E6EA] flex items-center gap-3 select-none"
-              >
-                <Building2 className="w-5 h-5 text-[#0073C1]" />
-                <div className="text-left">
-                  <div className="text-xs sm:text-sm font-black text-[#263060]">{p.name}</div>
-                  <div className="text-[10px] text-slate-500 line-clamp-1">{p.slogan}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
         )}
 
         {/* 9. Final Call to Action Banner: Brand Gradient */}
