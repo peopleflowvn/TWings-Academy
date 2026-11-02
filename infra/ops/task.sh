@@ -303,7 +303,39 @@ for k in Cohort.objects.select_related(\"course\").order_by(\"course__title\", \
     # removed; the apply takes a backup first. Sends nothing.
     cmd="python manage.py cleanup_external_moodle"
     if [[ "$TASK" == lms-external-cleanup ]]; then
-      remote "sudo $APP/bin/backup.sh && cd $APP && sudo docker compose exec -T backend $cmd --apply"
+      result=$(remote "sudo $APP/bin/backup.sh && cd $APP && sudo docker compose exec -T backend $cmd --apply")
+      echo "$result"
+      line=$(grep '^MOODLE_DELETE ' <<<"$result" || true)
+      courses=$(sed -n 's/.* courses=\([0-9,]*\).*/\1/p' <<<"$line")
+      users=$(sed -n 's/.* users=\([0-9,]*\).*/\1/p' <<<"$line")
+      # Moodle's own deletion (only courses made for an intake: idnumber "cohort:…"; never an admin).
+      remote "cd $APP && sudo docker compose exec -T lms php -- '$courses' '$users'" <<'PHP'
+<?php
+define('CLI_SCRIPT', true);
+require('/var/www/moodle/config.php');
+require_once($CFG->dirroot . '/course/lib.php');
+require_once($CFG->dirroot . '/user/lib.php');
+\core\session\manager::set_user(get_admin());
+foreach (array_filter(explode(',', $argv[1] ?? '')) as $id) {
+    $course = $DB->get_record('course', ['id' => (int) $id]);
+    if ($course && str_starts_with((string) $course->idnumber, 'cohort:')) {
+        delete_course($course, false);
+        echo "deleted course $id\n";
+    } else {
+        echo "skipped course $id\n";
+    }
+}
+foreach (array_filter(explode(',', $argv[2] ?? '')) as $id) {
+    $user = $DB->get_record('user', ['id' => (int) $id, 'deleted' => 0]);
+    if ($user && !is_siteadmin($user) && $user->auth === 'manual') {
+        delete_user($user);
+        echo "deleted user $id\n";
+    } else {
+        echo "skipped user $id\n";
+    }
+}
+fix_course_sortorder();
+PHP
     else
       remote "cd $APP && sudo docker compose exec -T backend $cmd"
     fi

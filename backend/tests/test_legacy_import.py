@@ -377,8 +377,6 @@ def test_cleanup_removes_what_reached_moodle_for_the_old_classes(monkeypatch):
             return (
                 [{"id": 35}] if params["userid"] == 501 else [{"id": 36}, {"id": 99}]
             )  # 502 studies elsewhere
-        if function == "core_course_delete_courses":
-            raise moodle.MoodleError("not allowed")  # falls back to unenrol + hide
         return {}
 
     monkeypatch.setattr(moodle, "is_configured", lambda: True)
@@ -386,11 +384,14 @@ def test_cleanup_removes_what_reached_moodle_for_the_old_classes(monkeypatch):
     out = io.StringIO()
     call_command("cleanup_external_moodle", stdout=out)
     assert "sẽ xóa 1, giữ 1" in out.getvalue() and LmsEnrollment.objects.filter(status="done").count() == 2
-    assert "core_user_delete_users" not in calls
+    assert "enrol_manual_unenrol_users" not in calls  # the preview changes nothing
+    out = io.StringIO()
     call_command("cleanup_external_moodle", "--apply", stdout=out)
-    assert {"enrol_manual_unenrol_users", "core_course_update_courses", "core_user_delete_users"} <= set(
+    assert {"enrol_manual_unenrol_users", "core_course_update_courses", "core_user_update_users"} <= set(
         calls
     )
+    assert not [c for c in calls if "delete" in c]  # deleting is Moodle's CLI's job (the Ops task)
+    assert "MOODLE_DELETE courses=35,36 users=501" in out.getvalue()
     assert set(LmsEnrollment.objects.values_list("status", flat=True)) == {"skipped"}
     assert LmsEnrollment.objects.get(order=a).moodle_user_id is None  # deleted account
     assert LmsEnrollment.objects.get(order=b).moodle_user_id == 502  # kept: in another course

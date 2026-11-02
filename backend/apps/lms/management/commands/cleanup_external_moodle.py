@@ -3,9 +3,9 @@ manage.py cleanup_external_moodle [--apply]
 
 Undo what reached Moodle for classes taught on another platform (Cohort.external_lms: the old RB / EB
 classes imported from the previous CRM, enrolled by the 30-minute sweep on 02/11/2026 before it skipped
-them): their Moodle courses are deleted (or, if Moodle refuses, emptied and hidden), the Moodle accounts
-that enrolment created are deleted (or suspended) unless they are in another course, and the enrolment
-records say "skipped". Preview unless --apply. Sends nothing. Prints counts and ids only.
+them): their Moodle courses are emptied and hidden and the Moodle accounts that enrolment created suspended
+(unless in another course), then deleted by the Ops task with Moodle's CLI (the integration may not
+delete); the enrolment records say "skipped". Preview unless --apply. Sends nothing; prints ids only.
 """
 
 from django.core.management.base import BaseCommand
@@ -80,32 +80,29 @@ class Command(BaseCommand):
             out("Xem trước: chưa thay đổi gì (thêm --apply).")
             return
 
-        # Courses: delete; if the integration may not, unenrol everyone we put there and hide the course.
-        try:
-            moodle.call("core_course_delete_courses", courseids=sorted(courses))
-            out(f"Đã xóa {len(courses)} khóa Moodle.")
-        except moodle.MoodleError as exc:
-            out(f"Không xóa được khóa ({exc}); gỡ học viên và ẩn khóa.")
-            pairs = [
-                {"userid": e.moodle_user_id, "courseid": e.moodle_course_id}
-                for e in enrollments
-                if e.moodle_user_id and e.moodle_course_id in courses
-            ]
-            if pairs:
-                moodle.call("enrol_manual_unenrol_users", enrolments=pairs)
+        # What the integration may do: take the learners out, hide the courses, suspend the accounts.
+        # Deleting them needs rights the integration does not have (on purpose): the Ops task deletes
+        # the ids printed on the MOODLE_DELETE line with Moodle's own CLI.
+        pairs = [
+            {"userid": e.moodle_user_id, "courseid": e.moodle_course_id}
+            for e in enrollments
+            if e.moodle_user_id and e.moodle_course_id in courses
+        ]
+        if pairs:
+            moodle.call("enrol_manual_unenrol_users", enrolments=pairs)
+        if courses:
             moodle.call(
                 "core_course_update_courses", courses=[{"id": i, "visible": 0} for i in sorted(courses)]
             )
-            out(f"Đã gỡ {len(pairs)} lượt ghi danh và ẩn {len(courses)} khóa.")
-
         if delete_users:
-            try:
-                moodle.call("core_user_delete_users", userids=delete_users)
-                out(f"Đã xóa {len(delete_users)} tài khoản Moodle.")
-            except moodle.MoodleError as exc:
-                out(f"Không xóa được tài khoản ({exc}); khóa (suspend) tài khoản.")
-                moodle.call("core_user_update_users", users=[{"id": u, "suspended": 1} for u in delete_users])
-                out(f"Đã khóa {len(delete_users)} tài khoản Moodle.")
+            moodle.call("core_user_update_users", users=[{"id": u, "suspended": 1} for u in delete_users])
+        out(f"Đã gỡ {len(pairs)} lượt ghi danh, ẩn {len(courses)} khóa, khóa {len(delete_users)} tài khoản.")
+        out(
+            "MOODLE_DELETE courses="
+            + ",".join(str(i) for i in sorted(courses))
+            + " users="
+            + ",".join(str(u) for u in delete_users)
+        )
 
         with transaction.atomic():
             for e in enrollments:
