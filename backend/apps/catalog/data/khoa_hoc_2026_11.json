@@ -16,36 +16,43 @@
    "title": "Giám đốc Phân khúc KH Doanh nghiệp MSB",
    "organization": "MSB",
    "bank_position": "Giám đốc Phân khúc KH Doanh nghiệp",
-   "bio": "Giám đốc Phân khúc Khách hàng Doanh nghiệp tại MSB, trực tiếp chia sẻ thực tiễn bán hàng và quản trị khách hàng doanh nghiệp."
+   "years_of_experience": 25,
+   "credential": "Chuyên gia xây dựng thương hiệu cá nhân & quản trị hình ảnh chuyên nghiệp",
+   "avatar": "/images/instructors/vu-thu-phuong.jpg",
+   "bio": "Với hơn 25 năm kinh nghiệm tại các tập đoàn đa quốc gia hàng đầu trong các lĩnh vực dịch vụ cao cấp, tài chính, bất động sản và đầu tư, chị Vũ Phương đã khẳng định vị thế của mình qua nhiều vai trò cấp cao, dẫn dắt đội ngũ lãnh đạo và xây dựng thành công hình ảnh thương hiệu cho doanh nghiệp. Không chỉ là một nhà lãnh đạo xuất sắc, chị còn là chuyên gia hàng đầu trong lĩnh vực xây dựng thương hiệu cá nhân và quản trị hình ảnh chuyên nghiệp.\n\nChị Phương đồng hành cùng học viên TWings trong các học phần về “Xây dựng Thương hiệu cá nhân”: nhận thức giá trị thương hiệu cá nhân, định vị bản thân và tạo dấu ấn khác biệt, kĩ năng giao tiếp và quản trị hình ảnh cá nhân."
   },
   {
    "name": "Đặng Văn Thành",
    "title": "Giám đốc Giám sát, Thúc đẩy và Nâng cao năng lực bán Ngân hàng Doanh nghiệp",
    "organization": "MSB",
    "bank_position": "Giám đốc Giám sát, Thúc đẩy và Nâng cao năng lực bán NHDN",
-   "bio": "Phụ trách giám sát, thúc đẩy và nâng cao năng lực bán của khối Ngân hàng Doanh nghiệp tại MSB."
+   "years_of_experience": 20,
+   "credential": "Nguyên Giám đốc Chi nhánh, Giám đốc Vùng, Giám đốc Quản trị Bán hàng toàn quốc",
+   "avatar": "/images/instructors/dang-van-thanh.jpg",
+   "bio": "Anh Thành có gần 20 năm kinh nghiệm trong lĩnh vực tài chính – ngân hàng, từng đảm nhiệm các vị trí chiến lược như Giám đốc Chi nhánh, Giám đốc Vùng và Giám đốc Quản trị Bán hàng toàn quốc. Anh đã gặt hái nhiều thành công nổi bật trong triển khai, quản trị bán hàng và phát triển năng lực đội ngũ.\n\nAnh Thành đồng hành cùng học viên TWings trong các học phần chuyên sâu về Tín dụng cũng như kỹ năng khai thác nhu cầu, xây dựng chiến lược tiếp cận, thuyết phục và duy trì mối quan hệ khách hàng lâu dài, giúp tối ưu hóa giá trị vòng đời khách hàng."
   },
   {
    "name": "Nguyễn Kim Chi",
    "title": "Giám đốc Quản trị dự án chiến lược MSB",
    "organization": "MSB",
-   "bank_position": "Giám đốc Quản trị dự án chiến lược",
-   "bio": "Giám đốc Quản trị dự án chiến lược tại MSB, chia sẻ về lập kế hoạch, quản trị thực thi và tư duy chiến lược."
+   "bank_position": "Giám đốc quản trị chuyển đổi, Khối Chiến lược và sáng tạo đổi mới",
+   "years_of_experience": 20,
+   "credential": "Từng tham gia các dự án chuyển đổi số tại Techcombank, VPBank",
+   "avatar": "/images/instructors/nguyen-kim-chi.jpg",
+   "bio": "Với 20 năm kinh nghiệm trong ngành tài chính ngân hàng, chị Kim Chi đã và đang đảm nhiệm những vị trí quan trọng trong các dự án chuyển đổi số tại các ngân hàng lớn nhất Việt Nam như Techcombank, VPBank. Hiện nay, chị Chi là Giám đốc quản trị chuyển đổi tại Khối Chiến lược và sáng tạo đổi mới với vai trò dẫn dắt sự chuyển đổi và hành trình số hóa ngân hàng tại MSB.\n\nChị Kim Chi còn là một trong những giảng viên nội bộ xuất sắc, đang giảng dạy các nội dung liên quan đến tư duy chuyển đổi số và phương pháp làm việc Agile nhằm thúc đẩy văn hóa chuyển đổi số tại ngân hàng."
   },
   {
    "name": "Tạ Hoàng Thùy Linh",
    "title": "Chuyên gia thiết kế chiến lược Khối Chuyển đổi số",
    "organization": "MSB",
    "bank_position": "Chuyên gia thiết kế chiến lược, Khối Chuyển đổi số",
-   "bio": "Chuyên gia thiết kế chiến lược thuộc Khối Chuyển đổi số, chia sẻ về ngân hàng số và tư duy Design Thinking."
-  },
-  {
-   "name": "Đội ngũ chuyên gia TWings Academy",
-   "title": "Chuyên gia đào tạo kỹ năng & quản trị",
-   "organization": "TWings Academy",
-   "status": "adjunct",
-   "bio": "Đội ngũ chuyên gia đào tạo của TWings Academy và đối tác (giảng viên cụ thể của từng khóa sẽ được cập nhật)."
+   "credential": "Outstanding Performer 2022 · Giảng viên nội bộ về Design Thinking",
+   "avatar": "/images/instructors/ta-hoang-thuy-linh.jpg",
+   "bio": "Với kinh nghiệm chuyên sâu trong thiết kế hành trình trải nghiệm khách hàng, chị Tạ Hoàng Thùy Linh đã tạo dấu ấn trong các dự án chiến lược tại MSB, Onehousing và VinID, trải dài từ tài chính, công nghệ đến bất động sản. Được vinh danh là Outstanding Performer 2022, chị không chỉ góp phần tối ưu trải nghiệm khách hàng mà còn đưa ra những giải pháp đột phá, mang lại giá trị thực tiễn cao.\n\nLà giảng viên nội bộ về Design Thinking, chị Linh đã trực tiếp đào tạo hơn 250 học viên qua 50 giờ chia sẻ, truyền cảm hứng sáng tạo và ứng dụng thực tế."
   }
+ ],
+ "delete_instructors": [
+  "Đội ngũ chuyên gia TWings Academy"
  ],
  "courses": [
   {
@@ -183,10 +190,24 @@
     }
    ],
    "instructors": [
-    "Đội ngũ chuyên gia TWings Academy"
+    "Nguyễn Kim Chi"
    ],
    "partner": "",
-   "mall_name": "Agile mindset"
+   "mall_name": "Agile mindset",
+   "classes": [
+    {
+     "name": "Khóa 1 – Tháng 12/2026",
+     "code": "AGILE-K1",
+     "start_date": "2026-12-07",
+     "registration_deadline": "2026-12-05",
+     "capacity": 50,
+     "location": "Online trên TWings LMS",
+     "schedule_text": "Học online theo lộ trình của lớp, mở bài mới mỗi tuần",
+     "summary": "Làm việc linh hoạt, phản ứng nhanh và tạo giá trị liên tục với tư duy Agile",
+     "description": "Đợt tuyển sinh tháng 12/2026 của khóa “Khai phóng sức mạnh tư duy Agile”: học online trên TWings LMS theo lộ trình chung của lớp, cùng làm bài tập và trao đổi với giảng viên, hoàn thành trong khoảng 4 tuần.",
+     "is_published": true
+    }
+   ]
   },
   {
    "code": "KH02",
@@ -345,10 +366,24 @@
     }
    ],
    "instructors": [
-    "Đội ngũ chuyên gia TWings Academy"
+    "Nguyễn Kim Chi"
    ],
    "partner": "",
-   "mall_name": "Data (Quản trị dữ liệu)"
+   "mall_name": "Data (Quản trị dữ liệu)",
+   "classes": [
+    {
+     "name": "Khóa 1 – Tháng 12/2026",
+     "code": "DATA-K1",
+     "start_date": "2026-12-07",
+     "registration_deadline": "2026-12-05",
+     "capacity": 50,
+     "location": "Online trên TWings LMS",
+     "schedule_text": "Học online theo lộ trình của lớp, mở bài mới mỗi tuần",
+     "summary": "Hiểu, quản trị và khai thác dữ liệu để ra quyết định chính xác hơn",
+     "description": "Đợt tuyển sinh tháng 12/2026 của khóa “Làm chủ dữ liệu, dẫn đầu xu thế”: học online trên TWings LMS theo lộ trình chung của lớp, cùng làm bài tập và trao đổi với giảng viên, hoàn thành trong khoảng 4 tuần.",
+     "is_published": true
+    }
+   ]
   },
   {
    "code": "KH03",
@@ -500,10 +535,24 @@
     }
    ],
    "instructors": [
-    "Đội ngũ chuyên gia TWings Academy"
+    "Tạ Hoàng Thùy Linh"
    ],
    "partner": "",
-   "mall_name": "Design Thinking"
+   "mall_name": "Design Thinking",
+   "classes": [
+    {
+     "name": "Khóa 1 – Tháng 12/2026",
+     "code": "DT-K1",
+     "start_date": "2026-12-07",
+     "registration_deadline": "2026-12-05",
+     "capacity": 50,
+     "location": "Online trên TWings LMS",
+     "schedule_text": "Học online theo lộ trình của lớp, mở bài mới mỗi tuần",
+     "summary": "Giải quyết vấn đề phức tạp bằng sự thấu hiểu con người và sáng tạo có phương pháp",
+     "description": "Đợt tuyển sinh tháng 12/2026 của khóa “Tư duy thiết kế, đột phá giải pháp (Design Thinking)”: học online trên TWings LMS theo lộ trình chung của lớp, cùng làm bài tập và trao đổi với giảng viên, hoàn thành trong khoảng 4 tuần.",
+     "is_published": true
+    }
+   ]
   },
   {
    "code": "KH04",
@@ -669,10 +718,25 @@
     }
    ],
    "instructors": [
-    "Đội ngũ chuyên gia TWings Academy"
+    "Nguyễn Kim Chi",
+    "Đặng Văn Thành"
    ],
    "partner": "",
-   "mall_name": "Lập kế hoạch và quản trị thực thi"
+   "mall_name": "Lập kế hoạch và quản trị thực thi",
+   "classes": [
+    {
+     "name": "Khóa 1 – Tháng 12/2026",
+     "code": "PLAN-K1",
+     "start_date": "2026-12-07",
+     "registration_deadline": "2026-12-05",
+     "capacity": 50,
+     "location": "Online trên TWings LMS",
+     "schedule_text": "Học online theo lộ trình của lớp, mở bài mới mỗi tuần",
+     "summary": "Biến kế hoạch thành kết quả: lập lộ trình, giao việc và dẫn dắt thực thi",
+     "description": "Đợt tuyển sinh tháng 12/2026 của khóa “Quản trị thực thi, làm chủ mục tiêu”: học online trên TWings LMS theo lộ trình chung của lớp, cùng làm bài tập và trao đổi với giảng viên, hoàn thành trong khoảng 4 tuần.",
+     "is_published": true
+    }
+   ]
   },
   {
    "code": "KH05",
@@ -845,10 +909,25 @@
     }
    ],
    "instructors": [
-    "Đội ngũ chuyên gia TWings Academy"
+    "Tạ Hoàng Thùy Linh",
+    "Nguyễn Kim Chi"
    ],
    "partner": "",
-   "mall_name": "Hướng dẫn AI cơ bản"
+   "mall_name": "Hướng dẫn AI cơ bản",
+   "classes": [
+    {
+     "name": "Khóa 1 – Tháng 12/2026",
+     "code": "AI-K1",
+     "start_date": "2026-12-07",
+     "registration_deadline": "2026-12-05",
+     "capacity": 50,
+     "location": "Online trên TWings LMS",
+     "schedule_text": "Học online theo lộ trình của lớp, mở bài mới mỗi tuần",
+     "summary": "Hiểu AI từ nền tảng đến ứng dụng: làm việc thông minh hơn cùng trợ lý AI",
+     "description": "Đợt tuyển sinh tháng 12/2026 của khóa “Khai mở sức mạnh AI”: học online trên TWings LMS theo lộ trình chung của lớp, cùng làm bài tập và trao đổi với giảng viên, hoàn thành trong khoảng 4 tuần.",
+     "is_published": true
+    }
+   ]
   },
   {
    "code": "KH06",
@@ -965,10 +1044,25 @@
     }
    ],
    "instructors": [
-    "Đội ngũ chuyên gia TWings Academy"
+    "Nguyễn Kim Chi",
+    "Tạ Hoàng Thùy Linh"
    ],
    "partner": "",
-   "mall_name": "Chuyển đổi số"
+   "mall_name": "Chuyển đổi số",
+   "classes": [
+    {
+     "name": "Khóa 1 – Tháng 12/2026",
+     "code": "DX-K1",
+     "start_date": "2026-12-07",
+     "registration_deadline": "2026-12-05",
+     "capacity": 50,
+     "location": "Online trên TWings LMS",
+     "schedule_text": "Học online theo lộ trình của lớp, mở bài mới mỗi tuần",
+     "summary": "Chuyển đổi số trong ngân hàng: xu hướng, ngân hàng số và hệ sinh thái sản phẩm số",
+     "description": "Đợt tuyển sinh tháng 12/2026 của khóa “Khai Phóng Quyền Năng Số”: học online trên TWings LMS theo lộ trình chung của lớp, cùng làm bài tập và trao đổi với giảng viên, hoàn thành trong khoảng 4 tuần.",
+     "is_published": true
+    }
+   ]
   },
   {
    "code": "KH07",
@@ -1099,10 +1193,25 @@
     }
    ],
    "instructors": [
-    "Đội ngũ chuyên gia TWings Academy"
+    "Đặng Văn Thành",
+    "Vũ Thu Phương"
    ],
    "partner": "",
-   "mall_name": "Chân dung quản lý"
+   "mall_name": "Chân dung quản lý",
+   "classes": [
+    {
+     "name": "Khóa 1 – Tháng 12/2026",
+     "code": "LEAD-K1",
+     "start_date": "2026-12-07",
+     "registration_deadline": "2026-12-05",
+     "capacity": 50,
+     "location": "Online trên TWings LMS",
+     "schedule_text": "Học online theo lộ trình của lớp, mở bài mới mỗi tuần",
+     "summary": "Chân dung nhà quản lý hiện đại: vai trò, năng lực và phong cách dẫn dắt đội ngũ",
+     "description": "Đợt tuyển sinh tháng 12/2026 của khóa “Bản Lĩnh Thép Trong Kỷ Nguyên Số”: học online trên TWings LMS theo lộ trình chung của lớp, cùng làm bài tập và trao đổi với giảng viên, hoàn thành trong khoảng 4 tuần.",
+     "is_published": true
+    }
+   ]
   },
   {
    "code": "KH08",
@@ -1261,10 +1370,24 @@
     }
    ],
    "instructors": [
-    "Đội ngũ chuyên gia TWings Academy"
+    "Đặng Văn Thành"
    ],
    "partner": "",
-   "mall_name": "Quản trị mục tiêu MBO&OKR"
+   "mall_name": "Quản trị mục tiêu MBO&OKR",
+   "classes": [
+    {
+     "name": "Khóa 1 – Tháng 12/2026",
+     "code": "OKR-K1",
+     "start_date": "2026-12-07",
+     "registration_deadline": "2026-12-05",
+     "capacity": 50,
+     "location": "Online trên TWings LMS",
+     "schedule_text": "Học online theo lộ trình của lớp, mở bài mới mỗi tuần",
+     "summary": "Từ quản trị theo mục tiêu (MBO) đến OKR: đặt mục tiêu đúng, đo kết quả rõ",
+     "description": "Đợt tuyển sinh tháng 12/2026 của khóa “Di Sản Từ MBO Đến Kỷ Nguyên OKR”: học online trên TWings LMS theo lộ trình chung của lớp, cùng làm bài tập và trao đổi với giảng viên, hoàn thành trong khoảng 4 tuần.",
+     "is_published": true
+    }
+   ]
   },
   {
    "code": "RB",
@@ -1280,7 +1403,9 @@
    "location_text": "Hà Nội: ROX Tower, 54A Nguyễn Chí Thanh, Đống Đa · Thực chiến tại các đơn vị kinh doanh MSB",
    "career_role": "Chuyên viên Quan hệ Khách hàng Cá nhân",
    "duration": "64 buổi · tối đa 2 tháng",
-   "price": 8990000,
+   "price": 7599000,
+   "original_price": 9490000,
+   "sale_ends_on": "2026-12-31",
    "installment_count": 2,
    "thumbnail": "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=1200&q=80&auto=format&fit=crop",
    "skills": [
@@ -1539,16 +1664,22 @@
     "Tạ Hoàng Thùy Linh"
    ],
    "partner": "MSB",
-   "class": {
-    "name": "Khóa 1",
-    "start_date": "2026-12-07",
-    "registration_deadline": "2026-11-30",
-    "capacity": 30,
-    "location": "ROX Tower, 54A Nguyễn Chí Thanh, Đống Đa, Hà Nội",
-    "schedule_text": "Học trực tiếp các buổi tối trong tuần và thực chiến tại MSB theo lịch đơn vị",
-    "summary": "64 buổi trong tối đa 2 tháng: kiến thức ngân hàng bán lẻ, kỹ năng tư vấn và 176 giờ thực chiến tại MSB",
-    "job_title": "Chuyên viên Quan hệ Khách hàng Cá nhân"
-   }
+   "classes": [
+    {
+     "name": "Khóa 1",
+     "code": "RB-K1",
+     "is_featured": true,
+     "is_published": true,
+     "description": "Đợt tuyển sinh đầu tiên của chương trình Quan hệ Khách hàng Cá nhân (RB): học trực tiếp tại ROX Tower Hà Nội kết hợp online, sau đó thực chiến tại đơn vị kinh doanh MSB dưới sự hướng dẫn của Team Lead.",
+     "start_date": "2026-12-07",
+     "registration_deadline": "2026-11-30",
+     "capacity": 30,
+     "location": "ROX Tower, 54A Nguyễn Chí Thanh, Đống Đa, Hà Nội",
+     "schedule_text": "Học trực tiếp các buổi tối trong tuần và thực chiến tại MSB theo lịch đơn vị",
+     "summary": "64 buổi trong tối đa 2 tháng: kiến thức ngân hàng bán lẻ, kỹ năng tư vấn và 176 giờ thực chiến tại MSB",
+     "job_title": "Chuyên viên Quan hệ Khách hàng Cá nhân"
+    }
+   ]
   },
   {
    "code": "EB",
@@ -1564,7 +1695,9 @@
    "location_text": "Hà Nội: ROX Tower, 54A Nguyễn Chí Thanh, Đống Đa · Thực chiến tại các đơn vị kinh doanh MSB",
    "career_role": "Chuyên viên Quan hệ Khách hàng Doanh nghiệp",
    "duration": "107 buổi · tối đa 3 tháng",
-   "price": 12990000,
+   "price": 7999000,
+   "original_price": 9990000,
+   "sale_ends_on": "2026-12-31",
    "installment_count": 3,
    "thumbnail": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&q=80&auto=format&fit=crop",
    "skills": [
@@ -1871,16 +2004,22 @@
     "Tạ Hoàng Thùy Linh"
    ],
    "partner": "MSB",
-   "class": {
-    "name": "Khóa 1",
-    "start_date": "2026-12-14",
-    "registration_deadline": "2026-12-07",
-    "capacity": 30,
-    "location": "ROX Tower, 54A Nguyễn Chí Thanh, Đống Đa, Hà Nội",
-    "schedule_text": "Học trực tiếp các buổi tối trong tuần và thực chiến tại MSB theo lịch đơn vị",
-    "summary": "107 buổi trong tối đa 3 tháng: tín dụng doanh nghiệp, báo cáo tài chính và 352 giờ thực chiến tại MSB",
-    "job_title": "Chuyên viên Quan hệ Khách hàng Doanh nghiệp"
-   }
+   "classes": [
+    {
+     "name": "Khóa 1",
+     "code": "EB-K1",
+     "is_featured": true,
+     "is_published": true,
+     "description": "Đợt tuyển sinh đầu tiên của chương trình Quan hệ Khách hàng Doanh nghiệp (EB): học trực tiếp tại ROX Tower Hà Nội kết hợp online, sau đó thực chiến tại đơn vị kinh doanh MSB dưới sự hướng dẫn của Team Lead.",
+     "start_date": "2026-12-14",
+     "registration_deadline": "2026-12-07",
+     "capacity": 30,
+     "location": "ROX Tower, 54A Nguyễn Chí Thanh, Đống Đa, Hà Nội",
+     "schedule_text": "Học trực tiếp các buổi tối trong tuần và thực chiến tại MSB theo lịch đơn vị",
+     "summary": "107 buổi trong tối đa 3 tháng: tín dụng doanh nghiệp, báo cáo tài chính và 352 giờ thực chiến tại MSB",
+     "job_title": "Chuyên viên Quan hệ Khách hàng Doanh nghiệp"
+    }
+   ]
   }
  ]
 }

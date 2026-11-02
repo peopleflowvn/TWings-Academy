@@ -1,6 +1,6 @@
 """
 Create or update courses from a JSON file (instead of typing them in /app one by one): their training
-partner, instructors, syllabus and, for courses taught in classes, a first class.
+partner, instructors, syllabus and classes (each class is also an admission campaign: code, web page).
 
     manage.py import_courses                       # preview (file: apps/catalog/data/khoa_hoc_2026_11.json)
     manage.py import_courses [file] --apply        # write; new courses stay drafts (staff publish in /app)
@@ -38,6 +38,8 @@ COURSE_FIELDS = (
     "career_role",
     "duration",
     "price",
+    "original_price",
+    "sale_ends_on",
     "installment_count",
     "thumbnail",
     "skills",
@@ -97,7 +99,9 @@ class Command(BaseCommand):
             if obj is None:
                 obj = Instructor(name=name)
             for k, v in i.items():
-                if v or not getattr(obj, k, None):  # never blank out what staff filled in (e.g. the photo)
+                if k == "avatar" and obj.avatar:
+                    continue  # a photo staff uploaded stays
+                if v or not getattr(obj, k, None):  # never blank out what staff filled in
                     setattr(obj, k, v)
             obj.save()
             instructors[name] = obj
@@ -111,7 +115,7 @@ class Command(BaseCommand):
                 course = Course(slug=slug)
             for k in COURSE_FIELDS:
                 if k in c:
-                    setattr(course, k, c[k])
+                    setattr(course, k, date.fromisoformat(c[k]) if k == "sale_ends_on" and c[k] else c[k])
             course.lessons_count = sum(len(m.get("lessons", [])) for m in course.syllabus or [])
             course.partner = partners.get(c.get("partner") or "") or (
                 Partner.objects.filter(name__iexact=c["partner"]).first() if c.get("partner") else None
@@ -122,8 +126,8 @@ class Command(BaseCommand):
                 [instructors.get(n) or Instructor.objects.get(name__iexact=n) for n in names]
             )
 
-            klass = c.get("class")
-            if klass:
+            classes = c.get("classes") or ([c["class"]] if c.get("class") else [])
+            for klass in classes:
                 cohort = Cohort.objects.filter(course=course, name=klass["name"]).first() or Cohort(
                     course=course, name=klass["name"], status="opening", is_published=True
                 )
@@ -145,6 +149,15 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"{'tạo mới ' if created else 'cập nhật'} {slug} | {course.title} | {course.price:,}đ | "
                 f"{course.lessons_count} bài | {state}"
-                + (f" | lớp {klass['name']}" if klass else "")
+                + "".join(f" | lớp {k['name']} ({k.get('code') or '-'})" for k in classes)
                 + (f" | thiếu: {'; '.join(missing)}" if missing else "")
             )
+
+        # Instructors the file no longer uses (e.g. a stand-in): removed once no course or class has them.
+        for name in data.get("delete_instructors", []):
+            for obj in Instructor.objects.filter(name__iexact=name):
+                if obj.courses.exists() or Cohort.objects.filter(lead_instructor=obj).exists():
+                    self.stdout.write(f"giữ giảng viên {name}: vẫn còn khóa / lớp dùng")
+                else:
+                    obj.delete()
+                    self.stdout.write(f"xóa giảng viên {name}")
