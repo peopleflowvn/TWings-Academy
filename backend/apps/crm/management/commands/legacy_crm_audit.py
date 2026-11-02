@@ -167,15 +167,25 @@ class Command(BaseCommand):
         out("== Không gửi gì, không ghi danh Moodle")
         since = legacy.order_by("updated_at").values_list("updated_at", flat=True).first() or timezone.now()
         emails = set(legacy.exclude(customer_email="").values_list("customer_email", flat=True))
-        sent = EmailLog.objects.filter(
+        all_sent = EmailLog.objects.filter(
             Q(order__in=legacy) | Q(recipient_email__in=emails), created_at__gte=since
         )
+        # The known incident: the enrolment sweep's access e-mails of 02/11/2026 15:30–16:05 (fixed by
+        # c120098f9 / e9845a24a, Moodle side removed); anything later is a new problem.
+        incident_end = timezone.make_aware(timezone.datetime(2026, 11, 2, 16, 10))
+        incident = all_sent.filter(template_code="lms_access", created_at__lt=incident_end)
+        if incident.exists():
+            out(f"   sự cố đã xử lý 02/11/2026: {incident.count()} email lms_access (không thu hồi được)")
+        sent = all_sent.exclude(pk__in=incident.values("pk"))
         check(
             not sent.exists(),
-            "không có email nào gửi tới học viên cũ kể từ khi nhập",
+            "không có email nào gửi tới học viên cũ kể từ khi nhập (ngoài sự cố đã xử lý)",
             [f"{e.template_code}" for e in sent[:10]],
         )
-        enrolled = LmsEnrollment.objects.filter(order__in=legacy).exclude(status="waiting")
+        # Skipped (taught elsewhere) or waiting for a class, and nothing left on Moodle.
+        enrolled = LmsEnrollment.objects.filter(order__in=legacy).exclude(
+            status__in=("waiting", "skipped"), moodle_course_id__isnull=True
+        )
         check(
             not enrolled.exists(),
             "không học viên cũ nào được ghi danh Moodle",

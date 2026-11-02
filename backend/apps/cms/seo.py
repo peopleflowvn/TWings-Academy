@@ -76,9 +76,7 @@ def base_url() -> str:
     a domain that is not served; elsewhere (e-mails) the configured PUBLIC_SITE_URL.
     """
     return (
-        _REQUEST_BASE.get()
-        or getattr(settings, "PUBLIC_SITE_URL", "").rstrip("/")
-        or "https://twings.edu.vn"
+        _REQUEST_BASE.get() or getattr(settings, "PUBLIC_SITE_URL", "").rstrip("/") or "https://twings.edu.vn"
     )
 
 
