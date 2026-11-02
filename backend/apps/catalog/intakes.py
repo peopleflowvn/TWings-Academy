@@ -135,14 +135,17 @@ def sync_sessions(cohort: Cohort) -> dict:
 
 # ---------------------------------------------------------------- overview for /app
 def overview() -> dict:
-    """Every public class with seats, price, schedule and its admissions (web page, code, lead funnel)."""
+    """
+    Every public class with seats, price, schedule and its admissions (web page, code, lead funnel),
+    finished ones included: each is the campaign its learners came through (/app shows them under
+    "Đã đóng" / "Tất cả").
+    """
     from apps.crm.views import class_funnels
 
     today = timezone.localdate()
     now = timezone.now()
     cohorts = (
         Cohort.objects.public()
-        .exclude(status="completed")
         .select_related("course", "lead_instructor", "next_cohort")
         .annotate(
             paid=Count("orders", filter=Q(orders__learning_access=True), distinct=True),

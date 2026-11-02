@@ -267,3 +267,13 @@ def test_an_external_class_is_not_put_on_moodle(settings, monkeypatch):
     queued.clear()
     _run(apply=True)
     assert queued == []  # no Moodle course for the old classes, nobody enrolled
+
+
+def test_the_old_classes_are_campaigns_with_their_learners(staff_client):
+    call_command("import_courses", "--apply")
+    _run(apply=True)
+    rows = staff_client(Role.SALES_CRM).get("/api/v1/staff/intakes/").json()["intakes"]
+    old = {r["code"]: r for r in rows if r["externalLms"]}
+    assert set(old) == {"EB-K2", "RB-K8"}  # the finished class too: it is the campaign of its learners
+    assert old["EB-K2"]["status"] == "completed" and old["EB-K2"]["paid"] == 1
+    assert old["EB-K2"]["funnel"]["leads"] == 1 and old["RB-K8"]["paid"] == 1
