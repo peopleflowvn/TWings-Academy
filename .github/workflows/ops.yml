@@ -11,7 +11,7 @@ on:
       task:
         description: What to run on the VPS
         type: choice
-        options: [status, hostkey, smoke-host, gateway-logs, setup-shared, sync-env, gateway-sync, smoke, backup, restore-drill, storage-check, lms-check, lms-usage, lms-admin-check, lms-intake-check, catalog-report, purge-drafts-preview, purge-drafts, import-courses-preview, import-courses, import-courses-publish, journey-audit, crm-data-check, seed-sales, lms-e2e, test-learner, logs, seed-content, publish-news, publish-news-batch2, create-admin, restart, bootstrap]
+        options: [status, hostkey, smoke-host, gateway-logs, setup-shared, sync-env, gateway-sync, smoke, backup, restore-drill, storage-check, lms-check, lms-usage, lms-admin-check, lms-intake-check, catalog-report, purge-drafts-preview, purge-drafts, import-courses-preview, import-courses, import-courses-publish, legacy-crm-preview, legacy-crm, journey-audit, crm-data-check, seed-sales, lms-e2e, test-learner, logs, seed-content, publish-news, publish-news-batch2, create-admin, restart, bootstrap]
       arg:
         description: "create-admin / test-learner: e-mail address"
         required: false
@@ -86,6 +86,8 @@ jobs:
           CI_DEPLOY_PUBKEY: ${{ vars.CI_DEPLOY_PUBKEY }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
           BACKUP_AGE_SECRET_KEY: ${{ secrets.BACKUP_AGE_SECRET_KEY }}
+          # legacy-crm*: the old CRM's records (compact copy), set only for the import, then deleted.
+          LEGACY_CRM: ${{ secrets.LEGACY_CRM }}
         run: |
           set -o pipefail
           rc=0

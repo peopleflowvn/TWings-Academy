@@ -21,7 +21,7 @@ from apps.core.reports import ReportsView
 from apps.core.uploads import ImageUploadView
 from apps.core.views import AuditLogViewSet
 from apps.crm.learner_views import LearnerViewSet
-from apps.crm.legacy_views import CrmListsView, LegacyImportView
+from apps.crm.list_views import CrmListsView
 from apps.crm.placement_views import (
     CandidatesView,
     OutcomesView,
@@ -97,7 +97,6 @@ urlpatterns = [
     path("orders/<str:pk>/cv/", OrderCvView.as_view(), name="staff-order-cv"),
     path("consultants/", ConsultantsView.as_view(), name="staff-consultants"),
     path("crm/lists/", CrmListsView.as_view(), name="staff-crm-lists"),
-    path("crm/legacy-import/", LegacyImportView.as_view(), name="staff-crm-legacy-import"),
     path("my-day/", MyDayView.as_view(), name="staff-my-day"),
     path("cohorts/<str:pk>/rollover/", CohortRolloverView.as_view(), name="staff-cohort-rollover"),
     path("lms/", include("apps.lms.urls")),

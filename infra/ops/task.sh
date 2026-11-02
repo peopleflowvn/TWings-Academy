@@ -294,6 +294,18 @@ for k in Cohort.objects.select_related(\"course\").order_by(\"course__title\", \
     esac
     ;;
 
+  legacy-crm-preview|legacy-crm)
+    # The CRM kept before this system (apps.crm.legacy_import), from the LEGACY_CRM secret of the "ops"
+    # environment (never in the repository): legacy-crm takes a backup, then imports; e-mails nobody.
+    [[ -n "${LEGACY_CRM:-}" ]] || { echo "secret LEGACY_CRM missing"; exit 1; }
+    import="python manage.py import_legacy_crm -"
+    if [[ "$TASK" == legacy-crm ]]; then
+      remote "sudo $APP/bin/backup.sh" && printf '%s' "$LEGACY_CRM" | remote "cd $APP && sudo docker compose exec -T backend $import --apply"
+    else
+      printf '%s' "$LEGACY_CRM" | remote "cd $APP && sudo docker compose exec -T backend $import"
+    fi
+    ;;
+
   smoke-host)
     # Like smoke, but the domains are forced to this VPS's IP: checks a new / moved machine before DNS points to it.
     ip=$(ssh -G vps | awk '/^hostname /{print $2}')

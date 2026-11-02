@@ -14,7 +14,8 @@ How the sheet was used, and so how it is read:
 - Each registration keeps its "Mã đăng ký" (Order.attribution["legacy_code"]): importing the file again
   adds only the rows not imported yet (e.g. a class kept in another file), never changes imported ones.
 
-Upload -> preview (nothing written) -> confirm. Nothing is e-mailed and nobody is enrolled on Moodle.
+Run by `manage.py import_legacy_crm` (preview unless --apply). Nothing is e-mailed and nobody is
+enrolled on Moodle: it only brings back the old records.
 """
 
 import re
@@ -34,7 +35,6 @@ from .learners import attach_learner, phone_key
 from .lists import normalize, plain
 from .models import Activity, Installment, Order
 
-MAX_BYTES = 10 * 1024 * 1024
 LEGACY = "Nhập từ CRM cũ"
 RB = "quan-he-khach-hang-ca-nhan-rb-dao-tao-thuc-chien-tai-msb"
 EB = "quan-he-khach-hang-doanh-nghiep-eb-dao-tao-thuc-chien-tai-msb"
@@ -163,7 +163,13 @@ def _day(value) -> date | None:
         return value.date()
     if isinstance(value, date):
         return value
-    match = re.fullmatch(r"(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})", _text(value))
+    text = _text(value)
+    if re.match(r"^\d{4}-\d{2}-\d{2}", text):  # ISO, as the compact copy of the sheet writes dates
+        try:
+            return datetime.fromisoformat(text).date()
+        except ValueError:
+            return None
+    match = re.fullmatch(r"(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})", text)
     if match:
         try:
             return date(int(match[3]), int(match[2]), int(match[1]))
@@ -173,6 +179,11 @@ def _day(value) -> date | None:
 
 
 def _moment(value) -> datetime | None:
+    if isinstance(value, str) and re.match(r"^\d{4}-\d{2}-\d{2}T", value):
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError:
+            return None
     if isinstance(value, datetime):
         return timezone.make_aware(value) if timezone.is_naive(value) else value
     day = _day(value)
@@ -195,17 +206,34 @@ def _email(value) -> str:
     return email
 
 
-def read_rows(upload) -> list[dict]:
+def read_workbook(path) -> list[list]:
+    """The sheet "Data" of the workbook, as rows of cell values (the header first)."""
     from openpyxl import load_workbook
 
-    if getattr(upload, "size", 0) > MAX_BYTES:
-        raise LegacyImportError("File quá lớn (tối đa 10 MB).")
     try:
-        book = load_workbook(upload, read_only=True, data_only=True)
+        book = load_workbook(path, read_only=True, data_only=True)
     except Exception as exc:  # noqa: BLE001 - any unreadable file
         raise LegacyImportError("Không đọc được file Excel (.xlsx).") from exc
     sheet = book["Data"] if "Data" in book.sheetnames else book.active
-    rows = sheet.iter_rows(values_only=True)
+    table = [list(r) for r in sheet.iter_rows(values_only=True)]
+    book.close()
+    return table
+
+
+def read_compact(text: str) -> list[list]:
+    """The compact copy of the sheet (JSON rows, xz, base64): how the data reaches the server."""
+    import base64
+    import json
+    import lzma
+
+    try:
+        return json.loads(lzma.decompress(base64.b64decode(text.strip())))
+    except Exception as exc:  # noqa: BLE001 - any damaged copy
+        raise LegacyImportError("Dữ liệu CRM cũ không đọc được (bản nén hỏng).") from exc
+
+
+def read_rows(table: list[list]) -> list[dict]:
+    rows = iter(table)
     header = [plain(str(h or "").replace("*", "")) for h in next(rows, ())]
     index = {}
     for key, label in COLUMNS.items():
@@ -221,7 +249,6 @@ def read_rows(upload) -> list[dict]:
         row = {k: (raw[i] if i < len(raw) else None) for k, i in index.items()}
         row["_line"] = number
         out.append(row)
-    book.close()
     return out
 
 
@@ -619,8 +646,9 @@ def _write(e: dict, cohort: Cohort | None, users: dict, actor: str) -> Order:
     return order
 
 
-def run(upload, *, apply: bool, user=None) -> dict:
-    entries, planned = plan(read_rows(upload))
+def run(table: list[list], *, apply: bool, user=None) -> dict:
+    """Preview (apply=False: nothing written) or import the sheet's rows (`table`, the header first)."""
+    entries, planned = plan(read_rows(table))
     summary = planned["summary"]
     if not apply:
         summary["applied"] = False

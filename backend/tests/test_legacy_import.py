@@ -1,11 +1,14 @@
 """The old CRM's workbook imported into this system (apps.crm.legacy_import), and the CRM's option lists."""
 
+import base64
 import io
+import json
+import lzma
+import tempfile
 from datetime import datetime, timedelta
 
 import pytest
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.utils import timezone
 from openpyxl import Workbook
 
@@ -30,17 +33,25 @@ def _row(**values):
     return row
 
 
-def _workbook(rows) -> SimpleUploadedFile:
+def _table(rows) -> list[list]:
+    return [HEADER, *rows, [None, None]]  # the formula rows left at the end of the sheet
+
+
+def _compact(rows) -> str:
+    """The sheet as the Ops task sends it: JSON rows (dates in ISO), xz, base64."""
+    table = [[v.isoformat() if isinstance(v, datetime) else v for v in row] for row in _table(rows)]
+    return base64.b64encode(lzma.compress(json.dumps(table, ensure_ascii=False).encode())).decode()
+
+
+def _workbook(rows) -> str:
     book = Workbook()
     sheet = book.active
     sheet.title = "Data"
-    sheet.append(HEADER)
-    for row in rows:
+    for row in _table(rows):
         sheet.append(row)
-    sheet.append([None, None])  # the formula rows left at the end of the sheet
-    buffer = io.BytesIO()
-    book.save(buffer)
-    return SimpleUploadedFile("crm.xlsx", buffer.getvalue())
+    path = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False).name
+    book.save(path)
+    return path
 
 
 OLD = datetime(2025, 6, 6, 12, 30)
@@ -148,7 +159,7 @@ def _rows():
 
 
 def _run(apply):
-    return legacy_import.run(_workbook(_rows()), apply=apply)
+    return legacy_import.run(_table(_rows()), apply=apply)
 
 
 def test_preview_writes_nothing_and_counts_what_comes():
@@ -211,18 +222,23 @@ def test_import_creates_the_old_classes_learners_and_payments_once():
     assert Order.objects.count() == 8 and Cohort.objects.filter(external_lms=True).count() == 2
 
 
-def test_only_the_super_admin_imports(staff_client):
+def test_the_command_reads_the_compact_copy_from_stdin_or_a_workbook(monkeypatch):
     call_command("import_courses", "--apply")
-    url = "/api/v1/staff/crm/legacy-import/"
-    manager = staff_client(Role.SALES_CRM)
-    assert manager.post(url, {"file": _workbook(_rows())}, format="multipart").status_code == 403
-    admin = staff_client(Role.SUPER_ADMIN)
-    preview = admin.post(url, {"file": _workbook(_rows())}, format="multipart")
-    assert preview.status_code == 200 and preview.json()["registrations"] == 8 and not Order.objects.exists()
-    done = admin.post(url, {"file": _workbook(_rows()), "apply": "1"}, format="multipart")
-    assert done.status_code == 200 and done.json()["applied"] and Order.objects.count() == 8
-    bad = admin.post(url, {"file": SimpleUploadedFile("x.xlsx", b"not excel")}, format="multipart")
-    assert bad.status_code == 400
+    out = io.StringIO()
+    monkeypatch.setattr("sys.stdin", io.StringIO(_compact(_rows())))
+    call_command("import_legacy_crm", "-", stdout=out)
+    assert "8 đăng ký" in out.getvalue() and "EB-K2" in out.getvalue() and not Order.objects.exists()
+    monkeypatch.setattr("sys.stdin", io.StringIO(_compact(_rows())))
+    call_command("import_legacy_crm", "-", "--apply", stdout=io.StringIO())
+    assert Order.objects.count() == 8
+    assert (
+        Order.objects.get(customer_name="Nguyễn Văn A").created_at.date() == OLD.date()
+    )  # ISO dates read back
+    call_command("import_legacy_crm", _workbook(_rows()), "--apply", stdout=out)  # an .xlsx works too
+    assert Order.objects.count() == 8
+    monkeypatch.setattr("sys.stdin", io.StringIO("not a copy"))
+    with pytest.raises(CommandError):
+        call_command("import_legacy_crm", "-")
 
 
 def test_the_lists_and_their_aliases(staff_client):
