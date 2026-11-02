@@ -1,17 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { CalendarClock, X, XCircle } from 'lucide-react';
+import { useCrmLists } from '../../lib/crmLists';
 
 export const CARE_AGAIN = '6. Chăm sóc lại';
 export const CANCELLED = '7. Đã hủy';
 
-export const LOST_REASONS = [
-  'Học phí cao',
-  'Chưa sắp xếp được thời gian',
-  'Đã học / chọn nơi khác',
-  'Không liên lạc được',
-  'Khóa học chưa phù hợp nhu cầu',
-  'Đăng ký trùng / nhầm'
-];
 
 export interface StageExtra {
   nextContactOn?: string;
@@ -31,6 +24,7 @@ const isoIn = (days: number) => {
  *   {gate.dialog}
  */
 export function useStageGate() {
+  const { lostReasons } = useCrmLists();
   const [stage, setStage] = useState<string | null>(null);
   const [date, setDate] = useState(isoIn(3));
   const [reason, setReason] = useState('');
@@ -86,7 +80,7 @@ export function useStageGate() {
           <div className="space-y-2 text-sm">
             <label className="block font-bold text-slate-700">Lý do</label>
             <div className="grid grid-cols-1 gap-1.5">
-              {[...LOST_REASONS, 'Khác'].map((r) => (
+              {[...lostReasons, 'Khác'].map((r) => (
                 <label key={r} className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer ${reason === r ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}>
                   <input type="radio" name="lost" checked={reason === r} onChange={() => setReason(r)} />
                   {r}

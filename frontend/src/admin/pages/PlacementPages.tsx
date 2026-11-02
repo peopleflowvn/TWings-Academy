@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Briefcase, Copy, Download, Link2, RefreshCw, Send, UserPlus } from 'lucide-react';
 import { ApiError } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
+import { useCrmLists } from '../../lib/crmLists';
 import {
   Candidate,
   fmtDate,
@@ -319,6 +320,7 @@ export const JobsPage: React.FC = () => {
 
 const ReferDialog: React.FC<{ candidate: Candidate | { orderId: string; name: string; positions: Candidate['positions'] }; onClose: () => void; onDone: () => void }> = ({ candidate, onClose, onDone }) => {
   const [positionId, setPositionId] = useState(candidate.positions[0]?.id || '');
+  const { msbUnits } = useCrmLists();
   const [employer, setEmployer] = useState('MSB');
   const [unit, setUnit] = useState('');
   const [jobTitle, setJobTitle] = useState('');
@@ -342,7 +344,9 @@ const ReferDialog: React.FC<{ candidate: Candidate | { orderId: string; name: st
         </label>
       )}
       <label className="block">Ngân hàng / doanh nghiệp<input className={input} value={employer} onChange={(e) => setEmployer(e.target.value)} /></label>
-      <label className="block">Đơn vị / chi nhánh{positionId && ' (để trống = theo vị trí)'}<input className={input} value={unit} onChange={(e) => setUnit(e.target.value)} /></label>
+      <label className="block">Đơn vị / chi nhánh{positionId && ' (để trống = theo vị trí)'}<input className={input} list="msb-units" value={unit} onChange={(e) => setUnit(e.target.value)} /></label>
+      {/* MSB's branches and centres (the CRM lists), offered while typing. */}
+      <datalist id="msb-units">{(employer.trim().toUpperCase() === 'MSB' ? msbUnits : []).map((u) => <option key={u} value={u} />)}</datalist>
       <label className="block">Chức danh{positionId && ' (để trống = theo vị trí)'}<input className={input} value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} /></label>
       {error && <p className="text-red-600 text-xs">{error}</p>}
       <button type="button" onClick={save} className={`${btn} bg-[#0073C1] text-white`}>Đề cử</button>

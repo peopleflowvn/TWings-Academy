@@ -53,6 +53,8 @@ export interface IntakeRow {
   isPublished: boolean;
   isFeatured: boolean;
   showQuota: boolean;
+  /** Taught on another platform (a class run before this system): no Moodle course. */
+  externalLms: boolean;
   summary: string;
   image: string;
   description: string;
@@ -317,6 +319,7 @@ export const IntakeEditor: React.FC<{
       earlyBirdPrice: d.earlyBirdPrice ?? null,
       earlyBirdDeadline: d.earlyBirdDeadline || null,
       autoRolloverWaitlist: d.autoRolloverWaitlist ?? true,
+      externalLms: !!d.externalLms,
       nextCohort: siblings.find((s) => s.name === d.nextCohort)?.id || null
     };
     const body = canTraining ? { ...training, ...admissions } : admissions;
@@ -375,6 +378,10 @@ export const IntakeEditor: React.FC<{
           <label className="flex items-center gap-2 mt-5">
             <input type="checkbox" checked={d.autoRolloverWaitlist ?? true} onChange={(e) => setD({ ...d, autoRolloverWaitlist: e.target.checked })} />
             Tự chuyển học viên chưa đóng phí sang đợt kế tiếp
+          </label>
+          <label className="sm:col-span-2 flex items-center gap-2">
+            <input type="checkbox" checked={!!d.externalLms} onChange={(e) => setD({ ...d, externalLms: e.target.checked })} />
+            Học trên nền tảng khác (không tạo khóa Moodle, không ghi danh học viên lên Moodle)
           </label>
         </fieldset>
 
@@ -559,7 +566,10 @@ function initialLayout(): Layout {
 // ---------------------------------------------------------------- small parts
 
 const StatusBadge: React.FC<{ r: IntakeRow }> = ({ r }) => (
-  <span className={`inline-block border rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${STATUS_STYLE[r.status] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>{r.statusLabel}</span>
+  <span className="inline-flex items-center gap-1">
+    <span className={`inline-block border rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${STATUS_STYLE[r.status] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>{r.statusLabel}</span>
+    {r.externalLms && <span title="Lớp học trên nền tảng khác (trước hệ thống này): không có khóa Moodle" className="inline-block border rounded-full px-2 py-0.5 text-[11px] whitespace-nowrap bg-slate-50 text-slate-500 border-slate-200">Nền tảng cũ</span>}
+  </span>
 );
 
 const WebBadge: React.FC<{ r: IntakeRow }> = ({ r }) => (

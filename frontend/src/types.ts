@@ -428,7 +428,7 @@ export interface Order {
   source?: string;
   consultNeed?: string;
   interestedCourse?: string;
-  interestLevel?: 'Rất cao' | 'Cao' | 'Trung bình' | 'Thấp' | 'Đang phân vân';
+  interestLevel?: string; // one of the CRM lists' interest levels (lib/crmLists)
   crmStatus?: CRMStatus;
   consultDetail?: string;
   /** First response to a new lead (deadline and when it happened). */

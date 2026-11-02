@@ -128,8 +128,10 @@ class Command(BaseCommand):
 
             classes = c.get("classes") or ([c["class"]] if c.get("class") else [])
             for klass in classes:
-                cohort = Cohort.objects.filter(course=course, name=klass["name"]).first() or Cohort(
-                    course=course, name=klass["name"], status="opening", is_published=True
+                cohort = (
+                    (klass.get("code") and Cohort.objects.filter(course=course, code=klass["code"]).first())
+                    or Cohort.objects.filter(course=course, name=klass["name"]).first()
+                    or Cohort(course=course, name=klass["name"], status="opening", is_published=True)
                 )
                 for k, v in klass.items():
                     if k in ("start_date", "registration_deadline") and v:

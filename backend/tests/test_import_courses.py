@@ -20,7 +20,7 @@ def test_import_creates_the_courses_once_and_publishes_what_is_ready():
     assert rb.partner == Partner.objects.get(name="MSB") and rb.instructors.count() == 4
     assert rb.lessons_count == sum(len(m["lessons"]) for m in rb.syllabus) and rb.delivery_format == "hybrid"
     assert (rb.price, rb.list_price(rb.sale_ends_on)) == (7_599_000, 9_490_000)  # struck price until the end
-    assert Cohort.objects.filter(course=rb, name="Khóa 1", code="RB-K1", is_published=True).exists()
+    assert Cohort.objects.filter(course=rb, name="Khóa 9", code="RB-K9", is_published=True).exists()
     # Every course has its instructors and a class recruiting (its admission campaign).
     assert not Course.objects.filter(instructors__isnull=True).exists()
     assert Cohort.objects.count() == 10 and Cohort.objects.exclude(code="").count() == 10

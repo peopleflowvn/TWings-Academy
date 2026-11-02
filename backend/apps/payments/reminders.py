@@ -90,6 +90,7 @@ def remind_due_installments() -> dict:
             due_date__lte=today + timedelta(days=REMIND_BEFORE_DAYS),
         )
         .exclude(order__customer_email="")
+        .exclude(order__cohort__external_lms=True)  # a class run elsewhere collects its own fees
         .exclude(reminded_at__gt=now - timedelta(days=REMIND_EVERY_DAYS))
         .select_related("order")
         .order_by("order_id", "sequence")

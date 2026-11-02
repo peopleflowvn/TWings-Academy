@@ -7,14 +7,15 @@
  * Each registration opens in the lead workspace (/app/sales/crm?orderId=…).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, GitMerge, Loader2, Mail, Phone, Plus, Save, Search, Trash2 } from 'lucide-react';
-import { api, ApiError, Paginated } from '../../lib/api';
+import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, FileSpreadsheet, GitMerge, Loader2, Mail, Phone, Plus, Save, Search, Trash2 } from 'lucide-react';
+import { api, apiFetch, ApiError, Paginated } from '../../lib/api';
 import { useIsSuperAdmin, useStaffCan } from '../../lib/lms';
 import { navigate, useAppSearch } from '../router';
 import { Course } from '../../types';
 import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../catalog';
 import { usePrograms } from '../data';
 import { viDateToIso } from '../../lib/serverCollection';
+import { CrmLists, useCrmLists, withCurrent } from '../../lib/crmLists';
 
 interface LearnerRow {
   id: string;
@@ -93,6 +94,9 @@ export const LearnersPage: React.FC<{ courses: Course[] }> = ({ courses }) => {
 const PAGE_SIZE = 50;
 
 const LearnerList: React.FC = () => {
+  const superAdmin = useIsSuperAdmin();
+  const [importing, setImporting] = useState(false);
+  const [reload, setReload] = useState(0);
   const [text, setText] = useState('');
   const [query, setQuery] = useState('');
   const [mine, setMine] = useState(false);
@@ -127,17 +131,25 @@ const LearnerList: React.FC = () => {
     return () => {
       live = false;
     };
-  }, [query, mine, page]);
+  }, [query, mine, page, reload]);
 
   const pages = Math.max(1, Math.ceil(count / PAGE_SIZE));
   return (
     <div className="space-y-4">
+      {importing && <LegacyImportDialog onClose={() => setImporting(false)} onDone={() => setReload((n) => n + 1)} />}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
-        <div>
-          <h2 className="font-bold text-slate-900">Học viên</h2>
-          <p className="text-xs text-slate-500">
-            Mỗi người một hồ sơ, dù đăng ký bao nhiêu khóa. Thông tin cá nhân sửa ở hồ sơ học viên và được áp dụng cho mọi đăng ký của người đó.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="font-bold text-slate-900">Học viên</h2>
+            <p className="text-xs text-slate-500">
+              Mỗi người một hồ sơ, dù đăng ký bao nhiêu khóa. Thông tin cá nhân sửa ở hồ sơ học viên và được áp dụng cho mọi đăng ký của người đó.
+            </p>
+          </div>
+          {superAdmin && (
+            <button type="button" onClick={() => setImporting(true)} className="px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5 hover:bg-slate-50">
+              <FileSpreadsheet className="w-3.5 h-3.5" /> Nhập dữ liệu CRM cũ
+            </button>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="relative flex-1 min-w-[240px]">
@@ -202,22 +214,170 @@ const LearnerList: React.FC = () => {
   );
 };
 
+// ---------------------------------------------------------------- the old CRM's workbook
+interface LegacySummary {
+  rows: number;
+  skipped: Record<string, number>;
+  registrations: number;
+  stages: Record<string, number>;
+  deferred: number;
+  paidWithoutClass: number;
+  classes: { course: string; name: string; code: string; status: string; learners: number; paidInFull: number; exists: boolean }[];
+  warnings: string[];
+  applied: boolean;
+}
+const SKIPPED: Record<string, string> = {
+  empty: 'dòng trống / không có tên',
+  repeated: 'dòng lặp lại',
+  test: 'dòng thử (test)',
+  imported: 'đã nhập trước đó'
+};
+
+/**
+ * Upload the CRM workbook kept before this system (HELLO - CRM TWings Academy.xlsx), see what it brings,
+ * then import: learners, registrations, payments and the RB / EB classes 1–8 run on the old platform.
+ */
+const LegacyImportDialog: React.FC<{ onClose: () => void; onDone: () => void }> = ({ onClose, onDone }) => {
+  const [file, setFile] = useState<File | null>(null);
+  const [summary, setSummary] = useState<LegacySummary | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const send = async (apply: boolean, chosen = file) => {
+    if (!chosen) return;
+    const body = new FormData();
+    body.append('file', chosen);
+    if (apply) body.append('apply', '1');
+    setBusy(true);
+    setError('');
+    try {
+      const result = await apiFetch<LegacySummary>('/staff/crm/legacy-import/', { method: 'POST', body });
+      setSummary(result);
+      if (result.applied) onDone();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const stages = Object.entries(summary?.stages || {}).sort(([a], [b]) => a.localeCompare(b));
+  const skipped = Object.entries(summary?.skipped || {}).filter(([, n]) => n);
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl border border-slate-200 w-full max-w-3xl max-h-[90vh] overflow-y-auto p-5 space-y-4 text-xs" role="dialog" aria-modal="true">
+        <div>
+          <h3 className="font-bold text-sm text-slate-900">Nhập dữ liệu CRM cũ</h3>
+          <p className="text-slate-500 mt-1">
+            File Excel CRM dùng trước hệ thống này (sheet <strong>Data</strong>). Học viên có <strong>Xếp lớp</strong> được đưa vào lớp tương ứng của khóa RB / EB
+            (lớp học trên nền tảng cũ: không tạo khóa Moodle, không hiện trên website); các dòng khác thành lead theo cột <strong>Trạng thái</strong>.
+            Không gửi email cho ai. Nhập lại file chỉ thêm các dòng chưa nhập.
+          </p>
+        </div>
+        <label className="flex items-center gap-2">
+          <input
+            type="file"
+            accept=".xlsx"
+            disabled={busy}
+            onChange={(e) => {
+              const chosen = e.target.files?.[0] || null;
+              setFile(chosen);
+              setSummary(null);
+              if (chosen) send(false, chosen);
+            }}
+          />
+          {busy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+        </label>
+        {error && <p className="text-red-600">{error}</p>}
+        {summary && (
+          <div className="space-y-3">
+            <p className={`p-3 rounded-xl ${summary.applied ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-50 text-slate-700'}`}>
+              {summary.applied ? 'Đã nhập ' : 'Sẽ nhập '}
+              <strong>{summary.registrations}</strong> đăng ký từ {summary.rows} dòng
+              {skipped.length > 0 && <> (bỏ qua: {skipped.map(([k, n]) => `${n} ${SKIPPED[k] || k}`).join(', ')})</>}.
+              {summary.deferred > 0 && <> {summary.deferred} bảo lưu.</>}
+              {summary.paidWithoutClass > 0 && <> {summary.paidWithoutClass} đã đóng phí nhưng chưa xếp lớp (xếp lớp sau ở hồ sơ đăng ký).</>}
+            </p>
+            {stages.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {stages.map(([stage, n]) => (
+                  <span key={stage} className="px-2 py-1 rounded-lg bg-slate-100 text-slate-700">
+                    {stage}: <strong>{n}</strong>
+                  </span>
+                ))}
+              </div>
+            )}
+            {summary.classes.length > 0 && (
+              <table className="w-full">
+                <thead className="text-left text-slate-500 bg-slate-50">
+                  <tr>
+                    <th className="px-2 py-1.5">Lớp</th>
+                    <th className="px-2 py-1.5">Khóa học</th>
+                    <th className="px-2 py-1.5">Trạng thái</th>
+                    <th className="px-2 py-1.5 text-right">Học viên</th>
+                    <th className="px-2 py-1.5 text-right">Đóng đủ phí</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {summary.classes.map((c) => (
+                    <tr key={c.code}>
+                      <td className="px-2 py-1.5 font-bold">
+                        {c.name} <span className="font-mono text-slate-400">{c.code}</span>
+                        {c.exists && <span className="ml-1 text-slate-400">(đã có)</span>}
+                      </td>
+                      <td className="px-2 py-1.5">{c.course}</td>
+                      <td className="px-2 py-1.5">{c.status}</td>
+                      <td className="px-2 py-1.5 text-right">{c.learners}</td>
+                      <td className="px-2 py-1.5 text-right">{c.paidInFull}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {summary.warnings.length > 0 && (
+              <details open={summary.warnings.length <= 15}>
+                <summary className="cursor-pointer font-bold text-amber-700">Cần xem lại ({summary.warnings.length})</summary>
+                <ul className="mt-1 space-y-0.5 list-disc pl-5 text-amber-800">
+                  {summary.warnings.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-slate-200 font-bold">
+            {summary?.applied ? 'Đóng' : 'Hủy'}
+          </button>
+          {summary && !summary.applied && summary.registrations > 0 && (
+            <button type="button" disabled={busy} onClick={() => send(true)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold disabled:opacity-50">
+              Nhập {summary.registrations} đăng ký
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ---------------------------------------------------------------- one learner
-const PERSONAL: { key: keyof LearnerDetail; label: string; type?: 'date' | 'select'; options?: string[]; wide?: boolean }[] = [
+// `list`: the CRM list (danh mục) the field picks from; 'suggest' offers it while typing anything.
+const PERSONAL: { key: keyof LearnerDetail; label: string; type?: 'date' | 'select' | 'suggest'; list?: keyof CrmLists; wide?: boolean }[] = [
   { key: 'fullName', label: 'Họ và tên *' },
   { key: 'phone', label: 'Số điện thoại' },
   { key: 'email', label: 'Email' },
   { key: 'birthDate', label: 'Ngày sinh', type: 'date' },
-  { key: 'gender', label: 'Giới tính', type: 'select', options: ['', 'Nam', 'Nữ', 'Khác'] },
-  { key: 'area', label: 'Khu vực' },
+  { key: 'gender', label: 'Giới tính', type: 'select', list: 'genders' },
+  { key: 'area', label: 'Khu vực (tỉnh/thành)', type: 'select', list: 'provinces' },
   { key: 'citizenId', label: 'Số CCCD' },
   { key: 'issuedPlace', label: 'Nơi cấp CCCD' },
   { key: 'currentResidence', label: 'Nơi ở hiện tại', wide: true },
   { key: 'permanentAddress', label: 'Địa chỉ thường trú', wide: true }
 ];
 const EDUCATION: typeof PERSONAL = [
-  { key: 'educationLevel', label: 'Trình độ', type: 'select', options: ['', 'THPT', 'Cao đẳng', 'Đại học', 'Thạc sĩ', 'Khác'] },
-  { key: 'university', label: 'Trường' },
+  { key: 'educationLevel', label: 'Trình độ', type: 'select', list: 'educationLevels' },
+  { key: 'university', label: 'Trường', type: 'suggest', list: 'universities' },
   { key: 'major', label: 'Ngành học' },
   { key: 'graduationYear', label: 'Năm tốt nghiệp' },
   { key: 'contactPersonName', label: 'Người liên hệ khi cần' },
@@ -230,6 +390,7 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
   const canEdit = useStaffCan('crm.edit_status');
   const canAssign = useStaffCan('crm.assign_pic');
   const superAdmin = useIsSuperAdmin();
+  const lists = useCrmLists();
   const [learner, setLearner] = useState<LearnerDetail | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<'courses' | 'details' | 'history' | 'meetings'>('courses');
@@ -315,8 +476,13 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
       <span className="font-bold text-slate-700 block mb-1">{f.label}</span>
       {f.type === 'select' ? (
         <select disabled={!canEdit} value={form[f.key as string] || ''} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} className="w-full p-2.5 border border-slate-200 rounded-xl bg-white">
-          {(f.options || []).map((o) => <option key={o} value={o}>{o || 'Chưa rõ'}</option>)}
+          {withCurrent(['', ...(f.list ? lists[f.list] : [])], form[f.key as string]).map((o) => <option key={o} value={o}>{o || 'Chưa rõ'}</option>)}
         </select>
+      ) : f.type === 'suggest' ? (
+        <>
+          <input disabled={!canEdit} list={`list-${f.key as string}`} value={form[f.key as string] || ''} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} className="w-full p-2.5 border border-slate-200 rounded-xl" />
+          <datalist id={`list-${f.key as string}`}>{(f.list ? lists[f.list] : []).map((o) => <option key={o} value={o} />)}</datalist>
+        </>
       ) : (
         <input disabled={!canEdit} type={f.type === 'date' ? 'date' : 'text'} value={(f.type === 'date' ? viDateToIso(form[f.key as string]) : form[f.key as string]) || ''} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} className="w-full p-2.5 border border-slate-200 rounded-xl" />
       )}
@@ -525,6 +691,7 @@ const RegisterDialog: React.FC<{ learner: LearnerDetail; courses: Course[]; prog
   onClose
 }) => {
   const [courseId, setCourseId] = useState('');
+  const lists = useCrmLists();
   const [source, setSource] = useState('Nhập tay');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
@@ -571,7 +738,7 @@ const RegisterDialog: React.FC<{ learner: LearnerDetail; courses: Course[]; prog
         <label className="block">
           <span className="font-bold text-slate-700 block mb-1">Nguồn</span>
           <select value={source} onChange={(e) => setSource(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl">
-            {['Nhập tay', 'Học viên cũ quay lại', 'Hotline', 'Giới thiệu', 'Sự kiện'].map((s) => <option key={s} value={s}>{s}</option>)}
+            {lists.sources.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
         <label className="block">

@@ -7,6 +7,7 @@ import { useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
 import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../../admin/catalog';
 import { useStageGate } from './StageGate';
+import { useCrmLists } from '../../lib/crmLists';
 
 /** Every lead ('all'), the leads not in a class yet ('none'), or the leads of one class (its id). */
 export type PipelineScope = 'all' | 'none' | string;
@@ -37,8 +38,6 @@ const STAGES: { id: CRMStatus; label: string; dot: string }[] = [
   { id: '7. Đã hủy', label: 'Đã hủy', dot: 'bg-red-400' }
 ];
 const PAID_STAGE: CRMStatus = '5. Đã đóng phí';
-const INTEREST = ['Rất cao', 'Cao', 'Trung bình', 'Thấp', 'Đang phân vân'];
-const SOURCES = ['Nhập tay', 'Hotline', 'Facebook', 'Zalo', 'TikTok', 'Giới thiệu', 'Hội thảo trường ĐH', 'Sự kiện'];
 /** Leads loaded per kanban column at a time (each column pages on its own). */
 const COLUMN_SIZE = 30;
 const PAGE_SIZE = 50;
@@ -80,6 +79,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   onOpenLeadDetail,
   onOpenEditClass
 }) => {
+  const lists = useCrmLists();
   const canEdit = useStaffCan('crm.edit_status');
   const canExport = useStaffCan('crm.export_excel');
   const klass = classes.find((c) => c.id === scope) || null;
@@ -388,7 +388,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
           </select>
           <select value={interest} onChange={(e) => setInterest(e.target.value)} className={select}>
             <option value="">Mọi mức quan tâm</option>
-            {INTEREST.map((i) => <option key={i} value={i}>{i}</option>)}
+            {lists.interestLevels.map((i) => <option key={i} value={i}>{i}</option>)}
           </select>
           <label className={`${select} flex items-center gap-1.5 cursor-pointer ${overdue ? 'border-red-300 text-red-700' : ''}`}>
             <input type="checkbox" checked={overdue} onChange={(e) => setOverdue(e.target.checked)} /> Quá hạn phản hồi
@@ -574,6 +574,7 @@ const NewLeadDialog: React.FC<{
   onClose: () => void;
   onCreated: (order: Order) => void;
 }> = ({ courses, programs, klass, onClose, onCreated }) => {
+  const lists = useCrmLists();
   const [form, setForm] = useState({ customerName: '', customerPhone: '', customerEmail: '', courseId: klass?.courseId || '', source: 'Nhập tay', consultNeed: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -635,7 +636,7 @@ const NewLeadDialog: React.FC<{
           <label className="block">
             <span className="font-bold text-slate-700 block mb-1">Nguồn</span>
             <select value={form.source} onChange={set('source')} className={input}>
-              {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+              {lists.sources.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </label>
         </div>

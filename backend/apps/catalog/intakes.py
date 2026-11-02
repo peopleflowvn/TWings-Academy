@@ -204,6 +204,7 @@ def overview() -> dict:
                 "is_published": c.is_published,
                 "is_featured": c.is_featured,
                 "show_quota": c.show_quota,
+                "external_lms": c.external_lms,
                 "summary": c.summary,
                 "image": c.image,
                 "description": c.description,

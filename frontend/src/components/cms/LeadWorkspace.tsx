@@ -43,6 +43,7 @@ import { PlacementPanel } from '../../admin/pages/PlacementPages';
 import { api, Paginated } from '../../lib/api';
 import { useIsSuperAdmin, useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
+import { useCrmLists, withCurrent } from '../../lib/crmLists';
 
 const CRM_STAGES: { id: CRMStatus; label: string }[] = [
   { id: '1. Mới', label: 'Mới' },
@@ -122,8 +123,6 @@ const when = (value?: string) => {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-const SOURCES = ['Website', 'Hotline', 'Facebook', 'Zalo', 'TikTok', 'Giới thiệu', 'Hội thảo trường ĐH', 'Sự kiện'];
-
 /**
  * One registration (lead) in full: course, class, stage, consultation history, tasks, appointments,
  * payment and learning, with a summary of the learner (whose details are on the learner page).
@@ -139,6 +138,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   programs,
 }) => {
   const [order, setOrder] = useState<Order>(initialOrder);
+  const lists = useCrmLists();
   // The order as last loaded from / saved to the server: changes are sent against it.
   const [saved, setSaved] = useState<Order>(initialOrder);
   const [isDirty, setIsDirty] = useState(false);
@@ -650,11 +650,9 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                 className="bg-transparent font-bold text-slate-800 text-xs focus:outline-none cursor-pointer"
               >
                 <option value="">Chưa đánh giá</option>
-                <option value="Rất cao">🔥 Rất cao (Sẵn sàng nộp)</option>
-                <option value="Cao">⚡ Cao (Đang so sánh)</option>
-                <option value="Trung bình">⏳ Trung bình (Cần hỏi gia đình)</option>
-                <option value="Đang phân vân">🤔 Đang phân vân</option>
-                <option value="Thấp">❄️ Thấp</option>
+                {withCurrent(lists.interestLevels, order.interestLevel).map((level) => (
+                  <option key={level} value={level}>{level}</option>
+                ))}
               </select>
             </div>
 
@@ -910,8 +908,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       >
                         <option value="">Chưa rõ</option>
                         {/* The stored source (e.g. "Website · Facebook" from the UTM link) stays selectable as is. */}
-                        {order.source && !SOURCES.includes(order.source) && <option value={order.source}>{order.source}</option>}
-                        {SOURCES.map((src) => (
+                        {withCurrent(lists.sources, order.source).map((src) => (
                           <option key={src} value={src}>{src}</option>
                         ))}
                       </select>
@@ -1243,11 +1240,9 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50/50 font-semibold"
                     >
                       <option value="">Chưa cập nhật</option>
-                      <option value="Đang học">Đang học</option>
-                      <option value="Chờ xét tốt nghiệp">Chờ xét tốt nghiệp</option>
-                      <option value="Đã tốt nghiệp">Đã tốt nghiệp (Cấp chứng chỉ)</option>
-                      <option value="Bảo lưu">Bảo lưu</option>
-                      <option value="Thôi học">Thôi học</option>
+                      {withCurrent(lists.trainingStatuses, order.trainingStatus).map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
                     </select>
                   </div>
                 </div>

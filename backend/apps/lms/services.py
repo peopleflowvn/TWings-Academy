@@ -116,9 +116,15 @@ def ensure_cohort_course(cohort) -> int:
     idnumber = f"{COHORT_PREFIX}{cohort.id}"
     found = _find_course("idnumber", idnumber)
     if found:
+        change = {}
         start = _timestamp(cohort.start_date) if cohort.start_date else None
         if start and found.get("startdate") != start:
-            moodle.call("core_course_update_courses", courses=[{"id": found["id"], "startdate": start}])
+            change["startdate"] = start
+        fullname = f"{cohort.course.title} – {cohort.name}"[:254]
+        if found.get("fullname") and found["fullname"] != fullname:  # the class was renamed
+            change["fullname"] = fullname
+        if change:
+            moodle.call("core_course_update_courses", courses=[{"id": found["id"], **change}])
         return found["id"]
 
     template_id = ensure_course(cohort.course)
@@ -291,6 +297,8 @@ def enroll_paid_order(order_id: str) -> None:
         return
     with transaction.atomic():
         order = Order.objects.select_for_update().get(pk=order_id)
+        if order.cohort_id and order.cohort.external_lms:
+            return  # the class is taught on another platform
         enrollment, _ = LmsEnrollment.objects.get_or_create(order=order)
         if enrollment.status == "removed":
             return

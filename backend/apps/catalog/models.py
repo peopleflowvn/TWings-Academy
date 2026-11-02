@@ -267,6 +267,9 @@ class Cohort(BaseModel):
     slug = models.SlugField(max_length=90, blank=True)  # /tuyen-sinh/<slug>
     # "Hiện trên website": offered on the site (see CohortQuerySet.listed); off = internal class.
     is_published = models.BooleanField(default=True, db_index=True)
+    # Taught on another platform (the classes run before this system, kept for their history): no Moodle
+    # course is made for it and its learners are not enrolled on Moodle.
+    external_lms = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
     show_quota = models.BooleanField(default=True)  # show the places left
     summary = models.CharField(max_length=300, blank=True)  # the hook on the card

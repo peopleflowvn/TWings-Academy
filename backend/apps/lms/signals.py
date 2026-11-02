@@ -24,6 +24,8 @@ def enroll_when_paid(sender, instance: Order, **kwargs):
     """
     if not moodle.is_configured() or instance.is_program_order:
         return  # a program order has no course: its components are enrolled
+    if instance.cohort_id and instance.cohort.external_lms:
+        return  # the class is taught on another platform
     enrollment = getattr(instance, "lms_enrollment", None)
     if not instance.learning_access:
         if (
@@ -63,7 +65,7 @@ def enroll_when_listed(sender, instance: CorporateEnrollment, **kwargs):
 @receiver(post_save, sender=Cohort, dispatch_uid="lms_provision_cohort")
 def provision_when_saved(sender, instance: Cohort, **kwargs):
     """A new or edited intake gets (or keeps in sync) its own Moodle course and teachers."""
-    if not moodle.is_configured() or instance.status == "completed":
+    if not moodle.is_configured() or instance.status == "completed" or instance.external_lms:
         return
     _later(tasks.provision_cohort, instance.pk)
 

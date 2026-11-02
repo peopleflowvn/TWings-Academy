@@ -1666,11 +1666,11 @@
    "partner": "MSB",
    "classes": [
     {
-     "name": "Khóa 1",
-     "code": "RB-K1",
+     "name": "Khóa 9",
+     "code": "RB-K9",
      "is_featured": true,
      "is_published": true,
-     "description": "Đợt tuyển sinh đầu tiên của chương trình Quan hệ Khách hàng Cá nhân (RB): học trực tiếp tại ROX Tower Hà Nội kết hợp online, sau đó thực chiến tại đơn vị kinh doanh MSB dưới sự hướng dẫn của Team Lead.",
+     "description": "Khóa 9 của chương trình Quan hệ Khách hàng Cá nhân (RB): học trực tiếp tại ROX Tower Hà Nội kết hợp online, sau đó thực chiến tại đơn vị kinh doanh MSB dưới sự hướng dẫn của Team Lead. Chương trình đã đào tạo 8 khóa trước đó.",
      "start_date": "2026-12-07",
      "registration_deadline": "2026-11-30",
      "capacity": 30,
@@ -2006,11 +2006,11 @@
    "partner": "MSB",
    "classes": [
     {
-     "name": "Khóa 1",
-     "code": "EB-K1",
+     "name": "Khóa 9",
+     "code": "EB-K9",
      "is_featured": true,
      "is_published": true,
-     "description": "Đợt tuyển sinh đầu tiên của chương trình Quan hệ Khách hàng Doanh nghiệp (EB): học trực tiếp tại ROX Tower Hà Nội kết hợp online, sau đó thực chiến tại đơn vị kinh doanh MSB dưới sự hướng dẫn của Team Lead.",
+     "description": "Khóa 9 của chương trình Quan hệ Khách hàng Doanh nghiệp (EB): học trực tiếp tại ROX Tower Hà Nội kết hợp online, sau đó thực chiến tại đơn vị kinh doanh MSB dưới sự hướng dẫn của Team Lead. Chương trình đã đào tạo 8 khóa trước đó.",
      "start_date": "2026-12-14",
      "registration_deadline": "2026-12-07",
      "capacity": 30,
