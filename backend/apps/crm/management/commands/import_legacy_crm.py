@@ -5,6 +5,7 @@ The CRM workbook kept before this system (apps.crm.legacy_import): learners, reg
 the RB / EB classes run on the old platform. "-" reads the compact copy of the sheet (JSON rows, xz,
 base64) from stdin, which is how the Ops task "legacy-crm" brings it to the server (the data is never
 in the repository). Preview unless --apply; importing again adds only the rows not imported yet.
+A copy that is {"fixes": [...]} instead corrects imported registrations (legacy_import.fix).
 Nothing is e-mailed.
 """
 
@@ -12,7 +13,7 @@ import sys
 
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.crm.legacy_import import LegacyImportError, read_compact, read_workbook, run
+from apps.crm.legacy_import import LegacyImportError, fix, read_compact, read_workbook, run
 
 
 class Command(BaseCommand):
@@ -25,6 +26,11 @@ class Command(BaseCommand):
     def handle(self, source, apply, **options):
         try:
             table = read_compact(sys.stdin.read()) if source == "-" else read_workbook(source)
+            if isinstance(table, dict):
+                for line in fix(table["fixes"], apply=apply):
+                    self.stdout.write(line)
+                self.stdout.write("Đã ghi." if apply else "Xem trước: chưa ghi gì (thêm --apply để ghi).")
+                return
             summary = run(table, apply=apply)
         except LegacyImportError as exc:
             raise CommandError(str(exc)) from exc

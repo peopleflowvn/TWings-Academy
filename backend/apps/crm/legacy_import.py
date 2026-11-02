@@ -29,7 +29,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import Cohort, Course
-from apps.payments.models import Payment
+from apps.payments.models import Payment, Refund
 
 from .learners import attach_learner, phone_key
 from .lists import normalize, plain
@@ -662,3 +662,80 @@ def run(table: list[list], *, apply: bool, user=None) -> dict:
             _write(e, cohort, users, actor)
     summary["applied"] = True
     return summary
+
+
+# ---------------------------------------------------------------- corrections after the import
+def fix(fixes: list[dict], *, apply: bool) -> list[str]:
+    """
+    Corrections staff give after the import, each for one registration (its "Mã đăng ký"):
+      {"code": …, "class": N}                      studied in class N of its program (RB / EB)
+      {"code": …, "cancel": "reason"}              cancelled; the money paid is kept
+      {"code": …, "cancel": "reason", "refund": n} cancelled and n refunded
+      {"code": …, "contacted": "YYYY-MM-DD"}       first contacted on that day
+    Returns what was (or would be) done; nothing is e-mailed.
+    """
+    done = []
+    with transaction.atomic():
+        for f in fixes:
+            code = " ".join(str(f["code"]).split())
+            order = Order.objects.filter(attribution__legacy_code=code).select_related("course").first()
+            if order is None:
+                done.append(f"! {code}: không tìm thấy đăng ký")
+                continue
+            who = f"{order.customer_name} ({code})"
+            notes = []
+            if "class" in f:
+                number = int(f["class"])
+                if order.course is None or order.course.slug not in (RB, EB):
+                    done.append(f"! {who}: không phải khóa RB / EB")
+                    continue
+                cohort_code = f"{'RB' if order.course.slug == RB else 'EB'}-K{number}"
+                cohort = Cohort.objects.filter(code=cohort_code).first()
+                if apply:
+                    cohort = cohort or _cohort(
+                        {
+                            "course": order.course,
+                            "number": number,
+                            "code": cohort_code,
+                            "status": "completed",
+                            "members": [order],
+                            "first": None,
+                            "last": None,
+                        }
+                    )
+                    order.cohort, order.batch_cohort = cohort, cohort.name
+                    order.crm_status = PAID_STAGE
+                    order.training_status = "Hoàn thành" if cohort.status == "completed" else "Đang học"
+                notes.append(f"xếp vào Khóa {number} ({cohort_code}{'' if cohort else ', tạo lớp mới'})")
+            if "cancel" in f:
+                refund = int(f.get("refund") or 0)
+                if apply:
+                    order.cohort, order.batch_cohort = None, ""
+                    order.crm_status, order.lost_reason = CANCELLED_STAGE, str(f["cancel"])[:200]
+                    order.training_status = ""
+                    order.installments.filter(paid_at__isnull=True).delete()
+                    order.installment_count = 1
+                    order.status = "refunded" if refund else "cancelled"
+                    if refund:
+                        Refund.objects.create(order=order, amount=refund, reason=str(f["cancel"])[:300])
+                        order.refunded_amount = refund
+                notes.append(
+                    f"hủy ({f['cancel']})"
+                    + (f", hoàn {refund:,}đ".replace(",", ".") if refund else ", giữ tiền cọc")
+                )
+            if "contacted" in f:
+                day = _moment(f["contacted"] + "T09:00:00")
+                if apply:
+                    order.first_response_at = day
+                notes.append(f"liên hệ lần đầu {timezone.localdate(day):%d/%m/%Y}")
+            if apply:
+                order.save()
+                Activity.objects.create(
+                    order=order,
+                    type="note",
+                    title="Chỉnh dữ liệu CRM cũ",
+                    content="; ".join(notes),
+                    actor=LEGACY,
+                )
+            done.append(f"{who}: " + "; ".join(notes))
+    return done

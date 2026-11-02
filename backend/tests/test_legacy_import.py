@@ -277,3 +277,43 @@ def test_the_old_classes_are_campaigns_with_their_learners(staff_client):
     assert set(old) == {"EB-K2", "RB-K8"}  # the finished class too: it is the campaign of its learners
     assert old["EB-K2"]["status"] == "completed" and old["EB-K2"]["paid"] == 1
     assert old["EB-K2"]["funnel"]["leads"] == 1 and old["RB-K8"]["paid"] == 1
+
+
+def test_corrections_after_the_import(monkeypatch):
+    from apps.payments.models import Refund
+
+    call_command("import_courses", "--apply")
+    _run(apply=True)
+    fixes = {
+        "fixes": [
+            {"code": "0003_C", "class": 1},  # the deferred EB learner studied in class 1 (created)
+            {"code": "0002_TW3_B", "cancel": "Hủy sau khi đặt cọc", "refund": 2_000_000},
+            {"code": "0001_TW2_A", "cancel": "Hủy sau khi đặt cọc"},
+            {"code": "0005_E", "contacted": "2026-03-23"},
+            {"code": "nobody", "class": 1},
+        ]
+    }
+    payload = base64.b64encode(lzma.compress(json.dumps(fixes).encode())).decode()
+    out = io.StringIO()
+    monkeypatch.setattr("sys.stdin", io.StringIO(payload))
+    call_command("import_legacy_crm", "-", stdout=out)
+    assert "tạo lớp mới" in out.getvalue() and not Cohort.objects.filter(code="EB-K1").exists()
+    monkeypatch.setattr("sys.stdin", io.StringIO(payload))
+    call_command("import_legacy_crm", "-", "--apply", stdout=out)
+    assert "! nobody" in out.getvalue()
+    c = Order.objects.get(customer_name="Lê C")
+    assert (c.cohort.code, c.cohort.status, c.cohort.external_lms, c.training_status) == (
+        "EB-K1",
+        "completed",
+        True,
+        "Hoàn thành",
+    )
+    b = Order.objects.get(customer_name="Trần Thị B")
+    assert (b.status, b.cohort, b.crm_status, b.refunded_amount) == ("refunded", None, "7. Đã hủy", 2_000_000)
+    assert Refund.objects.get().order == b and not b.installments.filter(paid_at__isnull=True).exists()
+    a = Order.objects.get(customer_name="Nguyễn Văn A")
+    assert (a.status, a.cohort, a.total_paid_amount) == ("cancelled", None, 8_100_000)  # the money stays
+    assert (
+        timezone.localdate(Order.objects.get(customer_name="Đỗ E").first_response_at).isoformat()
+        == "2026-03-23"
+    )
