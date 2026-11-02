@@ -61,7 +61,11 @@ def _registration(o: Order) -> dict:
 
 
 class LearnerViewSet(
-    mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
 ):
     serializer_class = LearnerSerializer
     permission_classes = [ActionPermission]
@@ -71,6 +75,7 @@ class LearnerViewSet(
         "update": ["crm.edit_status"],
         "partial_update": ["crm.edit_status"],
         "merge": ["crm.assign_pic"],
+        "destroy": ["crm.delete_lead"],  # and super admin only (perform_destroy)
     }
     filterset_fields = ["owner"]
     search_fields = ["code", "full_name", "phone", "email", "university"]
@@ -87,6 +92,17 @@ class LearnerViewSet(
         if self.request.query_params.get("mine"):
             qs = qs.filter(owner=self.request.user)
         return qs.order_by("-last_registration_at", "-created_at")
+
+    def perform_destroy(self, instance):
+        """A learner and every registration of theirs, for good: super admin only (apps.crm.deletion)."""
+        from apps.core.models import audit
+
+        from .deletion import delete_learner, is_super_admin
+
+        if not is_super_admin(self.request.user):
+            raise PermissionDenied("Chỉ Super Admin được xóa hẳn học viên.")
+        audit(self.request, "learner.delete", instance, code=instance.code, name=instance.full_name)
+        delete_learner(instance)
 
     def retrieve(self, request, *args, **kwargs):
         learner = self.get_object()

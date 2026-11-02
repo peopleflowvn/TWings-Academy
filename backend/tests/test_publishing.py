@@ -120,10 +120,18 @@ def test_program_publish_and_live_price_need_permissions(staff_client, course):
     assert res.status_code == 400
 
 
-def test_course_with_orders_or_intakes_cannot_be_deleted(staff_client, ready_course):
-    from apps.crm.models import Order
+def test_course_with_orders_or_intakes_cannot_be_deleted(ready_course):
+    """By staff given courses.delete; the super admin deletes anyway (test_super_admin_delete)."""
+    from rest_framework.test import APIClient
 
-    admin = staff_client(Role.SUPER_ADMIN)
+    from apps.crm.models import Order
+    from tests.conftest import make_staff
+
+    editor = make_staff(Role.ACADEMIC_MANAGEMENT)
+    editor.permission_overrides = {"granted": ["courses.delete"]}
+    editor.save()
+    admin = APIClient()
+    admin.force_authenticate(editor)
     Cohort.objects.create(course=ready_course, name="K1")
     res = admin.delete(f"{URL}{ready_course.pk}/")
     assert res.status_code == 400 and "Không xóa được" in res.json()["detail"]  # intake protects it (no 500)

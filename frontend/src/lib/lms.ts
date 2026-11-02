@@ -198,6 +198,11 @@ export function formatMoodleTime(ts: number | null): string {
 /** The signed-in CMS user (live mode), so deep components can check permissions. */
 export const StaffUserContext = createContext<AdminUser | undefined>(undefined);
 
+/** Super admin: may delete for good (courses, classes, leads, learners) what the screens otherwise protect. */
+export function useIsSuperAdmin(): boolean {
+  return useContext(StaffUserContext)?.role === 'super_admin';
+}
+
 export function useStaffCan(code: string): boolean {
   const user = useContext(StaffUserContext);
   if (!user) return false;

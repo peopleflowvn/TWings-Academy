@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
+  Trash2,
   Save,
   Check,
   CheckCircle2,
@@ -40,7 +41,7 @@ import { LeadContactPanel } from './LeadContactPanel';
 import { useStageGate } from './StageGate';
 import { PlacementPanel } from '../../admin/pages/PlacementPages';
 import { api, Paginated } from '../../lib/api';
-import { useStaffCan } from '../../lib/lms';
+import { useIsSuperAdmin, useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
 
 const CRM_STAGES: { id: CRMStatus; label: string }[] = [
@@ -62,6 +63,8 @@ interface LeadWorkspaceProps {
   onConfirmPayment: (amount: number) => Promise<Order | null>;
   /** Open another lead (same person) in the workspace. */
   onOpenOrder?: (orderId: string) => void;
+  /** The lead was deleted (crm.delete_lead): close the workspace and refresh the pipeline. */
+  onDeleted?: () => void;
   /** The catalogue (courses on sale and programs) for the course of this registration. */
   courses: Course[];
   programs: ProgramOption[];
@@ -131,6 +134,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   onSave,
   onConfirmPayment,
   onOpenOrder,
+  onDeleted,
   courses,
   programs,
 }) => {
@@ -145,6 +149,21 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [copiedLeadLink, setCopiedLeadLink] = useState(false);
   const canAssign = useStaffCan('crm.assign_pic');
+  const canDelete = useStaffCan('crm.delete_lead');
+  const superAdmin = useIsSuperAdmin();
+
+  /** Delete the lead for good; a lead with payments only by the super admin (payments go with it). */
+  const deleteLead = async () => {
+    const money = superAdmin ? '\n\nThanh toán, hoàn tiền, chứng chỉ và ghi danh LMS của đăng ký này bị xóa theo (tài khoản Moodle giữ nguyên).' : '';
+    if (!window.confirm(`Xóa hẳn lead ${order.orderCode} – ${order.customerName}? Không hoàn tác được.${money}`)) return;
+    try {
+      await api.delete(`/staff/orders/${order.id}/`);
+      onDeleted?.();
+      onClose();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Không xóa được lead.');
+    }
+  };
   const [consultants, setConsultants] = useState<Consultant[]>([]);
   const [cohorts, setCohorts] = useState<CohortOption[]>([]);
 
@@ -510,6 +529,18 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
               >
                 {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </button>
+
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={deleteLead}
+                  className="p-2 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-colors cursor-pointer flex items-center justify-center"
+                  title="Xóa hẳn lead này"
+                  aria-label="Xóa lead"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
 
               <button
                 type="button"

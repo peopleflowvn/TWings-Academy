@@ -348,8 +348,13 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
 
     def perform_destroy(self, instance):
+        from .deletion import delete_orders, is_super_admin
+
         audit(self.request, "order.delete", instance, order_code=instance.order_code)
-        instance.delete()
+        if is_super_admin(self.request.user):
+            delete_orders(Order.objects.filter(pk=instance.pk))  # with its payments (apps.crm.deletion)
+        else:
+            instance.delete()  # a lead with payments stays (ProtectedError: a clear 400)
 
     @action(detail=True, methods=["get", "post"])
     def activities(self, request, pk=None):

@@ -151,6 +151,13 @@ class CourseViewSet(viewsets.ModelViewSet):
             audit(self.request, "course.update", course, fields=other)
 
     def perform_destroy(self, instance):
+        from apps.crm.deletion import delete_course, is_super_admin
+
+        if is_super_admin(self.request.user):
+            # The super admin deletes anyway: its classes go too, its registrations stay (apps.crm.deletion).
+            audit(self.request, "course.delete", instance, title=instance.title, forced=True)
+            delete_course(instance)
+            return
         if instance.orders.exists():
             raise serializers.ValidationError(
                 {"detail": "Khóa học đã có đơn hàng / học viên: không xóa được, hãy chuyển sang Ngừng bán."}
@@ -302,6 +309,17 @@ class CohortViewSet(viewsets.ModelViewSet):
                     "Lịch, sĩ số, giá của lớp do bộ phận đào tạo chỉnh sửa (courses.edit_info)."
                 )
         serializer.save()
+
+    def perform_destroy(self, instance):
+        from apps.crm.deletion import delete_cohort, is_super_admin
+
+        registrations = instance.orders.count()
+        if registrations and not is_super_admin(self.request.user):
+            raise serializers.ValidationError(
+                {"detail": f"Lớp đã có {registrations} đăng ký: chuyển họ sang lớp khác hoặc đóng lớp."}
+            )
+        audit(self.request, "cohort.delete", instance, name=instance.name, registrations=registrations)
+        delete_cohort(instance)
 
     def get_queryset(self):
         # Corporate classes are managed with their client (apps.corporate), never as intakes for sale.

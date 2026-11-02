@@ -7,9 +7,9 @@
  * Each registration opens in the lead workspace (/app/sales/crm?orderId=…).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, GitMerge, Loader2, Mail, Phone, Plus, Save, Search } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, GitMerge, Loader2, Mail, Phone, Plus, Save, Search, Trash2 } from 'lucide-react';
 import { api, ApiError, Paginated } from '../../lib/api';
-import { useStaffCan } from '../../lib/lms';
+import { useIsSuperAdmin, useStaffCan } from '../../lib/lms';
 import { navigate, useAppSearch } from '../router';
 import { Course } from '../../types';
 import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../catalog';
@@ -229,6 +229,7 @@ const EDITABLE = [...PERSONAL, ...EDUCATION].map((f) => f.key as string).concat(
 const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, courses }) => {
   const canEdit = useStaffCan('crm.edit_status');
   const canAssign = useStaffCan('crm.assign_pic');
+  const superAdmin = useIsSuperAdmin();
   const [learner, setLearner] = useState<LearnerDetail | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<'courses' | 'details' | 'history' | 'meetings'>('courses');
@@ -239,6 +240,20 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
   const [registering, setRegistering] = useState(false);
   const [merging, setMerging] = useState(false);
   const programs = usePrograms();
+
+  /** Super admin: the learner and every registration (with its payments), for good. */
+  const remove = async () => {
+    if (!learner) return;
+    const n = learner.registrations.length;
+    const what = n ? `\n\nXóa luôn ${n} đăng ký của học viên (kèm thanh toán, hoàn tiền, chứng chỉ).` : '';
+    if (!window.confirm(`Xóa hẳn học viên "${learner.fullName}"? Không hoàn tác được (tài khoản Moodle giữ nguyên).${what}`)) return;
+    try {
+      await api.delete(`/staff/learners/${id}/`);
+      navigate('/sales/learners');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không xóa được học viên.');
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -346,6 +361,11 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
             {canAssign && (
               <button type="button" onClick={() => setMerging(true)} className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-bold flex items-center gap-1.5 cursor-pointer" title="Cùng một người có hai hồ sơ">
                 <GitMerge className="w-3.5 h-3.5" /> Gộp hồ sơ trùng
+              </button>
+            )}
+            {superAdmin && (
+              <button type="button" onClick={remove} className="px-3 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 font-bold flex items-center gap-1.5 cursor-pointer" title="Xóa hẳn học viên và mọi đăng ký (Super Admin)">
+                <Trash2 className="w-3.5 h-3.5" /> Xóa học viên
               </button>
             )}
           </div>

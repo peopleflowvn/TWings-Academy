@@ -145,6 +145,7 @@ export const AdmissionsPage: React.FC<{ courses: Course[] }> = ({ courses }) => 
           order={selectedLead}
           onClose={() => setSelectedLead(null)}
           onOpenOrder={(id) => openLead({ id })}
+          onDeleted={() => setRefreshKey((k) => k + 1)}
           courses={courses}
           programs={programs}
           onSave={async (previous, updated) => {

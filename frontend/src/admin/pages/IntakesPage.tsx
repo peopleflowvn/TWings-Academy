@@ -5,10 +5,10 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AlertTriangle, ArrowUpDown, CalendarDays, CheckCircle2, Copy, ExternalLink, Globe, LayoutGrid, Loader2, MoreHorizontal, Plus, RefreshCw, Save, Search, Table as TableIcon, X
+  AlertTriangle, ArrowUpDown, CalendarDays, CheckCircle2, Copy, ExternalLink, Globe, LayoutGrid, Loader2, MoreHorizontal, Plus, RefreshCw, Save, Search, Table as TableIcon, Trash2, X
 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
-import { useStaffCan } from '../../lib/lms';
+import { useIsSuperAdmin, useStaffCan } from '../../lib/lms';
 import { formatDate, formatVND } from '../../lib/commerce';
 import { rank } from '../../lib/search';
 import { RosterModal } from './JourneyPages';
@@ -603,6 +603,7 @@ export const ClassesView: React.FC<{
   const canTraining = useStaffCan('courses.edit_info');
   const canAdmissions = useStaffCan('crm.assign_pic');
   const canCourses = useStaffCan('courses.view');
+  const superAdmin = useIsSuperAdmin();
   const [scheduling, setScheduling] = useState<IntakeRow | null>(null);
   const [roster, setRoster] = useState<string | null>(null);
   const [gradebook, setGradebook] = useState<string | null>(null);
@@ -665,6 +666,23 @@ export const ClassesView: React.FC<{
   };
   const canEdit = canTraining || canAdmissions;
 
+  /** Delete a class: a class with registrations only by the super admin (they stay on the course). */
+  const removeClass = async (r: IntakeRow) => {
+    const n = r.funnel?.leads || 0;
+    const note = n
+      ? superAdmin
+        ? `\n\nLớp có ${n} đăng ký: các đăng ký vẫn giữ trên khóa học, không còn gắn lớp này.`
+        : `\n\nLớp có ${n} đăng ký: chỉ Super Admin xóa được (hãy chuyển học viên sang lớp khác hoặc đóng lớp).`
+      : '';
+    if (!window.confirm(`Xóa hẳn lớp "${r.name}"? Không hoàn tác được (khóa trên Moodle giữ nguyên).${note}`)) return;
+    try {
+      await api.delete(`/staff/cohorts/${r.id}/`);
+      onReload();
+    } catch (err) {
+      window.alert(err instanceof ApiError ? err.message : 'Không xóa được lớp.');
+    }
+  };
+
   /** The less used actions of a class, behind "…". */
   const moreMenu = (r: IntakeRow) => (
     <div className="relative">
@@ -688,6 +706,11 @@ export const ClassesView: React.FC<{
             {canTraining && (
               <button type="button" onClick={() => { setMenu(null); setScheduling(r); }} className="w-full text-left px-3 py-2 hover:bg-slate-50 cursor-pointer flex items-center gap-2">
                 <CalendarDays className="w-3.5 h-3.5" /> Lịch học
+              </button>
+            )}
+            {(canTraining || superAdmin) && (
+              <button type="button" onClick={() => { setMenu(null); removeClass(r); }} className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 cursor-pointer flex items-center gap-2 border-t border-slate-100">
+                <Trash2 className="w-3.5 h-3.5" /> Xóa lớp
               </button>
             )}
           </div>

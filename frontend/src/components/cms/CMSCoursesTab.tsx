@@ -25,7 +25,7 @@ import {
 import confetti from 'canvas-confetti';
 import { Course, CourseType, Module, Lesson, Instructor, Partner } from '../../types';
 import { api, isBackendEnabled, Paginated } from '../../lib/api';
-import { useStaffCan } from '../../lib/lms';
+import { useIsSuperAdmin, useStaffCan } from '../../lib/lms';
 import { CoursePublishingPanel } from './CoursePublishingPanel';
 import { CourseListView } from './CourseListView';
 import { ImageUploadField } from './ImageUploadField';
@@ -117,6 +117,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
   const canCurriculum = useStaffCan('courses.curriculum');
   const canEdit = canEditInfo || canCurriculum;
   const canDelete = useStaffCan('courses.delete');
+  const superAdmin = useIsSuperAdmin();
   // The classes of every course: counts on the list, the classes panel on a course's page.
   const classes = useClasses();
   const [selectedCourseId, setSelectedCourseId] = useState<string>(() =>
@@ -300,7 +301,10 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
 
   const handleDeleteCurrentCourse = async () => {
     if (busy) return;
-    if (!window.confirm(`Xóa hẳn khóa học "${currentCourse.title}"? Không hoàn tác được.\n\nKhóa đã có lớp hoặc học viên thì không xóa được – hãy dùng "Ngừng bán".`)) return;
+    const warning = superAdmin
+      ? 'Các lớp của khóa bị xóa theo và khóa được gỡ khỏi các chương trình. Đăng ký / học viên vẫn giữ lại (kèm tên khóa).'
+      : 'Khóa đã có lớp hoặc học viên thì không xóa được – hãy dùng "Ngừng bán".';
+    if (!window.confirm(`Xóa hẳn khóa học "${currentCourse.title}"? Không hoàn tác được.\n\n${warning}`)) return;
     setBusy('delete');
     const ok = await onDeleteCourse(currentCourse.id);
     setBusy('');
