@@ -567,6 +567,10 @@ export interface AdminUser {
 // -------------------------------------------------------------
 export interface SiteSEOSettings {
   siteName: string;
+  /** Global typography for both the public website and the staff app. */
+  fontFamily?: string;
+  customFontName?: string;
+  customFontUrl?: string;
   /** Public channels (footer, floating contact button); empty = not shown. */
   facebookUrl?: string;
   youtubeUrl?: string;

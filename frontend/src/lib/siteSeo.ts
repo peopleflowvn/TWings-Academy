@@ -47,11 +47,38 @@ function setLink(rel: string, href: string) {
 
 export const DEFAULT_FAVICON = '/favicon.svg';
 
+export const SITE_FONT_OPTIONS = [
+  { value: 'plus-jakarta', label: 'Plus Jakarta Sans', stack: "'Plus Jakarta Sans', system-ui, sans-serif" },
+  { value: 'system', label: 'Font hệ thống', stack: "system-ui, -apple-system, 'Segoe UI', sans-serif" },
+  { value: 'arial', label: 'Arial', stack: "Arial, Helvetica, sans-serif" },
+  { value: 'georgia', label: 'Georgia', stack: "Georgia, 'Times New Roman', serif" },
+  { value: 'times', label: 'Times New Roman', stack: "'Times New Roman', Times, serif" },
+] as const;
+
 /** Only https URLs (or site-relative paths) are applied. */
 const safeUrl = (url?: string) => (url && /^(https:\/\/|\/)/.test(url) ? url : '');
 
+export function applyGlobalFont(seo?: Partial<SiteSEOSettings> | null) {
+  document.getElementById('twings-custom-font')?.remove();
+  const customUrl = safeUrl(seo?.customFontUrl);
+  const customName = (seo?.customFontName || 'TWings Custom Font').replace(/["'\\]/g, '').trim();
+  let stack: string = SITE_FONT_OPTIONS.find((font) => font.value === seo?.fontFamily)?.stack
+    || SITE_FONT_OPTIONS[0].stack;
+  if (seo?.fontFamily === 'custom' && customUrl) {
+    const face = document.createElement('style');
+    face.id = 'twings-custom-font';
+    face.textContent = `@font-face{font-family:"${customName}";src:url("${customUrl}");font-display:swap;}`;
+    document.head.appendChild(face);
+    stack = `"${customName}", system-ui, sans-serif`;
+  }
+  document.documentElement.style.setProperty('--twings-font-family', stack);
+  // Tailwind's font-sans utilities use this variable too.
+  document.documentElement.style.setProperty('--font-sans', stack);
+}
+
 export async function applySiteSeo(): Promise<void> {
   const seo = await loadSiteSeo();
+  applyGlobalFont(seo);
   const favicon = safeUrl(seo?.faviconUrl) || DEFAULT_FAVICON;
   
   document.head.querySelectorAll('link[rel~="icon"]').forEach((l) => l.remove());

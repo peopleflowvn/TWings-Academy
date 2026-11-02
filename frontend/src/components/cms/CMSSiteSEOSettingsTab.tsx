@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useServerDocument } from '../../lib/serverCollection';
 import { 
   Globe, 
@@ -18,10 +18,15 @@ import {
   Tag,
   Loader2,
   AlertCircle
+  ,Type, Upload
 } from 'lucide-react';
 import { ImageUploadField } from './ImageUploadField';
 import { SiteSEOSettings } from '../../types';
 import { INITIAL_SEO_SETTINGS } from '../../data/courseraData';
+import { ApiError, apiFetch } from '../../lib/api';
+import { applyGlobalFont, SITE_FONT_OPTIONS } from '../../lib/siteSeo';
+
+const MAX_FONT_BYTES = 10 * 1024 * 1024;
 
 export const CMSSiteSEOSettingsTab: React.FC = () => {
   // Saved as the 'site_seo' site config in live mode (debounced auto-save + explicit save).
@@ -29,6 +34,36 @@ export const CMSSiteSEOSettingsTab: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [previewTab, setPreviewTab] = useState<'og' | 'serp'>('og');
+  const fontInput = useRef<HTMLInputElement>(null);
+  const [fontUploading, setFontUploading] = useState(false);
+  const [fontError, setFontError] = useState('');
+
+  useEffect(() => {
+    applyGlobalFont(settings);
+  }, [settings.fontFamily, settings.customFontName, settings.customFontUrl]);
+
+  const uploadFont = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > MAX_FONT_BYTES) {
+      setFontError('Font vượt quá 10 MB.');
+      return;
+    }
+    setFontUploading(true);
+    setFontError('');
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const uploaded = await apiFetch<{ url: string }>('/staff/uploads/fonts/', { method: 'POST', body });
+      const name = file.name.replace(/\.(woff2?|ttf|otf)$/i, '').replace(/[-_]+/g, ' ').trim();
+      setSettings({ ...settings, fontFamily: 'custom', customFontName: name, customFontUrl: uploaded.url });
+    } catch (err) {
+      setFontError(err instanceof ApiError || err instanceof Error ? err.message : 'Tải font thất bại');
+    } finally {
+      setFontUploading(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +140,61 @@ export const CMSSiteSEOSettingsTab: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left 7 Cols: Brand & Meta Configuration */}
         <div className="lg:col-span-7 space-y-6">
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4 text-xs">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+              <Type className="w-4 h-4 text-[#0073C1]" />
+              <h3 className="font-bold text-sm text-slate-900">Font chữ toàn website</h3>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Áp dụng cho toàn bộ trang chủ, các trang nội dung và hệ thống quản trị /app sau khi lưu.
+            </p>
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Chọn font có sẵn</label>
+              <select
+                value={settings.fontFamily || 'plus-jakarta'}
+                onChange={(e) => setSettings({ ...settings, fontFamily: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded-lg bg-white"
+              >
+                {SITE_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value}>{font.label}</option>)}
+                {settings.customFontUrl && <option value="custom">Font đã tải lên: {settings.customFontName || 'Font tùy chỉnh'}</option>}
+              </select>
+            </div>
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => fontInput.current?.click()}
+                  disabled={fontUploading}
+                  className="px-4 py-2.5 rounded-lg border border-[#0073C1] text-[#0073C1] bg-white font-bold flex items-center justify-center gap-2 hover:bg-blue-50 disabled:opacity-50 cursor-pointer"
+                >
+                  {fontUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {fontUploading ? 'Đang tải...' : 'Tải font lên'}
+                </button>
+                <span className="text-[11px] text-slate-500">WOFF2, WOFF, TTF hoặc OTF · tối đa 10 MB</span>
+                <input ref={fontInput} type="file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" onChange={uploadFont} className="hidden" />
+              </div>
+              {settings.customFontUrl && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Tên font hiển thị</label>
+                    <input value={settings.customFontName || ''} onChange={(e) => setSettings({ ...settings, customFontName: e.target.value })} className="w-full p-2 border border-slate-300 rounded-lg bg-white" />
+                  </div>
+                  <div className="rounded-lg bg-white border border-slate-200 px-3 py-2 overflow-hidden">
+                    <span className="text-[10px] text-slate-400 block">Tệp đã tải</span>
+                    <span className="block truncate font-mono text-[11px]">{settings.customFontUrl}</span>
+                  </div>
+                </div>
+              )}
+              {fontError && <p className="text-[11px] text-red-600">{fontError}</p>}
+              {settings.customFontUrl && settings.fontFamily === 'custom' && (
+                <style>{`@font-face{font-family:"${(settings.customFontName || 'TWings Custom Font').replace(/["'\\]/g, '')}";src:url("${settings.customFontUrl}");font-display:swap;}`}</style>
+              )}
+              <div className="rounded-lg bg-white border border-slate-200 p-3 text-base" style={{ fontFamily: settings.fontFamily === 'custom' ? `"${settings.customFontName || 'TWings Custom Font'}", sans-serif` : SITE_FONT_OPTIONS.find((font) => font.value === settings.fontFamily)?.stack }}>
+                Xem trước font chữ TWings Academy — 0123456789
+              </div>
+            </div>
+          </div>
+
           {/* Card 1: Logo & Favicon */}
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4 text-xs">
             <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">

@@ -20,6 +20,13 @@ FORMATS = {
     "ICO": ("ico", "image/x-icon"),  # favicons
 }
 MAX_PIXELS = 40_000_000  # decompression-bomb guard
+MAX_FONT_BYTES = 10 * 1024 * 1024
+FONT_SIGNATURES = {
+    b"wOFF": ("woff", "font/woff"),
+    b"wOF2": ("woff2", "font/woff2"),
+    b"\x00\x01\x00\x00": ("ttf", "font/ttf"),
+    b"OTTO": ("otf", "font/otf"),
+}
 
 
 class ImageUploadView(APIView):
@@ -67,6 +74,30 @@ class ImageUploadView(APIView):
         ext, content_type = FORMATS[fmt]
         name = f"uploads/{timezone.now():%Y/%m}/{secrets.token_hex(12)}.{ext}"
         content = ContentFile(out.getvalue(), name=name)
+        content.content_type = content_type
+        saved = default_storage.save(name, content)
+        return Response({"url": default_storage.url(saved), "path": saved}, status=status.HTTP_201_CREATED)
+
+
+class FontUploadView(APIView):
+    """Store a validated web font for the global website typography setting."""
+
+    parser_classes = [MultiPartParser]
+    permission_classes = [require_perms("seo.settings")]
+
+    def post(self, request):
+        upload = request.FILES.get("file")
+        if upload is None:
+            return Response({"detail": "Thiếu tệp 'file'."}, status=400)
+        if upload.size > MAX_FONT_BYTES:
+            return Response({"detail": "Font vượt quá 10 MB."}, status=413)
+        font_type = FONT_SIGNATURES.get(upload.read(4))
+        upload.seek(0)
+        if font_type is None:
+            return Response({"detail": "Chỉ chấp nhận font WOFF, WOFF2, TTF hoặc OTF hợp lệ."}, status=400)
+        ext, content_type = font_type
+        name = f"uploads/fonts/{timezone.now():%Y/%m}/{secrets.token_hex(12)}.{ext}"
+        content = ContentFile(upload.read(), name=name)
         content.content_type = content_type
         saved = default_storage.save(name, content)
         return Response({"url": default_storage.url(saved), "path": saved}, status=status.HTTP_201_CREATED)

@@ -9,6 +9,7 @@ from tests.conftest import Role
 
 pytestmark = pytest.mark.django_db
 URL = "/api/v1/staff/uploads/images/"
+FONT_URL = "/api/v1/staff/uploads/fonts/"
 
 
 def _image(fmt: str, name: str, size=(32, 32)) -> SimpleUploadedFile:
@@ -41,6 +42,26 @@ def test_upload_needs_a_content_permission(staff_client):
         URL, {"file": _image("PNG", "a.png")}, format="multipart"
     )
     assert res.status_code == 403
+
+
+@pytest.mark.parametrize(
+    ("signature", "name", "ext"),
+    [(b"wOF2", "brand.woff2", "woff2"), (b"\x00\x01\x00\x00", "brand.ttf", "ttf")],
+)
+def test_seo_editor_uploads_valid_fonts(staff_client, signature, name, ext):
+    font = SimpleUploadedFile(name, signature + b"test-font-data")
+    res = staff_client(Role.CONTENT_SEO).post(FONT_URL, {"file": font}, format="multipart")
+    assert res.status_code == 201, res.content
+    path = res.json()["path"]
+    assert path.startswith("uploads/fonts/") and path.endswith(f".{ext}")
+    assert default_storage.exists(path)
+
+
+def test_invalid_font_and_user_without_seo_permission_are_refused(staff_client):
+    fake = SimpleUploadedFile("brand.woff2", b"not-a-font")
+    assert staff_client(Role.CONTENT_SEO).post(FONT_URL, {"file": fake}, format="multipart").status_code == 400
+    font = SimpleUploadedFile("brand.woff", b"wOFFtest-font-data")
+    assert staff_client(Role.FINANCE_ACCOUNTANT).post(FONT_URL, {"file": font}, format="multipart").status_code == 403
 
 
 def test_public_site_config_exposes_only_public_documents(api):

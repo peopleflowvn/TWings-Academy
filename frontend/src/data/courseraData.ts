@@ -772,6 +772,9 @@ Trí tuệ nhân tạo và Machine Learning đang định hình lại phương t
 // SITE SEO & GENERAL SETTINGS
 // -------------------------------------------------------------
 export const INITIAL_SEO_SETTINGS: SiteSEOSettings = {
+  fontFamily: 'plus-jakarta',
+  customFontName: '',
+  customFontUrl: '',
   siteName: 'TWINGS ACADEMY - Học Viện Đào Tạo Thực Chiến',
   siteSlogan: '',
   faviconUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=64&q=80',

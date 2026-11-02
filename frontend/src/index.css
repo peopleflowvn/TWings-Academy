@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  --twings-font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   --color-twings-primary: #0073C1;
   --color-twings-sky: #5FBEFF;
   --color-twings-azure: #2C93E8;
@@ -113,7 +114,7 @@
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: var(--twings-font-family);
   color: #424242;
   -webkit-tap-highlight-color: transparent;
 }
