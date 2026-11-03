@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Download, LayoutDashboard, RefreshCw } from 'lucide-react';
+import { Globe, LayoutDashboard, RefreshCw, Search, TrendingUp } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatVND } from '../../lib/commerce';
 import { linkProps } from '../router';
+import { Bars, Card, Stat, downloadCsv, monthLabel, pct } from './ReportWidgets';
+import { SeoReport, SeoData, TrafficData, TrafficReport } from './WebsiteReports';
 
 interface Reports {
   months: string[];
@@ -39,6 +41,8 @@ interface Reports {
     pages: { title: string; path: string; views: number; leads: number; paid: number; leadRate: number | null }[];
     channels: { key: string; label: string; views: number; leads: number; paid: number; leadRate: number | null }[];
   };
+  traffic?: TrafficData;
+  seo?: SeoData;
   learning?: {
     courses: {
       title: string;
@@ -54,76 +58,46 @@ interface Reports {
   };
 }
 
-const pct = (a: number, b: number) => (b ? `${Math.round((100 * a) / b)}%` : '–');
-const monthLabel = (m: string) => `${m.slice(5)}/${m.slice(2, 4)}`;
-
-/** Download rows as CSV (UTF-8 with BOM so Excel shows Vietnamese correctly). */
-function downloadCsv(name: string, header: string[], rows: (string | number | null)[][]) {
-  const esc = (v: string | number | null) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const csv = '﻿' + [header, ...rows].map((r) => r.map(esc).join(',')).join('\r\n');
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${name}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-const Card: React.FC<{ title: string; onExport?: () => void; children: React.ReactNode }> = ({ title, onExport, children }) => (
-  <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
-    <div className="flex items-center justify-between gap-2">
-      <h3 className="font-bold text-slate-900">{title}</h3>
-      {onExport && (
-        <button type="button" onClick={onExport} className="text-xs font-bold text-slate-600 border border-slate-200 rounded-lg px-2 py-1 flex items-center gap-1 hover:bg-slate-50 cursor-pointer">
-          <Download className="w-3.5 h-3.5" /> CSV
-        </button>
-      )}
-    </div>
-    {children}
-  </section>
-);
-
-const Stat: React.FC<{ label: string; value: string; tone?: string }> = ({ label, value, tone = 'text-slate-900' }) => (
-  <div className="bg-white rounded-2xl border border-slate-200 p-4">
-    <div className="text-xs text-slate-500">{label}</div>
-    <div className={`text-xl font-black ${tone}`}>{value}</div>
-  </div>
-);
-
-/** Bars scaled to the largest value of the series (no chart library needed). */
-const Bars: React.FC<{ rows: { label: string; values: { v: number; color: string; title: string }[] }[] }> = ({ rows }) => {
-  const max = Math.max(1, ...rows.flatMap((r) => r.values.map((x) => x.v)));
-  return (
-    <div className="flex items-end gap-3 h-40 pt-2">
-      {rows.map((r) => (
-        <div key={r.label} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-          <div className="flex items-end gap-0.5 h-32 w-full justify-center">
-            {r.values.map((x) => (
-              <div key={x.title} title={`${x.title}: ${x.v.toLocaleString('vi-VN')}`} className={`${x.color} w-3 sm:w-4 rounded-t`}
-                style={{ height: `${Math.max(2, (x.v / max) * 100)}%` }} />
-            ))}
-          </div>
-          <span className="text-[10px] text-slate-500">{r.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
+type Tab = 'business' | 'traffic' | 'seo';
+const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
+  { key: 'business', label: 'Kinh doanh & Học tập', icon: TrendingUp },
+  { key: 'traffic', label: 'Truy cập website', icon: Globe },
+  { key: 'seo', label: 'SEO', icon: Search }
+];
 
 export const ReportsPage: React.FC = () => {
   const [months, setMonths] = useState(6);
   const [data, setData] = useState<Reports | null>(null);
   const [error, setError] = useState('');
+  // The chosen tab lives in the URL hash (#seo), so a link can open it directly.
+  const [tab, setTabState] = useState<Tab | ''>(() => {
+    const hash = window.location.hash.slice(1);
+    return TABS.some((t) => t.key === hash) ? (hash as Tab) : '';
+  });
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}#${t}`);
+  };
 
   const load = () => {
     setError('');
     api.get<Reports>(`/staff/reports/?months=${months}`).then(setData).catch((e: Error) => setError(e.message));
   };
   useEffect(load, [months]);
+  useEffect(() => {
+    const onHash = () => {
+      const hash = window.location.hash.slice(1);
+      if (TABS.some((t) => t.key === hash)) setTabState(hash as Tab);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
 
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!data) return <p className="text-sm text-slate-500">Đang tải báo cáo…</p>;
-  const { finance, sales, learning, marketing } = data;
+  const { finance, sales, learning, marketing, traffic, seo } = data;
+  const available = TABS.filter((t) => (t.key === 'business' ? finance || sales || learning || marketing : data[t.key]));
+  const active = available.find((t) => t.key === tab)?.key ?? available[0]?.key;
   const th = 'text-left text-xs text-slate-500 font-semibold py-1.5';
   const td = 'py-1.5 border-t border-slate-100';
 
@@ -132,7 +106,7 @@ export const ReportsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-600 font-medium">Khoảng thời gian:</span>
-          {[3, 6, 12].map((m) => (
+          {[1, 3, 6, 12].map((m) => (
             <button key={m} type="button" onClick={() => setMonths(m)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${months === m ? 'bg-[#0073C1] text-white border-[#0073C1]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
               {m} tháng
@@ -149,7 +123,26 @@ export const ReportsPage: React.FC = () => {
         </a>
       </div>
 
-      {finance && (
+      {available.length > 1 && (
+        <div className="flex gap-1 border-b border-slate-200 overflow-x-auto">
+          {available.map((t) => {
+            const Icon = t.icon;
+            return (
+              <button key={t.key} type="button" onClick={() => setTab(t.key)}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-bold border-b-2 -mb-px whitespace-nowrap cursor-pointer ${
+                  active === t.key ? 'border-[#0073C1] text-[#0073C1]' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}>
+                <Icon className="w-4 h-4" /> {t.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {active === 'traffic' && traffic && <TrafficReport data={traffic} />}
+      {active === 'seo' && seo && <SeoReport data={seo} />}
+
+      {active === 'business' && finance && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Stat label={`Thu thuần ${months} tháng`} value={formatVND(finance.monthly.reduce((s, r) => s + r.net, 0))} tone="text-emerald-700" />
@@ -171,7 +164,7 @@ export const ReportsPage: React.FC = () => {
         </>
       )}
 
-      {sales && (
+      {active === 'business' && sales && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           <Card title="Lead mới & chuyển đổi theo tháng tạo đơn"
             onExport={() => downloadCsv('tuyen-sinh', ['Tháng', 'Lead', 'Đã đóng phí / vào học'], sales.monthly.map((r) => [r.month, r.leads, r.converted]))}>
@@ -263,7 +256,7 @@ export const ReportsPage: React.FC = () => {
         </div>
       )}
 
-      {marketing && (
+      {active === 'business' && marketing && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           <Card title={`Phễu marketing ${marketing.days} ngày: ${marketing.views.toLocaleString('vi-VN')} lượt xem → ${marketing.leads} lead → ${marketing.paid} đóng phí`}
             onExport={() => downloadCsv('phieu-kenh', ['Kênh', 'Lượt xem', 'Lead', 'Tỷ lệ lead %', 'Đóng phí'], marketing.channels.map((r) => [r.label, r.views, r.leads, r.leadRate, r.paid]))}>
@@ -293,7 +286,7 @@ export const ReportsPage: React.FC = () => {
         </div>
       )}
 
-      {learning && (
+      {active === 'business' && learning && (
         <Card title={`Kết quả học tập · ${learning.certificates} chứng chỉ đã cấp (${learning.certificates30d} trong 30 ngày)`}
           onExport={() => downloadCsv('hoc-tap', ['Khóa học', 'Đang học', 'Chờ ghi danh', 'Hoàn thành', 'Tỷ lệ hoàn thành %', 'Tiến độ TB %', 'Đã hủy'],
             learning.courses.map((r) => [r.title, r.enrolled, r.waiting, r.completed, r.completionRate, r.avgProgress, r.removed]))}>

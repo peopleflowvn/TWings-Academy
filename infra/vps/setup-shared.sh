@@ -53,7 +53,7 @@ install -d -m 700 -o root -g root "$APP/env"
 install -m 644 -o root -g root "$SRC/docker-compose.prod.yml" "$APP/docker-compose.yml"
 install -m 755 -o root -g root "$SRC/postgres/init/01-app-role.sh" "$APP/postgres/init/01-app-role.sh"
 install -m 755 -o root -g root "$SRC/vps/bin/deploy-gate" "$SRC/vps/bin/deploy.sh" \
-  "$SRC/vps/bin/backup.sh" "$SRC/vps/bin/gateway-sync.sh" "$APP/bin/"
+  "$SRC/vps/bin/backup.sh" "$SRC/vps/bin/gateway-sync.sh" "$SRC/vps/bin/gateway-headers.sh" "$APP/bin/"
 for f in db caddy backup gateway lms; do
   [[ -f "$APP/env/$f.env" ]] || install -m 600 -o root -g root "$SRC/env/$f.env.example" "$APP/env/$f.env"
 done

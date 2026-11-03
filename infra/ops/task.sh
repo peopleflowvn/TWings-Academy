@@ -426,6 +426,24 @@ PHP
     done
     ;;
 
+  gateway-headers-preview)
+    # Read-only: what gateway-headers.sh would change in the shared gateway, validated by its Caddy.
+    remote "sudo $APP/bin/gateway-headers.sh --dry-run"
+    ;;
+
+  gateway-headers)
+    # Baseline security headers on every gateway site (approved by the owner 2026-11-03), then what
+    # each site answers. Backup + validation + graceful reload + restore on failure.
+    remote "sudo $APP/bin/gateway-headers.sh"
+    ip=$(ssh -G vps | awk '/^hostname /{print $2}')
+    hosts=$(remote "sudo bash -c 'source $APP/env/gateway.env && cat \"\$GATEWAY_FILE\"'" \
+      | grep -E '^[^#[:space:](][^{]*[{][[:space:]]*$' | sed 's/[{].*//' | tr ',' ' ')
+    for h in $hosts; do
+      curl -s -o /dev/null -D /tmp/h -m 20 --resolve "$h:443:$ip" -w "%{http_code} $h: " "https://$h/" || echo -n "FAIL $h: "
+      echo "$(grep -ciE '^(strict-transport-security|x-content-type-options|referrer-policy):' /tmp/h)/3 headers, server=$(grep -i '^server:' /tmp/h | tr -d '\r' | cut -c9-)"
+    done
+    ;;
+
   gateway-diff)
     # Read-only: how the gateway Caddyfile on the host differs from the copy the running container sees.
     remote "cd $APP && gw=\$(sudo sed -n 's/^GATEWAY_CONTAINER=//p' env/gateway.env); f=\$(sudo sed -n 's/^GATEWAY_FILE=//p' env/gateway.env)

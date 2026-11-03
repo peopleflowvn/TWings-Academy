@@ -41,6 +41,17 @@ served="${WEB_DOMAIN}, ${API_DOMAIN}"
 redirects=()
 for host in ${REDIRECT_DOMAINS//,/ }; do points_here "$host" && redirects+=("$host"); done
 
+# GATEWAY_AUTH (caddy.env): a secret the gateway adds to every request it forwards to TWings. The TWings
+# web container refuses requests without it, so the other products' containers sharing the gateway's
+# Docker network cannot reach TWings directly with a forged X-Forwarded-For (throttling, login lockout).
+proxy="reverse_proxy twings-web:8080"
+if [[ -n "${GATEWAY_AUTH:-}" ]]; then
+  [[ "$GATEWAY_AUTH" =~ ^[A-Za-z0-9_-]{32,}$ ]] || { log "FAILED: GATEWAY_AUTH must be 32+ URL-safe characters"; exit 1; }
+  proxy+=" {
+        header_up X-Gateway-Auth ${GATEWAY_AUTH}
+    }"
+fi
+
 BEGIN="# >>> twings (managed by /opt/twings/bin/gateway-sync.sh - do not edit)"
 END="# <<< twings"
 BLOCK="$BEGIN
@@ -48,12 +59,13 @@ ${served} {
     request_body {
         max_size 260MB
     }
-    reverse_proxy twings-web:8080
+    ${proxy}
 }"
 if ((${#redirects[@]})); then
   BLOCK+="
 
 $(IFS=,; echo "${redirects[*]}" | sed 's/,/, /g') {
+    header Strict-Transport-Security "max-age=31536000"
     redir https://${WEB_DOMAIN}{uri} permanent
 }"
 fi
@@ -73,6 +85,8 @@ fi
 # 3. Back up, write in place (bind-mounted single file: keep the inode), validate, reload.
 backup="$GATEWAY_FILE.bak-twings-$(date +%Y%m%d%H%M%S)"
 cp -p "$GATEWAY_FILE" "$backup"
+# The file now holds GATEWAY_AUTH: owner/group only (the gateway reads it as root).
+chmod o-rwx "$GATEWAY_FILE" "$backup"
 restore() { cat "$backup" > "$GATEWAY_FILE"; log "restored $backup"; }
 printf '%s\n' "$desired" > "$GATEWAY_FILE"
 
