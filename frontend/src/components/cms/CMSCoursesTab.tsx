@@ -32,6 +32,7 @@ import { ImageUploadField } from './ImageUploadField';
 import { navigate, useAppSearch } from '../../admin/router';
 import { CourseClassesPanel, useClasses } from '../../admin/pages/IntakesPage';
 import { viDateToIso } from '../../lib/serverCollection';
+import { useCrmLists } from '../../lib/crmLists';
 
 interface CMSCoursesTabProps {
   courses: Course[];
@@ -54,15 +55,6 @@ const readSubTab = (): SubTab => {
 };
 
 const STATUS_LABEL: Record<string, string> = { draft: 'Nháp', review: 'Chờ duyệt', published: 'Đang bán', archived: 'Ngừng bán' };
-// Suggestions; a course keeps whatever category / level it already has.
-const CATEGORIES = [
-  'Ngân Hàng & Tín Dụng',
-  'Quản Trị & Lãnh Đạo (OKR/MBO)',
-  'Tư Duy & Đột Phá',
-  'Trí tuệ nhân tạo (AI)',
-  'Dữ Liệu & Phân Tích',
-  'Chứng chỉ Chuyên môn'
-];
 const TYPES: CourseType[] = ['Chứng chỉ Chuyên môn', 'Khóa học', 'Chuyên ngành', 'Bằng cấp Trực tuyến'];
 // The homepage shelf a course is shown on (a course on sale is always on the homepage: "Nổi bật" by default).
 const SHELVES: [NonNullable<Course['badgeSection']> | '', string][] = [
@@ -71,7 +63,6 @@ const SHELVES: [NonNullable<Course['badgeSection']> | '', string][] = [
   ['hot_new', 'Chương trình dài hạn / Bằng cấp'],
   ['', 'Tự động']
 ];
-const LEVELS = ['Người mới bắt đầu', 'Chuyên viên Mới (Fresher)', 'Chuyên viên Chính', 'Quản lý / Trưởng nhóm', 'Nâng cao', 'Mọi cấp độ'];
 const LESSON_TYPES: [Lesson['type'], string][] = [
   ['video', 'Video'],
   ['reading', 'Bài đọc'],
@@ -110,6 +101,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
   onReload,
 }) => {
   const appSearch = useAppSearch();
+  const lists = useCrmLists();
   const requestedCourseId = appSearch.get('id');
   const isDetailView = !!requestedCourseId && courses.some((course) => course.id === requestedCourseId);
   const canPrice = useStaffCan('courses.pricing');
@@ -311,8 +303,9 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
     if (ok) navigate('/catalog/courses');
   };
 
-  const categoryOptions = withCurrent(CATEGORIES, editForm.category, courses.map((c) => c.category));
-  const levelOptions = withCurrent(LEVELS, editForm.level);
+  // Category and level: the lists of /app → Hệ thống → Danh mục; a course keeps a value no longer in them.
+  const categoryOptions = withCurrent(lists.courseCategories, editForm.category);
+  const levelOptions = withCurrent(lists.courseLevels, editForm.level);
   const btn = 'px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50 disabled:cursor-not-allowed';
 
   return (

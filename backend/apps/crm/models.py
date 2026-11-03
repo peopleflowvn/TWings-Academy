@@ -437,3 +437,23 @@ class PartnerShare(BaseModel):
     @property
     def active(self) -> bool:
         return self.revoked_at is None and self.expires_at > timezone.now()
+
+
+class ListItem(BaseModel):
+    """
+    One value of an option list (danh mục) the /app forms offer: sources, provinces, schools, course
+    categories… (the lists and the fields they fill: apps.crm.lists). Edited in /app → Hệ thống → Danh mục;
+    a hidden value stays on the records that have it but is no longer offered.
+    """
+
+    kind = models.CharField(max_length=40, db_index=True)
+    value = models.CharField(max_length=300)
+    position = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["kind", "position", "value"]
+        constraints = [models.UniqueConstraint(fields=["kind", "value"], name="crm_listitem_kind_value")]
+
+    def __str__(self):
+        return f"{self.kind}: {self.value}"

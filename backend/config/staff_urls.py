@@ -21,7 +21,14 @@ from apps.core.reports import ReportsView
 from apps.core.uploads import FontUploadView, ImageUploadView
 from apps.core.views import AuditLogViewSet
 from apps.crm.learner_views import LearnerViewSet
-from apps.crm.list_views import CrmListsView
+from apps.crm.list_views import (
+    CrmListsView,
+    ListItemView,
+    ListKindView,
+    ListOrderView,
+    ListReplaceView,
+    ListsAdminView,
+)
 from apps.crm.placement_views import (
     CandidatesView,
     OutcomesView,
@@ -98,6 +105,11 @@ urlpatterns = [
     path("orders/<str:pk>/cv/", OrderCvView.as_view(), name="staff-order-cv"),
     path("consultants/", ConsultantsView.as_view(), name="staff-consultants"),
     path("crm/lists/", CrmListsView.as_view(), name="staff-crm-lists"),
+    path("lists/", ListsAdminView.as_view(), name="staff-lists"),
+    path("lists/items/<str:pk>/", ListItemView.as_view(), name="staff-list-item"),
+    path("lists/<str:kind>/", ListKindView.as_view(), name="staff-list-kind"),
+    path("lists/<str:kind>/order/", ListOrderView.as_view(), name="staff-list-order"),
+    path("lists/<str:kind>/replace/", ListReplaceView.as_view(), name="staff-list-replace"),
     path("my-day/", MyDayView.as_view(), name="staff-my-day"),
     path("cohorts/<str:pk>/rollover/", CohortRolloverView.as_view(), name="staff-cohort-rollover"),
     path("lms/", include("apps.lms.urls")),

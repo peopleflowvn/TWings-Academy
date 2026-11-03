@@ -41,6 +41,7 @@ import {
   Search,
   Send,
   ShieldCheck,
+  ListChecks,
   Tag,
   Wrench,
   X,
@@ -72,6 +73,7 @@ import { useSiteSeo } from '../lib/siteSeo';
 import { OverviewReportsPage } from './pages/OverviewReportsPage';
 import { CouponsPage, TransactionsPage } from './pages/FinancePages';
 import { HealthPage, MoodleHubPage } from './pages/SystemPages';
+import { ListsPage } from './pages/ListsPage';
 import { BannersPage } from './pages/BannersPage';
 import { LayoutPage } from './pages/LayoutPage';
 import { ProgramsPage } from './pages/ProgramsPage';
@@ -196,6 +198,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: 'Hệ thống',
     items: [
       { path: '/system/users', label: 'Nhân sự & phân quyền', icon: ShieldCheck, perms: ['rbac.view_users'] },
+      { path: '/system/lists', label: 'Danh mục', icon: ListChecks, perms: ['system.lists'] },
       { path: '/system/health', label: 'Tình trạng tích hợp', icon: Gauge, perms: ['system.architecture', 'rbac.manage_roles'] }
     ]
   }
@@ -464,6 +467,8 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
         return <CMSUsersTab currentActorUser={user} />;
       case '/system/health':
         return <HealthPage />;
+      case '/system/lists':
+        return <ListsPage canEdit={can('system.lists')} />;
       default:
         return (
           <div className="text-sm text-slate-600">

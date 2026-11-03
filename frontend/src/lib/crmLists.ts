@@ -1,7 +1,8 @@
 /**
- * The CRM's option lists (danh mục) — sources, interest levels, provinces, schools, MSB units… — one set for
- * every /app form, served by the backend (apps/crm/lists.py, GET /staff/crm/lists/) and loaded once per page.
- * The short lists below are used until it answers (or when it cannot).
+ * The option lists (danh mục) — sources, interest levels, provinces, schools, MSB units, course categories… —
+ * one set for every /app form, kept in the database and edited in /app → Hệ thống → Danh mục (apps/crm/lists.py,
+ * GET /staff/crm/lists/), loaded once per page. The short lists below are used until it answers (or when it
+ * cannot).
  */
 import { useEffect, useState } from 'react';
 import { api } from './api';
@@ -16,6 +17,8 @@ export interface CrmLists {
   trainingStatuses: string[];
   universities: string[];
   msbUnits: string[];
+  courseCategories: string[];
+  courseLevels: string[];
   pics: string[];
 }
 
@@ -29,10 +32,17 @@ export const DEFAULT_LISTS: CrmLists = {
   trainingStatuses: ['Chưa khai giảng', 'Đang học', 'Chờ xét tốt nghiệp', 'Hoàn thành', 'Không đạt', 'Bảo lưu', 'Dừng chương trình'],
   universities: [],
   msbUnits: [],
+  courseCategories: [],
+  courseLevels: [],
   pics: []
 };
 
 let loading: Promise<CrmLists> | null = null;
+
+/** After a list was edited: the next form opened reads the lists again. */
+export function reloadCrmLists() {
+  loading = null;
+}
 
 export function useCrmLists(): CrmLists {
   const [lists, setLists] = useState<CrmLists>(DEFAULT_LISTS);

@@ -34,6 +34,7 @@ PERMISSIONS: dict[str, str] = {
     "rbac.edit_matrix": "Sửa quyền tùy chỉnh",
     "system.architecture": "Xem kiến trúc hệ thống",
     "system.sections_toggle": "Bật/tắt section trang chủ",
+    "system.lists": "Quản lý danh mục (các lựa chọn trong ô chọn: nguồn, khu vực, lĩnh vực…)",
     "lms.view": "Xem tiến độ học tập (LMS)",
     "lms.manage": "Quản lý học viên trên LMS (ghi danh, khóa, gửi email vào học)",
     "placement.view": "Xem giới thiệu việc làm & kết quả việc làm",

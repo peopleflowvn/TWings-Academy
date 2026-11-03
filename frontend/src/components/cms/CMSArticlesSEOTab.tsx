@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useServerCollection } from '../../lib/serverCollection';
 import { ARTICLES } from '../../lib/cmsCollections';
+import { useCrmLists, withCurrent } from '../../lib/crmLists';
 import { 
   FileText, 
   Sparkles, 
@@ -35,7 +36,9 @@ export const CMSArticlesSEOTab: React.FC = () => {
   const [slug, setSlug] = useState('');
   const [excerpt, setExcerpt] = useState('');
   const [content, setContent] = useState('');
-  const [category, setCategory] = useState('Ngân Hàng & Tín Dụng');
+  // Chuyên mục: the same list as the course categories (/app → Hệ thống → Danh mục).
+  const lists = useCrmLists();
+  const [category, setCategory] = useState('');
   const [author, setAuthor] = useState('Ban Biên Tập TWINGS');
   const [featuredImage, setFeaturedImage] = useState('');
   const [focusKeyword, setFocusKeyword] = useState('');
@@ -67,7 +70,7 @@ export const CMSArticlesSEOTab: React.FC = () => {
     setSlug('');
     setExcerpt('');
     setContent('');
-    setCategory('Ngân Hàng & Tín Dụng');
+    setCategory(lists.courseCategories[0] || '');
     setAuthor('Ban Biên Tập TWINGS');
     setFeaturedImage('https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80');
     setFocusKeyword('');
@@ -386,10 +389,10 @@ export const CMSArticlesSEOTab: React.FC = () => {
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-slate-50"
                   >
-                    <option value="Ngân Hàng & Tín Dụng">Ngân Hàng & Tín Dụng</option>
-                    <option value="Trí tuệ nhân tạo (AI)">Trí tuệ nhân tạo (AI)</option>
-                    <option value="Khoa học dữ liệu">Khoa học dữ liệu</option>
-                    <option value="Kinh doanh & Lãnh đạo">Kinh doanh & Lãnh đạo</option>
+                    <option value="">– Chọn chuyên mục –</option>
+                    {withCurrent(lists.courseCategories, category).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
                   </select>
                 </div>
               </div>

@@ -25,12 +25,15 @@ class Command(BaseCommand):
         from apps.crm import journeys
         from apps.crm.assignment import overdue_leads
         from apps.crm.legacy_import import EB, RB
-        from apps.crm.lists import INTEREST_LEVELS, SOURCES, TRAINING_STATUSES
+        from apps.crm.lists import values
         from apps.crm.models import Installment, Learner, Order
         from apps.lms.models import LmsEnrollment
         from apps.notifications.models import EmailLog
         from apps.payments.models import Payment, Refund
 
+        sources, interest_levels, training_statuses = (
+            values(k, include_hidden=True) for k in ("source", "interest_level", "training_status")
+        )
         out = self.stdout.write
         problems = []
 
@@ -246,18 +249,18 @@ class Command(BaseCommand):
 
         # ---- lists
         out("== Danh mục")
-        off = Counter(v for v in legacy.values_list("source", flat=True) if v and v not in SOURCES)
+        off = Counter(v for v in legacy.values_list("source", flat=True) if v and v not in sources)
         check(not off, "nguồn theo danh mục", [f"{k} ({v})" for k, v in off.items()])
         off = Counter(
             v
             for v in Order.objects.values_list("interest_level", flat=True)
-            if v and v not in INTEREST_LEVELS
+            if v and v not in interest_levels
         )
         check(not off, "mức độ quan tâm theo danh mục (mọi đăng ký)", [f"{k} ({v})" for k, v in off.items()])
         off = Counter(
             v
             for v in Order.objects.values_list("training_status", flat=True)
-            if v and v not in TRAINING_STATUSES
+            if v and v not in training_statuses
         )
         check(
             not off, "trạng thái đào tạo theo danh mục (mọi đăng ký)", [f"{k} ({v})" for k, v in off.items()]

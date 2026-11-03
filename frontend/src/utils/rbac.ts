@@ -323,6 +323,15 @@ export const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
     categoryLabel: '7. Hạ Tầng & Cấu Hình Hệ Thống',
     riskLevel: 'medium'
   },
+  {
+    id: 'perm-sys-3',
+    code: 'system.lists',
+    name: 'Quản lý danh mục',
+    description: 'Thêm, đổi tên, ẩn, sắp xếp các lựa chọn trong ô chọn (nguồn, khu vực, trường, lĩnh vực…)',
+    category: 'system',
+    categoryLabel: '7. Hạ Tầng & Cấu Hình Hệ Thống',
+    riskLevel: 'medium'
+  },
 
   // Category 8: Đào tạo doanh nghiệp (B2B)
   {

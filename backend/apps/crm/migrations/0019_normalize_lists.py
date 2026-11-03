@@ -11,13 +11,15 @@ LEARNER_FIELDS = {"gender": "gender", "education_level": "education_level", "are
 
 
 def normalize_values(apps, schema_editor):
-    from apps.crm.lists import normalize
+    from apps.crm.lists import defaults, normalize
+
+    lists = defaults()
 
     for model, fields in (("Order", ORDER_FIELDS), ("Learner", LEARNER_FIELDS)):
         Model = apps.get_model("crm", model)
         for field, kind in fields.items():
             for value in Model.objects.exclude(**{field: ""}).values_list(field, flat=True).distinct():
-                new = normalize(kind, value)
+                new = normalize(kind, value, lists[kind])
                 if new != value:
                     Model.objects.filter(**{field: value}).update(**{field: new})
 
