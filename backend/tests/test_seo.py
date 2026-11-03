@@ -80,7 +80,9 @@ def test_custom_canonical_on_an_old_site_domain_moves_to_the_current_one(client,
 
 
 def test_legal_pages_share_the_default_image(client):
-    SiteConfig.objects.create(key=SiteConfig.KEY_SITE_SEO, data={"og_image_url": "https://cdn.example/og.jpg"})
+    SiteConfig.objects.create(
+        key=SiteConfig.KEY_SITE_SEO, data={"og_image_url": "https://cdn.example/og.jpg"}
+    )
     for path in ("chinh-sach-bao-mat", "dieu-khoan"):
         html = client.get(f"/_seo/{path}").content.decode()
         assert _og(html, "og:image") == "https://cdn.example/og.jpg", path
