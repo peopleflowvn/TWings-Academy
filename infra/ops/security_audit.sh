@@ -109,7 +109,7 @@ if [[ -f /opt/twings/env/gateway.env ]]; then
 fi
 
 section "TWings application"
-cd /opt/twings 2>/dev/null && docker compose exec -T backend python - <<'PY' 2>&1 | tail -30
+cd /opt/twings 2>/dev/null && docker compose exec -T backend python manage.py shell <<'PY' 2>&1 | tail -30
 import json
 from pathlib import Path
 from django.utils import timezone

@@ -379,6 +379,13 @@ PHP
     done
     ;;
 
+  fix-host-perms)
+    # Idempotent and limited to permissions: credentials of the self-hosted GitHub runners on this host
+    # (a runner's .credentials lets anyone who reads it impersonate the runner and receive jobs with their
+    # secrets) become readable by their owner (the runner's user) only. Nothing restarts.
+    remote 'sudo find /home -maxdepth 3 -path "/home/*/actions-runner*/*" -type f \( -name ".credentials*" -o -name ".runner" -o -name ".env" -o -name ".path" \) -perm /go=rwx -print -exec chmod go-rwx {} + ; echo done'
+    ;;
+
   security-audit)
     # READ-ONLY. 1) On the VPS: host, SSH, firewall, Docker, every product's containers, secrets on disk,
     # compromise indicators, TWings/Moodle settings (infra/ops/security_audit.sh). 2) From this runner
