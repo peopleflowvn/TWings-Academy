@@ -98,7 +98,7 @@ class Command(BaseCommand):
                         "kết nối đào tạo với trải nghiệm và cơ hội nghề nghiệp cho sinh viên."
                     ),
                     "focus_keyword": "TWings Academy đồng hành cùng Trường Kinh tế",
-                    "canonical_url": f"https://tuyensinh.twings.edu.vn/tin-tuc/{SLUG}",
+                    "canonical_url": f"https://twings.edu.vn/tin-tuc/{SLUG}",
                     "seo_score": 95,
                     "seo_checks": {
                         "hasHeadings": True,

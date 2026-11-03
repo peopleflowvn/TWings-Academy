@@ -66,6 +66,26 @@ def test_article_page_uses_seo_fields_and_sanitised_content(client, article):
     assert 'property="article:published_time"' in html
 
 
+def test_custom_canonical_on_an_old_site_domain_moves_to_the_current_one(client, article):
+    article.canonical_url = "https://tuyensinh.twings.edu.vn/tin-tuc/lo-trinh-rm"
+    article.save()
+    html = client.get("/_seo/tin-tuc/lo-trinh-rm").content.decode()
+    assert _og(html, "og:url") == f"{BASE}/tin-tuc/lo-trinh-rm"
+    assert f'<link rel="canonical" href="{BASE}/tin-tuc/lo-trinh-rm">' in html
+    # A canonical on someone else's site (syndicated article) is kept as written.
+    article.canonical_url = "https://bao.example/bai-goc"
+    article.save()
+    html = client.get("/_seo/tin-tuc/lo-trinh-rm").content.decode()
+    assert _og(html, "og:url") == "https://bao.example/bai-goc"
+
+
+def test_legal_pages_share_the_default_image(client):
+    SiteConfig.objects.create(key=SiteConfig.KEY_SITE_SEO, data={"og_image_url": "https://cdn.example/og.jpg"})
+    for path in ("chinh-sach-bao-mat", "dieu-khoan"):
+        html = client.get(f"/_seo/{path}").content.decode()
+        assert _og(html, "og:image") == "https://cdn.example/og.jpg", path
+
+
 def test_unpublished_and_unknown_pages_are_404(client, course, article):
     course.status = "archived"
     course.save()

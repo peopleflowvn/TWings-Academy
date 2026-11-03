@@ -18,6 +18,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from functools import wraps
 from html import unescape
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.db.models import Q
@@ -389,6 +390,7 @@ def _legal(key: str, path: str) -> Page:
         path=path,
         title=f"{page['title']} | {SITE_NAME}",
         description=plain(page["html"]),
+        image=default_image(site_seo()),
         heading=page["title"],
         body_html=page["html"],
     )
@@ -446,8 +448,28 @@ def resolve(path: str) -> Page:
     raise Http404
 
 
+def _own_host(host: str) -> bool:
+    """A hostname the site is (or was) served from: the twings.edu.vn family or a configured host."""
+    host = (host or "").lower()
+    return host == "twings.edu.vn" or host.endswith(".twings.edu.vn") or host in settings.ALLOWED_HOSTS
+
+
+def canonical_url(page: Page) -> str:
+    """
+    The page's canonical address. A custom canonical that points to one of the site's own hostnames
+    (e.g. typed when the site lived on tuyensinh.twings.edu.vn) is moved to the current domain, so
+    canonical links and share URLs never point to an address that only redirects.
+    """
+    if not page.canonical:
+        return f"{base_url()}{page.path}"
+    parts = urlsplit(page.canonical)
+    if _own_host(parts.hostname or ""):
+        return f"{base_url()}{parts.path or '/'}{'?' + parts.query if parts.query else ''}"
+    return page.canonical
+
+
 def meta(page: Page) -> dict:
-    canonical = page.canonical or f"{base_url()}{page.path}"
+    canonical = canonical_url(page)
     return {
         "title": page.title,
         "description": page.description,

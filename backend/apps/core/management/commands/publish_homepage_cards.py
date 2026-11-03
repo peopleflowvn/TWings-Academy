@@ -12,7 +12,7 @@ from django.db import transaction
 
 from apps.cms.models import Article, HeroBanner
 
-SITE = "https://tuyensinh.twings.edu.vn"
+SITE = "https://twings.edu.vn"
 
 CARDS = [
     {

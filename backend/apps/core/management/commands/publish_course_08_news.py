@@ -100,7 +100,7 @@ class Command(BaseCommand):
                     "meta_title": "Khai giảng TWings Academy Khóa 08 tại Hà Nội và TP.HCM",
                     "meta_description": "Recap lễ khai giảng TWings Academy Khóa 08 ngày 04/10/2026, kết nối học viên Hà Nội và TP.HCM trong hành trình đào tạo gắn với thực tiễn.",
                     "focus_keyword": "khai giảng TWings Academy Khóa 08",
-                    "canonical_url": f"https://tuyensinh.twings.edu.vn/tin-tuc/{SLUG}",
+                    "canonical_url": f"https://twings.edu.vn/tin-tuc/{SLUG}",
                     "seo_score": 95,
                     "seo_checks": {
                         "hasHeadings": True,

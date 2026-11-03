@@ -15,7 +15,7 @@ from django.utils import timezone
 from apps.cms.models import Article
 
 IMAGES = Path(settings.BASE_DIR) / "fixtures" / "news_images_batch2"
-BASE_URL = "https://tuyensinh.twings.edu.vn/tin-tuc/"
+BASE_URL = "https://twings.edu.vn/tin-tuc/"
 
 ARTICLES = [
     {

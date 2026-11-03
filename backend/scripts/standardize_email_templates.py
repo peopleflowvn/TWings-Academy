@@ -118,7 +118,7 @@ TEMPLATES = {
       <table border="0" cellpadding="0" cellspacing="0" role="presentation">
         <tr>
           <td align="center" style="border-radius: 12px; background: linear-gradient(135deg, #0056D2 0%, #0073C1 100%); box-shadow: 0 4px 14px rgba(0, 86, 210, 0.35);">
-            <a href="https://tuyensinh.twings.edu.vn/learn/" target="_blank" style="font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; display: inline-block; letter-spacing: 0.3px;">
+            <a href="https://twings.edu.vn/learn/" target="_blank" style="font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; display: inline-block; letter-spacing: 0.3px;">
               Xác Nhận Tham Gia &amp; Vào Cổng Học Viên LMS &rarr;
             </a>
           </td>
