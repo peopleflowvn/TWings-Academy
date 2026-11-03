@@ -390,6 +390,11 @@ PHP
       echo '--- validate host file with the gateway caddy'; sudo cat \$f | sudo docker exec -i \$gw caddy validate --config /dev/stdin --adapter caddyfile 2>&1 | tail -3"
     ;;
 
+  seo-check)
+    # From the GitHub runner (public internet): what Google and link-preview bots (Facebook, Zalo) get.
+    python3 infra/ops/seo_check.py "${ARG:-https://twings.edu.vn}"
+    ;;
+
   smoke-host)
     # Like smoke, but the domains are forced to this VPS's IP: checks a new / moved machine before DNS points to it.
     ip=$(ssh -G vps | awk '/^hostname /{print $2}')
