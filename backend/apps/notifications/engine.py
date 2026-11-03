@@ -8,6 +8,12 @@ from typing import Any
 
 from .models import EmailTemplate
 
+# E-mails that carry a credential (password-reset link, sign-in code). Their stored versions come from
+# seed_content / Django admin only: the staff API refuses to change them, otherwise any account allowed
+# to edit e-mail templates could send the link or code to itself (e.g. an <img> pointing to its server)
+# and take over the super admin.
+LOCKED_TEMPLATES = frozenset({"staff_password_reset", "auth_otp"})
+
 VARIABLE_PATTERN = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}|\{([a-zA-Z0-9_]+)\}")
 
 

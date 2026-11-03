@@ -75,14 +75,16 @@ Disallow: /
 		}
 
 		# Moodle LMS. Its web service API is for the TWings backend only (internal network): never
-		# reachable from the internet, so a leaked token is useless from outside.
+		# reachable from the internet, so a leaked token is useless from outside. login/token.php (the
+		# mobile app's password-for-token exchange, unused: mobile web services are off) would only be a
+		# scriptable password-guessing endpoint, so it is closed too.
 		# /learn/tai-khoan (fees, invoices, documents, certificates) is the TWings part of the learner
 		# portal: served by the SPA below, linked from Moodle's navigation (local_twings).
 		@moodle {
 			path /learn*
 		}
 		handle @moodle {
-			@moodleWs path /learn/webservice/*
+			@moodleWs path /learn/webservice/* /learn/login/token.php
 			respond @moodleWs 404
 			header X-Robots-Tag "noindex, nofollow"
 			request_body {

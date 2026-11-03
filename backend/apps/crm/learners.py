@@ -107,6 +107,48 @@ def attach_learner(order: Order, details: dict | None = None) -> Learner:
     return learner
 
 
+def same_person(learner: Learner | None, email: str) -> bool:
+    """The learner record carries this e-mail (what the learner portal's one-time code proves)."""
+    return bool(learner and email and (learner.email or "").strip().lower() == email.strip().lower())
+
+
+@transaction.atomic
+def portal_learner(order: Order) -> Learner:
+    """
+    The learner record the person signed in with the registration's e-mail may read and edit (learner
+    portal: enrolment file, CV).
+
+    Registrations are matched to a learner by phone or CCCD as well, and anyone can type another
+    person's phone number into the public form. Owning the registration's e-mail is therefore no proof
+    of being the person on the matched record: when that record carries another e-mail, the
+    registration (with its program courses) moves to a learner of its own, so a stranger can never read
+    or overwrite someone else's identity details, addresses or CV. Staff merge the two records when they
+    really are the same person.
+    """
+    learner = order.learner or attach_learner(order)
+    email = order.customer_email
+    if same_person(learner, email):
+        return learner
+    own = find_learner(email=email) if email else None
+    if own is None or own.pk == learner.pk:
+        own = Learner(**{lf: getattr(order, of) for lf, of in CONTACT_FIELDS.items()}, owner=learner.owner)
+        own.full_name = own.full_name or order.order_code
+        own.save()
+    Order.objects.filter(Q(pk=order.pk) | Q(parent_id=order.pk)).update(learner=own)
+    order.learner = own
+    Activity.objects.create(
+        order=order,
+        type="note",
+        title=f"Tách khỏi hồ sơ học viên {learner.code} sang {own.code}",
+        content=(
+            "Đăng ký khớp hồ sơ cũ theo số điện thoại / CCCD nhưng email khác, nên học viên đăng nhập bằng "
+            "email của đăng ký không được xem hồ sơ cũ. Nếu đúng là cùng một người, hãy gộp hai hồ sơ."
+        ),
+        actor="Hệ thống",
+    )
+    return own
+
+
 @transaction.atomic
 def update_learner(learner: Learner, values: dict) -> None:
     """Change the learner's details; a new name / phone / e-mail reaches every registration."""

@@ -20,10 +20,20 @@ from .resend import InvalidSignature, ResendError, send_email, verify_svix_signa
 logger = logging.getLogger(__name__)
 
 
+LOCKED_MESSAGE = "Mẫu email chứa liên kết / mã đăng nhập: chỉ quản trị hệ thống thay đổi được (bảo mật)."
+
+
 class EmailTemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailTemplate
         exclude = ["created_at"]
+
+    def validate(self, attrs):
+        from .engine import LOCKED_TEMPLATES
+
+        if {attrs.get("code"), getattr(self.instance, "code", None)} & LOCKED_TEMPLATES:
+            raise serializers.ValidationError({"detail": LOCKED_MESSAGE})
+        return attrs
 
 
 class EmailLogSerializer(serializers.ModelSerializer):
@@ -210,6 +220,13 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
     }
     pagination_class = None
     queryset = EmailTemplate.objects.all()
+
+    def perform_destroy(self, instance):
+        from .engine import LOCKED_TEMPLATES
+
+        if instance.code in LOCKED_TEMPLATES:
+            raise serializers.ValidationError({"detail": LOCKED_MESSAGE})
+        instance.delete()
 
 
 class EmailLogViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):

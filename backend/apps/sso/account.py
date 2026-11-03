@@ -16,7 +16,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.crm.learners import dossier_missing
+from apps.crm.learners import dossier_missing, same_person
 from apps.crm.lists import PERSON_LIST_FIELDS, NormalizeListFields
 from apps.crm.models import Activity, FollowupTask, Order
 from apps.payments.billing import order_billing
@@ -103,7 +103,10 @@ def _order_item(order: Order) -> dict:
             if invoice
             else None
         ),
-        "dossier_missing": dossier_missing(order.learner),
+        # Only the record that carries the signed-in e-mail (see portal_learner).
+        "dossier_missing": dossier_missing(
+            order.learner if same_person(order.learner, order.customer_email) else None
+        ),
         "title": order.course_title,
         "kind": "program" if order.is_program_order else "course",
         "created_at": order.created_at.isoformat(),
@@ -346,9 +349,10 @@ class DossierSerializer(NormalizeListFields, serializers.Serializer):
 
 
 def _learner(order: Order):
-    from apps.crm.learners import attach_learner
+    """Never another person's record matched by phone / CCCD (apps.crm.learners.portal_learner)."""
+    from apps.crm.learners import portal_learner
 
-    return order.learner or attach_learner(order)
+    return portal_learner(order)
 
 
 def dossier_data(order: Order) -> dict:

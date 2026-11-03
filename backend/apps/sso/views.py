@@ -106,7 +106,12 @@ def login(request):
         # Same answer whether or not the e-mail is known: no account enumeration.
     elif request.method == "POST" and request.POST.get("action") == "verify":
         email = request.session.get(OTP_EMAIL, "")
-        if email and services.check_otp(email, request.POST.get("code", "")):
+        ip = request.META.get("REMOTE_ADDR", "")
+        if (
+            email
+            and services.allow(f"verify-ip:{ip}", 30, 3600)
+            and services.check_otp(email, request.POST.get("code", ""))
+        ):
             request.session.cycle_key()  # new session id after authentication
             request.session[LEARNER] = {"email": email, "at": time.time()}
             request.session.pop(OTP_EMAIL, None)

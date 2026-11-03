@@ -14,6 +14,11 @@ secrets/
 .secrets/
 infra/vps/*.env
 
+# ---- Working documents: CRM exports, course sheets, contracts (personal / business data) ----
+# The repository is public: only Markdown is published from docs/.
+docs/*
+!docs/*.md
+
 # ---- Node / frontend ----
 node_modules/
 dist/

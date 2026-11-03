@@ -131,23 +131,34 @@ def allow(bucket: str, limit: int, window: int) -> bool:
 # ---------------------------------------------------------------- one-time e-mail codes
 def issue_otp(email: str) -> str:
     code = f"{secrets.randbelow(10**6):06d}"
-    cache.set(f"sso:otp:{_h(normalize_email(email))}", {"hash": _h(code), "attempts": 0}, OTP_TTL)
+    cache.set(
+        f"sso:otp:{_h(normalize_email(email))}",
+        {"hash": _h(code), "nonce": secrets.token_hex(8)},
+        OTP_TTL,
+    )
     return code
+
+
+def _claim_attempt(nonce: str) -> bool:
+    """
+    Take one of the OTP_MAX_ATTEMPTS guesses of a code. cache.add() is atomic (the cache table's primary
+    key), unlike a read-modify-write counter that parallel requests can all read as "0 attempts" and so
+    get far more guesses than allowed.
+    """
+    return any(cache.add(f"sso:otp-try:{nonce}:{n}", 1, OTP_TTL) for n in range(OTP_MAX_ATTEMPTS))
 
 
 def check_otp(email: str, code: str) -> bool:
     key = f"sso:otp:{_h(normalize_email(email))}"
     record = cache.get(key)
-    if not record:
+    if not record or "nonce" not in record:
         return False
-    if record["attempts"] >= OTP_MAX_ATTEMPTS:
-        cache.delete(key)
+    if not _claim_attempt(record["nonce"]):
+        cache.delete(key)  # every guess used: the code is dead, ask for a new one
         return False
     if hmac.compare_digest(record["hash"], _h((code or "").strip())):
         cache.delete(key)
         return True
-    record["attempts"] += 1
-    cache.set(key, record, OTP_TTL)
     return False
 
 

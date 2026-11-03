@@ -160,8 +160,13 @@ def _articles():
     return Article.objects.filter(live).order_by("-published_at", "-created_at")
 
 
+def _text(text: str, limit: int = 160) -> str:
+    """plain() for the page body: plain() decodes entities, so "&lt;script&gt;" must be escaped again."""
+    return escape(plain(text, limit))
+
+
 def _list_html(items) -> str:
-    return "".join(f"<li>{item}</li>" for item in items)
+    return "".join(f"<li>{escape(item)}</li>" for item in items)
 
 
 # ---------------------------------------------------------------- pages
@@ -223,14 +228,14 @@ def _course(seo, slug) -> Page:
     if course is None:
         raise Http404
     description = plain(course.subtitle or course.description or course.overview)
-    body = [f"<p>{plain(course.description or course.overview, 2000)}</p>"]
+    body = [f"<p>{_text(course.description or course.overview, 2000)}</p>"]
     if course.learning_objectives:
         body.append(
             "<h2>Bạn sẽ học được gì</h2><ul>" + _list_html(map(str, course.learning_objectives)) + "</ul>"
         )
     facts = [f for f in (course.level, course.duration, course.location_text) if f]
     if facts:
-        body.append("<p>" + " · ".join(facts) + "</p>")
+        body.append("<p>" + " · ".join(escape(f) for f in facts) + "</p>")
     if course.price:
         body.append(f"<p>Học phí: {course.price:,}đ</p>".replace(",", "."))
     classes = [
@@ -284,7 +289,7 @@ def _program(seo, slug) -> Page:
         raise Http404
     courses = [link.course for link in program.program_courses.all() if link.course.is_published]
     description = plain(program.subtitle or program.description)
-    body = f"<p>{plain(program.description, 2000)}</p>"
+    body = f"<p>{_text(program.description, 2000)}</p>"
     if program.highlights:
         body += "<ul>" + _list_html(map(str, program.highlights)) + "</ul>"
     return Page(
@@ -315,10 +320,10 @@ def _program(seo, slug) -> Page:
 def _about(seo) -> Page:
     about = _config(SiteConfig.KEY_HOMEPAGE_SECTIONS).get("about") or {}
     lead = about.get("lead") or seo.get("default_meta_description") or ""
-    body = "".join(f"<p>{plain(part, 3000)}</p>" for part in str(lead).split("\n\n") if part.strip())
+    body = "".join(f"<p>{_text(part, 3000)}</p>" for part in str(lead).split("\n\n") if part.strip())
     for key, label in (("vision", "Tầm nhìn"), ("mission", "Sứ mệnh")):
         if about.get(key):
-            body += f"<h2>{label}</h2><p>{plain(str(about[key]), 2000)}</p>"
+            body += f"<h2>{label}</h2><p>{_text(str(about[key]), 2000)}</p>"
     return Page(
         path="/ve-chung-toi",
         title=f"Về chúng tôi | {SITE_NAME}",
@@ -506,7 +511,8 @@ def prerender(request, path=""):
             "page": page,
             "meta": data,
             "links": [(text, f"{base_url()}{href}") for text, href in page.links],
-            "jsonld": [json.dumps(item, ensure_ascii=False).replace("</", "<\\/") for item in page.jsonld],
+            # Every "<" as < (the same JSON): no "</script>" or "<!--" can end the block early.
+            "jsonld": [json.dumps(item, ensure_ascii=False).replace("<", "\\u003c") for item in page.jsonld],
             "base": base_url(),
         },
         status=status,

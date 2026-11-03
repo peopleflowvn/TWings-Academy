@@ -379,6 +379,46 @@ PHP
     done
     ;;
 
+  security-audit)
+    # READ-ONLY. 1) On the VPS: host, SSH, firewall, Docker, every product's containers, secrets on disk,
+    # compromise indicators, TWings/Moodle settings (infra/ops/security_audit.sh). 2) From this runner
+    # (the public internet): every site of the shared gateway: open ports, headers, files that must not
+    # be served, TLS. Copied to a file first: under `bash -s` a command reading stdin would eat the script.
+    f=$(remote 'mktemp /tmp/twings-audit.XXXXXX')   # private file: nobody else can swap what root runs
+    remote "cat > $f" < infra/ops/security_audit.sh
+    remote "sudo bash $f; rc=\$?; rm -f $f; exit \$rc" | tee /tmp/audit.txt || true
+    ip=$(ssh -G vps | awk '/^hostname /{print $2}')
+    echo; echo "==================== from the internet: open TCP ports on the VPS"
+    for port in 21 22 23 25 53 80 110 111 135 139 143 443 445 993 995 1433 1521 2019 2375 2376 3000 3001 3306 \
+                4000 5000 5432 5601 5672 6379 6443 7474 8000 8008 8080 8081 8088 8443 8888 9000 9090 9100 9200 \
+                9300 9443 10000 11211 15672 27017; do
+      timeout 3 bash -c "</dev/tcp/$ip/$port" 2>/dev/null && echo "OPEN $port"
+    done
+    sites=$(sed -n '/^sites served:/,/^---/p' /tmp/audit.txt | grep -vE '^(sites served:|---)' \
+      | sed -E 's#^https?://##; s#[:/].*$##' | grep -E '^[A-Za-z0-9*.-]+\.[A-Za-z]{2,}$' | grep -v '^\*' | sort -u)
+    for h in $sites; do
+      echo; echo "==================== from the internet: $h"
+      curl -s -o /dev/null -D /tmp/h -m 20 --resolve "$h:443:$ip" -w "%{http_code} https://$h/ -> %{redirect_url}\n" "https://$h/" || { echo "unreachable"; continue; }
+      for hdr in strict-transport-security content-security-policy x-frame-options x-content-type-options; do
+        grep -qi "^$hdr:" /tmp/h && echo "  ok  $hdr" || echo "  !!  missing $hdr"
+      done
+      grep -iE '^(server|x-powered-by|via|x-aspnet-version):' /tmp/h | sed 's/^/  info /'
+      for path in /.env /.env.production /.git/HEAD /.git/config /config.json /.DS_Store /server-status /phpinfo.php \
+                  /actuator/env /actuator/health /swagger-ui.html /swagger/index.html /api/docs /docs /openapi.json \
+                  /graphql /admin/ /wp-login.php /debug /metrics /backup.zip /dump.sql /.vscode/settings.json \
+                  /storage/logs/laravel.log /web.config /package.json /docker-compose.yml; do
+        code=$(curl -s -o /tmp/b -m 15 --resolve "$h:443:$ip" -w '%{http_code} %{size_download} %{content_type}' "https://$h$path")
+        # SPAs answer every path with their index.html: only report bodies that are not the HTML shell.
+        if [[ "$code" == 200* ]] && ! head -c 400 /tmp/b | grep -qiE '<!doctype html|<html'; then
+          echo "  !!  $path -> $code: $(head -c 120 /tmp/b | tr -cd '[:print:]')"
+        fi
+      done
+      echo | timeout 15 openssl s_client -connect "$ip:443" -servername "$h" 2>/dev/null \
+        | openssl x509 -noout -enddate -issuer 2>/dev/null | sed 's/^/  tls /'
+      curl -s -o /dev/null -m 15 -w "  http -> %{http_code} %{redirect_url}\n" --resolve "$h:80:$ip" "http://$h/"
+    done
+    ;;
+
   gateway-diff)
     # Read-only: how the gateway Caddyfile on the host differs from the copy the running container sees.
     remote "cd $APP && gw=\$(sudo sed -n 's/^GATEWAY_CONTAINER=//p' env/gateway.env); f=\$(sudo sed -n 's/^GATEWAY_FILE=//p' env/gateway.env)

