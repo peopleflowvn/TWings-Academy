@@ -74,6 +74,7 @@ def test_values_outside_the_list_are_shown_and_can_be_replaced(staff_client):
     Order.objects.create(customer_name="C", source="Website · Facebook")
     unlisted = _kind(admin.get(URL).json(), "source")["unlisted"]
     assert {"value": "Website · Facebook", "used": 1} in unlisted
-    assert admin.post(f"{URL}source/replace/", {"from": "Website · Facebook", "to": "Nope"}).status_code == 400
+    bad = {"from": "Website · Facebook", "to": "Nope"}
+    assert admin.post(f"{URL}source/replace/", bad).status_code == 400
     r = admin.post(f"{URL}source/replace/", {"from": "Website · Facebook", "to": "Website"}, format="json")
     assert r.json()["records"] == 1 and Order.objects.get(customer_name="C").source == "Website"
