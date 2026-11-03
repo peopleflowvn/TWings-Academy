@@ -374,7 +374,7 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
           <OverviewReportsPage
             user={user}
             currentPath={path}
-            canViewReports={can('finance.transactions') || can('crm.view_leads') || can('lms.view')}
+            canViewReports={can('finance.transactions') || can('crm.view_leads') || can('lms.view') || can('seo.settings')}
           />
         );
       case '/content/links':
