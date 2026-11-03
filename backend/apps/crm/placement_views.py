@@ -11,6 +11,7 @@ from apps.catalog.models import Cohort
 from apps.core.models import audit
 
 from . import placement as svc
+from .lists import NormalizeListFields
 from .models import Order, PartnerShare, Placement
 
 VIEW = ("placement.view", "placement.manage")
@@ -23,7 +24,9 @@ def _check(fn, *args, **kwargs):
         raise serializers.ValidationError({"detail": str(exc)}) from exc
 
 
-class ReferSerializer(serializers.Serializer):
+class ReferSerializer(NormalizeListFields, serializers.Serializer):
+    list_fields = {"unit": "msb_unit"}
+
     order_id = serializers.CharField()
     position_id = serializers.CharField(required=False, allow_blank=True)
     employer = serializers.CharField(max_length=200, required=False, allow_blank=True)

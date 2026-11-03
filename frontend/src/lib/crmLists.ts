@@ -60,6 +60,38 @@ export function useCrmLists(): CrmLists {
   return lists;
 }
 
+export interface PublicLists {
+  provinces: string[];
+  educationLevels: string[];
+  genders: string[];
+  universities: string[];
+}
+
+let loadingPublic: Promise<PublicLists> | null = null;
+
+/** The lists the website's forms offer (registration, the learner's enrolment file): GET /public/lists/. */
+export function usePublicLists(): PublicLists {
+  const fallback: PublicLists = {
+    provinces: DEFAULT_LISTS.provinces,
+    educationLevels: DEFAULT_LISTS.educationLevels,
+    genders: DEFAULT_LISTS.genders,
+    universities: []
+  };
+  const [lists, setLists] = useState<PublicLists>(fallback);
+  useEffect(() => {
+    let live = true;
+    loadingPublic ??= api.get<PublicLists>('/public/lists/').catch(() => {
+      loadingPublic = null;
+      return fallback;
+    });
+    loadingPublic.then((value) => live && setLists({ ...fallback, ...value }));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return lists;
+}
+
 /** A select's options: the list, plus the stored value when it is not in it (older data stays visible). */
 export const withCurrent = (list: string[], current?: string | null): string[] =>
   current && !list.includes(current) ? [...list, current] : list;

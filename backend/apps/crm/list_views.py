@@ -18,11 +18,30 @@ from apps.core.models import audit
 from . import lists
 from .models import ListItem
 
+SYSTEM_VALUE = "Hệ thống tự ghi / dựa vào giá trị này nên không đổi tên, ẩn hay xóa được (chỉ sắp xếp)."
+
 
 class IsActiveStaff(BasePermission):
     def has_permission(self, request, view):
         user = request.user
         return bool(user and user.is_authenticated and user.is_active and user.is_staff)
+
+
+class PublicListsView(APIView):
+    """GET (website): the lists the registration form and the learner's own file offer."""
+
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request):
+        return Response(
+            {
+                "provinces": lists.values("province"),
+                "educationLevels": lists.values("education_level"),
+                "genders": lists.values("gender"),
+                "universities": lists.values("university"),
+            }
+        )
 
 
 class CrmListsView(APIView):
@@ -40,13 +59,18 @@ def _kind(key: str) -> lists.Kind:
     return lists.KIND[key]
 
 
-def _clean(value) -> str:
+def _clean(value, kind: str) -> str:
     value = " ".join(str(value or "").split())
     if not value:
         raise ValidationError({"value": "Nhập giá trị."})
-    if len(value) > 300:
-        raise ValidationError({"value": "Tối đa 300 ký tự."})
+    longest = lists.max_length(kind)
+    if len(value) > longest:
+        raise ValidationError({"value": f"Tối đa {longest} ký tự (độ dài ô lưu giá trị này)."})
     return value
+
+
+def _locked(item: ListItem) -> bool:
+    return item.value in lists.LOCKED.get(item.kind, ())
 
 
 def _kind_payload(kind: lists.Kind) -> dict:
@@ -58,8 +82,16 @@ def _kind_payload(kind: lists.Kind) -> dict:
         "label": kind.label,
         "group": kind.group,
         "hint": kind.hint,
+        "maxLength": lists.max_length(kind.key),
         "items": [
-            {"id": i.id, "value": i.value, "active": i.is_active, "used": used.get(i.value, 0)} for i in items
+            {
+                "id": i.id,
+                "value": i.value,
+                "active": i.is_active,
+                "used": used.get(i.value, 0),
+                "locked": _locked(i),
+            }
+            for i in items
         ],
         # Values the records have that the list does not (typed freely, imported, or renamed away).
         "unlisted": sorted(
@@ -86,7 +118,7 @@ class ListKindView(Manage):
 
     def post(self, request, kind):
         kind = _kind(kind)
-        value = _clean(request.data.get("value"))
+        value = _clean(request.data.get("value"), kind.key)
         item = ListItem.objects.filter(kind=kind.key, value=value).first()
         if item and item.is_active:
             raise ValidationError({"value": "Giá trị này đã có trong danh mục."})
@@ -131,9 +163,15 @@ class ListItemView(Manage):
         item = self._item(pk)
         kind = lists.KIND[item.kind]
         changed = 0
+        renaming = (
+            "value" in request.data and " ".join(str(request.data["value"] or "").split()) != item.value
+        )
+        hiding = "active" in request.data and not request.data.get("active")
+        if _locked(item) and (renaming or hiding):
+            raise ValidationError({"value": SYSTEM_VALUE})
         with transaction.atomic():
             if "value" in request.data:
-                old, new = item.value, _clean(request.data.get("value"))
+                old, new = item.value, _clean(request.data.get("value"), item.kind)
                 if new != old:
                     other = ListItem.objects.filter(kind=item.kind, value=new).exclude(pk=item.pk).first()
                     changed = lists.replace_in_records(item.kind, old, new)
@@ -160,6 +198,8 @@ class ListItemView(Manage):
 
     def delete(self, request, pk):
         item = self._item(pk)
+        if _locked(item):
+            raise ValidationError({"value": SYSTEM_VALUE})
         used = lists.usage(item.kind).get(item.value, 0)
         if used:
             raise ValidationError(
@@ -176,7 +216,7 @@ class ListReplaceView(Manage):
     def post(self, request, kind):
         kind = _kind(kind)
         old = str(request.data.get("from") or "")
-        new = _clean(request.data.get("to"))
+        new = _clean(request.data.get("to"), kind.key)
         if not old or old == new:
             raise ValidationError({"from": "Chọn giá trị cần thay."})
         if not ListItem.objects.filter(kind=kind.key, value=new).exists():

@@ -12,13 +12,15 @@ from apps.accounts.rbac import has_perm_code
 from apps.core.models import audit
 
 from .learners import CONTACT_FIELDS, PERSON_FIELDS, merge_learners, update_learner
+from .lists import PERSON_LIST_FIELDS, NormalizeListFields
 from .models import Activity, Appointment, Learner, Order, Placement
 
 # Identity documents and addresses: on one learner's page only, never in the list.
 PRIVATE_FIELDS = ("citizen_id", "permanent_address", "current_residence")
 
 
-class LearnerSerializer(serializers.ModelSerializer):
+class LearnerSerializer(NormalizeListFields, serializers.ModelSerializer):
+    list_fields = PERSON_LIST_FIELDS
     owner_name = serializers.CharField(source="owner.name", read_only=True, default="")
     registrations = serializers.IntegerField(read_only=True, default=0)
     paid_registrations = serializers.IntegerField(read_only=True, default=0)

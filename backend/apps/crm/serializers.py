@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from apps.catalog.models import Cohort, Course, Program
 
+from .lists import PERSON_LIST_FIELDS, NormalizeListFields
 from .models import (
     Activity,
     Appointment,
@@ -30,7 +31,13 @@ class FollowupTaskSerializer(serializers.ModelSerializer):
         read_only_fields = ["owner"]
 
 
-class OrderSerializer(serializers.ModelSerializer):
+class OrderSerializer(NormalizeListFields, serializers.ModelSerializer):
+    list_fields = {
+        "source": "source",
+        "interest_level": "interest_level",
+        "training_status": "training_status",
+        "lost_reason": "lost_reason",
+    }
     course_id = serializers.PrimaryKeyRelatedField(
         source="course", queryset=Course.objects.all(), required=False, allow_null=True
     )
@@ -147,8 +154,10 @@ FINANCE_FIELDS = {
 ASSIGN_FIELDS = {"pic", "assigned_to"}
 
 
-class PublicRegistrationSerializer(serializers.Serializer):
+class PublicRegistrationSerializer(NormalizeListFields, serializers.Serializer):
     """Fields an anonymous visitor may submit. Everything else is set server-side."""
+
+    list_fields = {**PERSON_LIST_FIELDS, "source": "source"}
 
     course_id = serializers.CharField(max_length=64, required=False)
     program_id = serializers.CharField(max_length=64, required=False)
@@ -158,7 +167,7 @@ class PublicRegistrationSerializer(serializers.Serializer):
     customer_email = serializers.EmailField(max_length=254)
     area = serializers.CharField(max_length=100, required=False, allow_blank=True)
     birth_date = serializers.DateField(required=False, allow_null=True)
-    gender = serializers.ChoiceField(choices=["Nam", "Nữ", "Khác"], required=False, allow_blank=True)
+    gender = serializers.CharField(max_length=10, required=False, allow_blank=True)
     university = serializers.CharField(max_length=200, required=False, allow_blank=True)
     major = serializers.CharField(max_length=200, required=False, allow_blank=True)
     graduation_year = serializers.CharField(max_length=10, required=False, allow_blank=True)

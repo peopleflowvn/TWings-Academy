@@ -28,6 +28,7 @@ import {
 import confetti from 'canvas-confetti';
 import { Course, Order } from '../types';
 import { api, ApiError, isBackendEnabled } from '../lib/api';
+import { usePublicLists, withCurrent } from '../lib/crmLists';
 import { getAttribution } from '../lib/attribution';
 import { BrandLogo } from './BrandLogo';
 import { useSiteSeo, phoneDigits, zaloLink } from '../lib/siteSeo';
@@ -65,6 +66,8 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  // Area and education: the lists of /app → Hệ thống → Danh mục.
+  const lists = usePublicLists();
   const [area, setArea] = useState('Hà Nội');
   const [selectedCourseId, setSelectedCourseId] = useState(course?.id || allCourses[0]?.id || '');
   const [educationLevel, setEducationLevel] = useState('Đại học');
@@ -567,12 +570,9 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                       onChange={(e) => setArea(e.target.value)}
                       className="w-full pl-9 pr-8 py-2.5 text-xs sm:text-sm border border-[#BBC1C4] rounded-xl bg-white text-[#424242] focus:outline-none focus:border-[#0073C1] focus:ring-4 focus:ring-[#D7F5FF] appearance-none cursor-pointer transition-all shadow-2xs"
                     >
-                      <option value="Hà Nội">Hà Nội (Hội sở ROX Tower & MSB)</option>
-                      <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
-                      <option value="Đà Nẵng">Đà Nẵng</option>
-                      <option value="Hải Phòng">Hải Phòng</option>
-                      <option value="Cần Thơ">Cần Thơ</option>
-                      <option value="Toàn quốc / Online LMS">Toàn quốc / Học Online LMS</option>
+                      {withCurrent(lists.provinces, area).map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
                     </select>
                     <MapPin className="w-4 h-4 text-[#0073C1] absolute left-3 top-3 pointer-events-none" />
                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
@@ -639,17 +639,15 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-700 block">Trình độ & Đối tượng</label>
+                      <label className="text-[11px] font-bold text-slate-700 block">Trình độ</label>
                       <select
                         value={educationLevel}
                         onChange={(e) => setEducationLevel(e.target.value)}
                         className="w-full p-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:border-[#0073C1] focus:ring-2 focus:ring-[#D7F5FF]"
                       >
-                        <option value="Đại học">Sinh viên Đại học / Cao đẳng</option>
-                        <option value="Đã tốt nghiệp">Cử nhân vừa tốt nghiệp</option>
-                        <option value="Đã đi làm trong ngành">Đang làm trong ngành Ngân hàng - Tài chính</option>
-                        <option value="Chuyển ngành">Người chuyển ngành sang Tài chính</option>
-                        <option value="Doanh nghiệp">Doanh nghiệp cử đi học</option>
+                        {withCurrent(lists.educationLevels, educationLevel).map((l) => (
+                          <option key={l} value={l}>{l}</option>
+                        ))}
                       </select>
                     </div>
 

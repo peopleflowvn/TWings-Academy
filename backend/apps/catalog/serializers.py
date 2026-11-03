@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.crm.lists import NormalizeListFields
+
 from .models import Cohort, Coupon, Course, CourseReview, Instructor, Partner, Program, ProgramCourse
 
 LESSON_TYPES = {"video", "reading", "quiz", "project", "audio_listening", "flashcard", "pdf_material"}
@@ -53,8 +55,10 @@ def public_syllabus(syllabus):
     return result
 
 
-class CourseSerializer(serializers.ModelSerializer):
+class CourseSerializer(NormalizeListFields, serializers.ModelSerializer):
     """Staff serializer: full content, instructors written by id."""
+
+    list_fields = {"category": "course_category", "level": "course_level"}
 
     instructor_ids = serializers.PrimaryKeyRelatedField(
         source="instructors", many=True, queryset=Instructor.objects.all(), required=False

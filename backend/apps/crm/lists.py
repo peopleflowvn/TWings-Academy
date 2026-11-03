@@ -81,6 +81,8 @@ SOURCES = [
     "Facebook ads",
     "Zalo",
     "TikTok",
+    "Google",
+    "YouTube",
     "Giới thiệu nội bộ (GTNB)",
     "TNEX",
     "Email marketing",
@@ -200,6 +202,10 @@ _ALIASES = {
         "fb": "Facebook ads",
         "email mkt": "Email marketing",
         "sms mkt": "SMS marketing",
+        "email": "Email marketing",
+        "sms": "SMS marketing",
+        "website form tu van": "Website",
+        "web": "Website",
         "hoi thao": "Hội thảo / Roadshow",
         "hoi thao truong dh": "Hội thảo / Roadshow",
         "roadshow": "Hội thảo / Roadshow",
@@ -224,6 +230,27 @@ _ALIASES = {
         "thoi hoc": "Dừng chương trình",
     },
 }
+
+
+# Values the system itself writes or relies on (new website / staff leads, the UTM channel of a lead,
+# LMS completion, the homepage "AI" shelf): they can be ordered but not renamed, hidden or deleted.
+LOCKED = {
+    "source": {
+        "Website",
+        "Nhập tay",
+        "Facebook ads",
+        "Zalo",
+        "TikTok",
+        "Google",
+        "YouTube",
+        "Email marketing",
+        "SMS marketing",
+    },
+    "training_status": {"Chờ xét tốt nghiệp", "Hoàn thành"},
+    "course_category": {"Trí tuệ nhân tạo (AI)"},
+}
+# Lists whose value must be one of the list (others keep what was typed, in the list's spelling if known).
+STRICT = {"gender"}
 
 
 def plain(text) -> str:
@@ -256,6 +283,11 @@ def normalize(kind: str, value, items: list[str] | None = None) -> str:
     if alias is not None and (alias == "" or alias in items):
         return alias
     return value
+
+
+def max_length(kind: str) -> int:
+    """The longest value every field of the list can hold."""
+    return min(_model(label)._meta.get_field(field).max_length for label, field in KIND[kind].fields)
 
 
 def _model(label: str):
@@ -297,3 +329,38 @@ def all_lists() -> dict:
         key=str.lower,
     )
     return lists
+
+
+# A person's list-backed fields (Learner; the public form and the learner's own file write them too).
+PERSON_LIST_FIELDS = {
+    "gender": "gender",
+    "area": "province",
+    "education_level": "education_level",
+    "university": "university",
+}
+
+
+class NormalizeListFields:
+    """
+    Serializer mixin: the list-backed fields (`list_fields`: field -> list) are written in the list's own
+    spelling ("tp hcm" -> "TP. Hồ Chí Minh"); a field of a STRICT list must hold one of its values.
+    """
+
+    list_fields: dict[str, str] = {}
+
+    def to_internal_value(self, data):
+        from rest_framework.exceptions import ValidationError
+
+        attrs = super().to_internal_value(data)
+        errors = {}
+        for field, kind in self.list_fields.items():
+            if not isinstance(attrs.get(field), str):
+                continue
+            items = values(kind, include_hidden=True)
+            value = normalize(kind, attrs[field], items)
+            if kind in STRICT and value and value not in items:
+                errors[field] = f"Chọn một giá trị trong danh mục: {', '.join(values(kind))}."
+            attrs[field] = value
+        if errors:
+            raise ValidationError(errors)
+        return attrs

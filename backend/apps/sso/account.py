@@ -17,6 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.crm.learners import dossier_missing
+from apps.crm.lists import PERSON_LIST_FIELDS, NormalizeListFields
 from apps.crm.models import Activity, FollowupTask, Order
 from apps.payments.billing import order_billing
 
@@ -327,9 +328,10 @@ DOSSIER_FIELDS = [
 ]
 
 
-class DossierSerializer(serializers.Serializer):
+class DossierSerializer(NormalizeListFields, serializers.Serializer):
+    list_fields = PERSON_LIST_FIELDS
     birth_date = serializers.DateField(required=False, allow_null=True)
-    gender = serializers.ChoiceField(choices=["Nam", "Nữ", "Khác"], required=False, allow_blank=True)
+    gender = serializers.CharField(max_length=10, required=False, allow_blank=True)
     citizen_id = serializers.RegexField(r"^\d{9}$|^\d{12}$", required=False, allow_blank=True)
     issued_place = serializers.CharField(max_length=200, required=False, allow_blank=True)
     current_residence = serializers.CharField(max_length=500, required=False, allow_blank=True)

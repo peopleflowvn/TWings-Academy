@@ -2,10 +2,11 @@
  * /app → Hệ thống → Danh mục: the option lists every form offers (sources, provinces, schools, course
  * categories…), kept by the backend (apps/crm/lists.py, /staff/lists/). A renamed value is carried onto the
  * records that have it (renaming to a value already in the list merges the two); a value in use is hidden, not
- * deleted; values the records have outside the list can be replaced by one of the list or added to it.
+ * deleted; values the records have outside the list can be replaced by one of the list or added to it. Values the
+ * system itself writes or relies on (new website leads' source, LMS completion…) are locked: ordered only.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, Eye, EyeOff, ListChecks, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Eye, EyeOff, ListChecks, Lock, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { api } from '../../lib/api';
 import { reloadCrmLists } from '../../lib/crmLists';
 
@@ -14,12 +15,14 @@ interface Item {
   value: string;
   active: boolean;
   used: number;
+  locked: boolean; // the system writes / relies on it: ordered only
 }
 interface Kind {
   key: string;
   label: string;
   group: string;
   hint: string;
+  maxLength: number;
   items: Item[];
   unlisted: { value: string; used: number }[];
 }
@@ -165,7 +168,8 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
         <p className="text-xs text-slate-500 max-w-3xl">
           Các lựa chọn trong ô chọn của /app và CMS. Đổi tên một giá trị sẽ cập nhật luôn các hồ sơ đang dùng nó; đổi thành
           một giá trị đã có là gộp hai giá trị. Giá trị đang được dùng thì chỉ ẩn được (hồ sơ cũ vẫn giữ nguyên). Các danh
-          mục gắn với quy trình (giai đoạn CRM, trạng thái đơn, lớp, thanh toán) cố định trong hệ thống nên không có ở đây.
+          mục gắn với quy trình (giai đoạn CRM, trạng thái đơn, lớp, thanh toán) cố định trong hệ thống nên không có ở đây; giá
+          trị có nhãn “hệ thống” do hệ thống tự ghi (nguồn của lead từ website / link UTM, kết quả học trên LMS…) nên chỉ sắp xếp được.
         </p>
       </div>
 
@@ -224,7 +228,7 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
                         if (adding.trim()) add(adding);
                       }}
                     >
-                      <input value={adding} onChange={(e) => setAdding(e.target.value)} placeholder="Giá trị mới" maxLength={300} className={`${input} flex-1 min-w-0`} />
+                      <input value={adding} onChange={(e) => setAdding(e.target.value)} placeholder="Giá trị mới" maxLength={kind.maxLength} className={`${input} flex-1 min-w-0`} />
                       <button type="submit" disabled={busy || !adding.trim()} className="px-3 py-2 rounded-xl text-xs font-bold bg-[#0073C1] text-white flex items-center gap-1 disabled:opacity-50 cursor-pointer">
                         <Plus className="w-3.5 h-3.5" /> Thêm
                       </button>
@@ -254,7 +258,7 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
                             value={editing.value}
                             onChange={(e) => setEditing({ id: item.id, value: e.target.value })}
                             onKeyDown={(e) => e.key === 'Escape' && setEditing(null)}
-                            maxLength={300}
+                            maxLength={kind.maxLength}
                             list={`list-${kind.key}`}
                             className={`${input} flex-1 min-w-0 py-1`}
                           />
@@ -267,7 +271,14 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
                         </form>
                       ) : (
                         <>
-                          <span className={`flex-1 min-w-0 break-words ${item.active ? 'text-slate-800' : 'text-slate-400 line-through'}`}>{item.value}</span>
+                          <span className={`flex-1 min-w-0 break-words ${item.active ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
+                            {item.value}
+                            {item.locked && (
+                              <span className="ml-2 inline-flex items-center gap-0.5 text-[10px] font-bold text-slate-500 bg-slate-100 rounded-full px-1.5 py-0.5 align-middle" title="Hệ thống tự ghi / dựa vào giá trị này: chỉ sắp xếp được">
+                                <Lock className="w-3 h-3" /> hệ thống
+                              </span>
+                            )}
+                          </span>
                           <span className="text-[11px] text-slate-400 shrink-0" title="Số hồ sơ đang dùng">
                             {item.used ? `${item.used} hồ sơ` : 'chưa dùng'}
                           </span>
@@ -281,18 +292,18 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
                           <button type="button" disabled={busy || searching || index === kind.items.length - 1} onClick={() => move(index, 1)} className={iconBtn} title="Xuống">
                             <ArrowDown className="w-4 h-4" />
                           </button>
-                          <button type="button" disabled={busy} onClick={() => setEditing({ id: item.id, value: item.value })} className={iconBtn} title="Đổi tên / gộp">
+                          <button type="button" disabled={busy || item.locked} onClick={() => setEditing({ id: item.id, value: item.value })} className={iconBtn} title={item.locked ? 'Giá trị hệ thống: không đổi tên được' : 'Đổi tên / gộp'}>
                             <Pencil className="w-4 h-4" />
                           </button>
-                          <button type="button" disabled={busy} onClick={() => toggle(item)} className={iconBtn} title={item.active ? 'Ẩn khỏi ô chọn' : 'Hiện lại'}>
+                          <button type="button" disabled={busy || (item.locked && item.active)} onClick={() => toggle(item)} className={iconBtn} title={item.locked ? 'Giá trị hệ thống: không ẩn được' : item.active ? 'Ẩn khỏi ô chọn' : 'Hiện lại'}>
                             {item.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                           <button
                             type="button"
-                            disabled={busy || item.used > 0}
+                            disabled={busy || item.used > 0 || item.locked}
                             onClick={() => remove(item)}
                             className={iconBtn}
-                            title={item.used ? 'Đang được dùng: chỉ ẩn được' : 'Xóa'}
+                            title={item.locked ? 'Giá trị hệ thống: không xóa được' : item.used ? 'Đang được dùng: chỉ ẩn được' : 'Xóa'}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

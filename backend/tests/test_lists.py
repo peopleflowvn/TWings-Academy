@@ -78,3 +78,72 @@ def test_values_outside_the_list_are_shown_and_can_be_replaced(staff_client):
     assert admin.post(f"{URL}source/replace/", bad).status_code == 400
     r = admin.post(f"{URL}source/replace/", {"from": "Website · Facebook", "to": "Website"}, format="json")
     assert r.json()["records"] == 1 and Order.objects.get(customer_name="C").source == "Website"
+
+
+def test_system_values_are_only_ordered_and_values_fit_their_field(staff_client):
+    admin = staff_client(Role.SUPER_ADMIN)
+    web = ListItem.objects.get(kind="source", value="Website")
+    assert _kind(admin.get(URL).json(), "source")["items"][0]["locked"] is True
+    assert admin.patch(f"{URL}items/{web.id}/", {"value": "Web"}, format="json").status_code == 400
+    assert admin.patch(f"{URL}items/{web.id}/", {"active": False}, format="json").status_code == 400
+    assert admin.delete(f"{URL}items/{web.id}/").status_code == 400
+    assert (
+        admin.patch(f"{URL}items/{web.id}/", {"value": "Website", "active": True}, format="json").status_code
+        == 200
+    )
+    assert admin.post(f"{URL}source/order/", {"ids": [web.id]}, format="json").status_code == 200
+    too_long = "x" * 31  # Order.interest_level holds 30
+    assert admin.post(f"{URL}interest_level/", {"value": too_long}, format="json").status_code == 400
+
+
+def test_the_website_forms_use_the_lists(api, registration_payload):
+    lists = api.get("/api/v1/public/lists/").json()
+    assert (
+        len(lists["provinces"]) == 34 and "Đại học" in lists["educationLevels"] and "Nữ" in lists["genders"]
+    )
+
+    bad = {**registration_payload, "gender": "abc"}
+    assert api.post("/api/v1/public/registrations/", bad, format="json").status_code == 400
+    payload = {
+        **registration_payload,
+        "source": "Website Form Tư vấn",
+        "area": "tp hcm",
+        "gender": "nữ",
+        "educationLevel": "cử nhân",
+        "attribution": {"last": {"source": "facebook", "medium": "cpc"}},
+    }
+    assert api.post("/api/v1/public/registrations/", payload, format="json").status_code == 201
+    order = Order.objects.get()
+    assert order.source == "Facebook ads"
+    assert (order.learner.area, order.learner.gender, order.learner.education_level) == (
+        "TP. Hồ Chí Minh",
+        "Nữ",
+        "Đại học",
+    )
+    Order.objects.all().delete()
+    plain = {**registration_payload, "source": "anything", "attribution": {"last": {"source": "google"}}}
+    api.post("/api/v1/public/registrations/", plain, format="json")
+    assert Order.objects.get().source == "Google"
+
+
+def test_older_sources_are_moved_into_the_list():
+    import importlib
+
+    from django.apps import apps as django_apps
+
+    migration = importlib.import_module("apps.crm.migrations.0021_list_sources")
+    for value in (
+        "Website · Facebook",
+        "Website Form Tư vấn · Truy cập trực tiếp",
+        "Website Form Tư vấn",
+        "GTNB",
+    ):
+        Order.objects.create(customer_name=value, source=value)
+    migration.to_list(django_apps, None)
+    got = dict(Order.objects.values_list("customer_name", "source"))
+    assert got == {
+        "Website · Facebook": "Facebook ads",
+        "Website Form Tư vấn · Truy cập trực tiếp": "Website",
+        "Website Form Tư vấn": "Website",
+        "GTNB": "Giới thiệu nội bộ (GTNB)",
+    }

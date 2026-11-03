@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Award, BookOpen, Briefcase, CheckCircle2, Copy, GraduationCap, KeyRound, Loader2, LogOut, Mail, RotateCcw, Settings, ShieldCheck, User } from 'lucide-react';
 import { ApiError, isBackendEnabled, resetCsrfToken } from '../lib/api';
 import { Account, AccountCourse, AccountOrder, commerceApi, Dossier, formatDate, formatVND } from '../lib/commerce';
+import { usePublicLists, withCurrent } from '../lib/crmLists';
 
 const STATUS_STYLE: Record<string, string> = {
   paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -261,6 +262,15 @@ const DossierBox: React.FC<{ order: AccountOrder }> = ({ order }) => {
     }
   };
   const field = 'w-full p-2 text-xs border border-slate-300 rounded-xl';
+  const lists = usePublicLists(); // gender, education, schools: /app → Hệ thống → Danh mục
+  const pick = (key: string, label: string, options: string[]) => (
+    <label className="text-[11px] text-slate-600">{label}
+      <select className={field} value={form[key] || ''} onChange={(e) => setForm({ ...form, [key]: e.target.value })}>
+        <option value="">–</option>
+        {withCurrent(options, form[key]).map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </label>
+  );
   const f = (key: string, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <label className="text-[11px] text-slate-600">{label}
       <input className={field} value={form[key] || ''} onChange={(e) => setForm({ ...form, [key]: e.target.value })} {...props} />
@@ -281,22 +291,19 @@ const DossierBox: React.FC<{ order: AccountOrder }> = ({ order }) => {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {f('birthDate', 'Ngày sinh *', { type: 'date' })}
-            <label className="text-[11px] text-slate-600">Giới tính
-              <select className={field} value={form.gender || ''} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
-                <option value="">–</option><option>Nam</option><option>Nữ</option><option>Khác</option>
-              </select>
-            </label>
+            {pick('gender', 'Giới tính', lists.genders)}
             {f('citizenId', data.citizenIdMasked ? `CCCD * (đã lưu ${data.citizenIdMasked}; để trống nếu không đổi)` : 'Số CCCD *', { inputMode: 'numeric', maxLength: 12 })}
             {f('issuedPlace', 'Nơi cấp')}
             {f('permanentAddress', 'Địa chỉ thường trú *')}
             {f('currentResidence', 'Nơi ở hiện tại')}
-            {f('educationLevel', 'Trình độ * (VD: Đại học)')}
+            {pick('educationLevel', 'Trình độ *', lists.educationLevels)}
             {f('major', 'Chuyên ngành')}
-            {f('university', 'Trường')}
+            {f('university', 'Trường', { list: 'dossier-universities' })}
             {f('graduationYear', 'Năm tốt nghiệp')}
             {f('contactPersonName', 'Người liên hệ khẩn cấp')}
             {f('contactPersonPhone', 'SĐT người liên hệ')}
           </div>
+          <datalist id="dossier-universities">{lists.universities.map((u) => <option key={u} value={u} />)}</datalist>
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" disabled={busy} onClick={save} className="px-3 py-1.5 rounded-xl bg-[#0073C1] text-white font-bold cursor-pointer disabled:opacity-50">Lưu hồ sơ</button>
             <label className="cursor-pointer text-[#0073C1] font-bold">

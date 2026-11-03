@@ -24,6 +24,20 @@ SOURCE_LABELS = {
     "coccoc": "Cốc Cốc",
     "bing": "Bing",
 }
+# The lead source (danh mục "Nguồn khách hàng", apps.crm.lists) a channel counts as; the channel itself is
+# kept in the attribution and reported by the website analytics. Other channels: the form's source.
+CHANNEL_SOURCES = {
+    "facebook": "Facebook ads",
+    "fb": "Facebook ads",
+    "instagram": "Facebook ads",
+    "messenger": "Facebook ads",
+    "zalo": "Zalo",
+    "tiktok": "TikTok",
+    "google": "Google",
+    "youtube": "YouTube",
+    "email": "Email marketing",
+    "sms": "SMS marketing",
+}
 REFERRER_SOURCES = {
     "facebook.com": "facebook",
     "fb.com": "facebook",
@@ -93,10 +107,11 @@ def apply(order_fields: dict, attribution: dict) -> dict:
         order_fields["campaign_code"] = code.upper()[:50]
     if attribution:
         order_fields["attribution"] = attribution
-    if last.get("source") or last.get("referrer"):
-        order_fields["source"] = (
-            f"{order_fields.get('source') or 'Website'} · {source_label(source_key(last))}"[:100]
-        )
+    # A website lead counts under its channel's source (a source chosen on the form, other than
+    # "Website", wins).
+    form_source = order_fields.get("source") or "Website"
+    channel = CHANNEL_SOURCES.get(source_key(last)) if (last.get("source") or last.get("referrer")) else None
+    order_fields["source"] = channel if channel and form_source == "Website" else form_source
     if last.get("campaign") and not order_fields.get("campaign_code"):
         order_fields["campaign_code"] = last["campaign"].strip().upper()[:50]
     ref = (attribution.get("last") or {}).get("ref") or (attribution.get("first") or {}).get("ref")

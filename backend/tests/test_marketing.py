@@ -34,7 +34,7 @@ def test_registration_keeps_attribution_and_joins_the_class_of_its_code(api, reg
     assert res.status_code == 201, res.content
     order = Order.objects.get()
     assert order.cohort == q4 and order.campaign_code == "CAMP-Q4"
-    assert order.source == "Website · Facebook" and order.referrer_staff_code == "HUONGNT22"
+    assert order.source == "Facebook ads" and order.referrer_staff_code == "HUONGNT22"
     assert order.attribution["first"]["source"] == "facebook" and "x" not in order.attribution["first"]
 
 
@@ -45,7 +45,7 @@ def test_unknown_campaign_code_is_kept_as_text(api, registration_payload):
         format="json",
     )
     order = Order.objects.get()
-    assert order.campaign_code == "TET-2027" and order.source.endswith("Zalo")
+    assert order.campaign_code == "TET-2027" and order.source == "Zalo"
 
 
 def test_page_views_are_counted_per_day_without_personal_data(api):

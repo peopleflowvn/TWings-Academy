@@ -143,8 +143,13 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     attribution = data.pop("attribution", None) or {}
     terms_accepted = data.pop("terms_accepted", False)
     invoice = data.pop("invoice", None)
-    source = data.pop("source", "") or "Website"
     from .learners import PERSON_FIELDS
+    from .lists import values
+
+    # A visitor's form names its source only among the list's (anything else: "Website").
+    source = data.pop("source", "") or "Website"
+    if source not in values("source", include_hidden=True):
+        source = "Website"
 
     details = {f: data.pop(f) for f in PERSON_FIELDS if f in data}
     item = course or program

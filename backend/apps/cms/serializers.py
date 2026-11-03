@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.core.models import SiteConfig
+from apps.crm.lists import NormalizeListFields
 
 from .models import Article, HeroBanner
 
@@ -14,7 +15,9 @@ def _safe_link(value):
     return value
 
 
-class ArticleSerializer(serializers.ModelSerializer):
+class ArticleSerializer(NormalizeListFields, serializers.ModelSerializer):
+    list_fields = {"category": "course_category"}
+
     class Meta:
         model = Article
         fields = "__all__"
