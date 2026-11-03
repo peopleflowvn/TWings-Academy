@@ -196,7 +196,7 @@ class ReportsQuery(serializers.Serializer):
 
 
 class ReportsView(APIView):
-    permission_classes = [require_perms("finance.transactions", "crm.view_leads", "lms.view", "seo.settings")]
+    permission_classes = [require_perms("finance.transactions", "crm.view_leads", "lms.view")]
 
     def get(self, request):
         q = ReportsQuery(data=request.query_params)
@@ -215,11 +215,4 @@ class ReportsView(APIView):
             from apps.cms.analytics import marketing_report
 
             data["marketing"] = marketing_report(min(30 * q.validated_data["months"], 365))
-        if has_perm_code(user, "crm.view_leads") or has_perm_code(user, "seo.settings"):
-            # Website traffic and SEO: anonymous counters and page metadata, no personal data.
-            from apps.cms.site_reports import seo_report, traffic_report
-
-            days = min(30 * q.validated_data["months"], 365)
-            data["traffic"] = traffic_report(days)
-            data["seo"] = seo_report(days)
         return Response(data)

@@ -13,7 +13,6 @@ Routes (keep in step with frontend/src/lib/routes.ts):
 """
 
 import json
-import logging
 import re
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -37,7 +36,6 @@ from apps.core.models import SiteConfig
 
 from .models import Article, HeroBanner
 
-logger = logging.getLogger(__name__)
 SITE_NAME = "TWings Academy"
 PAGE_CSP = (
     "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
@@ -490,42 +488,6 @@ def meta(page: Page) -> dict:
     }
 
 
-# ---------------------------------------------------------------- crawler log
-# User-Agent -> bot key, first match wins (keep in step with the @bots matcher in infra/caddy/Caddyfile).
-BOTS = [
-    ("google", re.compile(r"googlebot|google-inspectiontool", re.I)),
-    ("bing", re.compile(r"bingbot", re.I)),
-    ("coccoc", re.compile(r"coccocbot", re.I)),
-    ("search_other", re.compile(r"applebot|duckduckbot|yandex", re.I)),
-    ("facebook", re.compile(r"facebookexternalhit|facebot|meta-externalagent", re.I)),
-    ("zalo", re.compile(r"zalo", re.I)),
-]
-
-
-def bot_key(user_agent: str) -> str:
-    return next((key for key, pattern in BOTS if pattern.search(user_agent or "")), "preview_other")
-
-
-def record_crawl(request, path: str, status: int) -> None:
-    """Count the visit (CrawlDaily); a failure here never breaks the page the bot asked for."""
-    from django.db import transaction
-    from django.db.models import F
-
-    from .models import CrawlDaily
-
-    try:
-        with transaction.atomic():
-            row, _ = CrawlDaily.objects.get_or_create(
-                date=timezone.localdate(),
-                bot=bot_key(request.headers.get("User-Agent", "")),
-                path=path[:200] if status == 200 else "",
-                status=status,
-            )
-            CrawlDaily.objects.filter(pk=row.pk).update(hits=F("hits") + 1)
-    except Exception:  # a counter must never cost the bot its page
-        logger.warning("crawl counter failed", exc_info=True)
-
-
 # ---------------------------------------------------------------- views
 @require_GET
 @on_request_domain
@@ -535,14 +497,12 @@ def prerender(request, path=""):
         page = resolve(path)
         status = 200
     except Moved as moved:
-        record_crawl(request, "", 301)
         return HttpResponsePermanentRedirect(moved.location)
     except Http404:
         page, status = (
             Page(path="/" + path.strip("/"), title=f"Không tìm thấy trang | {SITE_NAME}", noindex=True),
             404,
         )
-    record_crawl(request, page.path, status)
     data = meta(page)
     response = render(
         request,
@@ -583,29 +543,20 @@ def page_meta(request):
     return Response(meta(page))
 
 
-def sitemap_paths() -> list[tuple[str, object]]:
-    """The indexable pages (path, last change or None): the sitemap, also audited in the SEO report."""
-    paths = [
-        (p, None)
-        for p in ("/", "/khoa-hoc", "/ve-chung-toi", "/tin-tuc", "/chinh-sach-bao-mat", "/dieu-khoan")
-    ]
-    if _programs().exists():
-        paths.append(("/chuong-trinh", None))
-    paths += [(f"/khoa-hoc/{c.slug}", c.updated_at) for c in _courses()]
-    paths += [(f"/chuong-trinh/{p.slug}", p.updated_at) for p in _programs()]
-    paths += [(f"/tin-tuc/{a.slug}", a.updated_at) for a in _articles()]
-    return paths
-
-
 @require_GET
 @on_request_domain
 def sitemap(request):
     base = base_url()
+    pages = ("/", "/khoa-hoc", "/ve-chung-toi", "/tin-tuc", "/chinh-sach-bao-mat", "/dieu-khoan")
+    urls = [(f"{base}{p}", None) for p in pages]
+    if _programs().exists():
+        urls.append((f"{base}/chuong-trinh", None))
+    urls += [(f"{base}/khoa-hoc/{c.slug}", c.updated_at) for c in _courses()]
+    urls += [(f"{base}/chuong-trinh/{p.slug}", p.updated_at) for p in _programs()]
+    urls += [(f"{base}/tin-tuc/{a.slug}", a.updated_at) for a in _articles()]
     rows = "".join(
-        f"<url><loc>{base}{path}</loc>"
-        + (f"<lastmod>{at.date().isoformat()}</lastmod>" if at else "")
-        + "</url>"
-        for path, at in sitemap_paths()
+        f"<url><loc>{loc}</loc>" + (f"<lastmod>{at.date().isoformat()}</lastmod>" if at else "") + "</url>"
+        for loc, at in urls
     )
     xml = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{rows}</urlset>'
     return HttpResponse(

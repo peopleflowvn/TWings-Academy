@@ -65,29 +65,6 @@ class PageViewDaily(models.Model):
         return f"{self.date} {self.path} {self.source}: {self.views}"
 
 
-class CrawlDaily(models.Model):
-    """
-    Crawler visits to the server-rendered pages (apps.cms.seo.prerender): one counter per day, bot,
-    page and HTTP status. A page is kept only for pages that exist (status 200); redirects and 404s are
-    counted with an empty path, so made-up URLs cannot grow the table.
-    """
-
-    date = models.DateField()
-    bot = models.CharField(max_length=20)
-    path = models.CharField(max_length=200, blank=True)
-    status = models.PositiveSmallIntegerField(default=200)
-    hits = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["date", "bot", "path", "status"], name="uniq_crawl_day")
-        ]
-        indexes = [models.Index(fields=["date"])]
-
-    def __str__(self):
-        return f"{self.date} {self.bot} {self.path or '-'} {self.status}: {self.hits}"
-
-
 class HeroBanner(BaseModel):
     title = models.CharField(max_length=300)
     subtitle = models.TextField(blank=True)

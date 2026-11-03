@@ -126,5 +126,4 @@ def test_reports_sections_follow_permissions(course, staff_client):
 
     sales = staff_client(Role.SALES_CRM).get("/api/v1/staff/reports/").json()
     assert "finance" not in sales and "sales" in sales
-    seo = staff_client(Role.CONTENT_SEO).get("/api/v1/staff/reports/").json()  # website reports only
-    assert set(seo) == {"months", "generatedAt", "traffic", "seo"}
+    assert staff_client(Role.CONTENT_SEO).get("/api/v1/staff/reports/").status_code == 403

@@ -52,7 +52,7 @@ export const OverviewReportsPage: React.FC<OverviewReportsPageProps> = ({
             </a>
           ) : (
             <div
-              title="Cần quyền tài chính, CRM, LMS hoặc SEO để xem báo cáo"
+              title="Cần quyền tài chính, CRM hoặc LMS để xem báo cáo"
               className="flex items-center gap-2 px-3.5 py-2 rounded-lg font-medium text-xs text-slate-400 cursor-not-allowed opacity-60"
             >
               <BarChart3 className="w-4 h-4" />
@@ -65,7 +65,7 @@ export const OverviewReportsPage: React.FC<OverviewReportsPageProps> = ({
           {!isReports ? (
             <span>Tổng quan thời gian thực: KPI, phễu tuyển sinh, cảnh báo & việc cần làm</span>
           ) : (
-            <span>Báo cáo hiệu quả: doanh thu, chuyển đổi, nguồn lead, LMS, truy cập website & SEO</span>
+            <span>Báo cáo hiệu quả: Doanh thu theo tháng, chuyển đổi, nguồn lead & LMS</span>
           )}
         </div>
       </div>
@@ -80,7 +80,7 @@ export const OverviewReportsPage: React.FC<OverviewReportsPageProps> = ({
             <div>
               <div className="font-bold mb-1">Giới hạn quyền truy cập Báo cáo</div>
               <p className="text-xs text-amber-800">
-                Tài khoản của bạn chưa được cấp quyền xem dữ liệu báo cáo phân tích (Tài chính, CRM, LMS hoặc SEO). 
+                Tài khoản của bạn chưa được cấp quyền xem dữ liệu báo cáo phân tích (Tài chính, CRM hoặc LMS). 
                 Vui lòng quay lại{' '}
                 <a {...linkProps('/')} className="font-bold underline text-[#0073C1]">
                   trang Vận hành hôm nay
