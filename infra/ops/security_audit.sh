@@ -104,8 +104,15 @@ if [[ -f /opt/twings/env/gateway.env ]]; then
   . /opt/twings/env/gateway.env
   echo "sites served:"; grep -E '^[^#[:space:](][^{]*\{\s*$' "$GATEWAY_FILE" | sed 's/{\s*$//' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep . | sort -u
   echo "--- global options / admin endpoint"; sed -n '1,/^}/p' "$GATEWAY_FILE" | head -20
-  grep -nE 'header|Strict-Transport|basicauth|basic_auth|forward_auth|reverse_proxy' "$GATEWAY_FILE" | head -60
+  grep -nE 'header|Strict-Transport|basicauth|basic_auth|forward_auth|reverse_proxy' "$GATEWAY_FILE" \
+    | sed -E 's/(X-Gateway-Auth )[^ ]+/\1<secret>/' | head -60
   docker exec "$GATEWAY_CONTAINER" caddy version 2>/dev/null
+  # From a neighbour on the gateway's Docker network, without the gateway's secret: must be refused.
+  web_domain="$(sed -n 's/^WEB_DOMAIN=//p' /opt/twings/env/caddy.env)"
+  direct="$(docker exec "$GATEWAY_CONTAINER" wget -S -q -O /dev/null --header "Host: $web_domain" \
+    --header "X-Forwarded-For: 1.2.3.4" http://twings-web:8080/ 2>&1 | awk '/HTTP\//{print $2; exit}')"
+  echo "direct request to twings-web:8080 without X-Gateway-Auth -> ${direct:-no answer}"
+  [[ "$direct" == 403 ]] || flag "TWings web answers requests that bypass the gateway"
 fi
 
 section "TWings application"
