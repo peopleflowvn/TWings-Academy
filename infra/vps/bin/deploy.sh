@@ -11,6 +11,13 @@ exec 9>/var/lock/twings-deploy.lock
 flock -n 9 || { echo "another deploy is running" >&2; exit 3; }
 
 PREV_TAG="$(sed -n 's/^IMAGE_TAG=//p' .env 2>/dev/null || true)"
+# The web container answers only requests carrying the gateway's secret (infra/caddy/Caddyfile):
+# refuse to deploy while the gateway does not send the current one, rather than answer 403 to everyone.
+gateway_auth_ok() (
+  set -a; . env/caddy.env; . env/gateway.env; set +a
+  [[ "${GATEWAY_AUTH:-}" =~ ^[A-Za-z0-9_-]{32,}$ ]] && grep -qF "header_up X-Gateway-Auth ${GATEWAY_AUTH}" "$GATEWAY_FILE"
+)
+gateway_auth_ok || { echo "!! the gateway does not send the current GATEWAY_AUTH: run Ops sync-env, then gateway-sync" >&2; exit 4; }
 # Compose interpolation file: image tag + the shared gateway's network name (env/gateway.env).
 set_tag() {
   { printf 'IMAGE_TAG=%s\n' "$1"; grep '^GATEWAY_NETWORK=' env/gateway.env; } > .env.tmp && mv .env.tmp .env

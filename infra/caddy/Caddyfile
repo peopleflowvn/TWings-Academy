@@ -17,6 +17,19 @@
 }
 
 :8080 {
+	# Only the shared gateway (it adds X-Gateway-Auth = GATEWAY_AUTH, see infra/vps/bin/gateway-sync.sh) and
+	# health checks inside this container: the other products' containers on the gateway's Docker network
+	# cannot reach this site directly with a forged X-Forwarded-For (throttling, login lockouts).
+	# remote_ip is the TCP peer, never a header. Without GATEWAY_AUTH every request is refused (fail
+	# closed); deploy.sh refuses to deploy before the gateway sends the current secret.
+	@notGateway {
+		not header X-Gateway-Auth {$GATEWAY_AUTH:gateway-auth-not-configured}
+		not remote_ip 127.0.0.1/8 ::1
+	}
+	handle @notGateway {
+		respond 403
+	}
+
 	encode zstd gzip
 	header -Server
 
@@ -62,6 +75,7 @@ Disallow: /
 				max_size 10MB
 			}
 			reverse_proxy backend:8000 {
+				header_up -X-Gateway-Auth
 				header_up X-Real-IP {client_ip}
 			}
 		}
@@ -70,6 +84,7 @@ Disallow: /
 		@django path /xac-minh/* /bien-nhan/* /doi-tac/*
 		handle @django {
 			reverse_proxy backend:8000 {
+				header_up -X-Gateway-Auth
 				header_up X-Real-IP {client_ip}
 			}
 		}
@@ -90,13 +105,16 @@ Disallow: /
 			request_body {
 				max_size 256MB
 			}
-			reverse_proxy lms:8080
+			reverse_proxy lms:8080 {
+				header_up -X-Gateway-Auth
+			}
 		}
 
 		# Sitemap and robots.txt come from Django (the test domain answers its own robots.txt above).
 		@seoFiles path /sitemap.xml /robots.txt
 		handle @seoFiles {
 			reverse_proxy backend:8000 {
+				header_up -X-Gateway-Auth
 				header_up X-Real-IP {client_ip}
 			}
 		}
@@ -113,6 +131,7 @@ Disallow: /
 			header Vary User-Agent
 			rewrite * /_seo{path}
 			reverse_proxy backend:8000 {
+				header_up -X-Gateway-Auth
 				header_up X-Real-IP {client_ip}
 			}
 		}
@@ -163,6 +182,7 @@ Disallow: /
 
 		handle {
 			reverse_proxy backend:8000 {
+				header_up -X-Gateway-Auth
 				# Overwrite (never append): Django reads it via REAL_IP_HEADER=X-Real-IP for
 				# throttling and login lockouts.
 				header_up X-Real-IP {client_ip}
