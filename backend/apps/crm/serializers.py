@@ -129,6 +129,15 @@ class OrderSerializer(NormalizeListFields, serializers.ModelSerializer):
             "dossier_missing": dossier_missing(learner),
         }
 
+    def validate_crm_status(self, value):
+        from . import stages
+
+        code = stages.code_of(value)
+        current = self.instance.crm_status if isinstance(self.instance, Order) else None
+        if not code or (code != current and not any(r["code"] == code for r in stages.table(False))):
+            raise serializers.ValidationError("Chọn một giai đoạn trong danh mục.")
+        return code
+
     def get_duplicate_count(self, obj):
         # Counted for one order (detail); the list only flags duplicates (no query per row).
         if not obj.is_duplicate:

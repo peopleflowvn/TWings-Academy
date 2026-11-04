@@ -4,6 +4,8 @@
  * records that have it (renaming to a value already in the list merges the two); a value in use is hidden, not
  * deleted; values the records have outside the list can be replaced by one of the list or added to it. Values the
  * system itself writes or relies on (new website leads' source, LMS completion…) are locked: ordered only.
+ * The CRM stages are a "coded" list: registrations keep the stage's code, so a new name changes no record; a
+ * stage's group says what it does (the system's 13 stages: renamed and ordered only).
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, Eye, EyeOff, ListChecks, Lock, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
@@ -16,6 +18,10 @@ interface Item {
   active: boolean;
   used: number;
   locked: boolean; // the system writes / relies on it: ordered only
+  // The CRM stages (coded lists) only:
+  code?: string;
+  group?: string;
+  system?: boolean; // one of the system's stages: renamed and ordered only
 }
 interface Kind {
   key: string;
@@ -23,6 +29,9 @@ interface Kind {
   group: string;
   hint: string;
   maxLength: number;
+  coded: boolean;
+  groups: { key: string; label: string }[];
+  customGroups: string[];
   items: Item[];
   unlisted: { value: string; used: number }[];
 }
@@ -44,6 +53,7 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState('');
+  const [addGroup, setAddGroup] = useState('open');
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
   const [replaceWith, setReplaceWith] = useState<Record<string, string>>({});
 
@@ -111,7 +121,7 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
 
   const add = (value: string) =>
     run(
-      () => api.post<KindResult>(`/staff/lists/${selected}/`, { value }),
+      () => api.post<KindResult>(`/staff/lists/${selected}/`, kind?.coded ? { value, group: addGroup } : { value }),
       () => `Đã thêm “${value.trim()}”.`
     ).then((ok) => ok && setAdding(''));
 
@@ -119,7 +129,9 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
     const next = value.trim();
     if (!next || next === item.value) return setEditing(null);
     const into = kind?.items.find((i) => i.value === next && i.id !== item.id);
-    const message = into
+    const message = kind?.coded
+      ? `Đổi tên giai đoạn “${item.value}” thành “${next}”? Các đăng ký giữ nguyên giai đoạn, chỉ tên hiển thị thay đổi.`
+      : into
       ? `Gộp “${item.value}” vào “${next}”? ${item.used} hồ sơ đang dùng “${item.value}” sẽ chuyển sang “${next}”, và “${item.value}” bị bỏ khỏi danh mục.`
       : `Đổi “${item.value}” thành “${next}”?` + (item.used ? ` ${item.used} hồ sơ đang dùng giá trị này sẽ được cập nhật theo.` : '');
     if (!window.confirm(message)) return;
@@ -133,6 +145,12 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
     run(
       () => api.patch<KindResult>(`/staff/lists/items/${item.id}/`, { active: !item.active }),
       () => (item.active ? `Đã ẩn “${item.value}”: hồ sơ cũ vẫn giữ giá trị này.` : `Đã hiện lại “${item.value}”.`)
+    );
+
+  const regroup = (item: Item, group: string) =>
+    run(
+      () => api.patch<KindResult>(`/staff/lists/items/${item.id}/`, { group }),
+      () => `“${item.value}” giờ thuộc nhóm “${groupLabel(group)}”.`
     );
 
   const remove = (item: Item) => {
@@ -158,6 +176,7 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
     );
   };
 
+  const groupLabel = (key?: string) => kind?.groups.find((g) => g.key === key)?.label || key || '';
   const searching = query.trim() !== '';
   const activeItems = kind?.items.filter((i) => i.active) || [];
 
@@ -168,8 +187,9 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
         <p className="text-xs text-slate-500 max-w-3xl">
           Các lựa chọn trong ô chọn của /app và CMS. Đổi tên một giá trị sẽ cập nhật luôn các hồ sơ đang dùng nó; đổi thành
           một giá trị đã có là gộp hai giá trị. Giá trị đang được dùng thì chỉ ẩn được (hồ sơ cũ vẫn giữ nguyên). Các danh
-          mục gắn với quy trình (giai đoạn CRM, trạng thái đơn, lớp, thanh toán) cố định trong hệ thống nên không có ở đây; giá
-          trị có nhãn “hệ thống” do hệ thống tự ghi (nguồn của lead từ website / link UTM, kết quả học trên LMS…) nên chỉ sắp xếp được.
+          mục hệ thống tự đặt (trạng thái đơn, lớp, thanh toán) không có ở đây; giá trị có nhãn “hệ thống” do hệ thống tự ghi
+          (nguồn của lead từ website / link UTM, kết quả học trên LMS…) nên chỉ sắp xếp được. Giai đoạn CRM: đổi tên không đổi dữ
+          liệu, thứ tự là thứ tự cột kanban; nhóm của giai đoạn quyết định hệ thống xử lý nó ra sao.
         </p>
       </div>
 
@@ -228,7 +248,14 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
                         if (adding.trim()) add(adding);
                       }}
                     >
-                      <input value={adding} onChange={(e) => setAdding(e.target.value)} placeholder="Giá trị mới" maxLength={kind.maxLength} className={`${input} flex-1 min-w-0`} />
+                      <input value={adding} onChange={(e) => setAdding(e.target.value)} placeholder={kind.coded ? 'Tên giai đoạn mới' : 'Giá trị mới'} maxLength={kind.maxLength} className={`${input} flex-1 min-w-0`} />
+                      {kind.coded && (
+                        <select value={addGroup} onChange={(e) => setAddGroup(e.target.value)} className={`${input} max-w-[180px]`} aria-label="Nhóm của giai đoạn" title="Nhóm quyết định hệ thống xử lý giai đoạn ra sao">
+                          {kind.customGroups.map((g) => (
+                            <option key={g} value={g}>{groupLabel(g)}</option>
+                          ))}
+                        </select>
+                      )}
                       <button type="submit" disabled={busy || !adding.trim()} className="px-3 py-2 rounded-xl text-xs font-bold bg-[#0073C1] text-white flex items-center gap-1 disabled:opacity-50 cursor-pointer">
                         <Plus className="w-3.5 h-3.5" /> Thêm
                       </button>
@@ -273,12 +300,29 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
                         <>
                           <span className={`flex-1 min-w-0 break-words ${item.active ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
                             {item.value}
+                            {kind.coded && item.system && (
+                              <span className="ml-2 inline-flex items-center gap-0.5 text-[10px] font-bold text-slate-500 bg-slate-100 rounded-full px-1.5 py-0.5 align-middle" title="Giai đoạn hệ thống: chỉ đổi tên và sắp xếp được">
+                                <Lock className="w-3 h-3" /> hệ thống
+                              </span>
+                            )}
                             {item.locked && (
                               <span className="ml-2 inline-flex items-center gap-0.5 text-[10px] font-bold text-slate-500 bg-slate-100 rounded-full px-1.5 py-0.5 align-middle" title="Hệ thống tự ghi / dựa vào giá trị này: chỉ sắp xếp được">
                                 <Lock className="w-3 h-3" /> hệ thống
                               </span>
                             )}
                           </span>
+                          {kind.coded &&
+                            (canEdit && !item.system ? (
+                              <select value={item.group} disabled={busy} onChange={(e) => regroup(item, e.target.value)} className="text-[11px] border border-slate-200 rounded-lg px-1.5 py-1 bg-white shrink-0" title="Nhóm của giai đoạn">
+                                {kind.customGroups.map((g) => (
+                                  <option key={g} value={g}>{groupLabel(g)}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-0.5 shrink-0" title="Nhóm của giai đoạn">
+                                {groupLabel(item.group)}
+                              </span>
+                            ))}
                           <span className="text-[11px] text-slate-400 shrink-0" title="Số hồ sơ đang dùng">
                             {item.used ? `${item.used} hồ sơ` : 'chưa dùng'}
                           </span>
@@ -295,15 +339,15 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
                           <button type="button" disabled={busy || item.locked} onClick={() => setEditing({ id: item.id, value: item.value })} className={iconBtn} title={item.locked ? 'Giá trị hệ thống: không đổi tên được' : 'Đổi tên / gộp'}>
                             <Pencil className="w-4 h-4" />
                           </button>
-                          <button type="button" disabled={busy || (item.locked && item.active)} onClick={() => toggle(item)} className={iconBtn} title={item.locked ? 'Giá trị hệ thống: không ẩn được' : item.active ? 'Ẩn khỏi ô chọn' : 'Hiện lại'}>
+                          <button type="button" disabled={busy || ((item.locked || !!item.system) && item.active)} onClick={() => toggle(item)} className={iconBtn} title={item.locked || item.system ? 'Giá trị hệ thống: không ẩn được' : item.active ? 'Ẩn khỏi ô chọn' : 'Hiện lại'}>
                             {item.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                           <button
                             type="button"
-                            disabled={busy || item.used > 0 || item.locked}
+                            disabled={busy || item.used > 0 || item.locked || !!item.system}
                             onClick={() => remove(item)}
                             className={iconBtn}
-                            title={item.locked ? 'Giá trị hệ thống: không xóa được' : item.used ? 'Đang được dùng: chỉ ẩn được' : 'Xóa'}
+                            title={item.locked || item.system ? 'Giá trị hệ thống: không xóa được' : item.used ? 'Đang được dùng: chỉ ẩn được' : 'Xóa'}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -326,7 +370,7 @@ export const ListsPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
               </datalist>
             </div>
 
-            {kind.unlisted.length > 0 && (
+            {kind.unlisted.length > 0 && !kind.coded && (
               <div className="bg-white rounded-2xl border border-amber-200">
                 <div className="p-4 border-b border-amber-100">
                   <h3 className="font-bold text-sm text-slate-900">Giá trị trong hồ sơ nhưng không có trong danh mục ({kind.unlisted.length})</h3>

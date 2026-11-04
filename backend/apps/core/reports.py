@@ -90,7 +90,7 @@ def sales_report(start, months) -> dict:
         "consultants": consultant_report(recent),
         "lostReasons": [
             {"reason": r["lost_reason"] or "(không ghi lý do)", "count": r["n"]}
-            for r in recent.filter(crm_status__in=stages.CLOSED)
+            for r in recent.filter(crm_status__in=stages.in_groups(stages.G_CLOSED))
             .values("lost_reason")
             .annotate(n=Count("id"))
             .order_by("-n")[:15]
@@ -121,6 +121,7 @@ def consultant_report(recent) -> list[dict]:
     from apps.crm.assignment import overdue_leads
 
     overdue = set(overdue_leads().values_list("pk", flat=True))
+    closed = set(stages.closed_codes())
     rows: dict = {}
     for o in recent.select_related("assigned_to").only(
         "pk",
@@ -150,7 +151,7 @@ def consultant_report(recent) -> list[dict]:
         row["converted"] += o.learning_access
         row["revenue"] += max(o.total_paid_amount - o.refunded_amount, 0)
         row["overdue"] += o.pk in overdue
-        row["lost"] += o.crm_status in stages.CLOSED
+        row["lost"] += o.crm_status in closed
         if o.first_response_at:
             row["responses"].append((o.first_response_at - o.created_at).total_seconds() / 3600)
     out = []

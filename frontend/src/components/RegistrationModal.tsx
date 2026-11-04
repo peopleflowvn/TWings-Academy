@@ -220,7 +220,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       customerPhone: phone,
       customerEmail: email,
       consultNeed: consultNote,
-      crmStatus: '1. Tiềm năng'
+      crmStatus: 'potential'
     };
 
     setSubmittedCode(registrationCode);

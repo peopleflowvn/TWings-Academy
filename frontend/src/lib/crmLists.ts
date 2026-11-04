@@ -4,8 +4,9 @@
  * GET /staff/crm/lists/), loaded once per page. The short lists below are used until it answers (or when it
  * cannot).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from './api';
+import { DEFAULT_STAGES, stagesFrom, type StageDef, type Stages } from './stages';
 
 export interface CrmLists {
   sources: string[];
@@ -20,6 +21,8 @@ export interface CrmLists {
   courseCategories: string[];
   courseLevels: string[];
   pics: string[];
+  /** The CRM stages, hidden ones included (lib/stages.ts). */
+  stages: StageDef[];
 }
 
 export const DEFAULT_LISTS: CrmLists = {
@@ -34,7 +37,8 @@ export const DEFAULT_LISTS: CrmLists = {
   msbUnits: [],
   courseCategories: [],
   courseLevels: [],
-  pics: []
+  pics: [],
+  stages: DEFAULT_STAGES
 };
 
 let loading: Promise<CrmLists> | null = null;
@@ -58,6 +62,12 @@ export function useCrmLists(): CrmLists {
     };
   }, []);
   return lists;
+}
+
+/** The CRM stages from the list (danh mục), with their names and groups. */
+export function useStages(): Stages {
+  const { stages } = useCrmLists();
+  return useMemo(() => stagesFrom(stages), [stages]);
 }
 
 export interface PublicLists {

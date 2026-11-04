@@ -354,21 +354,8 @@ export interface CourseCohort {
 // -------------------------------------------------------------
 // CRM LEAD & ORDER (All 6 sections matching Image 4 & 5)
 // -------------------------------------------------------------
-/** The old CRM's "Trạng thái khách hàng" (lib/stages.ts). */
-export type CRMStatus =
-  | '1. Tiềm năng'
-  | '2. Đang tư vấn'
-  | '3. Đồng ý học'
-  | '4. Cần đóng học phí'
-  | '5. Đã đóng phí'
-  | '6. Đã đóng 1 phần học phí'
-  | '7. Onboard'
-  | '0. Từ chối lần 1'
-  | '0. Từ chối lần 2'
-  | '0. Từ chối lần 3'
-  | '0. Không gọi được'
-  | '0. Đăng ký nhầm'
-  | '0. Test';
+/** A stage's fixed code; its name and group come from the list (lib/stages.ts). */
+export type CRMStatus = string;
 
 export type PaymentStatus = 'Chưa thanh toán' | 'Đã đóng phí' | 'Đã đóng 1 phần' | 'Đã hoàn tiền';
 
@@ -410,9 +397,9 @@ export interface Order {
   pic?: string;
   /** May study: paid in full or the first installment (set by the server). */
   learningAccess?: boolean;
-  /** Why the registration was lost (a closed stage: 0. Từ chối lần 3, Không gọi được…). */
+  /** Why the registration was lost (a stage of the "closed" group). */
   lostReason?: string;
-  /** Write-only: the call-back day when moving to '0. Từ chối lần 1 / 2'. */
+  /** Write-only: the call-back day when moving to a stage of the "call_again" group. */
   nextContactOn?: string;
   /** The learner (one per person) this registration belongs to. */
   learnerId?: string | null;

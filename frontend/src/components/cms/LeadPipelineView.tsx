@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, BarChart3, ChevronLeft, ChevronRight, Download, Edit, LayoutGrid, Loader2, Plus, Search, Table as TableIcon, X } from 'lucide-react';
 import { CRMStatus, Course, Order } from '../../types';
-import { blockedMove, CLOSED, FROM_PAYMENTS, STAGES, stageOf } from '../../lib/stages';
+import { blockedMove, FROM_PAYMENTS, stageOf } from '../../lib/stages';
 import type { IntakeRow } from '../../admin/pages/IntakesPage';
 import { api, API_ROOT, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
 import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../../admin/catalog';
 import { useStageGate } from './StageGate';
-import { useCrmLists } from '../../lib/crmLists';
+import { useCrmLists, useStages } from '../../lib/crmLists';
 
 /** Every lead ('all'), the leads not in a class yet ('none'), or the leads of one class (its id). */
 export type PipelineScope = 'all' | 'none' | string;
@@ -27,8 +27,8 @@ interface LeadPipelineViewProps {
   onOpenEditClass: () => void;
 }
 
-// The CRM stages (lib/stages.ts): the old CRM's "Trạng thái khách hàng". The paid stages follow the
-// recorded payments; they are never set by moving a card.
+// The CRM stages come from the list (danh mục, lib/stages.ts). The paid stages follow the recorded
+// payments; they are never set by moving a card.
 /** Leads loaded per kanban column at a time (each column pages on its own). */
 const COLUMN_SIZE = 30;
 const PAGE_SIZE = 50;
@@ -45,8 +45,8 @@ const vnd = (n?: number) => `${new Intl.NumberFormat('vi-VN').format(n || 0)} �
 const hhmm = (iso: string) => new Date(iso).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
 
 /** First-response commitment of a new lead: late, due, or done. */
-function responseState(o: Order): 'late' | 'due' | null {
-  if (o.firstResponseAt || !o.responseDueAt || o.status !== 'pending' || CLOSED.includes(stageOf(o))) return null;
+function responseState(o: Order, closed: (code: string) => boolean): 'late' | 'due' | null {
+  if (o.firstResponseAt || !o.responseDueAt || o.status !== 'pending' || closed(stageOf(o))) return null;
   return new Date(o.responseDueAt).getTime() < Date.now() ? 'late' : 'due';
 }
 
@@ -70,6 +70,8 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   onOpenEditClass
 }) => {
   const lists = useCrmLists();
+  const stages = useStages();
+  const stageIds = stages.all.map((s) => s.id).join(',');
   const canEdit = useStaffCan('crm.edit_status');
   const canExport = useStaffCan('crm.export_excel');
   const klass = classes.find((c) => c.id === scope) || null;
@@ -145,15 +147,15 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     try {
       if (layout === 'kanban') {
         // Each column loads its newest leads; "Xem thêm" pages a column on its own.
-        const stages = stage ? [stage] : STAGES.map((s) => s.id);
+        const columns = stage ? [stage] : stageIds.split(',');
         const [lists, sum] = await Promise.all([
-          Promise.all(stages.map((st) => api.get<Paginated<Order>>(`/staff/orders/?${columnQuery(st, 1)}`))),
+          Promise.all(columns.map((st) => api.get<Paginated<Order>>(`/staff/orders/?${columnQuery(st, 1)}`))),
           api.get<Summary>(`/staff/orders/pipeline/?${filters}`)
         ]);
         if (seq !== request.current) return;
         setRows(lists.flatMap((l) => l.results));
         setCount(lists.reduce((n, l) => n + l.count, 0));
-        setColPage(Object.fromEntries(stages.map((st) => [st, 1])));
+        setColPage(Object.fromEntries(columns.map((st) => [st, 1])));
         setSummary(sum);
         return;
       }
@@ -171,7 +173,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     } finally {
       if (seq === request.current) setLoading(false);
     }
-  }, [filters, layout, page, stage, sortBy]);
+  }, [filters, layout, page, stage, sortBy, stageIds]);
 
   // One kanban column's query: the filters, that stage, in the chosen order.
   function columnQuery(st: string, pg: number) {
@@ -216,13 +218,13 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   const moveStage = async (o: Order, next: CRMStatus) => {
     setNotice('');
     if (next === stageOf(o)) return;
-    const blocked = blockedMove(o, next);
+    const blocked = blockedMove(o, next, stages.name);
     if (blocked) {
       setNotice(`${o.customerName}: ${blocked}`);
       if (FROM_PAYMENTS.includes(next)) onOpenLeadDetail(o);
       return;
     }
-    // "Từ chối lần 1 / 2" need the call-back day, "Từ chối lần 3" the reason.
+    // A "call again" stage needs the call-back day, a "closed" one the reason.
     const extra = await gate.ask(next);
     if (!extra) return;
     setRows((list) => list.map((r) => (r.id === o.id ? { ...r, crmStatus: next } : r)));
@@ -247,7 +249,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     </span>
   );
   const slaBadge = (o: Order) => {
-    const state = responseState(o);
+    const state = responseState(o, stages.isClosed);
     if (!state || !o.responseDueAt) return null;
     return state === 'late' ? (
       <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-red-50 text-red-700 border border-red-200 inline-flex items-center gap-1" title="Chưa liên hệ lần đầu, đã quá hạn phản hồi">
@@ -268,7 +270,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
       className="text-[11px] border border-slate-200 rounded-lg px-1.5 py-1 bg-white max-w-[140px]"
       title="Chuyển giai đoạn"
     >
-      {STAGES.map((s) => (
+      {stages.all.filter((s) => s.active || s.id === stageOf(o)).map((s) => (
         <option key={s.id} value={s.id} disabled={blockedMove(o, s.id) !== null}>
           {s.label}
         </option>
@@ -370,7 +372,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
           </select>
           <select value={stage} onChange={(e) => setStage(e.target.value)} className={select}>
             <option value="">Mọi giai đoạn</option>
-            {STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            {stages.all.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
           <select value={payment} onChange={(e) => setPayment(e.target.value)} className={select}>
             <option value="">Mọi trạng thái học phí</option>
@@ -404,9 +406,10 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
       {layout === 'kanban' && (
         <div className={`overflow-x-auto pb-4 ${loading ? 'opacity-60' : ''}`}>
           <div className="flex items-start gap-3 w-max">
-            {STAGES.map((s) => {
+            {stages.all.map((s) => {
               const deals = rows.filter((o) => stageOf(o) === s.id);
               const total = stageCount(s.id);
+              if (!s.active && !total.count) return null; // a hidden stage shows while it still has leads
               return (
                 <div
                   key={s.id}
@@ -444,7 +447,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
                         draggable={canEdit}
                         onDragStart={(e) => e.dataTransfer.setData('text/plain', o.id)}
                         onClick={() => onOpenLeadDetail(o)}
-                        className={`p-2.5 bg-white rounded-xl border hover:border-blue-400 cursor-pointer space-y-1.5 ${responseState(o) === 'late' ? 'border-red-300' : 'border-slate-200'}`}>
+                        className={`p-2.5 bg-white rounded-xl border hover:border-blue-400 cursor-pointer space-y-1.5 ${responseState(o, stages.isClosed) === 'late' ? 'border-red-300' : 'border-slate-200'}`}>
                         <div className="text-xs font-bold text-slate-900 leading-snug">{o.customerName}</div>
                         <div className="text-[10px] text-slate-500 truncate" title={o.courseTitle}>{o.courseTitle}</div>
                         {o.batchCohort && <div className="text-[10px] text-slate-500 truncate">Lớp: {o.batchCohort}</div>}

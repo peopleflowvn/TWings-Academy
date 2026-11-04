@@ -3,7 +3,7 @@ import { AlertTriangle, CalendarClock, CheckSquare, GraduationCap, TrendingUp, U
 import { api } from '../../lib/api';
 import { AdminUser } from '../../types';
 import { linkProps } from '../router';
-import { STAGES as STAGE_LIST } from '../../lib/stages';
+import { useStages } from '../../lib/crmLists';
 
 interface DashboardData {
   generatedAt: string;
@@ -37,7 +37,6 @@ const callName = (name: string) => {
   const parts = (name || '').trim().split(/\s+/);
   return parts.length >= 3 ? parts[parts.length - 1] : parts.join(' ');
 };
-const STAGES = STAGE_LIST.map((s) => s.id); // lib/stages.ts
 
 const Stat: React.FC<{ label: string; value: string | number; icon: React.ElementType; tone?: string; to?: string }> = ({
   label,
@@ -75,6 +74,8 @@ export const DashboardPage: React.FC<{ user: AdminUser }> = ({ user }) => {
   const hour = new Date().getHours();
   const greeting = hour < 11 ? 'Chào buổi sáng' : hour < 14 ? 'Chào buổi trưa' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
   const s = data?.sales;
+  const stages = useStages(); // the stage list (danh mục)
+  const STAGES = stages.all.filter((st) => st.active || s?.pipeline[st.id]).map((st) => st.id);
   const f = data?.finance;
   const t = data?.training;
   const maxStage = Math.max(1, ...STAGES.map((k) => s?.pipeline[k] || 0));
@@ -154,7 +155,7 @@ export const DashboardPage: React.FC<{ user: AdminUser }> = ({ user }) => {
               const n = s.pipeline[stage] || 0;
               return (
                 <div key={stage} className="flex items-center gap-3 text-xs">
-                  <span className="w-32 shrink-0 text-slate-600">{stage}</span>
+                  <span className="w-32 shrink-0 text-slate-600">{stages.name(stage)}</span>
                   <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
                     <div className="h-full bg-[#0073C1]" style={{ width: `${(n / maxStage) * 100}%` }} />
                   </div>

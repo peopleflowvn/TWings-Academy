@@ -31,7 +31,7 @@ def test_list_and_export_leave_out_program_components(staff_client, course):
 def test_paid_stage_needs_a_recorded_payment(staff_client, course):
     order = Order.objects.create(customer_name="A", course=course, amount=100, total_receivable=100)
     res = staff_client(Role.SALES_CRM).patch(
-        f"/api/v1/staff/orders/{order.pk}/", {"crmStatus": "5. Đã đóng phí"}, format="json"
+        f"/api/v1/staff/orders/{order.pk}/", {"crmStatus": "paid"}, format="json"
     )
     assert res.status_code == 400
     res = staff_client(Role.FINANCE_ACCOUNTANT).patch(
@@ -39,7 +39,7 @@ def test_paid_stage_needs_a_recorded_payment(staff_client, course):
     )
     assert res.status_code == 400
     order.refresh_from_db()
-    assert (order.status, order.crm_status) == ("pending", "1. Tiềm năng")
+    assert (order.status, order.crm_status) == ("pending", "potential")
 
 
 def test_duplicate_means_same_learner_same_course(staff_client, course):
@@ -109,9 +109,7 @@ def test_pipeline_filters_and_stage_counts(staff_client, course):
 
     k10 = Cohort.objects.create(course=course, name="K10", code="CAMP-P", status="opening")
     Order.objects.create(customer_name="A", course=course, cohort=k10, amount=100)
-    Order.objects.create(
-        customer_name="B", course=course, campaign_code="camp-p", crm_status="2. Đang tư vấn"
-    )
+    Order.objects.create(customer_name="B", course=course, campaign_code="camp-p", crm_status="consulting")
     Order.objects.create(customer_name="C", course=course)
     Order.objects.create(customer_name="D", course=course, campaign_code="UNKNOWN")
     client = staff_client(Role.SALES_CRM)
@@ -124,12 +122,10 @@ def test_pipeline_filters_and_stage_counts(staff_client, course):
     summary = client.get(f"/api/v1/staff/orders/pipeline/?scope={k10.pk}").json()
     stages = {s["stage"]: s for s in summary["stages"]}
     assert (
-        summary["total"] == 2
-        and stages["1. Tiềm năng"]["amount"] == 100
-        and stages["2. Đang tư vấn"]["count"] == 1
+        summary["total"] == 2 and stages["potential"]["amount"] == 100 and stages["consulting"]["count"] == 1
     )
     row = next(r for r in client.get("/api/v1/staff/intakes/").json()["intakes"] if r["id"] == k10.pk)
-    assert row["funnel"]["leads"] == 2 and row["funnel"]["stages"]["2. Đang tư vấn"] == 1
+    assert row["funnel"]["leads"] == 2 and row["funnel"]["stages"]["consulting"] == 1
 
 
 def test_email_from_the_lead_workspace_goes_into_its_history(staff_client, course, monkeypatch):
@@ -224,14 +220,14 @@ def test_cancel_stage_cancels_an_unpaid_order_and_reopening_restores_it(staff_cl
     client = staff_client(Role.SALES_CRM)
     client.patch(
         f"/api/v1/staff/orders/{order.pk}/",
-        {"crmStatus": "0. Từ chối lần 3", "lostReason": "Học phí cao"},
+        {"crmStatus": "refused_3", "lostReason": "Học phí cao"},
         format="json",
     )
     order.refresh_from_db()
     assert order.status == "cancelled"
     client.patch(
         f"/api/v1/staff/orders/{order.pk}/",
-        {"crmStatus": "0. Từ chối lần 1", "nextContactOn": "2026-12-01"},
+        {"crmStatus": "refused_1", "nextContactOn": "2026-12-01"},
         format="json",
     )
     order.refresh_from_db()
@@ -241,7 +237,7 @@ def test_cancel_stage_cancels_an_unpaid_order_and_reopening_restores_it(staff_cl
     order.save()
     client.patch(
         f"/api/v1/staff/orders/{order.pk}/",
-        {"crmStatus": "0. Từ chối lần 3", "lostReason": "Học phí cao"},
+        {"crmStatus": "refused_3", "lostReason": "Học phí cao"},
         format="json",
     )
     order.refresh_from_db()
@@ -268,7 +264,7 @@ def test_crm_data_check_reports_without_changing_anything(course):
 
     from django.core.management import call_command
 
-    Order.objects.create(customer_name="A", course=course, crm_status="5. Đã đóng phí", pic="HuongNT22")
+    Order.objects.create(customer_name="A", course=course, crm_status="paid", pic="HuongNT22")
     Order.objects.create(
         customer_name="B", course=course, campaign_code="TW3", batch_cohort="Khóa học 9 - Hà Nội"
     )

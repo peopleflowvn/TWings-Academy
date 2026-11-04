@@ -25,7 +25,7 @@ from .models import Activity, Appointment, FollowupTask, Order
 
 logger = logging.getLogger(__name__)
 
-OPEN_STAGES = stages.OPEN
+OPEN_STAGES = stages.in_groups(stages.G_OPEN)  # a subquery, read when each query runs
 CONTACT_TYPES = ("call", "zalo", "email", "meeting")
 WORK_START, WORK_END = time(8, 0), time(20, 0)
 
@@ -261,7 +261,7 @@ def overdue_leads():
         status="pending",
         first_response_at__isnull=True,
         response_due_at__lt=timezone.now(),
-    ).exclude(crm_status__in=stages.CLOSED)
+    ).exclude(crm_status__in=stages.in_groups(stages.G_CLOSED))
 
 
 def _send(to: list[str], subject: str, html: str, key: str) -> None:

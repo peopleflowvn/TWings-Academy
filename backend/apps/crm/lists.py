@@ -1,11 +1,13 @@
 """
 The option lists (danh mục) every /app form offers, kept in the database (ListItem) and edited in
 /app → Hệ thống → Danh mục. Each list says which record fields it fills, so a renamed value can be
-carried onto the records that have it and the page can show how often each value is used.
+carried onto the records that have it and the page can show how often each value is used. The CRM stages
+are a list too, a "coded" one: a registration keeps the stage's fixed code (ListItem.code), so renaming
+changes no record (apps.crm.stages).
 
 The values first loaded (DEFAULTS) come from the "Danh mục" sheet of the CRM run before this system,
-from how its data was really filled in, and from the CMS's former fixed lists. Lists that drive the
-system's own logic (CRM stages, order / class / payment status…) stay fixed in code, not here.
+from how its data was really filled in, and from the CMS's former fixed lists. Statuses the system sets
+by itself (order / class / payment status…) stay fixed in code, not here.
 
 `normalize(kind, value)` turns the spellings found in imported or older data ("GTNB", "tnex", "TP HCM",
 "Rất cao"…) into the list's own value; anything it does not know is kept as typed.
@@ -20,6 +22,8 @@ from pathlib import Path
 
 from django.db.models import Count
 
+from . import stages
+
 
 @dataclass(frozen=True)
 class Kind:
@@ -29,10 +33,21 @@ class Kind:
     api: str  # its name in GET /staff/crm/lists/
     fields: tuple  # ("app.Model", "field") it fills
     hint: str = ""
+    coded: bool = False  # the records hold ListItem.code, not the value (the CRM stages)
 
 
 CRM, PROFILE, CONTENT = "CRM & tuyển sinh", "Hồ sơ học viên", "Khóa học & nội dung"
 KINDS = [
+    Kind(
+        stages.KIND,
+        "Giai đoạn CRM (kanban)",
+        CRM,
+        "stages",
+        (("crm.Order", "crm_status"),),
+        "Thứ tự là thứ tự cột kanban. Đổi tên không đổi dữ liệu; nhóm quyết định hệ thống xử lý giai đoạn "
+        "ra sao (13 giai đoạn hệ thống chỉ đổi tên / sắp xếp).",
+        coded=True,
+    ),
     Kind("source", "Nguồn khách hàng", CRM, "sources", (("crm.Order", "source"),)),
     Kind("interest_level", "Mức độ quan tâm", CRM, "interestLevels", (("crm.Order", "interest_level"),)),
     Kind("lost_reason", "Lý do hủy / không học", CRM, "lostReasons", (("crm.Order", "lost_reason"),)),
@@ -287,6 +302,8 @@ def normalize(kind: str, value, items: list[str] | None = None) -> str:
 
 def max_length(kind: str) -> int:
     """The longest value every field of the list can hold."""
+    if KIND[kind].coded:
+        return 60  # a name only: the records hold the code
     return min(_model(label)._meta.get_field(field).max_length for label, field in KIND[kind].fields)
 
 
@@ -299,6 +316,15 @@ def _model(label: str):
 def usage(kind: str) -> dict[str, int]:
     """How many records have each value of the list's fields (values not in the list included)."""
     counts: dict[str, int] = {}
+    if KIND[kind].coded:
+        from .models import ListItem
+
+        name = dict(ListItem.objects.filter(kind=kind).exclude(code="").values_list("code", "value"))
+        for label, field in KIND[kind].fields:
+            for row in _model(label).objects.values(field).annotate(n=Count("pk")):
+                value = name.get(row[field], row[field])
+                counts[value] = counts.get(value, 0) + row["n"]
+        return counts
     for label, field in KIND[kind].fields:
         rows = _model(label).objects.exclude(**{field: ""}).values(field).annotate(n=Count("pk"))
         for row in rows:
@@ -308,6 +334,8 @@ def usage(kind: str) -> dict[str, int]:
 
 def replace_in_records(kind: str, old: str, new: str) -> int:
     """Write `new` wherever the list's fields hold `old`; the number of records changed."""
+    if KIND[kind].coded:
+        return 0  # the records hold the code: a new name changes none of them
     changed = 0
     for label, field in KIND[kind].fields:
         changed += _model(label).objects.filter(**{field: old}).update(**{field: new})
@@ -318,12 +346,14 @@ def all_lists() -> dict:
     """Every list's offered values, as /app reads them (GET /staff/crm/lists/)."""
     from .models import ListItem, Order
 
-    lists = {k.api: [] for k in KINDS}
+    lists = {k.api: [] for k in KINDS if not k.coded}
     for kind, value in (
         ListItem.objects.filter(is_active=True).order_by("position", "value").values_list("kind", "value")
     ):
-        if kind in KIND:
+        if kind in KIND and not KIND[kind].coded:
             lists[KIND[kind].api].append(value)
+    # Every stage, hidden ones included (their name is still shown on the registrations that have them).
+    lists["stages"] = stages.table()
     lists["pics"] = sorted(
         {p.strip() for p in Order.objects.exclude(pic="").values_list("pic", flat=True).distinct()},
         key=str.lower,

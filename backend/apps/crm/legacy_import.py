@@ -130,15 +130,19 @@ def legacy_stage(raw: str, *, enrolled: bool, paid_then_cancelled: bool, fully_p
     The stage of an old registration and its lost reason: its "Trạng thái" when that agrees with what
     happened, else what the money says (studied: paid in full / in part; cancelled after paying: refused).
     """
-    raw = raw if raw in stages.STAGES else ""
+    raw = stages.OLD_CRM.get(raw, "")  # the old spelling -> the stage's code
     if enrolled:
         return (raw if raw in stages.ENROLLED else stages.PAID if fully_paid else stages.PART_PAID), ""
     if paid_then_cancelled:
-        return (raw if raw in stages.CLOSED else stages.REFUSED_3), CANCELLED_AFTER_PAYING
+        return (raw if _closed(raw) else stages.REFUSED_3), CANCELLED_AFTER_PAYING
     if raw in stages.ENROLLED:  # said paid, nothing paid
         raw = stages.TO_PAY
     raw = raw or stages.POTENTIAL
     return raw, LOST.get(raw, "")
+
+
+def _closed(code: str) -> bool:
+    return stages.BUILTIN.get(code) == stages.G_CLOSED
 
 
 class LegacyImportError(Exception):
@@ -441,7 +445,7 @@ def plan(rows: list[dict]) -> tuple[list[dict], dict]:
         e["enrolled"] = (
             isinstance(klass, int)
             or klass == "deferred"
-            or (not e["cancelled"] and e["status"] in stages.ENROLLED)
+            or (not e["cancelled"] and stages.OLD_CRM.get(e["status"]) in stages.ENROLLED)
         )
         e["stage"], e["lost"] = legacy_stage(
             e["status"],
@@ -570,7 +574,7 @@ def _note(e: dict) -> str:
 def _write(e: dict, cohort: Cohort | None, users: dict, actor: str) -> Order:
     money = e["money"]
     stage = e["stage"]
-    enrolled, cancelled = e["enrolled"], e["cancelled"] or stage in stages.CLOSED
+    enrolled, cancelled = e["enrolled"], e["cancelled"] or _closed(stage)
     partial = enrolled and not money["full"] and money["receivable"] > money["paid_sum"]
     # A learner of a class who still owed part of the fee studies on the first installment (what was paid);
     # without a class the debt stays on the registration.
@@ -757,6 +761,7 @@ def restage(statuses: dict[str, str], *, apply: bool) -> dict:
     """
     moved, missing = Counter(), []
     result = Counter()
+    names = stages.names()
     with transaction.atomic():
         orders = {
             o.attribution.get("legacy_code"): o
@@ -772,19 +777,23 @@ def restage(statuses: dict[str, str], *, apply: bool) -> dict:
                 raw,
                 # studies, or paid and deferred (bảo lưu: no class, the money kept)
                 enrolled=order.learning_access
-                or (raw in stages.ENROLLED and order.total_paid_amount > 0 and order.status == "pending"),
+                or (
+                    stages.OLD_CRM.get(raw) in stages.ENROLLED
+                    and order.total_paid_amount > 0
+                    and order.status == "pending"
+                ),
                 paid_then_cancelled=order.status in ("cancelled", "refunded") and order.total_paid_amount > 0,
                 fully_paid=order.status == "paid"
                 or order.total_paid_amount >= (order.total_receivable or order.amount),
             )
-            result[stage] += 1
+            result[names.get(stage, stage)] += 1
             if stage == order.crm_status:
                 continue
-            moved[f"{order.crm_status} → {stage}"] += 1
+            moved[f"{names.get(order.crm_status, order.crm_status)} → {names.get(stage, stage)}"] += 1
             if apply:
                 old = order.crm_status
                 order.crm_status = stage
-                if stage in stages.CLOSED:
+                if _closed(stage):
                     order.lost_reason = order.lost_reason or lost
                     if order.status == "pending" and not order.total_paid_amount:
                         order.status = "cancelled"
@@ -795,7 +804,8 @@ def restage(statuses: dict[str, str], *, apply: bool) -> dict:
                     order=order,
                     type="note",
                     title="Giai đoạn theo CRM cũ",
-                    content=f"{old} → {stage}" + (f" (trạng thái cũ: {raw})" if raw and raw != stage else ""),
+                    content=f"{names.get(old, old)} → {names.get(stage, stage)}"
+                    + (f" (trạng thái cũ: {raw})" if raw and raw != names.get(stage) else ""),
                     actor=LEGACY,
                 )
     return {"stages": dict(result), "moved": dict(moved), "missing": missing}

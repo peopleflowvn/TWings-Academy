@@ -184,7 +184,7 @@ def test_import_creates_the_old_classes_learners_and_payments_once():
     assert eb2.external_lms and rb8.external_lms and not eb2.is_published and eb2.name == "Khóa 2"
 
     a = Order.objects.get(customer_name="Nguyễn Văn A")
-    assert (a.cohort, a.status, a.crm_status, a.learning_access) == (eb2, "paid", "5. Đã đóng phí", True)
+    assert (a.cohort, a.status, a.crm_status, a.learning_access) == (eb2, "paid", "paid", True)
     assert (
         a.customer_phone == "0912345678"
         and a.source == "Giới thiệu nội bộ (GTNB)"
@@ -202,21 +202,21 @@ def test_import_creates_the_old_classes_learners_and_payments_once():
     assert b.training_status == "Đang học"
 
     c = Order.objects.get(customer_name="Lê C")
-    assert (c.cohort, c.training_status, c.crm_status) == (None, "Bảo lưu", "6. Đã đóng 1 phần học phí")
+    assert (c.cohort, c.training_status, c.crm_status) == (None, "Bảo lưu", "part_paid")
     d = Order.objects.get(customer_name="Phạm D")
     assert (d.status, d.crm_status, d.lost_reason, d.total_paid_amount) == (
         "cancelled",
-        "0. Từ chối lần 3",
+        "refused_3",
         "Hủy sau khi đã đóng tiền",
         2_000_000,
     )
     stages = {o.customer_name: (o.crm_status, o.lost_reason) for o in Order.objects.all()}
     # The stage is the old "Trạng thái" itself (the same list).
-    assert stages["Đỗ E"] == ("2. Đang tư vấn", "") and stages["Vũ F"] == (
-        "0. Không gọi được",
+    assert stages["Đỗ E"] == ("consulting", "") and stages["Vũ F"] == (
+        "unreachable",
         "Không liên lạc được",
     )
-    assert stages["Hà G"][0] == "0. Từ chối lần 1" and stages["Mai H"][0] == "0. Từ chối lần 1"
+    assert stages["Hà G"][0] == "refused_1" and stages["Mai H"][0] == "refused_1"
     assert Order.objects.get(customer_name="Mai H").cohort is None
     assert Order.objects.get(customer_name="Đỗ E").source == "TNEX"
     assert Payment.objects.count() == 4 and Learner.objects.count() == 8
@@ -316,7 +316,7 @@ def test_corrections_after_the_import(monkeypatch):
     assert (b.status, b.cohort, b.crm_status, b.refunded_amount) == (
         "refunded",
         None,
-        "0. Từ chối lần 3",
+        "refused_3",
         2_000_000,
     )
     assert Refund.objects.get().order == b and not b.installments.filter(paid_at__isnull=True).exists()

@@ -200,7 +200,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         current = order.crm_status if order else None
         if stage in stages.FROM_PAYMENTS and stage != current:
             raise serializers.ValidationError(
-                {"crm_status": f"Giai đoạn '{stage}' tự chuyển khi ghi nhận thanh toán."}
+                {"crm_status": f"Giai đoạn '{stages.name(stage)}' tự chuyển khi ghi nhận thanh toán."}
             )
         if stage == stages.ONBOARD and not (order and order.learning_access):
             raise serializers.ValidationError(
@@ -232,9 +232,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         stage = data.get("crm_status")
         if not stage or stage == order.crm_status:
             return None
-        if stage in stages.CALL_AGAIN and not data.get("next_contact_on"):
-            raise serializers.ValidationError({"next_contact_on": f"Chọn ngày gọi lại khi chuyển '{stage}'."})
-        if stage in stages.CLOSED:
+        group = stages.group_of(stage)
+        if group == stages.G_CALL_AGAIN and not data.get("next_contact_on"):
+            raise serializers.ValidationError(
+                {"next_contact_on": f"Chọn ngày gọi lại khi chuyển '{stages.name(stage)}'."}
+            )
+        if group == stages.G_CLOSED:
             reason = (data.get("lost_reason") or "").strip() or stages.CLOSED_REASON.get(stage, "")
             if not reason:
                 raise serializers.ValidationError({"lost_reason": "Ghi lý do từ chối."})
@@ -249,7 +252,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         next_contact_on = serializer.validated_data.pop("next_contact_on", None)
         new_owner = serializer.validated_data.pop("assigned_to", serializer.instance.assigned_to)
         was_new = serializer.instance.crm_status == stages.POTENTIAL
-        was_cancelled = serializer.instance.crm_status in stages.CLOSED
+        was_cancelled = stages.group_of(serializer.instance.crm_status) == stages.G_CLOSED
         data = serializer.validated_data
         item_changed = ("course" in data or "program" in data) and (
             data.get("course", serializer.instance.course) != serializer.instance.course
@@ -275,25 +278,26 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = serializer.save()
         if new_owner != order.assigned_to:
             reassign(order, new_owner, self.request.user)
-        if stage in stages.CALL_AGAIN and next_contact_on:
+        group = stages.group_of(stage) if stage else ""
+        if group == stages.G_CALL_AGAIN and next_contact_on:
             FollowupTask.objects.create(
                 order=order,
-                title=f"Gọi lại ({stage[3:].lower()})",
+                title=f"Gọi lại ({stages.short(stage).lower()})",
                 due_date=next_contact_on,
                 priority="medium",
             )
             Activity.objects.create(
                 order=order,
                 type="note",
-                title=f"{stage[3:]}: hẹn gọi lại ngày {next_contact_on:%d/%m/%Y}",
+                title=f"{stages.short(stage)}: hẹn gọi lại ngày {next_contact_on:%d/%m/%Y}",
                 actor=self.request.user.name or self.request.user.email,
                 actor_user=self.request.user,
             )
-        if stage in stages.CLOSED:
+        if group == stages.G_CLOSED:
             Activity.objects.create(
                 order=order,
                 type="note",
-                title=f"{stage[3:]}: {order.lost_reason}",
+                title=f"{stages.short(stage)}: {order.lost_reason}",
                 actor=self.request.user.name or self.request.user.email,
                 actor_user=self.request.user,
             )
@@ -304,12 +308,13 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def _follow_cancel_stage(self, order, was_cancelled):
         """
-        A lead moved to a closed stage (apps.crm.stages.CLOSED) with nothing paid is a cancelled order (no
-        payment reminders; a later transfer shows as unmatched for finance); moved out again, it waits for
-        payment again. Orders with money received are cancelled by a refund only.
+        A lead moved to a closed stage (apps.crm.stages, group "closed") with nothing paid is a cancelled
+        order (no payment reminders; a later transfer shows as unmatched for finance); moved out again, it
+        waits for payment again. Orders with money received are cancelled by a refund only.
         """
         actor = self.request.user.name or self.request.user.email
-        if order.crm_status in stages.CLOSED and order.status == "pending" and not order.total_paid_amount:
+        closed = stages.group_of(order.crm_status) == stages.G_CLOSED
+        if closed and order.status == "pending" and not order.total_paid_amount:
             order.status = "cancelled"
             order.save(update_fields=["status", "updated_at"])
             Activity.objects.create(
@@ -319,7 +324,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 actor=actor,
                 actor_user=self.request.user,
             )
-        elif was_cancelled and order.crm_status not in stages.CLOSED and order.status == "cancelled":
+        elif was_cancelled and not closed and order.status == "cancelled":
             order.status = "pending"
             order.save(update_fields=["status", "updated_at"])
             Activity.objects.create(
@@ -452,11 +457,13 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
         audit(request, "order.export_csv", None, count=queryset.count(), query=request.GET.dict())
         writer = csv.writer(_Echo())
+        stage_names = stages.names()  # the stage as people read it
 
         def rows():
             yield "﻿"  # BOM so Excel opens UTF-8 Vietnamese correctly
             yield writer.writerow(EXPORT_FIELDS)
             for order in queryset.iterator(chunk_size=500):
+                order.crm_status = stage_names.get(order.crm_status, order.crm_status)
                 yield writer.writerow([_csv_safe(getattr(order, f)) for f in EXPORT_FIELDS])
 
         response = StreamingHttpResponse(rows(), content_type="text/csv; charset=utf-8")

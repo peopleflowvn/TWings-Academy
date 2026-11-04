@@ -9,6 +9,7 @@ import { AlertTriangle, CalendarClock, Check, CheckCircle2, ChevronRight, Loader
 import { api } from '../../lib/api';
 import { phoneDigits, zaloLink } from '../../lib/siteSeo';
 import { navigate } from '../router';
+import { StageName } from '../../components/cms/StageGate';
 
 interface Lead {
   id: string;
@@ -89,7 +90,7 @@ const LeadLine: React.FC<{ lead: Lead; note?: React.ReactNode }> = ({ lead, note
   <div className="min-w-0">
     <div className="flex items-center justify-between gap-2">
       <span className="font-bold text-slate-900 truncate">{lead.customerName}</span>
-      <span className="text-[11px] text-slate-500 shrink-0">{lead.crmStatus}</span>
+      <span className="text-[11px] text-slate-500 shrink-0"><StageName code={lead.crmStatus} /></span>
     </div>
     <div className="text-xs text-slate-600 truncate">
       {lead.customerPhone} · {lead.course || 'Chưa chọn khóa'}

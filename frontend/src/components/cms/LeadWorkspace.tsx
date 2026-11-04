@@ -43,10 +43,8 @@ import { PlacementPanel } from '../../admin/pages/PlacementPages';
 import { api, Paginated } from '../../lib/api';
 import { useIsSuperAdmin, useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
-import { useCrmLists, withCurrent } from '../../lib/crmLists';
-import { blockedMove, FROM_PAYMENTS, POTENTIAL, STAGES } from '../../lib/stages';
-
-const CRM_STAGES = STAGES; // the old CRM's "Trạng thái khách hàng" (lib/stages.ts)
+import { useCrmLists, useStages, withCurrent } from '../../lib/crmLists';
+import { blockedMove, FROM_PAYMENTS, POTENTIAL } from '../../lib/stages';
 
 interface LeadWorkspaceProps {
   order: Order;
@@ -132,6 +130,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 }) => {
   const [order, setOrder] = useState<Order>(initialOrder);
   const lists = useCrmLists();
+  const stages = useStages(); // the stage list (danh mục): names, order, groups
   // The order as last loaded from / saved to the server: changes are sent against it.
   const [saved, setSaved] = useState<Order>(initialOrder);
   const [isDirty, setIsDirty] = useState(false);
@@ -280,7 +279,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   const handleStageSelect = async (nextStage: CRMStatus) => {
     // The paid stages follow a recorded payment (bank webhook or finance confirmation), never a click.
     if (nextStage === (saved.crmStatus || POTENTIAL)) return;
-    const blocked = blockedMove(saved, nextStage);
+    const blocked = blockedMove(saved, nextStage, stages.name);
     if (blocked) {
       if (FROM_PAYMENTS.includes(nextStage)) setActiveTab('payment');
       else window.alert(blocked);
@@ -346,6 +345,8 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   };
 
   const currentStage = order.crmStatus || POTENTIAL;
+  // The bar: the stages offered, plus the current one when it was hidden since.
+  const barStages = stages.all.filter((s) => s.active || s.id === currentStage);
 
   const filteredActivities = (order.timelineActivities || []).filter((act) => {
     if (activityFilter === 'all') return true;
@@ -558,16 +559,20 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                 <span>Giai đoạn tuyển sinh</span>
               </span>
               <span className="font-bold text-slate-800">
-                Giai đoạn hiện tại: <span className="text-[#0073C1]">{currentStage}</span>
+                Giai đoạn hiện tại: <span className="text-[#0073C1]">{stages.name(currentStage)}</span>
               </span>
             </div>
 
-            <div className="overflow-x-auto -mx-1 px-1"><div className="grid grid-cols-[repeat(13,minmax(96px,1fr))] gap-1 bg-slate-100/80 p-1 rounded-xl min-w-[1300px]">
-              {CRM_STAGES.map((st, index) => {
+            <div className="overflow-x-auto -mx-1 px-1"><div
+              className="grid gap-1 bg-slate-100/80 p-1 rounded-xl"
+              style={{ gridTemplateColumns: `repeat(${barStages.length}, minmax(96px, 1fr))`, minWidth: barStages.length * 100 }}
+            >
+              {barStages.map((st, index) => {
                 const isCurrent = currentStage === st.id;
-                // The way forward lights up to the current stage; a refusal lights only itself.
-                const at = CRM_STAGES.findIndex((s) => s.id === currentStage);
-                const isPassed = isCurrent || (index < 7 && at < 7 && at >= index);
+                // The way forward (open → paid → in class) lights up to the current stage; a refusal only itself.
+                const at = barStages.findIndex((s) => s.id === currentStage);
+                const forward = (id: string) => ['open', 'paid', 'onboard'].includes(stages.group(id));
+                const isPassed = isCurrent || (forward(st.id) && forward(currentStage) && at >= index);
 
                 return (
                   <button
@@ -581,7 +586,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                         ? 'text-blue-800 font-semibold hover:bg-white/60'
                         : 'text-slate-500 hover:text-slate-800 hover:bg-white/40'
                     }`}
-                    title={blockedMove(order, st.id) || st.id}
+                    title={blockedMove(order, st.id, stages.name) || st.label}
                   >
                     <span className={`w-2 h-2 rounded-full shrink-0 ${isPassed ? 'bg-blue-600' : 'bg-slate-300'}`} />
                     <span className="truncate">{st.label}</span>
@@ -1365,7 +1370,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                         <span className="font-semibold text-slate-800 block truncate">{r.courseTitle || 'Chưa chọn khóa'}</span>
                         <span className="font-mono text-slate-500">{r.orderCode} · {new Date(r.createdAt).toLocaleDateString('vi-VN')}</span>
                       </span>
-                      <span className="shrink-0 text-slate-600">{r.status === 'paid' ? 'Đã đóng phí' : r.crmStatus}</span>
+                      <span className="shrink-0 text-slate-600">{r.status === 'paid' ? 'Đã đóng phí' : stages.name(r.crmStatus)}</span>
                     </button>
                   ))}
                 </div>

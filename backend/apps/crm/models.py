@@ -95,7 +95,6 @@ class Order(BaseModel):
         ("cash", "Tiền mặt"),
         ("bundle", "Trong gói chương trình"),
     ]
-    CRM_STATUS_CHOICES = stages.CHOICES  # apps.crm.stages
 
     order_code = models.CharField(max_length=20, unique=True, default=new_order_code, editable=False)
     # The person who registers (one learner, any number of registrations).
@@ -157,7 +156,10 @@ class Order(BaseModel):
     )
     interest_level = models.CharField(max_length=30, blank=True)
     crm_status = models.CharField(
-        max_length=30, choices=CRM_STATUS_CHOICES, default=stages.POTENTIAL, db_index=True
+        max_length=40,
+        default=stages.POTENTIAL,
+        db_index=True,
+        help_text="The stage's code (apps.crm.stages).",
     )
     consult_detail = models.TextField(blank=True)
 
@@ -446,6 +448,9 @@ class ListItem(BaseModel):
 
     kind = models.CharField(max_length=40, db_index=True)
     value = models.CharField(max_length=300)
+    # The CRM stages only (apps.crm.stages): the fixed code a registration keeps, and what the stage does.
+    code = models.CharField(max_length=40, blank=True, default="")
+    group = models.CharField(max_length=20, blank=True, default="")
     position = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 

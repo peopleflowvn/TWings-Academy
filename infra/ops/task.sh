@@ -209,7 +209,7 @@ from apps.lms.models import LmsEnrollment
 course = Course.objects.order_by(\"title\").first()
 with transaction.atomic():
     order = Order.objects.create(customer_name=\"Học Viên Test\", customer_email=\"$ARG\", course=course, amount=0,
-                                 crm_status=\"1. Mới\", interested_course=\"[TEST] học thử LMS\")
+                                 crm_status=\"potential\", interested_course=\"[TEST] học thử LMS\")
     order.status = \"paid\"
     order.save()
 e = LmsEnrollment.objects.get(order=order)

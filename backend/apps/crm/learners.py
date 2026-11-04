@@ -45,7 +45,7 @@ PERSON_FIELDS = [
 ]
 # What the learner must provide before studying (enrolment file).
 DOSSIER_REQUIRED = ["birth_date", "citizen_id", "permanent_address", "education_level"]
-ACTIVE = ~Q(status__in=("cancelled", "refunded")) & ~Q(crm_status__in=stages.CLOSED)
+ACTIVE = ~Q(status__in=("cancelled", "refunded")) & ~Q(crm_status__in=stages.in_groups(stages.G_CLOSED))
 
 
 def phone_key(phone: str) -> str:

@@ -61,7 +61,7 @@ def lead(name, phone, email, course, **extra):
 
 lead("Nguyễn Văn An", "0912000001", "an@example.com", rm, cohort=k9, campaign_code="CAMP-E2E")
 lead("Nguyễn Văn An", "0912000001", "an@example.com", gdv)  # the same learner, a second course
-lead("Trần Thị Bình", "0912000002", "binh@example.com", rm, crm_status="2. Đang tư vấn")
+lead("Trần Thị Bình", "0912000002", "binh@example.com", rm, crm_status="consulting")
 lead("Lê Văn Cường", "0912000003", "", gdv, interest_level="Cao")
 late = lead("Phạm Thị Dung", "0912000004", "dung@example.com", rm)
 Order.objects.filter(pk=late.pk).update(response_due_at=timezone.now() - timedelta(hours=3))
@@ -72,7 +72,7 @@ Order.objects.filter(pk=slow.pk).update(response_due_at=timezone.now() - timedel
 for i in range(32):
     Order.objects.create(
         customer_name=f"Lead chăm sóc {i:02d}", customer_phone=f"09130000{i:02d}", course=gdv,
-        course_title=gdv.title, crm_status="0. Từ chối lần 1",
+        course_title=gdv.title, crm_status="refused_1",
     )
 # A transfer whose memo has no order code (checkout_test.py credits it to the order it creates).
 from apps.payments.models import BankTransaction  # noqa: E402

@@ -109,7 +109,7 @@ export const CourseBuyBox: React.FC<CourseBuyBoxProps> = ({ course, onCheckout, 
       customerName: name,
       customerPhone: phone,
       customerEmail: email,
-      crmStatus: '1. Tiềm năng'
+      crmStatus: 'potential'
     } as Order);
     confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
   };

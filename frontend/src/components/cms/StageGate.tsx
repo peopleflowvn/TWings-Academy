@@ -1,9 +1,14 @@
 import React, { useRef, useState } from 'react';
 import { CalendarClock, X, XCircle } from 'lucide-react';
-import { useCrmLists } from '../../lib/crmLists';
-import { CALL_AGAIN, REFUSED_3 } from '../../lib/stages';
-import type { CRMStatus } from '../../types';
+import { useCrmLists, useStages } from '../../lib/crmLists';
+import { MISTAKEN, TEST, UNREACHABLE } from '../../lib/stages';
 
+/** Closed stages that carry their own reason (the server writes it). */
+const OWN_REASON = [UNREACHABLE, MISTAKEN, TEST];
+
+
+/** A stage's name as the list (danh mục) has it. */
+export const StageName: React.FC<{ code?: string | null }> = ({ code }) => <>{useStages().name(code)}</>;
 
 export interface StageExtra {
   nextContactOn?: string;
@@ -17,14 +22,15 @@ const isoIn = (days: number) => {
 };
 
 /**
- * Stages that need something before the move (the server checks it too): "0. Từ chối lần 1 / 2" ask the
- * day to call back (a task is created), "0. Từ chối lần 3" asks why (lost-reason report); "Không gọi được",
- * "Đăng ký nhầm" and "Test" carry their own reason. Usage:
+ * Stages that need something before the move (the server checks it too): a stage of the "call_again" group
+ * (Từ chối lần 1 / 2…) asks the day to call back (a task is created), a "closed" one asks why (lost-reason
+ * report), except "Không gọi được", "Đăng ký nhầm" and "Test", which carry their own reason. Usage:
  *   const gate = useStageGate();  ...  const extra = await gate.ask(stage); if (!extra) return;
  *   {gate.dialog}
  */
 export function useStageGate() {
   const { lostReasons } = useCrmLists();
+  const stages = useStages();
   const [stage, setStage] = useState<string | null>(null);
   const [date, setDate] = useState(isoIn(3));
   const [reason, setReason] = useState('');
@@ -32,7 +38,8 @@ export function useStageGate() {
   const resolver = useRef<((v: StageExtra | null) => void) | null>(null);
 
   const ask = (next: string): Promise<StageExtra | null> => {
-    if (!CALL_AGAIN.includes(next as CRMStatus) && next !== REFUSED_3) return Promise.resolve({});
+    const asksReason = stages.isClosed(next) && !OWN_REASON.includes(next);
+    if (!stages.isCallAgain(next) && !asksReason) return Promise.resolve({});
     setStage(next);
     setDate(isoIn(3));
     setReason('');
@@ -44,7 +51,7 @@ export function useStageGate() {
     resolver.current?.(value);
   };
   const lostReason = (reason === 'Khác' ? other : reason).trim();
-  const callAgain = stage !== null && CALL_AGAIN.includes(stage as CRMStatus);
+  const callAgain = stage !== null && stages.isCallAgain(stage);
 
   const dialog = stage ? (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-slate-900/50 p-0 sm:p-4" onClick={() => close(null)}>
@@ -57,7 +64,7 @@ export function useStageGate() {
         <div className="flex items-center justify-between">
           <h3 className="font-black text-slate-900 flex items-center gap-2">
             {callAgain ? <CalendarClock className="w-5 h-5 text-[#0073C1]" /> : <XCircle className="w-5 h-5 text-red-600" />}
-            {`Chuyển sang "${stage}"`}
+            {`Chuyển sang "${stages.name(stage)}"`}
           </h3>
           <button type="button" onClick={() => close(null)} className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer" aria-label="Đóng">
             <X className="w-5 h-5" />

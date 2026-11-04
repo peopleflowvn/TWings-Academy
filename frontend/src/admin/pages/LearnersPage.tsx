@@ -16,6 +16,7 @@ import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../cata
 import { usePrograms } from '../data';
 import { viDateToIso } from '../../lib/serverCollection';
 import { CrmLists, useCrmLists, withCurrent } from '../../lib/crmLists';
+import { StageName } from '../../components/cms/StageGate';
 
 interface LearnerRow {
   id: string;
@@ -205,7 +206,7 @@ const LearnerList: React.FC = () => {
 
 // ---------------------------------------------------------------- one learner
 // `list`: the CRM list (danh mục) the field picks from; 'suggest' offers it while typing anything.
-const PERSONAL: { key: keyof LearnerDetail; label: string; type?: 'date' | 'select' | 'suggest'; list?: keyof CrmLists; wide?: boolean }[] = [
+const PERSONAL: { key: keyof LearnerDetail; label: string; type?: 'date' | 'select' | 'suggest'; list?: Exclude<keyof CrmLists, 'stages'>; wide?: boolean }[] = [
   { key: 'fullName', label: 'Họ và tên *' },
   { key: 'phone', label: 'Số điện thoại' },
   { key: 'email', label: 'Email' },
@@ -416,7 +417,7 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
                     <div className="font-mono text-[10px] text-slate-400">{r.orderCode}{r.campaignCode ? ` · ${r.campaignCode}` : ''}</div>
                   </td>
                   <td className="px-3 py-2">{r.batchCohort || <span className="text-slate-300">Chưa xếp lớp</span>}</td>
-                  <td className="px-3 py-2">{r.crmStatus}</td>
+                  <td className="px-3 py-2"><StageName code={r.crmStatus} /></td>
                   <td className="px-3 py-2 text-right font-mono">
                     {vnd(r.amount)}
                     <div className={`text-[10px] font-sans ${r.status === 'paid' ? 'text-emerald-700' : 'text-amber-700'}`}>

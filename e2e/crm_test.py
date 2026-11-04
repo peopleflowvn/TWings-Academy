@@ -53,13 +53,13 @@ def stage_rules(page: Page):
     page.locator("button:has-text('Ngày mai')").click()
     page.locator("button:has-text('Hẹn gọi lại')").click()
     page.wait_for_timeout(2000)
-    assert "Từ chối lần 1" in row.locator("select").first.input_value(), "moved after the call-back day"
+    assert row.locator("select").first.input_value() == "refused_1", "moved after the call-back day"
     row.locator("select").first.select_option(label="0. Từ chối lần 3")
     page.wait_for_selector("text=Lý do", timeout=10000)
     page.locator("label:has-text('Học phí cao')").click()
     page.locator("[role=dialog] button:has-text('Từ chối')").click()
     page.wait_for_timeout(2000)
-    assert "Từ chối lần 3" in row.locator("select").first.input_value(), "cancelled with a reason"
+    assert row.locator("select").first.input_value() == "refused_3", "cancelled with a reason"
 
 
 def unassigned_queue_and_bulk_assign(page: Page):

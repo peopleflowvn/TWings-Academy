@@ -77,7 +77,7 @@ class Command(BaseCommand):
                 "open_leads_without_consultant": leads.filter(
                     status="pending",
                     assigned_to__isnull=True,
-                    crm_status__in=stages.OPEN,
+                    crm_status__in=stages.in_groups(stages.G_OPEN),
                 ).count(),
                 "overdue_first_response": overdue_leads().count(),
                 "appointments_upcoming": Appointment.objects.filter(

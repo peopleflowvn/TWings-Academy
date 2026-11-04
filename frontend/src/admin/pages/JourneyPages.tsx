@@ -4,8 +4,9 @@ import { api, ApiError, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { formatVND } from '../../lib/commerce';
 import { Appointment, CHANNEL_LABEL, STATUS_LABEL } from '../../components/cms/LeadContactPanel';
-import { CLOSED, ENROLLED } from '../../lib/stages'; // still to win, refusals to call again included
-import type { CRMStatus } from '../../types';
+import { ENROLLED } from '../../lib/stages';
+import { useStages } from '../../lib/crmLists';
+import { StageName } from '../../components/cms/StageGate';
 
 interface Consultant {
   id: string;
@@ -41,6 +42,7 @@ function dayLabel(iso: string): string {
 }
 
 export const ConsultingPage: React.FC = () => {
+  const stages = useStages();
   const canAssign = useStaffCan('crm.assign_pic');
   const canEdit = useStaffCan('crm.edit_status');
   const [team, setTeam] = useState<Consultant[]>([]);
@@ -54,7 +56,7 @@ export const ConsultingPage: React.FC = () => {
   const loadUnassigned = () =>
     api
       .get<Paginated<UnassignedLead>>('/staff/orders/?unassigned=1&status=pending&ordering=created_at&pageSize=100')
-      .then((r) => setUnassigned(r.results.filter((o) => !ENROLLED.includes(o.crmStatus as CRMStatus) && !CLOSED.includes(o.crmStatus as CRMStatus))))
+      .then((r) => setUnassigned(r.results.filter((o) => !ENROLLED.includes(o.crmStatus) && !stages.isClosed(o.crmStatus))))
       .catch(() => setUnassigned([]));
 
   const loadTeam = () => api.get<Consultant[]>('/staff/consultants/').then(setTeam).catch((e: Error) => setError(e.message));
@@ -174,7 +176,7 @@ export const ConsultingPage: React.FC = () => {
                     <div className="text-xs text-slate-500">{o.customerPhone}</div>
                   </td>
                   <td className="text-xs">{o.courseTitle || '–'}</td>
-                  <td className="text-xs">{o.crmStatus}</td>
+                  <td className="text-xs"><StageName code={o.crmStatus} /></td>
                   <td className="text-right text-xs">{new Date(o.createdAt).toLocaleDateString('vi-VN')}</td>
                 </tr>
               ))}

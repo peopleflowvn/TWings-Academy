@@ -58,7 +58,8 @@ class Command(BaseCommand):
         out(
             "   giai đoạn: "
             + ", ".join(
-                f"{k}: {v}" for k, v in sorted(Counter(legacy.values_list("crm_status", flat=True)).items())
+                f"{stages.name(k)}: {v}"
+                for k, v in sorted(Counter(legacy.values_list("crm_status", flat=True)).items())
             )
         )
         out(
@@ -265,11 +266,11 @@ class Command(BaseCommand):
         check(
             not off, "trạng thái đào tạo theo danh mục (mọi đăng ký)", [f"{k} ({v})" for k, v in off.items()]
         )
-        cancelled = legacy.filter(crm_status__in=stages.CLOSED)
+        cancelled = legacy.filter(crm_status__in=stages.in_groups(stages.G_CLOSED))
         check(
-            not legacy.exclude(crm_status__in=stages.STAGES).exists(),
+            not legacy.exclude(crm_status__in=stages.codes()).exists(),
             "giai đoạn theo danh mục CRM cũ (cột G)",
-            legacy.exclude(crm_status__in=stages.STAGES).values_list("order_code", flat=True),
+            legacy.exclude(crm_status__in=stages.codes()).values_list("order_code", flat=True),
         )
         unpaid = legacy.filter(crm_status__in=stages.ENROLLED, learning_access=False, total_paid_amount=0)
         check(
