@@ -52,7 +52,7 @@ def pipeline_counts_and_sla(page: Page):
 @step
 def kanban_column_loads_more(page: Page):
     more = page.locator("button:has-text('Xem thêm (2 lead nữa)')")
-    assert more.count() == 1, "the 'care again' column should offer 2 more leads"
+    assert more.count() == 1, "the 'Từ chối lần 1' column should offer 2 more leads"
     more.click()
     page.wait_for_selector("text=Lead chăm sóc 00", timeout=20000)
     assert page.locator("button:has-text('Xem thêm')").count() == 0
@@ -68,7 +68,7 @@ def workspace_note_and_stage_keep_it_open(page: Page):
     page.wait_for_selector("text=Đã gọi, hẹn gọi lại thứ Hai", timeout=20000)
     assert workspace_open(page), "workspace closed after a note"
     assert page.locator("text=T21:").count() == 0 and page.locator("text=+07:00").count() == 0, "raw timestamps"
-    page.locator("button[title='3. Đang tư vấn']").click()
+    page.locator("button[title='2. Đang tư vấn']").click()
     page.wait_for_timeout(1500)
     assert workspace_open(page), "workspace closed after a stage change"
 

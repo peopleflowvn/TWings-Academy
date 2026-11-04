@@ -48,18 +48,18 @@ def stage_rules(page: Page):
     page.goto(f"{BASE}/app/sales/crm?view=kanban&campaignId=all&layout=table")
     page.wait_for_selector("text=Trần Thị Bình", timeout=20000)
     row = page.locator("tr:has-text('Trần Thị Bình')")
-    row.locator("select").first.select_option(label="Chăm sóc lại")
+    row.locator("select").first.select_option(label="0. Từ chối lần 1")
     page.wait_for_selector("text=Ngày gọi lại", timeout=10000)
     page.locator("button:has-text('Ngày mai')").click()
     page.locator("button:has-text('Hẹn gọi lại')").click()
     page.wait_for_timeout(2000)
-    assert "Chăm sóc lại" in row.locator("select").first.input_value(), "moved after the call-back day"
-    row.locator("select").first.select_option(label="Đã hủy")
+    assert "Từ chối lần 1" in row.locator("select").first.input_value(), "moved after the call-back day"
+    row.locator("select").first.select_option(label="0. Từ chối lần 3")
     page.wait_for_selector("text=Lý do", timeout=10000)
     page.locator("label:has-text('Học phí cao')").click()
-    page.locator("[role=dialog] button:has-text('Hủy đăng ký')").click()
+    page.locator("[role=dialog] button:has-text('Từ chối')").click()
     page.wait_for_timeout(2000)
-    assert "Đã hủy" in row.locator("select").first.input_value(), "cancelled with a reason"
+    assert "Từ chối lần 3" in row.locator("select").first.input_value(), "cancelled with a reason"
 
 
 def unassigned_queue_and_bulk_assign(page: Page):
