@@ -46,6 +46,7 @@ interface MyDay {
 interface Consultant {
   id: string;
   name: string;
+  consultant: boolean;
   receivesLeads: boolean;
   openLeads: number;
 }
@@ -125,7 +126,7 @@ export const MyDayPage: React.FC = () => {
       .get<MyDay>('/staff/my-day/')
       .then((d) => {
         setDay(d);
-        if (d.isLeadManager) api.get<Consultant[]>('/staff/consultants/').then(setConsultants).catch(() => undefined);
+        if (d.isLeadManager) api.get<Consultant[]>('/staff/consultants/').then(setConsultants).catch((e: Error) => setError(e.message));
       })
       .catch((e: Error) => setError(e.message));
   }, []);
@@ -181,10 +182,10 @@ export const MyDayPage: React.FC = () => {
                   className="flex-1 min-w-0 p-2.5 border border-slate-300 rounded-xl text-sm"
                   aria-label="Giao cho tư vấn viên"
                 >
-                  <option value="">Giao cho…</option>
+                  <option value="">{consultants.length ? 'Giao cho…' : 'Chưa có nhân sự nào được xem lead'}</option>
                   {consultants.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} ({c.openLeads} lead{c.receivesLeads ? '' : ', đang nghỉ'})
+                      {c.name} ({c.openLeads} lead{c.consultant && !c.receivesLeads ? ', đang nghỉ' : ''})
                     </option>
                   ))}
                 </select>

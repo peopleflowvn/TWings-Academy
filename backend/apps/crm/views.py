@@ -674,29 +674,41 @@ class CohortRosterView(APIView):
 
 
 class ConsultantsView(APIView):
-    """Admissions consultants: open / overdue leads; who receives new leads (crm.assign_pic)."""
+    """
+    Staff a lead can be given to: every active staff member who can see leads (the "Giao cho…" lists),
+    admissions consultants first. Only consultants (role sales_crm, ``consultant: true``) take part in
+    the automatic sharing of new leads, so only they carry the receives_leads / lead_manager toggles
+    (crm.assign_pic).
+    """
 
     def get_permissions(self):
         return [require_perms("crm.view_leads" if self.request.method == "GET" else "crm.assign_pic")()]
 
     def _rows(self):
-        from .assignment import OPEN_STAGES, consultants, overdue_leads
+        from apps.accounts.models import User
+        from apps.accounts.rbac import Role, has_perm_code
+
+        from .assignment import OPEN_STAGES, overdue_leads
 
         overdue = set(overdue_leads().values_list("pk", flat=True))
         rows = []
-        for user in consultants().model.objects.filter(is_active=True, is_staff=True, role="sales_crm"):
+        for user in User.objects.filter(is_active=True, is_staff=True):
+            if not has_perm_code(user, "crm.view_leads"):
+                continue
             open_qs = Order.objects.filter(assigned_to=user, crm_status__in=OPEN_STAGES, status="pending")
             rows.append(
                 {
                     "id": user.id,
                     "name": user.name or user.email,
                     "email": user.email,
+                    "consultant": user.role == Role.SALES_CRM,
                     "receives_leads": user.receives_leads,
                     "lead_manager": user.lead_manager,
                     "open_leads": open_qs.count(),
                     "overdue": len(overdue & set(open_qs.values_list("pk", flat=True))),
                 }
             )
+        rows.sort(key=lambda r: (not r["consultant"], r["name"].lower()))
         return rows
 
     def get(self, request):

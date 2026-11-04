@@ -269,3 +269,16 @@ def test_team_lead_switches_consultants_off(staff_client):
         ).status_code
         == 403
     )
+
+
+def test_assign_list_includes_every_staff_who_sees_leads(staff_client):
+    """No consultant yet: the "Giao cho…" lists must still offer the admins, not stay empty."""
+    admin = make_staff(Role.SUPER_ADMIN, "boss@twings.test")
+    seo = make_staff(Role.CONTENT_SEO, "seo@twings.test")
+    sale = make_staff(Role.SALES_CRM, "s2@twings.test")
+    rows = staff_client(Role.SUPER_ADMIN).get("/api/v1/staff/consultants/").json()
+    by_id = {r["id"]: r for r in rows}
+    assert by_id[admin.pk]["consultant"] is False
+    assert by_id[sale.pk]["consultant"] is True
+    assert seo.pk not in by_id
+    assert rows[0]["consultant"] is True  # consultants listed first

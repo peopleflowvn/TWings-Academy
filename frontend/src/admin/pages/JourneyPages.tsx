@@ -9,6 +9,8 @@ interface Consultant {
   id: string;
   name: string;
   email: string;
+  /** Role "Tư vấn tuyển sinh": takes part in the automatic sharing of new leads. Others can only be given leads by hand. */
+  consultant: boolean;
   receivesLeads: boolean;
   /** Alerted about leads nobody takes and long-overdue ones (escalation). */
   leadManager: boolean;
@@ -109,7 +111,7 @@ export const ConsultingPage: React.FC = () => {
         <table className="w-full text-sm">
           <thead className="text-xs text-slate-500 text-left"><tr><th className="py-1.5">Tư vấn viên</th><th className="text-right">Lead đang mở</th><th className="text-right">Quá hạn phản hồi</th><th className="text-right">Nhận lead mới</th><th className="text-right">Quản lý</th></tr></thead>
           <tbody>
-            {team.map((c) => (
+            {team.filter((c) => c.consultant).map((c) => (
               <tr key={c.id} className="border-t border-slate-100">
                 <td className="py-2">{c.name} <span className="text-xs text-slate-400">{c.email}</span></td>
                 <td className="text-right">{c.openLeads}</td>
@@ -122,7 +124,9 @@ export const ConsultingPage: React.FC = () => {
                 </td>
               </tr>
             ))}
-            {team.length === 0 && <tr><td className="py-2 text-slate-500" colSpan={5}>Chưa có nhân viên vai trò Tư vấn tuyển sinh – lead mới sẽ chưa được tự giao.</td></tr>}
+            {!team.some((c) => c.consultant) && (
+              <tr><td className="py-2 text-slate-500" colSpan={5}>Chưa có nhân viên vai trò Tư vấn tuyển sinh – lead mới sẽ chưa được tự giao. Gán vai trò “Tư vấn Tuyển sinh & CRM” trong Quản trị người dùng.</td></tr>
+            )}
           </tbody>
         </table>
       </section>
@@ -136,7 +140,7 @@ export const ConsultingPage: React.FC = () => {
                 <select value={target} onChange={(e) => setTarget(e.target.value)} className="p-2 border border-slate-300 rounded-xl">
                   <option value="">Giao cho…</option>
                   {team.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.openLeads} lead{c.receivesLeads ? '' : ', đang nghỉ'})</option>
+                    <option key={c.id} value={c.id}>{c.name} ({c.openLeads} lead{c.consultant && !c.receivesLeads ? ', đang nghỉ' : ''})</option>
                   ))}
                 </select>
                 <button type="button" disabled={!target || !picked.length} onClick={assignPicked}
