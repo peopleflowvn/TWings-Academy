@@ -8,6 +8,8 @@ from apps.catalog.models import Cohort, Course, Program
 from apps.core.crypto import EncryptedTextField, blind_index
 from apps.core.models import BaseModel
 
+from . import stages
+
 # Crockford-style alphabet: no 0/O/1/I/L, safe to read aloud and type into a bank transfer memo.
 ORDER_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 
@@ -93,15 +95,7 @@ class Order(BaseModel):
         ("cash", "Tiền mặt"),
         ("bundle", "Trong gói chương trình"),
     ]
-    CRM_STATUS_CHOICES = [
-        ("1. Mới", "1. Mới"),
-        ("2. Đã tiếp cận", "2. Đã tiếp cận"),
-        ("3. Đang tư vấn", "3. Đang tư vấn"),
-        ("4. Hẹn gặp", "4. Hẹn gặp"),
-        ("5. Đã đóng phí", "5. Đã đóng phí"),
-        ("6. Chăm sóc lại", "6. Chăm sóc lại"),
-        ("7. Đã hủy", "7. Đã hủy"),
-    ]
+    CRM_STATUS_CHOICES = stages.CHOICES  # apps.crm.stages
 
     order_code = models.CharField(max_length=20, unique=True, default=new_order_code, editable=False)
     # The person who registers (one learner, any number of registrations).
@@ -162,7 +156,9 @@ class Order(BaseModel):
         related_name="assigned_orders",
     )
     interest_level = models.CharField(max_length=30, blank=True)
-    crm_status = models.CharField(max_length=30, choices=CRM_STATUS_CHOICES, default="1. Mới", db_index=True)
+    crm_status = models.CharField(
+        max_length=30, choices=CRM_STATUS_CHOICES, default=stages.POTENTIAL, db_index=True
+    )
     consult_detail = models.TextField(blank=True)
 
     # Tuition (payments, installments and refunds have their own models)
@@ -179,7 +175,7 @@ class Order(BaseModel):
     # Overdue first response: the consultant was reminded / the lead managers were alerted.
     overdue_alerted_at = models.DateTimeField(null=True, blank=True)
     escalated_at = models.DateTimeField(null=True, blank=True)
-    # Why the registration was cancelled ('7. Đã hủy'), for the lost-reason report.
+    # Why the registration was lost (a closed stage, apps.crm.stages), for the lost-reason report.
     lost_reason = models.CharField(max_length=200, blank=True)
     # Step 5 – terms of service accepted at checkout (version of /dieu-khoan).
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
@@ -248,7 +244,6 @@ class Order(BaseModel):
         receivable = self.total_receivable or self.amount
         if receivable and self.total_paid_amount >= receivable:
             self.status = "paid"
-            self.crm_status = "5. Đã đóng phí"
         if self.installment_count > 1:
             running = 0
             for installment in self.installments.order_by("sequence"):
@@ -256,6 +251,9 @@ class Order(BaseModel):
                 if installment.paid_at is None and self.total_paid_amount >= running:
                     installment.paid_at = timezone.now()
                     installment.save(update_fields=["paid_at", "updated_at"])
+        # The stage follows the money: paid in full / in part once they may study.
+        if self.compute_learning_access():
+            self.crm_status = stages.paid_stage(self)
 
 
 class Installment(BaseModel):

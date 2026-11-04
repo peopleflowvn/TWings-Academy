@@ -1,9 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { CalendarClock, X, XCircle } from 'lucide-react';
 import { useCrmLists } from '../../lib/crmLists';
-
-export const CARE_AGAIN = '6. Chăm sóc lại';
-export const CANCELLED = '7. Đã hủy';
+import { CALL_AGAIN, REFUSED_3 } from '../../lib/stages';
+import type { CRMStatus } from '../../types';
 
 
 export interface StageExtra {
@@ -18,8 +17,9 @@ const isoIn = (days: number) => {
 };
 
 /**
- * Stages that need something before the move (the server checks it too): "Chăm sóc lại" asks the day
- * to call back (a task is created), "Đã hủy" asks why (lost-reason report). Usage:
+ * Stages that need something before the move (the server checks it too): "0. Từ chối lần 1 / 2" ask the
+ * day to call back (a task is created), "0. Từ chối lần 3" asks why (lost-reason report); "Không gọi được",
+ * "Đăng ký nhầm" and "Test" carry their own reason. Usage:
  *   const gate = useStageGate();  ...  const extra = await gate.ask(stage); if (!extra) return;
  *   {gate.dialog}
  */
@@ -32,7 +32,7 @@ export function useStageGate() {
   const resolver = useRef<((v: StageExtra | null) => void) | null>(null);
 
   const ask = (next: string): Promise<StageExtra | null> => {
-    if (next !== CARE_AGAIN && next !== CANCELLED) return Promise.resolve({});
+    if (!CALL_AGAIN.includes(next as CRMStatus) && next !== REFUSED_3) return Promise.resolve({});
     setStage(next);
     setDate(isoIn(3));
     setReason('');
@@ -44,6 +44,7 @@ export function useStageGate() {
     resolver.current?.(value);
   };
   const lostReason = (reason === 'Khác' ? other : reason).trim();
+  const callAgain = stage !== null && CALL_AGAIN.includes(stage as CRMStatus);
 
   const dialog = stage ? (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-slate-900/50 p-0 sm:p-4" onClick={() => close(null)}>
@@ -55,14 +56,14 @@ export function useStageGate() {
       >
         <div className="flex items-center justify-between">
           <h3 className="font-black text-slate-900 flex items-center gap-2">
-            {stage === CARE_AGAIN ? <CalendarClock className="w-5 h-5 text-[#0073C1]" /> : <XCircle className="w-5 h-5 text-red-600" />}
-            {stage === CARE_AGAIN ? 'Chuyển sang "Chăm sóc lại"' : 'Hủy đăng ký'}
+            {callAgain ? <CalendarClock className="w-5 h-5 text-[#0073C1]" /> : <XCircle className="w-5 h-5 text-red-600" />}
+            {`Chuyển sang "${stage}"`}
           </h3>
           <button type="button" onClick={() => close(null)} className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer" aria-label="Đóng">
             <X className="w-5 h-5" />
           </button>
         </div>
-        {stage === CARE_AGAIN ? (
+        {callAgain ? (
           <div className="space-y-2 text-sm">
             <label className="block font-bold text-slate-700">Ngày gọi lại</label>
             <input type="date" value={date} min={isoIn(0)} onChange={(e) => setDate(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl" />
@@ -98,11 +99,11 @@ export function useStageGate() {
           </button>
           <button
             type="button"
-            disabled={stage === CARE_AGAIN ? !date : !lostReason}
-            onClick={() => close(stage === CARE_AGAIN ? { nextContactOn: date } : { lostReason })}
-            className={`px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-40 cursor-pointer ${stage === CARE_AGAIN ? 'bg-[#0073C1]' : 'bg-red-600'}`}
+            disabled={callAgain ? !date : !lostReason}
+            onClick={() => close(callAgain ? { nextContactOn: date } : { lostReason })}
+            className={`px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-40 cursor-pointer ${callAgain ? 'bg-[#0073C1]' : 'bg-red-600'}`}
           >
-            {stage === CARE_AGAIN ? 'Hẹn gọi lại' : 'Hủy đăng ký'}
+            {callAgain ? 'Hẹn gọi lại' : 'Từ chối'}
           </button>
         </div>
       </div>

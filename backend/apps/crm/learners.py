@@ -20,6 +20,7 @@ from django.db.models import Q
 
 from apps.core.crypto import blind_index
 
+from . import stages
 from .models import Activity, Learner, Order
 
 # Learner field -> Order field: the contact kept on each registration.
@@ -44,7 +45,7 @@ PERSON_FIELDS = [
 ]
 # What the learner must provide before studying (enrolment file).
 DOSSIER_REQUIRED = ["birth_date", "citizen_id", "permanent_address", "education_level"]
-ACTIVE = ~Q(status__in=("cancelled", "refunded")) & ~Q(crm_status="7. Đã hủy")
+ACTIVE = ~Q(status__in=("cancelled", "refunded")) & ~Q(crm_status__in=stages.CLOSED)
 
 
 def phone_key(phone: str) -> str:

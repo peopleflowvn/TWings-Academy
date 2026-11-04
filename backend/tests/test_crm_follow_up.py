@@ -123,18 +123,18 @@ def test_overdue_leads_remind_once_then_escalate(api, registration_payload, sent
 def test_care_again_needs_a_call_back_day_and_cancel_a_reason(staff_client, course):
     lan = make_staff(Role.SALES_CRM, "lan@twings.test")
     order = Order.objects.create(
-        customer_name="A", course=course, assigned_to=lan, crm_status="3. Đang tư vấn"
+        customer_name="A", course=course, assigned_to=lan, crm_status="2. Đang tư vấn"
     )
     client = staff_client(Role.SALES_CRM)
     url = f"/api/v1/staff/orders/{order.pk}/"
-    assert client.patch(url, {"crmStatus": "6. Chăm sóc lại"}, format="json").status_code == 400
-    res = client.patch(url, {"crmStatus": "6. Chăm sóc lại", "nextContactOn": "2026-11-20"}, format="json")
+    assert client.patch(url, {"crmStatus": "0. Từ chối lần 1"}, format="json").status_code == 400
+    res = client.patch(url, {"crmStatus": "0. Từ chối lần 1", "nextContactOn": "2026-11-20"}, format="json")
     assert res.status_code == 200, res.content
-    task = order.followup_tasks.get(title="Gọi lại (chăm sóc lại)")
+    task = order.followup_tasks.get(title="Gọi lại (từ chối lần 1)")
     assert task.due_date == date(2026, 11, 20) and task.owner == lan
 
-    assert client.patch(url, {"crmStatus": "7. Đã hủy"}, format="json").status_code == 400
-    res = client.patch(url, {"crmStatus": "7. Đã hủy", "lostReason": "Đã học nơi khác"}, format="json")
+    assert client.patch(url, {"crmStatus": "0. Từ chối lần 3"}, format="json").status_code == 400
+    res = client.patch(url, {"crmStatus": "0. Từ chối lần 3", "lostReason": "Đã học nơi khác"}, format="json")
     assert res.status_code == 200
     order.refresh_from_db()
     assert order.lost_reason == "Đã học nơi khác" and order.status == "cancelled"

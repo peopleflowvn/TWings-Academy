@@ -31,6 +31,7 @@ from apps.accounts.models import User
 from apps.catalog.models import Cohort, Course
 from apps.payments.models import Payment, Refund
 
+from . import stages
 from .learners import attach_learner, phone_key
 from .lists import normalize, plain
 from .models import Activity, Installment, Order
@@ -114,22 +115,30 @@ PLACEHOLDERS = {plain(h) for h in COLUMNS.values()} | {
     )
 }
 
-# The old "Trạng thái" -> (pipeline stage, lost reason); "contacted" = 2 if the lead was worked on, else 1.
-STAGES = {
-    "1. Tiềm năng": ("contacted", ""),
-    "2. Đang tư vấn": ("3. Đang tư vấn", ""),
-    "3. Đồng ý học": ("4. Hẹn gặp", ""),
-    "4. Cần đóng học phí": ("4. Hẹn gặp", ""),
-    "5. Đã đóng phí": ("5. Đã đóng phí", ""),
-    "6. Đã đóng 1 phần học phí": ("5. Đã đóng phí", ""),
-    "7. Onboard": ("5. Đã đóng phí", ""),
-    "0. Từ chối lần 1": ("6. Chăm sóc lại", ""),
-    "0. Từ chối lần 2": ("6. Chăm sóc lại", ""),
-    "0. Từ chối lần 3": ("7. Đã hủy", "Không có nhu cầu"),
-    "0. Không gọi được": ("7. Đã hủy", "Không liên lạc được"),
-    "0. Đăng ký nhầm": ("7. Đã hủy", "Đăng ký trùng / nhầm"),
+# The old "Trạng thái" is this system's stage (apps.crm.stages: the same list); the lost reason a refusal
+# stands for, for the lost-reason report.
+LOST = {
+    stages.REFUSED_3: "Không có nhu cầu",
+    stages.UNREACHABLE: "Không liên lạc được",
+    stages.MISTAKEN: "Đăng ký trùng / nhầm",
 }
-PAID_STAGE, CANCELLED_STAGE = "5. Đã đóng phí", "7. Đã hủy"
+CANCELLED_AFTER_PAYING = "Hủy sau khi đã đóng tiền"
+
+
+def legacy_stage(raw: str, *, enrolled: bool, paid_then_cancelled: bool, fully_paid: bool) -> tuple[str, str]:
+    """
+    The stage of an old registration and its lost reason: its "Trạng thái" when that agrees with what
+    happened, else what the money says (studied: paid in full / in part; cancelled after paying: refused).
+    """
+    raw = raw if raw in stages.STAGES else ""
+    if enrolled:
+        return (raw if raw in stages.ENROLLED else stages.PAID if fully_paid else stages.PART_PAID), ""
+    if paid_then_cancelled:
+        return (raw if raw in stages.CLOSED else stages.REFUSED_3), CANCELLED_AFTER_PAYING
+    if raw in stages.ENROLLED:  # said paid, nothing paid
+        raw = stages.TO_PAY
+    raw = raw or stages.POTENTIAL
+    return raw, LOST.get(raw, "")
 
 
 class LegacyImportError(Exception):
@@ -426,23 +435,23 @@ def plan(rows: list[dict]) -> tuple[list[dict], dict]:
         if isinstance(klass, int) and program not in ("rb", "eb"):
             e["course"] = courses[EB]  # every class of the old CRM is RB or EB; EB when it does not say
             warnings.append(f"Dòng {e['line']} ({e['name']}): không rõ RB/EB, xếp vào khóa EB.")
-        e["money"] = _money_plan(e)
-        if isinstance(klass, int):
-            e["stage"], e["lost"], e["class_no"] = PAID_STAGE, "", klass
-        elif klass == "deferred":
-            e["stage"], e["lost"], e["class_no"] = PAID_STAGE, "", None
-        elif klass == "cancelled":
-            e["stage"], e["lost"], e["class_no"] = CANCELLED_STAGE, "Hủy sau khi đã đóng tiền", None
-        else:
-            e["class_no"] = None
-            stage, lost = STAGES.get(e["status"], ("contacted", ""))
-            if stage == "contacted":
-                worked = e["detail"] or e["pic"] or e["approached"] or e["interest"]
-                stage = "2. Đã tiếp cận" if worked else "1. Mới"
-            e["stage"], e["lost"] = stage, lost
-            if stage == PAID_STAGE and e["course"] is None:
-                warnings.append(f"Dòng {e['line']} ({e['name']}): đã đóng phí nhưng không rõ khóa.")
-        if e["stage"] == PAID_STAGE and e["class_no"] is None and klass != "deferred":
+        e["money"] = money = _money_plan(e)
+        e["class_no"] = klass if isinstance(klass, int) else None
+        e["cancelled"] = klass == "cancelled"
+        e["enrolled"] = (
+            isinstance(klass, int)
+            or klass == "deferred"
+            or (not e["cancelled"] and e["status"] in stages.ENROLLED)
+        )
+        e["stage"], e["lost"] = legacy_stage(
+            e["status"],
+            enrolled=e["enrolled"],
+            paid_then_cancelled=e["cancelled"],
+            fully_paid=money["full"],
+        )
+        if e["enrolled"] and e["course"] is None:
+            warnings.append(f"Dòng {e['line']} ({e['name']}): đã đóng phí nhưng không rõ khóa.")
+        if e["enrolled"] and e["class_no"] is None and klass != "deferred":
             warnings.append(f"Dòng {e['line']} ({e['name']}): đã đóng phí nhưng CRM cũ chưa xếp lớp.")
         if not e["phone"] and not e["email"]:
             warnings.append(f"Dòng {e['line']} ({e['name']}): không có số điện thoại / email hợp lệ.")
@@ -476,7 +485,7 @@ def plan(rows: list[dict]) -> tuple[list[dict], dict]:
         "stages": dict(Counter(e["stage"] for e in entries)),
         "deferred": sum(1 for e in entries if e["klass"] == "deferred"),
         "paidWithoutClass": sum(
-            1 for e in entries if e["stage"] == PAID_STAGE and not e["class_no"] and e["klass"] != "deferred"
+            1 for e in entries if e["enrolled"] and not e["class_no"] and e["klass"] != "deferred"
         ),
         "classes": [
             {
@@ -561,8 +570,7 @@ def _note(e: dict) -> str:
 def _write(e: dict, cohort: Cohort | None, users: dict, actor: str) -> Order:
     money = e["money"]
     stage = e["stage"]
-    enrolled = stage == PAID_STAGE
-    cancelled = stage == CANCELLED_STAGE
+    enrolled, cancelled = e["enrolled"], e["cancelled"] or stage in stages.CLOSED
     partial = enrolled and not money["full"] and money["receivable"] > money["paid_sum"]
     # A learner of a class who still owed part of the fee studies on the first installment (what was paid);
     # without a class the debt stays on the registration.
@@ -581,7 +589,7 @@ def _write(e: dict, cohort: Cohort | None, users: dict, actor: str) -> Order:
     elif cohort is not None:
         training = "Đang học" if cohort.status == "in_progress" else "Hoàn thành"
     registered = e["registered"] or timezone.now()
-    worked = stage != "1. Mới"
+    worked = stage != stages.POTENTIAL or bool(e["detail"] or e["pic"] or e["approached"] or e["interest"])
     order = Order(
         course=e["course"],
         course_title=e["course"].title if e["course"] else "",
@@ -704,14 +712,14 @@ def fix(fixes: list[dict], *, apply: bool) -> list[str]:
                         }
                     )
                     order.cohort, order.batch_cohort = cohort, cohort.name
-                    order.crm_status = PAID_STAGE
+                    order.crm_status = stages.paid_stage(order)
                     order.training_status = "Hoàn thành" if cohort.status == "completed" else "Đang học"
                 notes.append(f"xếp vào Khóa {number} ({cohort_code}{'' if cohort else ', tạo lớp mới'})")
             if "cancel" in f:
                 refund = int(f.get("refund") or 0)
                 if apply:
                     order.cohort, order.batch_cohort = None, ""
-                    order.crm_status, order.lost_reason = CANCELLED_STAGE, str(f["cancel"])[:200]
+                    order.crm_status, order.lost_reason = stages.REFUSED_3, str(f["cancel"])[:200]
                     order.training_status = ""
                     order.installments.filter(paid_at__isnull=True).delete()
                     order.installment_count = 1
@@ -739,3 +747,55 @@ def fix(fixes: list[dict], *, apply: bool) -> list[str]:
                 )
             done.append(f"{who}: " + "; ".join(notes))
     return done
+
+
+def restage(statuses: dict[str, str], *, apply: bool) -> dict:
+    """
+    Put each imported registration ({"Mã đăng ký": old "Trạng thái"}) in the stage its old status names,
+    unless what happened since says otherwise (legacy_stage); a registration in a closed stage with
+    nothing paid is cancelled. Returns the counts per stage and what changed; nothing is e-mailed.
+    """
+    moved, missing = Counter(), []
+    result = Counter()
+    with transaction.atomic():
+        orders = {
+            o.attribution.get("legacy_code"): o
+            for o in Order.objects.filter(attribution__has_key="legacy_code")
+        }
+        for code, raw in statuses.items():
+            order = orders.get(" ".join(str(code).split()))
+            if order is None:
+                missing.append(code)
+                continue
+            raw = " ".join(str(raw or "").split())
+            stage, lost = legacy_stage(
+                raw,
+                # studies, or paid and deferred (bảo lưu: no class, the money kept)
+                enrolled=order.learning_access
+                or (raw in stages.ENROLLED and order.total_paid_amount > 0 and order.status == "pending"),
+                paid_then_cancelled=order.status in ("cancelled", "refunded") and order.total_paid_amount > 0,
+                fully_paid=order.status == "paid"
+                or order.total_paid_amount >= (order.total_receivable or order.amount),
+            )
+            result[stage] += 1
+            if stage == order.crm_status:
+                continue
+            moved[f"{order.crm_status} → {stage}"] += 1
+            if apply:
+                old = order.crm_status
+                order.crm_status = stage
+                if stage in stages.CLOSED:
+                    order.lost_reason = order.lost_reason or lost
+                    if order.status == "pending" and not order.total_paid_amount:
+                        order.status = "cancelled"
+                elif order.status == "cancelled" and not order.total_paid_amount:
+                    order.status = "pending"
+                order.save(update_fields=["crm_status", "lost_reason", "status", "updated_at"])
+                Activity.objects.create(
+                    order=order,
+                    type="note",
+                    title="Giai đoạn theo CRM cũ",
+                    content=f"{old} → {stage}" + (f" (trạng thái cũ: {raw})" if raw and raw != stage else ""),
+                    actor=LEGACY,
+                )
+    return {"stages": dict(result), "moved": dict(moved), "missing": missing}

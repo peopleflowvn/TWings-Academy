@@ -22,7 +22,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from apps.catalog.models import Cohort
-        from apps.crm import journeys
+        from apps.crm import journeys, stages
         from apps.crm.assignment import overdue_leads
         from apps.crm.legacy_import import EB, RB
         from apps.crm.lists import values
@@ -106,9 +106,9 @@ class Command(BaseCommand):
             not_studying.values_list("order_code", flat=True),
         )
         check(
-            not in_ext.exclude(crm_status="5. Đã đóng phí").exists(),
-            "học viên trong lớp cũ ở giai đoạn Đã đóng phí",
-            in_ext.exclude(crm_status="5. Đã đóng phí").values_list("order_code", flat=True),
+            not in_ext.exclude(crm_status__in=stages.ENROLLED).exists(),
+            "học viên trong lớp cũ ở giai đoạn đã đóng phí (5 / 6 / 7)",
+            in_ext.exclude(crm_status__in=stages.ENROLLED).values_list("order_code", flat=True),
         )
         check(
             not in_ext.filter(status__in=("cancelled", "refunded")).exists(),
@@ -265,10 +265,21 @@ class Command(BaseCommand):
         check(
             not off, "trạng thái đào tạo theo danh mục (mọi đăng ký)", [f"{k} ({v})" for k, v in off.items()]
         )
-        cancelled = legacy.filter(crm_status="7. Đã hủy")
+        cancelled = legacy.filter(crm_status__in=stages.CLOSED)
+        check(
+            not legacy.exclude(crm_status__in=stages.STAGES).exists(),
+            "giai đoạn theo danh mục CRM cũ (cột G)",
+            legacy.exclude(crm_status__in=stages.STAGES).values_list("order_code", flat=True),
+        )
+        unpaid = legacy.filter(crm_status__in=stages.ENROLLED, learning_access=False, total_paid_amount=0)
+        check(
+            not unpaid.exists(),
+            "giai đoạn đã đóng phí (5 / 6 / 7) chỉ ở đăng ký đã thu tiền",
+            unpaid.values_list("order_code", flat=True),
+        )
         check(
             not cancelled.filter(lost_reason="").exists(),
-            "đăng ký đã hủy đều có lý do",
+            "đăng ký đã đóng (từ chối lần 3, không gọi được, nhầm) đều có lý do",
             cancelled.filter(lost_reason="").values_list("order_code", flat=True),
         )
         check(

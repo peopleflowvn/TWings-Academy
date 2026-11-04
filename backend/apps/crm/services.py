@@ -8,6 +8,7 @@ from django.utils import timezone
 from apps.catalog.models import Cohort, Coupon, Course, Program
 from apps.core.models import audit
 
+from . import stages
 from .models import Activity, Installment, Order
 
 
@@ -199,13 +200,14 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
         installment_count=installments,
         payment_method="free" if amount == 0 else "vietqr",
         source=source,
-        crm_status="1. Mới",
+        # An online checkout asks for the payment; a consultation request is a new lead.
+        crm_status=stages.TO_PAY if with_payment and amount > 0 else stages.POTENTIAL,
     )
     if with_payment and amount > 0:
         order.hold_expires_at = timezone.now() + timedelta(hours=settings.CHECKOUT_HOLD_HOURS)
     if amount == 0 and with_payment:
         order.status = "paid"
-        order.crm_status = "5. Đã đóng phí"
+        order.crm_status = stages.PAID
         order.paid_at = timezone.now()
     order.save()
     if installments > 1:
@@ -342,7 +344,10 @@ def create_staff_lead(request, serializer) -> Order:
     from .assignment import assign_new_lead
 
     data = serializer.validated_data
-    extra = {"source": data.get("source") or "Nhập tay", "crm_status": data.get("crm_status") or "1. Mới"}
+    extra = {
+        "source": data.get("source") or "Nhập tay",
+        "crm_status": data.get("crm_status") or stages.POTENTIAL,
+    }
     course, program = data.get("course"), data.get("program")
     check_sellable(course, program)
     if course is not None or program is not None:

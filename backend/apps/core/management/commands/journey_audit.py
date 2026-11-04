@@ -10,6 +10,8 @@ from django.core.management.base import BaseCommand
 from django.db.models import Count, Q
 from django.utils import timezone
 
+from apps.crm import stages
+
 
 class Command(BaseCommand):
     help = "Print a JSON summary of journey steps 1-6 (setup gaps and service levels)."
@@ -75,7 +77,7 @@ class Command(BaseCommand):
                 "open_leads_without_consultant": leads.filter(
                     status="pending",
                     assigned_to__isnull=True,
-                    crm_status__in=["1. Mới", "2. Đã tiếp cận", "3. Đang tư vấn"],
+                    crm_status__in=stages.OPEN,
                 ).count(),
                 "overdue_first_response": overdue_leads().count(),
                 "appointments_upcoming": Appointment.objects.filter(

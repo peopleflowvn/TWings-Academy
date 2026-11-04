@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import require_perms
 from apps.accounts.rbac import has_perm_code
+from apps.crm import stages
 
 
 def _months(n: int) -> list[date]:
@@ -89,7 +90,7 @@ def sales_report(start, months) -> dict:
         "consultants": consultant_report(recent),
         "lostReasons": [
             {"reason": r["lost_reason"] or "(không ghi lý do)", "count": r["n"]}
-            for r in recent.filter(crm_status="7. Đã hủy")
+            for r in recent.filter(crm_status__in=stages.CLOSED)
             .values("lost_reason")
             .annotate(n=Count("id"))
             .order_by("-n")[:15]
@@ -149,7 +150,7 @@ def consultant_report(recent) -> list[dict]:
         row["converted"] += o.learning_access
         row["revenue"] += max(o.total_paid_amount - o.refunded_amount, 0)
         row["overdue"] += o.pk in overdue
-        row["lost"] += o.crm_status == "7. Đã hủy"
+        row["lost"] += o.crm_status in stages.CLOSED
         if o.first_response_at:
             row["responses"].append((o.first_response_at - o.created_at).total_seconds() / 3600)
     out = []

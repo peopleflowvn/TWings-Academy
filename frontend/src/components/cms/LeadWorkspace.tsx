@@ -44,16 +44,9 @@ import { api, Paginated } from '../../lib/api';
 import { useIsSuperAdmin, useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
 import { useCrmLists, withCurrent } from '../../lib/crmLists';
+import { blockedMove, FROM_PAYMENTS, POTENTIAL, STAGES } from '../../lib/stages';
 
-const CRM_STAGES: { id: CRMStatus; label: string }[] = [
-  { id: '1. Mới', label: 'Mới' },
-  { id: '2. Đã tiếp cận', label: 'Đã tiếp cận' },
-  { id: '3. Đang tư vấn', label: 'Đang tư vấn' },
-  { id: '4. Hẹn gặp', label: 'Hẹn gặp' },
-  { id: '5. Đã đóng phí', label: 'Đã đóng phí' },
-  { id: '6. Chăm sóc lại', label: 'Chăm sóc lại' },
-  { id: '7. Đã hủy', label: 'Đã hủy' }
-];
+const CRM_STAGES = STAGES; // the old CRM's "Trạng thái khách hàng" (lib/stages.ts)
 
 interface LeadWorkspaceProps {
   order: Order;
@@ -285,12 +278,14 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   // Pipeline stage click
   const gate = useStageGate();
   const handleStageSelect = async (nextStage: CRMStatus) => {
-    // "Đã đóng phí" follows a recorded payment (bank webhook or finance confirmation), never a click.
-    if (nextStage === '5. Đã đóng phí' && order.status !== 'paid') {
-      setActiveTab('payment');
+    // The paid stages follow a recorded payment (bank webhook or finance confirmation), never a click.
+    if (nextStage === (saved.crmStatus || POTENTIAL)) return;
+    const blocked = blockedMove(saved, nextStage);
+    if (blocked) {
+      if (FROM_PAYMENTS.includes(nextStage)) setActiveTab('payment');
+      else window.alert(blocked);
       return;
     }
-    if (nextStage === (saved.crmStatus || '1. Mới')) return;
     const extra = await gate.ask(nextStage); // call-back day / reason to cancel
     if (!extra) return;
     commit((o) => ({ ...o, crmStatus: nextStage, ...extra }));
@@ -350,7 +345,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
     }));
   };
 
-  const currentStage = order.crmStatus || '1. Mới';
+  const currentStage = order.crmStatus || POTENTIAL;
 
   const filteredActivities = (order.timelineActivities || []).filter((act) => {
     if (activityFilter === 'all') return true;
@@ -567,10 +562,12 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
               </span>
             </div>
 
-            <div className="overflow-x-auto -mx-1 px-1"><div className="grid grid-cols-7 gap-1 bg-slate-100/80 p-1 rounded-xl min-w-[640px]">
+            <div className="overflow-x-auto -mx-1 px-1"><div className="grid grid-cols-[repeat(13,minmax(96px,1fr))] gap-1 bg-slate-100/80 p-1 rounded-xl min-w-[1300px]">
               {CRM_STAGES.map((st, index) => {
                 const isCurrent = currentStage === st.id;
-                const isPassed = CRM_STAGES.findIndex((s) => s.id === currentStage) >= index;
+                // The way forward lights up to the current stage; a refusal lights only itself.
+                const at = CRM_STAGES.findIndex((s) => s.id === currentStage);
+                const isPassed = isCurrent || (index < 7 && at < 7 && at >= index);
 
                 return (
                   <button
@@ -584,7 +581,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                         ? 'text-blue-800 font-semibold hover:bg-white/60'
                         : 'text-slate-500 hover:text-slate-800 hover:bg-white/40'
                     }`}
-                    title={st.id === '5. Đã đóng phí' && order.status !== 'paid' ? 'Tự chuyển khi ghi nhận thanh toán' : st.id}
+                    title={blockedMove(order, st.id) || st.id}
                   >
                     <span className={`w-2 h-2 rounded-full shrink-0 ${isPassed ? 'bg-blue-600' : 'bg-slate-300'}`} />
                     <span className="truncate">{st.label}</span>

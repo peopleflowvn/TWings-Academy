@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarClock, CheckSquare, GraduationCap, TrendingUp, U
 import { api } from '../../lib/api';
 import { AdminUser } from '../../types';
 import { linkProps } from '../router';
+import { STAGES as STAGE_LIST } from '../../lib/stages';
 
 interface DashboardData {
   generatedAt: string;
@@ -36,7 +37,7 @@ const callName = (name: string) => {
   const parts = (name || '').trim().split(/\s+/);
   return parts.length >= 3 ? parts[parts.length - 1] : parts.join(' ');
 };
-const STAGES = ['1. Mới', '2. Đã tiếp cận', '3. Đang tư vấn', '4. Hẹn gặp', '5. Đã đóng phí', '6. Chăm sóc lại', '7. Đã hủy'];
+const STAGES = STAGE_LIST.map((s) => s.id); // lib/stages.ts
 
 const Stat: React.FC<{ label: string; value: string | number; icon: React.ElementType; tone?: string; to?: string }> = ({
   label,

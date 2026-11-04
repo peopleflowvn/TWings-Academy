@@ -20,11 +20,12 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.html import escape
 
+from . import stages
 from .models import Activity, Appointment, FollowupTask, Order
 
 logger = logging.getLogger(__name__)
 
-OPEN_STAGES = ("1. Mới", "2. Đã tiếp cận", "3. Đang tư vấn", "4. Hẹn gặp")
+OPEN_STAGES = stages.OPEN
 CONTACT_TYPES = ("call", "zalo", "email", "meeting")
 WORK_START, WORK_END = time(8, 0), time(20, 0)
 
@@ -260,7 +261,7 @@ def overdue_leads():
         status="pending",
         first_response_at__isnull=True,
         response_due_at__lt=timezone.now(),
-    ).exclude(crm_status="7. Đã hủy")
+    ).exclude(crm_status__in=stages.CLOSED)
 
 
 def _send(to: list[str], subject: str, html: str, key: str) -> None:

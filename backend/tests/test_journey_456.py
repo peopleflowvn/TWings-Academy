@@ -42,7 +42,7 @@ def test_new_lead_goes_to_the_least_busy_consultant(api, registration_payload):
     away = make_staff(Role.SALES_CRM, "away@twings.test")
     away.receives_leads = False
     away.save()
-    Order.objects.create(customer_name="X", assigned_to=busy, crm_status="3. Đang tư vấn")
+    Order.objects.create(customer_name="X", assigned_to=busy, crm_status="2. Đang tư vấn")
     order = _register(api, registration_payload)
     assert order.assigned_to == free and order.pic and order.response_due_at
     task = FollowupTask.objects.get(order=order)
@@ -80,7 +80,7 @@ def test_appointment_confirms_reminds_and_moves_the_pipeline(api, registration_p
     )
     assert res.status_code == 201, res.content
     order.refresh_from_db()
-    assert order.crm_status == "4. Hẹn gặp" and order.first_response_at
+    assert order.crm_status == "2. Đang tư vấn" and order.first_response_at
     assert remind_appointments() == 1 and remind_appointments() == 0
     codes = set(EmailLog.objects.filter(order=order).values_list("template_code", flat=True))
     assert {"appointment_reminder"} <= codes

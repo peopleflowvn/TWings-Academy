@@ -49,7 +49,7 @@ class OrderSerializer(NormalizeListFields, serializers.ModelSerializer):
     )
     timeline_activities = ActivitySerializer(many=True, read_only=True)
     followup_tasks = FollowupTaskSerializer(many=True, read_only=True)
-    # Moving a lead to '6. Chăm sóc lại' needs the day to call back (a task is created for it).
+    # Moving a lead to '0. Từ chối lần 1 / 2' needs the day to call back (a task is created for it).
     next_contact_on = serializers.DateField(write_only=True, required=False)
     duplicate_count = serializers.SerializerMethodField()
     related_orders = serializers.SerializerMethodField()
@@ -137,8 +137,6 @@ class OrderSerializer(NormalizeListFields, serializers.ModelSerializer):
 
         return None if self._is_list() else active_duplicates(obj).count()
 
-
-PAID_STAGE = "5. Đã đóng phí"
 
 # Field groups that need a specific permission to change (beyond basic CRM editing).
 FINANCE_FIELDS = {

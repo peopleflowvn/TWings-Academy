@@ -8,6 +8,7 @@ task. A transfer arriving later is left unmatched; finance can restore the order
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
+from apps.crm import stages
 from apps.crm.models import Activity, FollowupTask, Order
 
 
@@ -18,7 +19,7 @@ def expire_checkouts(now=None) -> int:
         status="pending", hold_expires_at__lt=now, total_paid_amount=0, parent__isnull=True
     ):
         order.status, order.hold_expires_at = "cancelled", None
-        order.crm_status = "6. Chăm sóc lại"
+        order.crm_status = stages.AGREED  # wanted it, did not pay: the consultant follows up
         order.save(update_fields=["status", "hold_expires_at", "crm_status", "updated_at"])
         Activity.objects.create(
             order=order,

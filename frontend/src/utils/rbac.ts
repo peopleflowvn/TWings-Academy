@@ -18,7 +18,7 @@ export const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
     id: 'perm-crm-2',
     code: 'crm.edit_status',
     name: 'Cập nhật tiến trình tư vấn (Pipeline)',
-    description: 'Chuyển đổi trạng thái từ 1. Mới đến 5. Đã đóng phí và 7. Đã hủy',
+    description: 'Chuyển giai đoạn khách hàng (1. Tiềm năng … 7. Onboard, các trạng thái từ chối)',
     category: 'crm',
     categoryLabel: '1. CRM & Quản Lý Đơn Hàng',
     riskLevel: 'medium'

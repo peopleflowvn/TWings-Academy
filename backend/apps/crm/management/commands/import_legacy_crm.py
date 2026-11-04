@@ -5,7 +5,8 @@ The CRM workbook kept before this system (apps.crm.legacy_import): learners, reg
 the RB / EB classes run on the old platform. "-" reads the compact copy of the sheet (JSON rows, xz,
 base64) from stdin, which is how the Ops task "legacy-crm" brings it to the server (the data is never
 in the repository). Preview unless --apply; importing again adds only the rows not imported yet.
-A copy that is {"fixes": [...]} instead corrects imported registrations (legacy_import.fix).
+A copy that is {"fixes": [...]} instead corrects imported registrations (legacy_import.fix); one that is
+{"stages": {code: old status}} puts them in the stage of their old status (legacy_import.restage).
 Nothing is e-mailed.
 """
 
@@ -13,7 +14,7 @@ import sys
 
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.crm.legacy_import import LegacyImportError, fix, read_compact, read_workbook, run
+from apps.crm.legacy_import import LegacyImportError, fix, read_compact, read_workbook, restage, run
 
 
 class Command(BaseCommand):
@@ -26,6 +27,16 @@ class Command(BaseCommand):
     def handle(self, source, apply, **options):
         try:
             table = read_compact(sys.stdin.read()) if source == "-" else read_workbook(source)
+            if isinstance(table, dict) and "stages" in table:
+                done = restage(table["stages"], apply=apply)
+                for stage, n in sorted(done["stages"].items()):
+                    self.stdout.write(f"  {stage}: {n}")
+                for move, n in sorted(done["moved"].items()):
+                    self.stdout.write(f"đổi {move}: {n}")
+                if done["missing"]:
+                    self.stdout.write(f"! không tìm thấy {len(done['missing'])} mã đăng ký")
+                self.stdout.write("Đã ghi." if apply else "Xem trước: chưa ghi gì (thêm --apply để ghi).")
+                return
             if isinstance(table, dict):
                 for line in fix(table["fixes"], apply=apply):
                     self.stdout.write(line)

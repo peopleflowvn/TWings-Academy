@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from apps.crm import stages
 from apps.crm.models import ORDER_CODE_ALPHABET, Activity, FollowupTask, Order
 
 from .models import BankTransaction, Payment, Refund
@@ -218,7 +219,8 @@ def refund_order(
     full = order.refunded_amount >= order.total_paid_amount
     if full or revoke_access:
         order.status = "refunded"
-        order.crm_status = "7. Đã hủy"
+        order.crm_status = stages.REFUSED_3
+        order.lost_reason = order.lost_reason or "Hoàn tiền / dừng học"
     order.save()
     Activity.objects.create(
         order=order,

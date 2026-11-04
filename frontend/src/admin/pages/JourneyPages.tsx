@@ -4,6 +4,8 @@ import { api, ApiError, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { formatVND } from '../../lib/commerce';
 import { Appointment, CHANNEL_LABEL, STATUS_LABEL } from '../../components/cms/LeadContactPanel';
+import { OPEN } from '../../lib/stages';
+import type { CRMStatus } from '../../types';
 
 interface Consultant {
   id: string;
@@ -52,7 +54,7 @@ export const ConsultingPage: React.FC = () => {
   const loadUnassigned = () =>
     api
       .get<Paginated<UnassignedLead>>('/staff/orders/?unassigned=1&status=pending&ordering=created_at&pageSize=100')
-      .then((r) => setUnassigned(r.results.filter((o) => !['5. Đã đóng phí', '7. Đã hủy'].includes(o.crmStatus))))
+      .then((r) => setUnassigned(r.results.filter((o) => OPEN.includes(o.crmStatus as CRMStatus))))
       .catch(() => setUnassigned([]));
 
   const loadTeam = () => api.get<Consultant[]>('/staff/consultants/').then(setTeam).catch((e: Error) => setError(e.message));

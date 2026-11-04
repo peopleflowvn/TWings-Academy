@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, BarChart3, ChevronLeft, ChevronRight, Download, Edit, LayoutGrid, Loader2, Plus, Search, Table as TableIcon, X } from 'lucide-react';
 import { CRMStatus, Course, Order } from '../../types';
+import { blockedMove, CLOSED, FROM_PAYMENTS, STAGES, stageOf } from '../../lib/stages';
 import type { IntakeRow } from '../../admin/pages/IntakesPage';
 import { api, API_ROOT, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
@@ -26,18 +27,8 @@ interface LeadPipelineViewProps {
   onOpenEditClass: () => void;
 }
 
-// The CRM stages of an order (Order.crmStatus). "Đã đóng phí" reflects a recorded payment: it is never
-// set by moving a card (payments are recorded in the lead workspace, with the finance permission).
-const STAGES: { id: CRMStatus; label: string; dot: string }[] = [
-  { id: '1. Mới', label: 'Mới', dot: 'bg-blue-500' },
-  { id: '2. Đã tiếp cận', label: 'Đã tiếp cận', dot: 'bg-indigo-500' },
-  { id: '3. Đang tư vấn', label: 'Đang tư vấn', dot: 'bg-amber-500' },
-  { id: '4. Hẹn gặp', label: 'Hẹn gặp', dot: 'bg-orange-500' },
-  { id: '5. Đã đóng phí', label: 'Đã đóng phí', dot: 'bg-emerald-500' },
-  { id: '6. Chăm sóc lại', label: 'Chăm sóc lại', dot: 'bg-slate-400' },
-  { id: '7. Đã hủy', label: 'Đã hủy', dot: 'bg-red-400' }
-];
-const PAID_STAGE: CRMStatus = '5. Đã đóng phí';
+// The CRM stages (lib/stages.ts): the old CRM's "Trạng thái khách hàng". The paid stages follow the
+// recorded payments; they are never set by moving a card.
 /** Leads loaded per kanban column at a time (each column pages on its own). */
 const COLUMN_SIZE = 30;
 const PAGE_SIZE = 50;
@@ -51,12 +42,11 @@ interface Consultant { id: string; name: string }
 interface CohortOption { id: string; name: string; course: string }
 
 const vnd = (n?: number) => `${new Intl.NumberFormat('vi-VN').format(n || 0)} ₫`;
-const stageOf = (o: Order): CRMStatus => o.crmStatus || '1. Mới';
 const hhmm = (iso: string) => new Date(iso).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
 
 /** First-response commitment of a new lead: late, due, or done. */
 function responseState(o: Order): 'late' | 'due' | null {
-  if (o.firstResponseAt || !o.responseDueAt || o.status !== 'pending' || stageOf(o) === '7. Đã hủy') return null;
+  if (o.firstResponseAt || !o.responseDueAt || o.status !== 'pending' || CLOSED.includes(stageOf(o))) return null;
   return new Date(o.responseDueAt).getTime() < Date.now() ? 'late' : 'due';
 }
 
@@ -226,12 +216,13 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   const moveStage = async (o: Order, next: CRMStatus) => {
     setNotice('');
     if (next === stageOf(o)) return;
-    if (next === PAID_STAGE && o.status !== 'paid') {
-      setNotice(`"Đã đóng phí" chỉ có sau khi ghi nhận thanh toán. Mở hồ sơ ${o.customerName} để xem hướng dẫn thanh toán.`);
-      onOpenLeadDetail(o);
+    const blocked = blockedMove(o, next);
+    if (blocked) {
+      setNotice(`${o.customerName}: ${blocked}`);
+      if (FROM_PAYMENTS.includes(next)) onOpenLeadDetail(o);
       return;
     }
-    // "Chăm sóc lại" needs the call-back day, "Đã hủy" the reason.
+    // "Từ chối lần 1 / 2" need the call-back day, "Từ chối lần 3" the reason.
     const extra = await gate.ask(next);
     if (!extra) return;
     setRows((list) => list.map((r) => (r.id === o.id ? { ...r, crmStatus: next } : r)));
@@ -278,7 +269,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
       title="Chuyển giai đoạn"
     >
       {STAGES.map((s) => (
-        <option key={s.id} value={s.id} disabled={s.id === PAID_STAGE && o.status !== 'paid'}>
+        <option key={s.id} value={s.id} disabled={blockedMove(o, s.id) !== null}>
           {s.label}
         </option>
       ))}
@@ -412,7 +403,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
 
       {layout === 'kanban' && (
         <div className={`overflow-x-auto pb-4 ${loading ? 'opacity-60' : ''}`}>
-          <div className="flex items-start gap-3 min-w-[1400px]">
+          <div className="flex items-start gap-3 w-max">
             {STAGES.map((s) => {
               const deals = rows.filter((o) => stageOf(o) === s.id);
               const total = stageCount(s.id);

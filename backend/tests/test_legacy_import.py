@@ -202,17 +202,21 @@ def test_import_creates_the_old_classes_learners_and_payments_once():
     assert b.training_status == "Đang học"
 
     c = Order.objects.get(customer_name="Lê C")
-    assert (c.cohort, c.training_status, c.crm_status) == (None, "Bảo lưu", "5. Đã đóng phí")
+    assert (c.cohort, c.training_status, c.crm_status) == (None, "Bảo lưu", "6. Đã đóng 1 phần học phí")
     d = Order.objects.get(customer_name="Phạm D")
     assert (d.status, d.crm_status, d.lost_reason, d.total_paid_amount) == (
         "cancelled",
-        "7. Đã hủy",
+        "0. Từ chối lần 3",
         "Hủy sau khi đã đóng tiền",
         2_000_000,
     )
     stages = {o.customer_name: (o.crm_status, o.lost_reason) for o in Order.objects.all()}
-    assert stages["Đỗ E"] == ("3. Đang tư vấn", "") and stages["Vũ F"] == ("7. Đã hủy", "Không liên lạc được")
-    assert stages["Hà G"][0] == "6. Chăm sóc lại" and stages["Mai H"][0] == "6. Chăm sóc lại"
+    # The stage is the old "Trạng thái" itself (the same list).
+    assert stages["Đỗ E"] == ("2. Đang tư vấn", "") and stages["Vũ F"] == (
+        "0. Không gọi được",
+        "Không liên lạc được",
+    )
+    assert stages["Hà G"][0] == "0. Từ chối lần 1" and stages["Mai H"][0] == "0. Từ chối lần 1"
     assert Order.objects.get(customer_name="Mai H").cohort is None
     assert Order.objects.get(customer_name="Đỗ E").source == "TNEX"
     assert Payment.objects.count() == 4 and Learner.objects.count() == 8
@@ -309,7 +313,12 @@ def test_corrections_after_the_import(monkeypatch):
         "Hoàn thành",
     )
     b = Order.objects.get(customer_name="Trần Thị B")
-    assert (b.status, b.cohort, b.crm_status, b.refunded_amount) == ("refunded", None, "7. Đã hủy", 2_000_000)
+    assert (b.status, b.cohort, b.crm_status, b.refunded_amount) == (
+        "refunded",
+        None,
+        "0. Từ chối lần 3",
+        2_000_000,
+    )
     assert Refund.objects.get().order == b and not b.installments.filter(paid_at__isnull=True).exists()
     a = Order.objects.get(customer_name="Nguyễn Văn A")
     assert (a.status, a.cohort, a.total_paid_amount) == ("cancelled", None, 8_100_000)  # the money stays

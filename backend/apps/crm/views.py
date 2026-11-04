@@ -19,12 +19,11 @@ from apps.accounts.rbac import has_perm_code
 from apps.catalog.models import Cohort
 from apps.core.models import audit
 
-from . import journeys
+from . import journeys, stages
 from .models import Activity, Appointment, FollowupTask, Order
 from .serializers import (
     ASSIGN_FIELDS,
     FINANCE_FIELDS,
-    PAID_STAGE,
     ActivitySerializer,
     FollowupTaskSerializer,
     OrderSerializer,
@@ -51,9 +50,6 @@ class PublicRegistrationView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
-
-CANCELLED_STAGE = "7. Đã hủy"
-CARE_AGAIN_STAGE = "6. Chăm sóc lại"
 
 # CSV export: registrations only (identity documents and addresses stay on the learner page).
 EXPORT_FIELDS = [
@@ -198,12 +194,21 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def _guard_payment_state(serializer):
-        """'Paid' (status and the 'Đã đóng phí' stage) follows recorded payments, never a field edit."""
+        """'Paid' (the status and the paid stages) follows recorded payments, never a field edit."""
         data, order = serializer.validated_data, serializer.instance
-        status = data.get("status", order.status if order else "pending")
-        if data.get("crm_status") == PAID_STAGE and status != "paid":
+        stage = data.get("crm_status")
+        current = order.crm_status if order else None
+        if stage in stages.FROM_PAYMENTS and stage != current:
             raise serializers.ValidationError(
-                {"crm_status": "Giai đoạn 'Đã đóng phí' chỉ có sau khi ghi nhận thanh toán."}
+                {"crm_status": f"Giai đoạn '{stage}' tự chuyển khi ghi nhận thanh toán."}
+            )
+        if stage == stages.ONBOARD and not (order and order.learning_access):
+            raise serializers.ValidationError(
+                {"crm_status": "Chỉ Onboard được học viên đã đóng phí (đủ hoặc đợt 1)."}
+            )
+        if stage and stage not in stages.ENROLLED and order and order.learning_access:
+            raise serializers.ValidationError(
+                {"crm_status": "Học viên đã đóng phí: muốn dừng học thì hoàn tiền / kết thúc ghi danh."}
             )
         if data.get("status") == "paid" and (order is None or order.status != "paid"):
             receivable = (order.total_receivable or order.amount) if order else data.get("amount", 0)
@@ -222,17 +227,18 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def _stage_requirements(serializer):
-        """'Chăm sóc lại' needs a call-back day; 'Đã hủy' needs the reason (lost-reason report)."""
+        """'Từ chối lần 1 / 2' need a call-back day; a closed stage needs its reason (lost-reason report)."""
         data, order = serializer.validated_data, serializer.instance
         stage = data.get("crm_status")
         if not stage or stage == order.crm_status:
             return None
-        if stage == CARE_AGAIN_STAGE and not data.get("next_contact_on"):
-            raise serializers.ValidationError(
-                {"next_contact_on": "Chọn ngày gọi lại khi chuyển 'Chăm sóc lại'."}
-            )
-        if stage == CANCELLED_STAGE and not (data.get("lost_reason") or "").strip():
-            raise serializers.ValidationError({"lost_reason": "Ghi lý do hủy đăng ký."})
+        if stage in stages.CALL_AGAIN and not data.get("next_contact_on"):
+            raise serializers.ValidationError({"next_contact_on": f"Chọn ngày gọi lại khi chuyển '{stage}'."})
+        if stage in stages.CLOSED:
+            reason = (data.get("lost_reason") or "").strip() or stages.CLOSED_REASON.get(stage, "")
+            if not reason:
+                raise serializers.ValidationError({"lost_reason": "Ghi lý do từ chối."})
+            data["lost_reason"] = reason
         return stage
 
     def perform_update(self, serializer):
@@ -242,8 +248,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         stage = self._stage_requirements(serializer)
         next_contact_on = serializer.validated_data.pop("next_contact_on", None)
         new_owner = serializer.validated_data.pop("assigned_to", serializer.instance.assigned_to)
-        was_new = serializer.instance.crm_status == "1. Mới"
-        was_cancelled = serializer.instance.crm_status == CANCELLED_STAGE
+        was_new = serializer.instance.crm_status == stages.POTENTIAL
+        was_cancelled = serializer.instance.crm_status in stages.CLOSED
         data = serializer.validated_data
         item_changed = ("course" in data or "program" in data) and (
             data.get("course", serializer.instance.course) != serializer.instance.course
@@ -269,38 +275,41 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = serializer.save()
         if new_owner != order.assigned_to:
             reassign(order, new_owner, self.request.user)
-        if stage == CARE_AGAIN_STAGE and next_contact_on:
+        if stage in stages.CALL_AGAIN and next_contact_on:
             FollowupTask.objects.create(
-                order=order, title="Gọi lại (chăm sóc lại)", due_date=next_contact_on, priority="medium"
+                order=order,
+                title=f"Gọi lại ({stage[3:].lower()})",
+                due_date=next_contact_on,
+                priority="medium",
             )
             Activity.objects.create(
                 order=order,
                 type="note",
-                title=f"Chăm sóc lại: hẹn gọi lại ngày {next_contact_on:%d/%m/%Y}",
+                title=f"{stage[3:]}: hẹn gọi lại ngày {next_contact_on:%d/%m/%Y}",
                 actor=self.request.user.name or self.request.user.email,
                 actor_user=self.request.user,
             )
-        if stage == CANCELLED_STAGE:
+        if stage in stages.CLOSED:
             Activity.objects.create(
                 order=order,
                 type="note",
-                title=f"Lý do hủy: {order.lost_reason}",
+                title=f"{stage[3:]}: {order.lost_reason}",
                 actor=self.request.user.name or self.request.user.email,
                 actor_user=self.request.user,
             )
         if "crm_status" in serializer.validated_data:
             self._follow_cancel_stage(order, was_cancelled)
-        if was_new and order.crm_status != "1. Mới":
+        if was_new and order.crm_status != stages.POTENTIAL:
             mark_first_response(order)
 
     def _follow_cancel_stage(self, order, was_cancelled):
         """
-        A lead moved to 'Đã hủy' with nothing paid is a cancelled order (no payment reminders; a later
-        transfer shows as unmatched for finance); moved out again, it waits for payment again. Orders
-        with money received are cancelled by a refund only.
+        A lead moved to a closed stage (apps.crm.stages.CLOSED) with nothing paid is a cancelled order (no
+        payment reminders; a later transfer shows as unmatched for finance); moved out again, it waits for
+        payment again. Orders with money received are cancelled by a refund only.
         """
         actor = self.request.user.name or self.request.user.email
-        if order.crm_status == CANCELLED_STAGE and order.status == "pending" and not order.total_paid_amount:
+        if order.crm_status in stages.CLOSED and order.status == "pending" and not order.total_paid_amount:
             order.status = "cancelled"
             order.save(update_fields=["status", "updated_at"])
             Activity.objects.create(
@@ -310,7 +319,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 actor=actor,
                 actor_user=self.request.user,
             )
-        elif was_cancelled and order.crm_status != CANCELLED_STAGE and order.status == "cancelled":
+        elif was_cancelled and order.crm_status not in stages.CLOSED and order.status == "cancelled":
             order.status = "pending"
             order.save(update_fields=["status", "updated_at"])
             Activity.objects.create(
@@ -412,8 +421,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         ser = AppointmentSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         appt = ser.save(order=order, staff=ser.validated_data.get("staff") or request.user)
-        if order.crm_status in ("1. Mới", "2. Đã tiếp cận", "3. Đang tư vấn"):
-            order.crm_status = "4. Hẹn gặp"
+        if order.crm_status == stages.POTENTIAL:  # an appointment: they are being advised
+            order.crm_status = stages.CONSULTING
             order.save(update_fields=["crm_status", "updated_at"])
         when = timezone.localtime(appt.starts_at)
         Activity.objects.create(
@@ -760,7 +769,7 @@ class MyDayView(APIView):
                 parent__isnull=True,
                 assigned_to=user,
                 status="pending",
-                crm_status="1. Mới",
+                crm_status=stages.POTENTIAL,
                 first_response_at__isnull=True,
             )
             .exclude(pk__in=[o.pk for o in overdue])

@@ -121,7 +121,7 @@ def test_sales_cannot_change_payment_fields(staff_client, course):
     client = staff_client(Role.SALES_CRM)
     assert (
         client.patch(
-            f"/api/v1/staff/orders/{order.pk}/", {"crmStatus": "3. Đang tư vấn"}, format="json"
+            f"/api/v1/staff/orders/{order.pk}/", {"crmStatus": "2. Đang tư vấn"}, format="json"
         ).status_code
         == 200
     )
@@ -176,7 +176,7 @@ def test_registration_ignores_client_controlled_fields(api, registration_payload
     )
     assert res.status_code == 201
     order = Order.objects.get()
-    assert order.status == "pending" and order.crm_status == "1. Mới"
+    assert order.status == "pending" and order.crm_status == "1. Tiềm năng"
     assert order.cohort == nxt  # full cohort rerouted to its successor
     assert order.privacy_consent_at is not None
 

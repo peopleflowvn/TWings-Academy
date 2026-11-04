@@ -5,7 +5,7 @@ Read-only check of CRM data left by older screens (audit 11/10/2026). Changes no
     python manage.py crm_data_check --json     # the same, as JSON (for the Ops workflow log)
 
 What it reports:
-- stage '5. Đã đóng phí' without the payment (set by the old card move / 'Gạch nợ' button);
+- a paid stage (5. Đã đóng phí / 6. Đã đóng 1 phần / 7. Onboard) without the right to study;
 - manual payments recorded for the whole balance of an installment order at once;
 - PIC names that are not a staff member, and PIC without an assigned consultant;
 - a class written as text without the intake (cohort) it belongs to;
@@ -21,6 +21,8 @@ import json
 
 from django.core.management.base import BaseCommand
 from django.db.models import Count, Q
+
+from apps.crm import stages
 
 OLD_DEFAULT_CODES = ["CAMP-2026-Q4-HN", "TW3"]
 OLD_DEFAULT_PICS = ["HuongNT22", "TuanNM", "PhuongVU", "ChiNK", "TungLH"]
@@ -39,7 +41,9 @@ def collect() -> dict:
     leads = Order.objects.filter(parent__isnull=True)
     report: dict = {"registrations": leads.count(), "learners": Learner.objects.count()}
 
-    paid_stage_unpaid = leads.filter(crm_status="5. Đã đóng phí").exclude(status="paid")
+    paid_stage_unpaid = leads.filter(
+        crm_status__in=stages.ENROLLED, learning_access=False, total_paid_amount=0
+    )
     report["paid_stage_without_payment"] = {
         "count": paid_stage_unpaid.count(),
         "with_some_payment": paid_stage_unpaid.filter(total_paid_amount__gt=0).count(),
