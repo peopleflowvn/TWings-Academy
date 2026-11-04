@@ -99,6 +99,7 @@ def test_only_a_super_admin_can_set_a_super_admin_password():
     url = f"/api/v1/staff/users/{boss.pk}/"
     assert client.patch(url, {"password": "Takeover-Passw0rd!"}, format="json").status_code == 403
     assert User.objects.get(pk=boss.pk).check_password(PASSWORD)
-    sales = make_staff(Role.SALES_CRM)
-    res = client.patch(f"/api/v1/staff/users/{sales.pk}/", {"password": "Temporary-Passw0rd!"}, format="json")
+    # A colleague with no more power than the manager: allowed.
+    peer = make_staff(Role.ACADEMIC_MANAGEMENT)
+    res = client.patch(f"/api/v1/staff/users/{peer.pk}/", {"password": "Temporary-Passw0rd!"}, format="json")
     assert res.status_code == 200

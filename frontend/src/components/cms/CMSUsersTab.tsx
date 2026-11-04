@@ -1,113 +1,47 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { api, isBackendEnabled, Paginated } from '../../lib/api';
+/**
+ * /app/system/users: staff accounts and their permissions. Everything here is read from and written to the
+ * server (/staff/users/, the source of truth); role defaults are fixed in code (backend apps/accounts/rbac.py,
+ * mirrored in utils/rbac.ts), so a person's access is adjusted with their own grants / blocks.
+ * The server refuses to let anyone manage an account with more power than their own; the screen hides
+ * those actions in the same way so nobody clicks into a 403.
+ */
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Users,
-  ShieldCheck,
-  UserPlus,
-  Search,
-  CheckCircle2,
-  XCircle,
-  Key,
-  Phone,
-  Mail,
-  Lock,
-  Sparkles,
-  X,
-  Sliders,
-  DollarSign,
   AlertTriangle,
+  CheckCircle2,
   History,
-  Save,
-  RotateCcw,
-  ShieldAlert,
-  ChevronRight,
-  Filter,
-  FileCheck,
-  Check,
-  CheckSquare,
-  Square,
-  Activity,
-  Layers,
-  Award,
-  Zap,
+  Key,
+  Loader2,
+  Lock,
+  Mail,
+  Pencil,
+  Phone,
   RefreshCw,
-  Download
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  Sliders,
+  UserPlus,
+  Users,
+  X,
+  XCircle
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { AdminUser, UserRole, PermissionDefinition, RolePermissionConfig } from '../../types';
-import { INITIAL_ADMIN_USERS } from '../../data/courseraData';
-import {
-  SYSTEM_PERMISSIONS,
-  DEFAULT_ROLE_CONFIGS,
-  runRBACSecurityAudit,
-  checkUserHasPermission,
-  RBACOverviewAudit
-} from '../../utils/rbac';
+import { api, Paginated } from '../../lib/api';
+import { AdminUser, UserRole } from '../../types';
+import { DEFAULT_ROLE_CONFIGS, SYSTEM_PERMISSIONS } from '../../utils/rbac';
 
-// Mock audit log history
-export interface AuditLogEntry {
-  id: string;
-  timestamp: string;
-  actor: string;
-  action: string;
-  target: string;
-  status: 'success' | 'warning' | 'info';
-}
-
-const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
-  {
-    id: 'log-1',
-    timestamp: '02/10/2026 09:30',
-    actor: 'Hoàng Tùng (Super Admin)',
-    action: 'Kiểm toán hệ thống RBAC',
-    target: 'Chạy quét an toàn Separation of Duties & Principle of Least Privilege - Đạt 98/100 điểm',
-    status: 'success'
-  },
-  {
-    id: 'log-2',
-    timestamp: '01/10/2026 23:45',
-    actor: 'Hoàng Tùng (Super Admin)',
-    action: 'Cập nhật ma trận phân quyền',
-    target: 'Cấp quyền crm.export_excel cho vai trò Tư vấn Tuyển sinh',
-    status: 'success'
-  },
-  {
-    id: 'log-3',
-    timestamp: '01/10/2026 21:10',
-    actor: 'Hoàng Tùng (Super Admin)',
-    action: 'Cấp tài khoản mới',
-    target: 'Thêm nhân sự Vũ Thu Phương vào Ban Đào tạo & LMS',
-    status: 'success'
-  },
-  {
-    id: 'log-4',
-    timestamp: '30/09/2026 16:30',
-    actor: 'Đặng Thanh Loan (Kế toán)',
-    action: 'Xác nhận đối soát VietQR',
-    target: 'Gạch nợ đơn TW_89241 khóa QHKH Cá nhân',
-    status: 'info'
-  },
-  {
-    id: 'log-5',
-    timestamp: '29/09/2026 14:15',
-    actor: 'Hoàng Tùng (Super Admin)',
-    action: 'Khóa tài khoản thử nghiệm',
-    target: 'Tạm ngưng quyền truy cập của tài khoản test@twings.edu.vn',
-    status: 'warning'
-  }
-];
-
-interface StaffUserDTO {
+interface StaffUser {
   id: string;
   name: string;
   email: string;
   role: UserRole;
-  avatar: string;
   phone: string;
   status: 'active' | 'suspended';
   permissions: string[];
   permissionOverrides: { granted?: string[]; revoked?: string[] };
+  receivesLeads: boolean;
   lastLogin: string | null;
+  dateJoined: string;
 }
 
 interface AuditLogDTO {
@@ -115,1772 +49,917 @@ interface AuditLogDTO {
   at: string;
   actorLabel: string;
   action: string;
-  objectType: string;
   objectId: string;
   details: Record<string, unknown>;
 }
 
-const AUDIT_ACTION_LABELS: Record<string, string> = {
-  'staff_user.create': 'Tạo tài khoản nhân sự',
-  'staff_user.update': 'Cập nhật tài khoản / quyền nhân sự',
+const ROLES = Object.keys(DEFAULT_ROLE_CONFIGS) as UserRole[];
+const roleName = (r: UserRole) => DEFAULT_ROLE_CONFIGS[r]?.roleName || r;
+const roleHas = (r: UserRole, code: string) => DEFAULT_ROLE_CONFIGS[r]?.allowedPermissionCodes.includes(code) ?? false;
+const permName = (code: string) => SYSTEM_PERMISSIONS.find((p) => p.code === code)?.name || code;
+const isSuper = (u: { role: UserRole }) => u.role === 'super_admin';
+const subset = (a: string[], b: Set<string>) => a.every((c) => b.has(c));
+const dateTime = (iso: string | null) => (iso ? new Date(iso).toLocaleString('vi-VN') : '');
+const daysSince = (iso: string | null) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000) : null);
+const errorText = (e: unknown, fallback = 'Thao tác thất bại') => (e instanceof Error ? e.message : fallback);
+
+const CATEGORIES = Array.from(new Map(SYSTEM_PERMISSIONS.map((p) => [p.category, p.categoryLabel])).entries());
+
+const AUDIT_LABELS: Record<string, string> = {
+  'staff_user.create': 'Tạo tài khoản',
+  'staff_user.update': 'Sửa tài khoản / quyền',
   'staff_user.password_reset_sent': 'Gửi liên kết đặt lại mật khẩu',
   'auth.password_change': 'Tự đổi mật khẩu',
   'auth.password_reset': 'Đặt lại mật khẩu qua email',
-  'payment.confirm_manual': 'Xác nhận thanh toán thủ công',
-  'order.delete': 'Xóa hồ sơ',
-  'order.export_csv': 'Xuất dữ liệu CRM',
-  'lms.open': 'Mở Moodle từ CMS'
+  'crm.consultant_toggle': 'Đổi nhận lead / quản lý tuyển sinh'
 };
 
-const initialAvatar = (label: string) =>
-  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#0D2B5B"/><text x="50%" y="54%" font-family="sans-serif" font-size="26" fill="#fff" text-anchor="middle" dominant-baseline="middle">${label.trim().slice(0, 1).toUpperCase()}</text></svg>`
-  )}`;
+const STATUS_LABEL: Record<string, string> = { active: 'mở khóa', suspended: 'khóa' };
 
-const staffFromServer = (u: StaffUserDTO): AdminUser => ({
-  id: u.id,
-  name: u.name,
-  email: u.email,
-  role: u.role,
-  avatar: u.avatar || initialAvatar(u.name || u.email),
-  phone: u.phone,
-  status: u.status,
-  lastActive: u.lastLogin ? new Date(u.lastLogin).toLocaleString('vi-VN') : 'Chưa đăng nhập',
-  permissions: u.permissions,
-  customOverrides: {
-    grantedCodes: u.permissionOverrides?.granted || [],
-    revokedCodes: u.permissionOverrides?.revoked || []
+/** What an audit entry changed, in words. */
+function describeChange(d: Record<string, unknown>): string {
+  const parts: string[] = [];
+  if (typeof d.role === 'string') parts.push(`vai trò → ${roleName(d.role as UserRole)}`);
+  if (typeof d.status === 'string') parts.push(STATUS_LABEL[d.status] || String(d.status));
+  if (d.password_changed || d.passwordChanged) parts.push('đặt mật khẩu tạm thời');
+  const ov = (d.permission_overrides || d.permissionOverrides) as { granted?: string[]; revoked?: string[] } | undefined;
+  if (ov) {
+    const g = ov.granted || [];
+    const r = ov.revoked || [];
+    parts.push(g.length || r.length ? `quyền riêng: ${[...g.map((c) => `+${permName(c)}`), ...r.map((c) => `−${permName(c)}`)].join(', ')}` : 'bỏ hết quyền riêng');
   }
-});
-
-const auditFromServer = (a: AuditLogDTO): AuditLogEntry => {
-  const d = a.details || {};
-  const target = [d.email, d.order_code ?? d.orderCode, a.objectType && `${a.objectType} ${a.objectId}`]
-    .filter(Boolean)
-    .join(' · ');
-  return {
-    id: String(a.id),
-    timestamp: new Date(a.at).toLocaleString('vi-VN'),
-    actor: a.actorLabel,
-    action: AUDIT_ACTION_LABELS[a.action] || a.action,
-    target: target || '—',
-    status: a.action.includes('delete') || a.action.includes('export') ? 'warning' : 'info'
-  };
-};
-
-interface CMSUsersTabProps {
-  users?: AdminUser[];
-  onUpdateUsers?: (users: AdminUser[]) => void;
-  roleConfigs?: Record<UserRole, RolePermissionConfig>;
-  onUpdateRoleConfigs?: (configs: Record<UserRole, RolePermissionConfig>) => void;
-  currentActorUser?: AdminUser;
-  onSelectCurrentActor?: (user: AdminUser) => void;
+  for (const k of ['name', 'phone', 'receives_leads', 'receivesLeads', 'lead_manager', 'leadManager']) {
+    if (k in d) parts.push(`${k} → ${String(d[k])}`);
+  }
+  return parts.join(' · ');
 }
 
-export const CMSUsersTab: React.FC<CMSUsersTabProps> = ({
-  users: propUsers,
-  onUpdateUsers,
-  roleConfigs: propRoleConfigs,
-  onUpdateRoleConfigs,
-  currentActorUser,
-  onSelectCurrentActor,
-}) => {
-  // Navigation sub-tabs (Now includes 5: Security & Compliance Audit)
-  const [activeTab, setActiveTab] = useState<'users' | 'matrix' | 'roles' | 'compliance' | 'audit'>('users');
+const Modal: React.FC<{ title: React.ReactNode; onClose: () => void; wide?: boolean; children: React.ReactNode }> = ({
+  title,
+  onClose,
+  wide,
+  children
+}) => (
+  <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+    <div
+      className={`bg-white rounded-2xl w-full ${wide ? 'max-w-3xl' : 'max-w-md'} shadow-2xl overflow-hidden flex flex-col max-h-[90vh]`}
+      onClick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between gap-3">
+        <h3 className="font-bold text-sm">{title}</h3>
+        <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-slate-800 cursor-pointer" aria-label="Đóng">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="p-5 overflow-y-auto text-xs space-y-4">{children}</div>
+    </div>
+  </div>
+);
 
-  // Core state (syncs with props or falls back to local)
-  const [localUsers, setLocalUsers] = useState<AdminUser[]>(INITIAL_ADMIN_USERS);
-  const users = propUsers || localUsers;
-  const setUsers = (newUsers: AdminUser[]) => {
-    if (onUpdateUsers) onUpdateUsers(newUsers);
-    setLocalUsers(newUsers);
+const ErrorLine: React.FC<{ text: string }> = ({ text }) =>
+  text ? (
+    <p role="alert" className="text-red-600 font-medium">
+      {text}
+    </p>
+  ) : null;
+
+const input = 'w-full p-2.5 border border-slate-300 rounded-xl';
+const btnPrimary = 'px-4 py-2 bg-[#0073C1] hover:bg-[#005FA0] disabled:opacity-50 text-white font-bold rounded-xl cursor-pointer';
+const btnGhost = 'px-4 py-2 border border-slate-300 hover:bg-slate-100 disabled:opacity-50 rounded-xl font-bold text-slate-700 cursor-pointer';
+
+interface Confirm {
+  title: string;
+  body: React.ReactNode;
+  label: string;
+  danger?: boolean;
+  run: () => Promise<unknown>;
+  done: string;
+}
+
+export const CMSUsersTab: React.FC<{ currentActorUser?: AdminUser }> = ({ currentActorUser: actor }) => {
+  const [tab, setTab] = useState<'users' | 'roles' | 'review' | 'audit'>('users');
+  const [users, setUsers] = useState<StaffUser[] | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const actorPerms = useMemo(
+    () => new Set(actor?.role === 'super_admin' ? SYSTEM_PERMISSIONS.map((p) => p.code) : actor?.permissions || []),
+    [actor]
+  );
+  const canManage = actorPerms.has('rbac.manage_roles');
+  const canOverride = actorPerms.has('rbac.edit_matrix');
+  /** Mirrors the server: only accounts with no permission the actor lacks (or the actor's own). */
+  const canTouch = (u: StaffUser) => canManage && (u.id === actor?.id || subset(u.permissions, actorPerms));
+  const assignableRoles = ROLES.filter((r) => subset(DEFAULT_ROLE_CONFIGS[r].allowedPermissionCodes, actorPerms));
+
+  const say = (text: string, ok = true) => {
+    setToast({ text, ok });
+    window.setTimeout(() => setToast(null), 5000);
   };
 
-  const [localRoleConfigs, setLocalRoleConfigs] = useState<Record<UserRole, RolePermissionConfig>>(DEFAULT_ROLE_CONFIGS);
-  const roleConfigs = propRoleConfigs || localRoleConfigs;
-  const setRoleConfigs = (newConfigs: Record<UserRole, RolePermissionConfig>) => {
-    if (isBackendEnabled()) {
-      showToast(
-        'Quyền mặc định của từng vai trò do hệ thống quy định. Hãy cấp hoặc thu hồi quyền riêng cho từng nhân sự.',
-        'info'
-      );
-      return;
-    }
-    if (onUpdateRoleConfigs) onUpdateRoleConfigs(newConfigs);
-    setLocalRoleConfigs(newConfigs);
-  };
-
-  const currentActorName = currentActorUser?.name || 'Hoàng Tùng (Super Admin)';
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(isBackendEnabled() ? [] : INITIAL_AUDIT_LOGS);
-
-  // ---- Live backend: staff accounts, per-user overrides and the audit trail are real ----
-  const live = isBackendEnabled();
-  const loadServerUsers = useCallback(async () => {
-    const res = await api.get<Paginated<StaffUserDTO>>('/staff/users/?pageSize=200');
-    setUsers(res.results.map(staffFromServer));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const loadAuditLogs = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const res = await api.get<Paginated<AuditLogDTO>>('/staff/audit-logs/?pageSize=100');
-      setAuditLogs(res.results.map(auditFromServer));
-    } catch {
-      // Needs rbac.edit_matrix: other roles simply don't see the server trail.
+      const res = await api.get<Paginated<StaffUser>>('/staff/users/?pageSize=500');
+      setUsers(res.results);
+      setLoadError('');
+      return res.results;
+    } catch (e) {
+      setLoadError(errorText(e, 'Không tải được danh sách nhân sự'));
+      return null;
     }
   }, []);
   useEffect(() => {
-    if (!live) return;
-    loadServerUsers().catch((e) => showToast(e instanceof Error ? e.message : 'Không tải được danh sách nhân sự', 'warning'));
-    loadAuditLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  /** Run an API change, then reload from the server (the source of truth) whatever happened. */
-  const persist = async (call: () => Promise<unknown>, okMessage: string): Promise<boolean> => {
+    load();
+  }, [load]);
+
+  // ---------- users tab: filters ----------
+  const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+  const shown = (users || []).filter((u) => {
+    const q = query.trim().toLowerCase();
+    const hit = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.phone || '').includes(q);
+    return hit && (roleFilter === 'all' || u.role === roleFilter) && (statusFilter === 'all' || u.status === statusFilter);
+  });
+
+  // ---------- confirmations (role change, lock) ----------
+  const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmError, setConfirmError] = useState('');
+  const ask = (c: Confirm) => {
+    setConfirmError('');
+    setConfirm(c);
+  };
+  const runConfirm = async () => {
+    if (!confirm) return;
+    setConfirmBusy(true);
+    setConfirmError('');
     try {
-      await call();
-      showToast(okMessage, 'success');
-      return true;
+      await confirm.run();
+      say(confirm.done);
+      setConfirm(null);
+      await load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Thao tác thất bại', 'warning');
-      return false;
+      setConfirmError(errorText(e));
     } finally {
-      await loadServerUsers().catch(() => undefined);
-      loadAuditLogs();
+      setConfirmBusy(false);
     }
   };
 
-  // Filter & Search
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
-
-  // Modals state
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
-  const [editingUserOverrides, setEditingUserOverrides] = useState<AdminUser | null>(null);
-  const [notificationMsg, setNotificationMsg] = useState<{ text: string; type: 'success' | 'warning' | 'info' } | null>(null);
-
-  // Live security audit report calculation
-  const [auditReport, setAuditReport] = useState<RBACOverviewAudit>(() => runRBACSecurityAudit(users, roleConfigs));
-
-  const refreshAudit = () => {
-    const fresh = runRBACSecurityAudit(users, roleConfigs);
-    setAuditReport(fresh);
-    showToast('Đã quét và cập nhật báo cáo kiểm toán bảo mật RBAC mới nhất.', 'info');
-  };
-
-  // Helper toast notification (Replaces window.alert)
-  const showToast = (text: string, type: 'success' | 'warning' | 'info' = 'success') => {
-    setNotificationMsg({ text, type });
-    setTimeout(() => {
-      setNotificationMsg(null);
-    }, 4000);
-  };
-
-  // New user form state
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserPhone, setNewUserPhone] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState<UserRole>('sales_crm');
-
-  // Filtered users
-  const filteredUsers = users.filter((u) => {
-    const matchesSearch =
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.phone.includes(searchQuery);
-    const matchesRole = selectedRoleFilter === 'all' || u.role === selectedRoleFilter;
-    return matchesSearch && matchesRole;
-  });
-
-  // Filtered permissions for matrix
-  const filteredPermissions = SYSTEM_PERMISSIONS.filter((p) => {
-    const matchesCategory = selectedCategoryFilter === 'all' || p.category === selectedCategoryFilter;
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
-
-  // Toggle user status
-  const handleToggleStatus = (userId: string) => {
-    const targetUser = users.find((u) => u.id === userId);
-    const nextStatus: 'active' | 'suspended' = targetUser?.status === 'active' ? 'suspended' : 'active';
-    if (live) {
-      persist(
-        () => api.patch(`/staff/users/${userId}/`, { status: nextStatus }),
-        nextStatus === 'active' ? `Đã mở khóa tài khoản ${targetUser?.name}.` : `Đã tạm khóa tài khoản ${targetUser?.name}.`
-      );
-      return;
-    }
-    const updatedUsers = users.map((u) => (u.id === userId ? { ...u, status: nextStatus } : u));
-    setUsers(updatedUsers);
-
-    // Log action
-    if (targetUser) {
-      const newLog: AuditLogEntry = {
-        id: `log-${Date.now()}`,
-        timestamp: new Date().toLocaleString('vi-VN'),
-        actor: currentActorName,
-        action: nextStatus === 'active' ? 'Mở khóa tài khoản' : 'Tạm khóa tài khoản',
-        target: `${targetUser.name} (${targetUser.email})`,
-        status: nextStatus === 'active' ? 'success' : 'warning'
-      };
-      setAuditLogs([newLog, ...auditLogs]);
-      showToast(
-        nextStatus === 'active'
-          ? `Đã mở khóa tài khoản cho ${targetUser.name}.`
-          : `Đã tạm ngưng tài khoản của ${targetUser.name}. Quyền truy cập bị vô hiệu hóa.`,
-        nextStatus === 'active' ? 'success' : 'warning'
-      );
-    }
-  };
-
-  // Change user role
-  const handleRoleChange = (userId: string, newRole: UserRole) => {
-    const targetUser = users.find((u) => u.id === userId);
-    if (live) {
-      persist(
-        () => api.patch(`/staff/users/${userId}/`, { role: newRole }),
-        `Đã chuyển ${targetUser?.name} sang vai trò ${roleConfigs[newRole].roleName}.`
-      );
-      return;
-    }
-    const updatedUsers = users.map((u) => (u.id === userId ? { ...u, role: newRole } : u));
-    setUsers(updatedUsers);
-
-    if (targetUser) {
-      const newLog: AuditLogEntry = {
-        id: `log-${Date.now()}`,
-        timestamp: new Date().toLocaleString('vi-VN'),
-        actor: currentActorName,
-        action: 'Thay đổi vai trò nhân sự',
-        target: `Chuyển ${targetUser.name} sang vai trò ${roleConfigs[newRole].roleName}`,
-        status: 'info'
-      };
-      setAuditLogs([newLog, ...auditLogs]);
-      showToast(`Đã chuyển nhân sự ${targetUser.name} sang vai trò "${roleConfigs[newRole].roleName}".`, 'info');
-    }
-  };
-
-  // Toggle a permission in matrix for a specific role
-  const handleToggleMatrixPermission = (role: UserRole, permCode: string) => {
-    if (role === 'super_admin') {
-      showToast('Vai trò Quản trị tối cao (Super Admin) luôn giữ toàn bộ quyền hệ thống để đảm bảo an toàn.', 'warning');
-      return;
-    }
-
-    const currentAllowed = roleConfigs[role].allowedPermissionCodes;
-    const isAllowed = currentAllowed.includes(permCode);
-    const updatedCodes = isAllowed
-      ? currentAllowed.filter((c) => c !== permCode)
-      : [...currentAllowed, permCode];
-
-    const updatedConfigs = {
-      ...roleConfigs,
-      [role]: {
-        ...roleConfigs[role],
-        allowedPermissionCodes: updatedCodes
-      }
-    };
-
-    setRoleConfigs(updatedConfigs);
-  };
-
-  // Save policy matrix
-  const handleSavePolicyMatrix = () => {
-    showToast('Đã lưu thành công cấu hình ma trận phân quyền chi tiết cho toàn bộ 5 vai trò!', 'success');
-    confetti({
-      particleCount: 50,
-      spread: 60,
-      origin: { y: 0.6 }
+  const askRoleChange = (u: StaffUser, role: UserRole) => {
+    if (role === u.role) return;
+    const before = new Set(DEFAULT_ROLE_CONFIGS[u.role].allowedPermissionCodes);
+    const after = new Set(DEFAULT_ROLE_CONFIGS[role].allowedPermissionCodes);
+    const gained = [...after].filter((c) => !before.has(c));
+    const lost = [...before].filter((c) => !after.has(c));
+    ask({
+      title: 'Đổi vai trò',
+      label: 'Đổi vai trò',
+      danger: role === 'super_admin' || u.id === actor?.id,
+      done: `Đã chuyển ${u.name} sang vai trò ${roleName(role)}.`,
+      run: () => api.patch(`/staff/users/${u.id}/`, { role }),
+      body: (
+        <>
+          <p>
+            Chuyển <strong>{u.name}</strong> từ <strong>{roleName(u.role)}</strong> sang <strong>{roleName(role)}</strong>? Có hiệu
+            lực ngay.
+          </p>
+          {gained.length > 0 && <p className="text-emerald-700">Thêm {gained.length} quyền: {gained.map(permName).join(', ')}.</p>}
+          {lost.length > 0 && <p className="text-red-700">Mất {lost.length} quyền: {lost.map(permName).join(', ')}.</p>}
+          {role === 'sales_crm' && <p className="text-slate-600">Tư vấn viên tự nhận lead mới từ website (tắt ở Tư vấn & lịch hẹn khi nghỉ phép).</p>}
+          {u.role === 'sales_crm' && <p className="text-amber-700">Người này thôi nhận lead mới tự động; lead đang giữ vẫn đứng tên họ.</p>}
+          {u.id === actor?.id && <p className="text-red-700 font-bold">Đây là tài khoản của chính bạn: bạn có thể mất quyền vào trang này.</p>}
+        </>
+      )
     });
-    const newLog: AuditLogEntry = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toLocaleString('vi-VN'),
-      actor: currentActorName,
-      action: 'Lưu thay đổi ma trận RBAC',
-      target: 'Áp dụng chính sách phân quyền chi tiết mới vào phiên làm việc',
-      status: 'success'
-    };
-    setAuditLogs([newLog, ...auditLogs]);
   };
 
-  // Reset policy matrix to defaults (without window.confirm)
-  const handleConfirmResetMatrix = () => {
-    setRoleConfigs(DEFAULT_ROLE_CONFIGS);
-    setShowResetConfirmModal(false);
-    showToast('Đã khôi phục ma trận phân quyền về chuẩn mặc định an toàn của TWings Academy.', 'info');
-    const newLog: AuditLogEntry = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toLocaleString('vi-VN'),
-      actor: currentActorName,
-      action: 'Đặt lại chuẩn ma trận RBAC',
-      target: 'Khôi phục toàn bộ quyền của 5 vai trò về mặc định',
-      status: 'info'
-    };
-    setAuditLogs([newLog, ...auditLogs]);
+  const askToggleStatus = (u: StaffUser) => {
+    const lock = u.status === 'active';
+    ask({
+      title: lock ? 'Khóa tài khoản' : 'Mở khóa tài khoản',
+      label: lock ? 'Khóa' : 'Mở khóa',
+      danger: lock,
+      done: lock ? `Đã khóa tài khoản ${u.name}.` : `Đã mở khóa tài khoản ${u.name}.`,
+      run: () => api.patch(`/staff/users/${u.id}/`, { status: lock ? 'suspended' : 'active' }),
+      body: lock ? (
+        <p>
+          Khóa <strong>{u.name}</strong>: đăng xuất ngay khỏi mọi phiên và không đăng nhập được nữa. Lead, việc, lịch hẹn của họ vẫn giữ
+          nguyên; hãy giao lại cho người khác nếu cần.
+        </p>
+      ) : (
+        <p>
+          Mở khóa <strong>{u.name}</strong>: đăng nhập lại được với mật khẩu cũ (hoặc gửi liên kết đặt lại mật khẩu).
+        </p>
+      )
+    });
   };
 
-  // Password reset for another staff member (live backend only; own password: header key button)
-  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  // ---------- create / edit account ----------
+  const [form, setForm] = useState<{ id?: string; name: string; email: string; phone: string; role: UserRole; password: string } | null>(null);
+  const [formBusy, setFormBusy] = useState(false);
+  const [formError, setFormError] = useState('');
+  const openCreate = () => {
+    setFormError('');
+    setForm({ name: '', email: '', phone: '', role: assignableRoles.includes('sales_crm') ? 'sales_crm' : assignableRoles[0], password: '' });
+  };
+  const openEdit = (u: StaffUser) => {
+    setFormError('');
+    setForm({ id: u.id, name: u.name, email: u.email, phone: u.phone || '', role: u.role, password: '' });
+  };
+  const saveForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form) return;
+    if (!form.id && form.password.length < 12) {
+      setFormError('Mật khẩu ban đầu cần tối thiểu 12 ký tự.');
+      return;
+    }
+    setFormBusy(true);
+    setFormError('');
+    const contact = { name: form.name.trim(), email: form.email.trim().toLowerCase(), phone: form.phone.trim() };
+    try {
+      if (form.id) {
+        await api.patch(`/staff/users/${form.id}/`, contact);
+        say(`Đã lưu thông tin ${contact.name}.`);
+      } else {
+        await api.post('/staff/users/', { ...contact, role: form.role, status: 'active', password: form.password });
+        say(`Đã tạo tài khoản cho ${contact.name}. Gửi mật khẩu ban đầu qua kênh riêng và đề nghị đổi sau lần đăng nhập đầu.`);
+      }
+      setForm(null);
+      await load();
+    } catch (err) {
+      setFormError(errorText(err));
+    } finally {
+      setFormBusy(false);
+    }
+  };
+
+  // ---------- password reset ----------
+  const [resetTarget, setResetTarget] = useState<StaffUser | null>(null);
   const [tempPassword, setTempPassword] = useState('');
   const [resetBusy, setResetBusy] = useState(false);
   const [resetError, setResetError] = useState('');
-  const openPasswordReset = (u: AdminUser) => {
-    setTempPassword('');
-    setResetError('');
-    setResetTarget(u);
-  };
-  const runPasswordReset = async (call: () => Promise<unknown>, okMessage: string) => {
+  const runReset = async (call: () => Promise<unknown>, ok: string) => {
     setResetBusy(true);
     setResetError('');
     try {
       await call();
       setResetTarget(null);
-      showToast(okMessage, 'success');
-      loadAuditLogs();
+      say(ok);
     } catch (e) {
-      // Shown inside the dialog: the page toast sits behind the overlay.
-      setResetError(e instanceof Error ? e.message : 'Thao tác thất bại');
+      setResetError(errorText(e));
     } finally {
       setResetBusy(false);
     }
   };
-  const handleSendResetLink = () => {
-    if (!resetTarget) return;
-    const target = resetTarget;
-    runPasswordReset(
-      () => api.post(`/staff/users/${target.id}/send-password-reset/`),
-      `Đã gửi liên kết đặt lại mật khẩu tới ${target.email} (hiệu lực 1 giờ).`
+
+  // ---------- per-person grants / blocks ----------
+  const [overrideUserId, setOverrideUserId] = useState<string | null>(null);
+  const [overrideBusy, setOverrideBusy] = useState(false);
+  const [overrideError, setOverrideError] = useState('');
+  const overrideUser = users?.find((u) => u.id === overrideUserId) || null;
+  const setOverride = async (u: StaffUser, code: string, state: 'inherited' | 'granted' | 'revoked') => {
+    const granted = (u.permissionOverrides?.granted || []).filter((c) => c !== code);
+    const revoked = (u.permissionOverrides?.revoked || []).filter((c) => c !== code);
+    if (state === 'granted') granted.push(code);
+    if (state === 'revoked') revoked.push(code);
+    setOverrideBusy(true);
+    setOverrideError('');
+    try {
+      await api.patch(`/staff/users/${u.id}/`, { permissionOverrides: { granted, revoked } });
+    } catch (e) {
+      setOverrideError(errorText(e));
+    } finally {
+      await load(); // the modal reads the person from the reloaded list: it always shows what is saved
+      setOverrideBusy(false);
+    }
+  };
+
+  // ---------- audit trail (needs rbac.edit_matrix: it holds IP addresses) ----------
+  const [audit, setAudit] = useState<AuditLogDTO[] | null>(null);
+  const [auditError, setAuditError] = useState('');
+  const loadAudit = useCallback(() => {
+    setAudit(null);
+    setAuditError('');
+    api
+      .get<Paginated<AuditLogDTO>>('/staff/audit-logs/?object_type=accounts.User&pageSize=200')
+      .then((r) => setAudit(r.results))
+      .catch((e) => setAuditError(errorText(e, 'Không tải được nhật ký')));
+  }, []);
+  useEffect(() => {
+    if (tab === 'audit' && canOverride) loadAudit();
+  }, [tab, canOverride, loadAudit]);
+
+  // ---------- review: facts worth acting on, from the live accounts ----------
+  const review = useMemo(() => {
+    const list = users || [];
+    const active = list.filter((u) => u.status === 'active');
+    return {
+      supers: active.filter(isSuper),
+      consultants: active.filter((u) => u.role === 'sales_crm'),
+      consultantsTaking: active.filter((u) => u.role === 'sales_crm' && u.receivesLeads),
+      admins: active.filter((u) => !isSuper(u) && u.permissions.some((c) => c === 'rbac.manage_roles' || c === 'rbac.edit_matrix')),
+      overrides: list.filter((u) => (u.permissionOverrides?.granted?.length || 0) + (u.permissionOverrides?.revoked?.length || 0) > 0),
+      neverLoggedIn: active.filter((u) => !u.lastLogin),
+      idle: active.filter((u) => (daysSince(u.lastLogin) ?? 0) > 60)
+    };
+  }, [users]);
+
+  if (!users) {
+    return loadError ? (
+      <div className="p-6 bg-white rounded-2xl border border-red-200 text-sm text-red-700 flex items-center justify-between gap-3">
+        <span>{loadError}</span>
+        <button type="button" onClick={load} className={btnGhost}>
+          Thử lại
+        </button>
+      </div>
+    ) : (
+      <div className="py-16 flex justify-center text-slate-500">
+        <Loader2 className="w-6 h-6 animate-spin" />
+      </div>
     );
-  };
-  const handleSetTempPassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetTarget) return;
-    if (tempPassword.length < 12) {
-      showToast('Mật khẩu tạm thời cần tối thiểu 12 ký tự.', 'warning');
-      return;
-    }
-    const target = resetTarget;
-    runPasswordReset(
-      () => api.patch(`/staff/users/${target.id}/`, { password: tempPassword }),
-      `Đã đặt mật khẩu tạm thời cho "${target.name}". Mọi phiên đăng nhập cũ của họ đã bị đăng xuất; hãy gửi mật khẩu qua kênh riêng và đề nghị đổi ngay.`
-    );
-  };
+  }
 
-  // Handle adding new user
-  const handleAddUser =(e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newUserName.trim() || !newUserEmail.trim()) return;
-    if (live) {
-      if (newUserPassword.length < 12) {
-        showToast('Mật khẩu ban đầu cần tối thiểu 12 ký tự.', 'warning');
-        return;
-      }
-      persist(
-        () =>
-          api.post('/staff/users/', {
-            name: newUserName.trim(),
-            email: newUserEmail.trim().toLowerCase(),
-            phone: newUserPhone.trim(),
-            role: newUserRole,
-            status: 'active',
-            password: newUserPassword
-          }),
-        `Đã tạo tài khoản cho "${newUserName}". Gửi mật khẩu ban đầu qua kênh riêng và đề nghị đổi sau lần đăng nhập đầu.`
-      ).then((ok) => {
-        if (!ok) return;
-        setShowAddModal(false);
-        setNewUserName('');
-        setNewUserEmail('');
-        setNewUserPhone('');
-        setNewUserPassword('');
-      });
-      return;
-    }
+  const tabBtn = (id: typeof tab, label: string, icon: React.ReactNode) => (
+    <button
+      type="button"
+      onClick={() => setTab(id)}
+      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer ${
+        tab === id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
 
-    const newUser: AdminUser = {
-      id: `usr-${Date.now()}`,
-      name: newUserName,
-      email: newUserEmail,
-      phone: newUserPhone || '0900000000',
-      role: newUserRole,
-      status: 'active',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-      lastActive: 'Vừa tạo',
-      permissions: roleConfigs[newUserRole].allowedPermissionCodes
-    };
-
-    setUsers([newUser, ...users]);
-    setShowAddModal(false);
-    setNewUserName('');
-    setNewUserEmail('');
-    setNewUserPhone('');
-
-    const newLog: AuditLogEntry = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toLocaleString('vi-VN'),
-      actor: currentActorName,
-      action: 'Tạo nhân sự mới',
-      target: `Cấp quyền cho ${newUserName} (${newUserEmail}) vai trò ${roleConfigs[newUserRole].roleName}`,
-      status: 'success'
-    };
-    setAuditLogs([newLog, ...auditLogs]);
-
-    showToast(`Đã tạo thành công tài khoản cho "${newUserName}" với vai trò ${roleConfigs[newUserRole].roleName}.`, 'success');
-  };
-
-  // 3-state Custom User Override Handler
-  const getUserPermissionState = (user: AdminUser, permCode: string): 'inherited' | 'granted' | 'revoked' => {
-    if (user.customOverrides?.revokedCodes?.includes(permCode)) return 'revoked';
-    if (user.customOverrides?.grantedCodes?.includes(permCode)) return 'granted';
-    return 'inherited';
-  };
-
-  const handleSetUserPermissionState = (user: AdminUser, permCode: string, newState: 'inherited' | 'granted' | 'revoked') => {
-    const currentGranted = user.customOverrides?.grantedCodes || [];
-    const currentRevoked = user.customOverrides?.revokedCodes || [];
-
-    let updatedGranted = currentGranted.filter((c) => c !== permCode);
-    let updatedRevoked = currentRevoked.filter((c) => c !== permCode);
-
-    if (newState === 'granted') {
-      updatedGranted.push(permCode);
-    } else if (newState === 'revoked') {
-      updatedRevoked.push(permCode);
-    }
-
-    const updatedUser: AdminUser = {
-      ...user,
-      customOverrides: {
-        grantedCodes: updatedGranted,
-        revokedCodes: updatedRevoked
-      }
-    };
-
-    setEditingUserOverrides(updatedUser);
-    setUsers(users.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
-    if (live) {
-      persist(
-        () =>
-          api.patch(`/staff/users/${user.id}/`, {
-            permissionOverrides: { granted: updatedGranted, revoked: updatedRevoked }
-          }),
-        `Đã cập nhật quyền riêng của ${user.name}.`
-      );
-    }
-  };
+  const reviewWarnings = (review.supers.length < 2 ? 1 : 0) + (review.consultantsTaking.length === 0 ? 1 : 0) + (review.idle.length ? 1 : 0);
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-24">
-      {/* 1. TOP HEADER & RBAC STATS */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+    <div className="space-y-5 pb-24">
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 space-y-4">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-xl bg-blue-100 text-[#0073C1]">
-                <ShieldCheck className="w-5 h-5" />
-              </span>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                Quản Trị Người Dùng & Phân Quyền Chi Tiết (RBAC)
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
-              Hệ thống kiểm soát truy cập theo vai trò (Role-Based Access Control) chuẩn doanh nghiệp: Ma trận quyền hạn chi tiết cho từng mô-đun, phân quyền riêng cho từng nhân sự và kiểm toán tuân thủ bảo mật.
+            <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-[#0073C1]" /> Nhân sự & phân quyền
+            </h2>
+            <p className="text-xs text-slate-500 mt-1 max-w-3xl">
+              Mỗi người có một vai trò (bộ quyền mặc định) và có thể được cấp thêm hoặc chặn riêng từng quyền. Khóa tài khoản đăng xuất
+              người đó ngay.
             </p>
           </div>
-
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              onClick={() => {
-                setActiveTab('compliance');
-                refreshAudit();
-              }}
-              className="px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
-            >
-              <Award className="w-4 h-4 text-emerald-600" />
-              <span>Điểm Tuân Thủ: {auditReport.score}/100</span>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={load} className="p-2.5 rounded-xl border border-slate-200 text-slate-600 cursor-pointer" aria-label="Tải lại">
+              <RefreshCw className="w-4 h-4" />
             </button>
-
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2.5 bg-[#0073C1] hover:bg-[#005FA0] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-md"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Thêm Nhân Sự Mới</span>
-            </button>
+            {canManage && (
+              <button type="button" onClick={openCreate} className={`${btnPrimary} text-xs flex items-center gap-2`}>
+                <UserPlus className="w-4 h-4" /> Thêm nhân sự
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Global Notification Toast */}
-        {notificationMsg && (
+        {toast && (
           <div
-            className={`p-3.5 rounded-xl flex items-center justify-between gap-2 text-xs font-bold animate-fadeIn border ${
-              notificationMsg.type === 'success'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : notificationMsg.type === 'warning'
-                ? 'bg-amber-50 border-amber-200 text-amber-800'
-                : 'bg-blue-50 border-blue-200 text-blue-800'
+            role="status"
+            className={`p-3 rounded-xl flex items-center justify-between gap-2 text-xs font-bold border ${
+              toast.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800'
             }`}
           >
-            <div className="flex items-center gap-2">
-              {notificationMsg.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
-              {notificationMsg.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />}
-              {notificationMsg.type === 'info' && <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />}
-              <span>{notificationMsg.text}</span>
-            </div>
-            <button
-              onClick={() => setNotificationMsg(null)}
-              className="text-slate-400 hover:text-slate-600 p-0.5"
-            >
+            <span>{toast.text}</span>
+            <button type="button" onClick={() => setToast(null)} className="text-slate-400 cursor-pointer" aria-label="Đóng">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
+        {loadError && <ErrorLine text={loadError} />}
 
-        {/* Sub-Tabs Bar: All 5 Sub-Modules */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'users'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>1. Danh Sách Thành Viên & Cấp Quyền ({users.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('matrix')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'matrix'
-                ? 'bg-[#0073C1] text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <Sliders className="w-4 h-4" />
-            <span>2. Ma Trận Phân Quyền Chi Tiết ({SYSTEM_PERMISSIONS.length} Quyền)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('roles')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'roles'
-                ? 'bg-purple-700 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <Key className="w-4 h-4" />
-            <span>3. Hồ Sơ 5 Vai Trò Nghiệp Vụ</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setActiveTab('compliance');
-              refreshAudit();
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'compliance'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <FileCheck className="w-4 h-4" />
-            <span>4. Kiểm Toán An Toàn & Tuân Thủ (SoD / PoLP)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('audit')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'audit'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <History className="w-4 h-4" />
-            <span>5. Nhật Ký Kiểm Toán ({auditLogs.length})</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {tabBtn('users', `Nhân sự (${users.length})`, <Users className="w-4 h-4" />)}
+          {tabBtn('roles', 'Quyền theo vai trò', <Lock className="w-4 h-4" />)}
+          {tabBtn('review', reviewWarnings ? `Rà soát (${reviewWarnings})` : 'Rà soát', <ShieldAlert className="w-4 h-4" />)}
+          {canOverride && tabBtn('audit', 'Nhật ký', <History className="w-4 h-4" />)}
         </div>
       </div>
 
-      {/* =============================================================== */}
-      {/* TAB 1: DANH SÁCH THÀNH VIÊN & PHÂN QUYỀN TRỰC TIẾP */}
-      {/* =============================================================== */}
-      {activeTab === 'users' && (
-        <div className="space-y-4">
-          {/* Quick Role Badges Banner */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {(Object.keys(roleConfigs) as UserRole[]).map((r) => {
-              const count = users.filter((u) => u.role === r).length;
-              return (
-                <div
-                  key={r}
-                  className={`p-3.5 rounded-2xl border bg-white space-y-1 shadow-2xs ${
-                    selectedRoleFilter === r ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${roleConfigs[r].color}`}>
-                      {roleConfigs[r].roleName.split(' ')[0]}
-                    </span>
-                    <span className="text-xs font-mono font-bold text-slate-900">{count} nhân sự</span>
-                  </div>
-                  <div className="text-[11px] font-bold text-slate-800 truncate">{roleConfigs[r].roleName}</div>
-                  <div className="text-[10px] text-slate-400 font-mono truncate">
-                    {roleConfigs[r].allowedPermissionCodes.length} quyền kích hoạt
-                  </div>
-                </div>
-              );
-            })}
+      {/* ================= USERS ================= */}
+      {tab === 'users' && (
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center gap-3">
+            <div className="relative md:w-80">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Tìm theo tên, email, số điện thoại…"
+                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            </div>
+            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as UserRole | 'all')} className="text-xs p-2 border border-slate-300 rounded-xl" aria-label="Lọc vai trò">
+              <option value="all">Mọi vai trò</option>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {roleName(r)} ({users.filter((u) => u.role === r).length})
+                </option>
+              ))}
+            </select>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} className="text-xs p-2 border border-slate-300 rounded-xl" aria-label="Lọc trạng thái">
+              <option value="all">Mọi trạng thái</option>
+              <option value="active">Đang hoạt động</option>
+              <option value="suspended">Đã khóa</option>
+            </select>
           </div>
 
-          {/* User Table Card */}
-          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-2xs">
-            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="w-full sm:w-80 relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm nhân sự theo tên, email, SĐT..."
-                  className="w-full pl-9 pr-4 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white"
-                />
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <span className="text-xs text-slate-500 font-bold whitespace-nowrap">Lọc vai trò:</span>
-                <select
-                  value={selectedRoleFilter}
-                  onChange={(e) => setSelectedRoleFilter(e.target.value)}
-                  className="text-xs p-2 border border-slate-300 rounded-xl bg-slate-50 font-bold"
-                >
-                  <option value="all">Tất cả ({users.length} thành viên)</option>
-                  <option value="super_admin">Super Admin</option>
-                  <option value="academic_management">Vận hành Đào tạo / LMS</option>
-                  <option value="sales_crm">Tư vấn Tuyển sinh & CRM</option>
-                  <option value="content_seo">Nội dung & SEO</option>
-                  <option value="finance_accountant">Kế toán & Tài chính</option>
-                  <option value="corporate_training">Đào tạo doanh nghiệp</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
-                  <tr>
-                    <th className="p-3.5">Thành Viên</th>
-                    <th className="p-3.5">Liên Hệ</th>
-                    <th className="p-3.5">Vai Trò Nghiệp Vụ</th>
-                    <th className="p-3.5">Đặc Cách Riêng (Custom)</th>
-                    <th className="p-3.5">Trạng Thái</th>
-                    <th className="p-3.5">Đang Đăng Nhập</th>
-                    <th className="p-3.5 text-right">Thao Tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredUsers.map((u) => {
-                    const customGrantedCount = u.customOverrides?.grantedCodes?.length || 0;
-                    const customRevokedCount = u.customOverrides?.revokedCodes?.length || 0;
-                    const isCurrentActor = currentActorUser?.id === u.id;
-
-                    return (
-                      <tr key={u.id} className={`hover:bg-slate-50/80 transition-colors ${isCurrentActor ? 'bg-blue-50/40' : ''}`}>
-                        <td className="p-3.5">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={u.avatar}
-                              alt={u.name}
-                              className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
-                            />
-                            <div>
-                              <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                                <span>{u.name}</span>
-                                {isCurrentActor && (
-                                  <span className="px-1.5 py-0.2 rounded bg-blue-600 text-white text-[9px] font-bold">
-                                    Hiện tại
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[10px] text-slate-400 font-mono">ID: {u.id}</div>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="p-3.5">
-                          <div className="text-slate-700 flex items-center gap-1 font-mono text-[11px]">
-                            <Mail className="w-3 h-3 text-slate-400" />
-                            <span>{u.email}</span>
-                          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
+                <tr>
+                  <th className="p-3">Nhân sự</th>
+                  <th className="p-3">Vai trò</th>
+                  <th className="p-3">Quyền riêng</th>
+                  <th className="p-3">Trạng thái</th>
+                  <th className="p-3">Đăng nhập gần nhất</th>
+                  <th className="p-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {shown.map((u) => {
+                  const me = u.id === actor?.id;
+                  const editable = canTouch(u);
+                  const granted = u.permissionOverrides?.granted || [];
+                  const revoked = u.permissionOverrides?.revoked || [];
+                  return (
+                    <tr key={u.id} className={me ? 'bg-blue-50/40' : 'hover:bg-slate-50/80'}>
+                      <td className="p-3">
+                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                          {u.name || u.email}
+                          {me && <span className="px-1.5 rounded bg-blue-600 text-white text-[9px]">Bạn</span>}
+                        </div>
+                        <div className="text-slate-600 flex items-center gap-1 font-mono text-[11px]">
+                          <Mail className="w-3 h-3 text-slate-400" /> {u.email}
+                        </div>
+                        {u.phone && (
                           <div className="text-slate-500 flex items-center gap-1 font-mono text-[11px]">
-                            <Phone className="w-3 h-3 text-slate-400" />
-                            <span>{u.phone}</span>
+                            <Phone className="w-3 h-3 text-slate-400" /> {u.phone}
                           </div>
-                        </td>
-
-                        <td className="p-3.5">
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {editable && assignableRoles.includes(u.role) ? (
                           <select
                             value={u.role}
-                            onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
-                            className="text-xs font-bold border border-slate-300 rounded-xl p-1.5 bg-slate-50 focus:bg-white"
+                            onChange={(e) => askRoleChange(u, e.target.value as UserRole)}
+                            className="text-xs font-bold border border-slate-300 rounded-xl p-1.5"
+                            aria-label={`Vai trò của ${u.name}`}
                           >
-                            <option value="super_admin">Super Admin (Tối cao)</option>
-                            <option value="academic_management">Vận hành Đào tạo / LMS</option>
-                            <option value="sales_crm">Tư vấn Tuyển sinh & CRM</option>
-                            <option value="content_seo">Nội dung & SEO</option>
-                            <option value="finance_accountant">Kế toán & Tài chính</option>
-                            <option value="corporate_training">Đào tạo doanh nghiệp</option>
+                            {assignableRoles.map((r) => (
+                              <option key={r} value={r}>
+                                {roleName(r)}
+                              </option>
+                            ))}
                           </select>
-                        </td>
-
-                        <td className="p-3.5">
-                          {customGrantedCount > 0 || customRevokedCount > 0 ? (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {customGrantedCount > 0 && (
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                                  +{customGrantedCount} cấp thêm
-                                </span>
-                              )}
-                              {customRevokedCount > 0 && (
-                                <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-bold text-[10px]">
-                                  -{customRevokedCount} thu hồi
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-[11px] text-slate-400">Theo vai trò chuẩn</span>
-                          )}
-                        </td>
-
-                        <td className="p-3.5">
-                          {u.status === 'active' ? (
-                            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] flex items-center gap-1 w-max">
-                              <CheckCircle2 className="w-3 h-3" /> Đang hoạt động
-                            </span>
-                          ) : (
-                            <span className="px-2.5 py-1 rounded-full bg-red-100 text-red-800 font-bold text-[10px] flex items-center gap-1 w-max">
-                              <XCircle className="w-3 h-3" /> Đã tạm khóa
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="p-3.5">
-                          {onSelectCurrentActor && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onSelectCurrentActor(u);
-                                showToast(`Đã chuyển phiên làm việc sang "${u.name}" (${roleConfigs[u.role].roleName}).`, 'info');
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                                isCurrentActor
-                                  ? 'bg-blue-600 text-white'
-                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                              }`}
-                              title="Chuyển phiên làm việc để trải nghiệm quyền truy cập của nhân sự này"
-                            >
-                              {isCurrentActor ? '✓ Đang duyệt' : 'Đăng nhập thử'}
-                            </button>
-                          )}
-                        </td>
-
-                        <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => setEditingUserOverrides(u)}
-                            className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0073C1] font-bold text-[11px] transition-colors cursor-pointer"
-                            title="Tùy chỉnh cấp thêm hoặc chặn quyền riêng cho nhân sự này"
-                          >
-                            <Sliders className="w-3.5 h-3.5 inline mr-1" />
-                            <span>Phân quyền riêng</span>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${DEFAULT_ROLE_CONFIGS[u.role]?.color || ''}`}>{roleName(u.role)}</span>
+                        )}
+                        {u.role === 'sales_crm' && (
+                          <div className={`text-[10px] mt-1 ${u.receivesLeads ? 'text-emerald-700' : 'text-amber-700'}`}>
+                            {u.receivesLeads ? 'Đang nhận lead mới' : 'Đang tạm dừng nhận lead'}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {isSuper(u) ? (
+                          <span className="text-[11px] text-slate-400">Toàn quyền</span>
+                        ) : granted.length || revoked.length ? (
+                          <div className="flex flex-wrap gap-1" title={[...granted.map((c) => `+ ${permName(c)}`), ...revoked.map((c) => `− ${permName(c)}`)].join('\n')}>
+                            {granted.length > 0 && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">+{granted.length} cấp thêm</span>}
+                            {revoked.length > 0 && <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-bold text-[10px]">−{revoked.length} chặn</span>}
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400">Theo vai trò</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {u.status === 'active' ? (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Hoạt động
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-bold text-[10px] inline-flex items-center gap-1">
+                            <XCircle className="w-3 h-3" /> Đã khóa
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-slate-600 whitespace-nowrap">{u.lastLogin ? dateTime(u.lastLogin) : <span className="text-slate-400">Chưa đăng nhập</span>}</td>
+                      <td className="p-3 text-right whitespace-nowrap space-x-1">
+                        {editable && (
+                          <button type="button" onClick={() => openEdit(u)} className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] cursor-pointer" title="Sửa tên, email, số điện thoại">
+                            <Pencil className="w-3.5 h-3.5 inline" />
                           </button>
-
-                          {live && !isCurrentActor && (
-                            <button
-                              type="button"
-                              onClick={() => openPasswordReset(u)}
-                              className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px] transition-colors cursor-pointer"
-                              title="Gửi liên kết đặt lại mật khẩu hoặc đặt mật khẩu tạm thời"
-                            >
-                              <Key className="w-3.5 h-3.5 inline mr-1" />
-                              <span>Đặt lại mật khẩu</span>
-                            </button>
-                          )}
-
+                        )}
+                        {canOverride && editable && !isSuper(u) && (
+                          <button type="button" onClick={() => { setOverrideError(''); setOverrideUserId(u.id); }} className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0073C1] font-bold text-[11px] cursor-pointer">
+                            <Sliders className="w-3.5 h-3.5 inline mr-1" />
+                            Quyền riêng
+                          </button>
+                        )}
+                        {editable && !me && (
+                          <button type="button" onClick={() => { setTempPassword(''); setResetError(''); setResetTarget(u); }} className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px] cursor-pointer">
+                            <Key className="w-3.5 h-3.5 inline mr-1" />
+                            Mật khẩu
+                          </button>
+                        )}
+                        {editable && !me && (
                           <button
                             type="button"
-                            onClick={() => handleToggleStatus(u.id)}
-                            className={`px-2.5 py-1.5 text-[11px] font-bold rounded-lg cursor-pointer transition-colors ${
-                              u.status === 'active'
-                                ? 'bg-red-50 hover:bg-red-100 text-red-700'
-                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
+                            onClick={() => askToggleStatus(u)}
+                            className={`px-2.5 py-1.5 text-[11px] font-bold rounded-lg cursor-pointer ${
+                              u.status === 'active' ? 'bg-red-50 hover:bg-red-100 text-red-700' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
                             }`}
                           >
                             {u.status === 'active' ? 'Khóa' : 'Mở khóa'}
                           </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =============================================================== */}
-      {/* TAB 2: MA TRẬN PHÂN QUYỀN CHI TIẾT (RBAC MATRIX) */}
-      {/* =============================================================== */}
-      {activeTab === 'matrix' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-[#0073C1]" />
-                  <span>Bảng Ma Trận Phân Quyền Chi Tiết Theo Vai Trò (Matrix RBAC)</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Tích chọn để bật/tắt quyền hạn cụ thể cho từng nhóm vai trò vận hành trong hệ thống LMS & CMS TWings.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowResetConfirmModal(true)}
-                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                  title="Đặt lại toàn bộ quyền về mặc định"
-                >
-                  <RotateCcw className="w-4 h-4 text-slate-500" />
-                  <span>Đặt Lại Chuẩn</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSavePolicyMatrix}
-                  className="px-4 py-2 rounded-xl bg-[#0073C1] hover:bg-[#005fa3] text-white text-xs font-bold transition-all flex items-center gap-2 shadow-md cursor-pointer"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Lưu Chính Sách Phân Quyền</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Filter by Category & Search */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1">
-                <span className="text-xs text-slate-500 font-bold whitespace-nowrap">Mô-đun:</span>
-                {[
-                  { id: 'all', label: 'Tất cả' },
-                  { id: 'crm', label: '1. CRM & Đơn hàng' },
-                  { id: 'courses', label: '2. Khóa học & YouTube' },
-                  { id: 'homepage', label: '3. Banner & Trang chủ' },
-                  { id: 'articles_seo', label: '4. Bài viết & SEO' },
-                  { id: 'finance', label: '5. Kế toán VietQR' },
-                  { id: 'rbac', label: '6. Quản trị RBAC' },
-                  { id: 'system', label: '7. Hệ thống & Kiến trúc' },
-                  { id: 'corporate', label: '8. Đào tạo doanh nghiệp' }
-                ].map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategoryFilter(cat.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                      selectedCategoryFilter === cat.id
-                        ? 'bg-slate-900 text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="w-full sm:w-64 relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm quyền hạn theo tên hoặc code..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-slate-50"
-                />
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-              </div>
-            </div>
-
-            {/* Matrix Table */}
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-900 text-white font-bold text-[11px]">
-                  <tr>
-                    <th className="p-3.5 min-w-[280px]">Hành Động / Quyền Hạn Chi Tiết</th>
-                    <th className="p-3.5 text-center min-w-[130px] bg-red-950/80 border-l border-slate-800">
-                      Super Admin
-                      <span className="block text-[9px] font-normal text-red-300">
-                        {roleConfigs.super_admin.allowedPermissionCodes.length} quyền (Toàn quyền)
-                      </span>
-                    </th>
-                    <th className="p-3.5 text-center min-w-[140px] bg-purple-950/80 border-l border-slate-800">
-                      Đào Tạo & LMS
-                      <span className="block text-[9px] font-normal text-purple-300">
-                        {roleConfigs.academic_management.allowedPermissionCodes.length} quyền kích hoạt
-                      </span>
-                    </th>
-                    <th className="p-3.5 text-center min-w-[130px] bg-blue-950/80 border-l border-slate-800">
-                      Tư Vấn CRM
-                      <span className="block text-[9px] font-normal text-blue-300">
-                        {roleConfigs.sales_crm.allowedPermissionCodes.length} quyền kích hoạt
-                      </span>
-                    </th>
-                    <th className="p-3.5 text-center min-w-[130px] bg-emerald-950/80 border-l border-slate-800">
-                      Nội Dung & SEO
-                      <span className="block text-[9px] font-normal text-emerald-300">
-                        {roleConfigs.content_seo.allowedPermissionCodes.length} quyền kích hoạt
-                      </span>
-                    </th>
-                    <th className="p-3.5 text-center min-w-[130px] bg-amber-950/80 border-l border-slate-800">
-                      Kế Toán & Thu Phí
-                      <span className="block text-[9px] font-normal text-amber-300">
-                        {roleConfigs.finance_accountant.allowedPermissionCodes.length} quyền kích hoạt
-                      </span>
-                    </th>
-                    <th className="p-3.5 text-center min-w-[130px] bg-rose-950/80 border-l border-slate-800">
-                      Đào Tạo Doanh Nghiệp
-                      <span className="block text-[9px] font-normal text-rose-300">
-                        {roleConfigs.corporate_training.allowedPermissionCodes.length} quyền kích hoạt
-                      </span>
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-200 bg-white">
-                  {filteredPermissions.map((perm) => (
-                    <tr key={perm.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-3.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900">{perm.name}</span>
-                          {perm.riskLevel === 'high' && (
-                            <span
-                              className="px-1.5 py-0.2 rounded bg-red-100 text-red-700 font-bold text-[9px] flex items-center gap-0.5"
-                              title="Quyền có rủi ro cao - Thay đổi dữ liệu nhạy cảm"
-                            >
-                              <AlertTriangle className="w-2.5 h-2.5" />
-                              <span>Nhạy cảm</span>
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-500 leading-snug">{perm.description}</div>
-                        <div className="text-[10px] font-mono text-[#0073C1] mt-0.5">
-                          <code>{perm.code}</code> · {perm.categoryLabel}
-                        </div>
-                      </td>
-
-                      {/* Super Admin (Always Checked & Locked) */}
-                      <td className="p-3.5 text-center bg-red-50/20 border-l border-slate-100">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleMatrixPermission('super_admin', perm.code)}
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                          title="Super Admin toàn quyền bắt buộc"
-                        >
-                          <Lock className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-
-                      {/* Academic Management */}
-                      <td className="p-3.5 text-center bg-purple-50/20 border-l border-slate-100">
-                        <label className="inline-flex items-center justify-center p-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={roleConfigs.academic_management.allowedPermissionCodes.includes(perm.code)}
-                            onChange={() => handleToggleMatrixPermission('academic_management', perm.code)}
-                            className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500 cursor-pointer"
-                          />
-                        </label>
-                      </td>
-
-                      {/* Sales CRM */}
-                      <td className="p-3.5 text-center bg-blue-50/20 border-l border-slate-100">
-                        <label className="inline-flex items-center justify-center p-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={roleConfigs.sales_crm.allowedPermissionCodes.includes(perm.code)}
-                            onChange={() => handleToggleMatrixPermission('sales_crm', perm.code)}
-                            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
-                          />
-                        </label>
-                      </td>
-
-                      {/* Content SEO */}
-                      <td className="p-3.5 text-center bg-emerald-50/20 border-l border-slate-100">
-                        <label className="inline-flex items-center justify-center p-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={roleConfigs.content_seo.allowedPermissionCodes.includes(perm.code)}
-                            onChange={() => handleToggleMatrixPermission('content_seo', perm.code)}
-                            className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
-                          />
-                        </label>
-                      </td>
-
-                      {/* Finance Accountant */}
-                      <td className="p-3.5 text-center bg-amber-50/20 border-l border-slate-100">
-                        <label className="inline-flex items-center justify-center p-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={roleConfigs.finance_accountant.allowedPermissionCodes.includes(perm.code)}
-                            onChange={() => handleToggleMatrixPermission('finance_accountant', perm.code)}
-                            className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500 cursor-pointer"
-                          />
-                        </label>
-                      </td>
-
-                      {/* Corporate Training */}
-                      <td className="p-3.5 text-center bg-rose-50/20 border-l border-slate-100">
-                        <label className="inline-flex items-center justify-center p-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={roleConfigs.corporate_training.allowedPermissionCodes.includes(perm.code)}
-                            onChange={() => handleToggleMatrixPermission('corporate_training', perm.code)}
-                            className="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500 cursor-pointer"
-                          />
-                        </label>
+                        )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =============================================================== */}
-      {/* TAB 3: HỒ SƠ CHI TIẾT 5 VAI TRÒ NGHIỆP VỤ */}
-      {/* =============================================================== */}
-      {activeTab === 'roles' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(Object.keys(roleConfigs) as UserRole[]).map((rKey) => {
-              const cfg = roleConfigs[rKey];
-              const members = users.filter((u) => u.role === rKey);
-              return (
-                <div
-                  key={rKey}
-                  className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4 flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border inline-block ${cfg.color}`}>
-                          {cfg.roleName}
-                        </span>
-                        <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-1">
-                          {cfg.department}
-                        </div>
-                      </div>
-                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                        {members.length} nhân sự
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-slate-600 leading-relaxed">{cfg.description}</p>
-
-                    <div className="pt-2 border-t border-slate-100">
-                      <div className="text-[11px] font-bold text-slate-700 mb-2">
-                        Các quyền hạn được cấp ({cfg.allowedPermissionCodes.length}/{SYSTEM_PERMISSIONS.length}):
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {cfg.allowedPermissionCodes.slice(0, 8).map((code) => {
-                          const pDef = SYSTEM_PERMISSIONS.find((p) => p.code === code);
-                          return (
-                            <span
-                              key={code}
-                              className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-medium"
-                              title={pDef?.description}
-                            >
-                              {pDef?.name || code}
-                            </span>
-                          );
-                        })}
-                        {cfg.allowedPermissionCodes.length > 8 && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-lg bg-blue-50 text-[#0073C1] font-bold">
-                            +{cfg.allowedPermissionCodes.length - 8} quyền khác...
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Members in role */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <div className="flex items-center -space-x-2">
-                      {members.map((m) => (
-                        <img
-                          key={m.id}
-                          src={m.avatar}
-                          alt={m.name}
-                          className="w-7 h-7 rounded-full border-2 border-white object-cover shadow-2xs"
-                          title={`${m.name} (${m.email})`}
-                        />
-                      ))}
-                      {members.length === 0 && (
-                        <span className="text-[11px] text-slate-400 italic">Chưa gán nhân sự</span>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedRoleFilter(rKey);
-                        setActiveTab('users');
-                      }}
-                      className="text-[11px] text-[#0073C1] font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>Xem danh sách</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* =============================================================== */}
-      {/* TAB 4: BÁO CÁO KIỂM TOÁN AN TOÀN & TUÂN THỦ (NEW COMPLIANCE AUDIT) */}
-      {/* =============================================================== */}
-      {activeTab === 'compliance' && (
-        <div className="space-y-6">
-          {/* 1. Scorecard Hero */}
-          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#0048C8] text-white p-6 sm:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-300 text-xs font-mono font-bold backdrop-blur-xs border border-white/10">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>BÁO CÁO KIỂM TOÁN PHÂN QUYỀN RBAC ĐỘC LẬP</span>
-              </div>
-              <h3 className="text-2xl font-black tracking-tight">
-                Chỉ Số Tuân Thủ Bảo Mật: {auditReport.score}/100
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Hệ thống tự động rà soát ma trận quyền hạn, đảm bảo nguyên tắc phân tách trách nhiệm (Separation of Duties - SoD) và quyền tối thiểu (Principle of Least Privilege - PoLP) theo tiêu chuẩn bảo mật hệ thống ngân hàng.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-4 bg-white/10 p-4 rounded-2xl backdrop-blur-xs border border-white/10 shrink-0">
-              <div className="text-center">
-                <div className="text-3xl font-black text-emerald-400">{auditReport.score}</div>
-                <div className="text-[10px] text-slate-300 uppercase tracking-wider font-bold">Điểm An Toàn</div>
-              </div>
-              <div className="h-10 w-px bg-white/20" />
-              <button
-                type="button"
-                onClick={refreshAudit}
-                className="px-4 py-2 bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Quét Lại Ngay</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 2. Key Metrics Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-              <div className="text-xs text-slate-500 font-bold flex items-center justify-between">
-                <span>Tổng Nhân Sự</span>
-                <Users className="w-4 h-4 text-blue-500" />
-              </div>
-              <div className="text-2xl font-black text-slate-900">{auditReport.totalUsers}</div>
-              <div className="text-[11px] text-emerald-600 font-bold">{auditReport.activeUsers} đang kích hoạt</div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-              <div className="text-xs text-slate-500 font-bold flex items-center justify-between">
-                <span>Super Admin (Tối cao)</span>
-                <ShieldAlert className="w-4 h-4 text-red-500" />
-              </div>
-              <div className="text-2xl font-black text-slate-900">{auditReport.superAdminCount}</div>
-              <div className="text-[11px] text-slate-500 font-medium">Chỉ dành cho BOD TWings</div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-              <div className="text-xs text-slate-500 font-bold flex items-center justify-between">
-                <span>Quyền Rủi Ro Cao</span>
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-              </div>
-              <div className="text-2xl font-black text-amber-700">{auditReport.highRiskPermissionsAssigned}</div>
-              <div className="text-[11px] text-slate-500 font-medium">Lượt gán quyền nhạy cảm</div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-              <div className="text-xs text-slate-500 font-bold flex items-center justify-between">
-                <span>Đặc Cách Riêng (Overrides)</span>
-                <Sliders className="w-4 h-4 text-purple-500" />
-              </div>
-              <div className="text-2xl font-black text-purple-700">{auditReport.usersWithOverridesCount}</div>
-              <div className="text-[11px] text-slate-500 font-medium">Nhân sự có quyền riêng</div>
-            </div>
-          </div>
-
-          {/* 3. Detailed Audit Pillars */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Pillar 1: Separation of Duties (SoD) */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-blue-100 text-blue-700">
-                    <Zap className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-slate-900">1. Phân Tách Trách Nhiệm (SoD)</h4>
-                    <span className="text-[11px] text-slate-500">Ngăn ngừa xung đột lợi ích giữa các phòng ban</span>
-                  </div>
-                </div>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                  auditReport.sodCompliance.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {auditReport.sodCompliance.passed ? '✓ Đạt Chuẩn' : 'Cần Xử Lý'}
-                </span>
-              </div>
-
-              <div className="space-y-2.5 text-xs text-slate-600">
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Sales & Tuyển sinh:</strong> Không được quyền duyệt thanh toán tài chính hoặc sửa giáo trình bài học.
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Kế toán & Tài chính:</strong> Chỉ xem báo cáo doanh số và duyệt VietQR, không có quyền xóa lead hoặc xuất bản tin tức.
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Đào tạo & LMS:</strong> Không có quyền truy cập mã nguồn Django backend hoặc cấu hình SEO domain.
-                  </span>
-                </div>
-              </div>
-
-              {auditReport.sodCompliance.issues.length > 0 && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl space-y-1 text-xs text-red-700">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>Lỗi SoD phát hiện:</span>
-                  </div>
-                  {auditReport.sodCompliance.issues.map((iss, i) => (
-                    <div key={i} className="pl-5 text-[11px] list-disc">• {iss}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Pillar 2: Principle of Least Privilege (PoLP) */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-purple-100 text-purple-700">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-slate-900">2. Quyền Hạn Tối Thiểu (PoLP)</h4>
-                    <span className="text-[11px] text-slate-500">Giới hạn đặc quyền theo đúng mô tả công việc</span>
-                  </div>
-                </div>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                  auditReport.polpCompliance.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {auditReport.polpCompliance.passed ? '✓ Tối Ưu' : 'Cảnh Báo'}
-                </span>
-              </div>
-
-              <div className="space-y-2.5 text-xs text-slate-600">
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>
-                    Chỉ có vai trò <strong>Super Admin</strong> mới nắm giữ toàn quyền ma trận và hạ tầng backend.
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>
-                    Các quyền nhạy cảm (như <code>crm.delete_lead</code>, <code>courses.delete</code>, <code>rbac.edit_matrix</code>) đều được bảo vệ và yêu cầu phê duyệt cấp cao.
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>
-                    Nhân sự khi nghỉ việc hoặc tạm ngưng sẽ lập tức bị khóa quyền với cơ chế <code>status: suspended</code>.
-                  </span>
-                </div>
-              </div>
-
-              {auditReport.polpCompliance.issues.length > 0 && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-xs text-amber-800">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>Lỗi PoLP cần lưu ý:</span>
-                  </div>
-                  {auditReport.polpCompliance.issues.map((iss, i) => (
-                    <div key={i} className="pl-5 text-[11px]">• {iss}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 4. Recommendations & Security Checklist */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-            <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-              <FileCheck className="w-4 h-4 text-[#0073C1]" />
-              <span>Khuyến Nghị An Toàn & Đánh Giá Kiểm Toán Hệ Thống</span>
-            </h4>
-
-            <div className="space-y-2 text-xs">
-              {auditReport.recommendations.map((rec, i) => (
-                <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2.5">
-                  <span className="font-mono font-bold text-blue-600 shrink-0">#{i + 1}</span>
-                  <span className="text-slate-700 leading-relaxed">{rec}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =============================================================== */}
-      {/* TAB 5: NHẬT KÝ KIỂM TOÁN QUYỀN (AUDIT LOG) */}
-      {/* =============================================================== */}
-      {activeTab === 'audit' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
-          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                <History className="w-4 h-4 text-amber-600" />
-                <span>Nhật Ký Hoạt Động & Kiểm Toán Phân Quyền (Audit Trail)</span>
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Ghi lại chi tiết mọi hành vi thay đổi quyền, đổi vai trò, khóa tài khoản hoặc xuất dữ liệu khách hàng.
-              </p>
-            </div>
-          </div>
-
-          <div className="divide-y divide-slate-100 text-xs">
-            {auditLogs.map((log) => (
-              <div key={log.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900">{log.action}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">({log.timestamp})</span>
-                  </div>
-                  <div className="text-slate-600">{log.target}</div>
-                  <div className="text-[11px] text-slate-400">
-                    Thực hiện bởi: <strong>{log.actor}</strong>
-                  </div>
-                </div>
-
-                <span
-                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold w-max ${
-                    log.status === 'success'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : log.status === 'warning'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}
-                >
-                  {log.status === 'success' ? 'Thành công' : log.status === 'warning' ? 'Cảnh báo' : 'Thông tin'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* =============================================================== */}
-      {/* MODAL 1: THÊM NHÂN SỰ MỚI */}
-      {/* =============================================================== */}
-      {resetTarget && (
-        <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
-          onClick={() => !resetBusy && setResetTarget(null)}
-        >
-          <div
-            className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
-              <h3 className="font-bold text-base flex items-center gap-2">
-                <Key className="w-4 h-4 text-amber-400" />
-                <span>Đặt lại mật khẩu</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setResetTarget(null)}
-                disabled={resetBusy}
-                className="p-1 rounded-full hover:bg-slate-800 text-slate-300 cursor-pointer"
-                aria-label="Đóng"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-5 text-xs">
-              <p className="text-slate-600">
-                Nhân sự: <strong className="text-slate-900">{resetTarget.name}</strong>{' '}
-                <span className="font-mono">({resetTarget.email})</span>
-              </p>
-
-              <div className="space-y-2">
-                <div className="font-bold text-slate-800">Cách 1 (khuyến nghị): gửi liên kết qua email</div>
-                <p className="text-slate-500">
-                  Nhân sự tự đặt mật khẩu mới qua liên kết dùng một lần, hiệu lực 1 giờ. Quản trị viên không biết mật khẩu.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSendResetLink}
-                  disabled={resetBusy || resetTarget.status !== 'active'}
-                  className="px-4 py-2 bg-[#0073C1] hover:bg-[#005FA0] disabled:opacity-50 text-white font-bold rounded-xl flex items-center gap-2 cursor-pointer"
-                >
-                  <Mail className="w-3.5 h-3.5" /> Gửi liên kết đặt lại
-                </button>
-                {resetTarget.status !== 'active' && (
-                  <p className="text-amber-700">Tài khoản đang tạm khóa: hãy mở khóa trước khi gửi liên kết.</p>
-                )}
-              </div>
-
-              <form onSubmit={handleSetTempPassword} className="space-y-2 border-t border-slate-200 pt-4">
-                <div className="font-bold text-slate-800">Cách 2: đặt mật khẩu tạm thời</div>
-                <p className="text-slate-500">
-                  Dùng khi email không nhận được. Các phiên đăng nhập hiện tại của nhân sự sẽ bị đăng xuất.
-                </p>
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  value={tempPassword}
-                  onChange={(e) => setTempPassword(e.target.value)}
-                  minLength={12}
-                  required
-                  placeholder="Tối thiểu 12 ký tự"
-                  aria-label="Mật khẩu tạm thời"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-mono"
-                />
-                <button
-                  type="submit"
-                  disabled={resetBusy}
-                  className="px-4 py-2 border border-slate-300 hover:bg-slate-100 disabled:opacity-50 rounded-xl font-bold text-slate-800 cursor-pointer"
-                >
-                  Đặt mật khẩu tạm thời
-                </button>
-              </form>
-
-              {resetError && (
-                <p role="alert" className="text-red-600 font-medium">
-                  {resetError}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
-              <h3 className="font-bold text-base flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-blue-400" />
-                <span>Thêm Thành Viên Vận Hành & Gán Quyền</span>
-              </h3>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-full hover:bg-slate-800 text-slate-300"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddUser} className="p-6 space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Họ và tên nhân sự *</label>
-                <input
-                  type="text"
-                  required
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="VD: Nguyễn Văn Tuấn"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Email công vụ (@twings.edu.vn) *</label>
-                <input
-                  type="email"
-                  required
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                  placeholder="tuan.nv@twings.edu.vn"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Số điện thoại liên hệ</label>
-                <input
-                  type="text"
-                  value={newUserPhone}
-                  onChange={(e) => setNewUserPhone(e.target.value)}
-                  placeholder="0988112233"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-mono"
-                />
-              </div>
-
-              {live && (
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Mật khẩu ban đầu * (tối thiểu 12 ký tự)</label>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={newUserPassword}
-                    onChange={(e) => setNewUserPassword(e.target.value)}
-                    minLength={12}
-                    required
-                    className="w-full p-2.5 border border-slate-300 rounded-xl font-mono"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Vai trò vận hành (RBAC) *</label>
-                <select
-                  value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value as UserRole)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-slate-50"
-                >
-                  <option value="sales_crm">Tư vấn Tuyển sinh & CRM</option>
-                  <option value="academic_management">Vận hành Đào tạo & LMS</option>
-                  <option value="content_seo">Biên tập Nội dung & SEO</option>
-                  <option value="finance_accountant">Kế toán & Đối soát VietQR</option>
-                  <option value="corporate_training">Đào tạo doanh nghiệp</option>
-                  <option value="super_admin">Quản trị tối cao (Super Admin)</option>
-                </select>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Nhân sự sẽ tự động thừa hưởng toàn bộ {roleConfigs[newUserRole].allowedPermissionCodes.length} quyền hạn theo vai trò đã chọn.
-                </p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-100 cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-[#0073C1] hover:bg-[#005FA0] text-white font-bold rounded-xl shadow-xs cursor-pointer"
-                >
-                  Lưu & Cấp Quyền
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* =============================================================== */}
-      {/* MODAL 2: TÙY CHỈNH PHÂN QUYỀN RIÊNG 3 TRẠNG THÁI (USER OVERRIDES) */}
-      {/* =============================================================== */}
-      {editingUserOverrides && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-base flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-blue-400" />
-                  <span>Phân Quyền Chi Tiết: {editingUserOverrides.name}</span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Vai trò mặc định: <strong className="text-blue-300">{roleConfigs[editingUserOverrides.role].roleName}</strong>
-                </p>
-              </div>
-
-              <button
-                onClick={() => setEditingUserOverrides(null)}
-                className="p-1 rounded-full hover:bg-slate-800 text-slate-300"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-4 text-xs">
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 leading-relaxed flex items-start gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#0073C1] shrink-0 mt-0.5" />
-                <div>
-                  Hệ thống hỗ trợ 3 trạng thái phân quyền chi tiết cho nhân sự:
-                  <div className="flex flex-wrap items-center gap-3 mt-1.5 font-bold text-[11px]">
-                    <span className="text-slate-600 bg-slate-200 px-2 py-0.5 rounded">Thừa hưởng: Theo vai trò chuẩn</span>
-                    <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">+ Cấp thêm: Đặc cách riêng</span>
-                    <span className="text-red-700 bg-red-100 px-2 py-0.5 rounded">- Thu hồi: Chặn riêng dù vai trò có</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {SYSTEM_PERMISSIONS.map((perm) => {
-                  const roleHas = roleConfigs[editingUserOverrides.role].allowedPermissionCodes.includes(perm.code);
-                  const permState = getUserPermissionState(editingUserOverrides, perm.code);
-
-                  return (
-                    <div
-                      key={perm.id}
-                      className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                        permState === 'granted'
-                          ? 'bg-emerald-50/50 border-emerald-300'
-                          : permState === 'revoked'
-                          ? 'bg-red-50/50 border-red-300'
-                          : 'bg-white border-slate-200'
-                      }`}
-                    >
-                      <div className="space-y-0.5 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900">{perm.name}</span>
-                          {roleHas && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-bold border border-slate-200">
-                              Vai trò có sẵn
-                            </span>
-                          )}
-                          {permState === 'granted' && (
-                            <span className="text-[9px] px-2 py-0.2 rounded bg-emerald-600 text-white font-bold">
-                              + Cấp đặc cách riêng
-                            </span>
-                          )}
-                          {permState === 'revoked' && (
-                            <span className="text-[9px] px-2 py-0.2 rounded bg-red-600 text-white font-bold">
-                              - Đã bị chặn riêng
-                            </span>
-                          )}
-                          {perm.riskLevel === 'high' && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">
-                              Rủi ro cao
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-500 leading-snug">{perm.description}</div>
-                        <div className="text-[10px] font-mono text-slate-400">
-                          <code>{perm.code}</code> · {perm.categoryLabel}
-                        </div>
-                      </div>
-
-                      {/* 3-State Controls */}
-                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0 self-start sm:self-center">
-                        <button
-                          type="button"
-                          onClick={() => handleSetUserPermissionState(editingUserOverrides, perm.code, 'inherited')}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                            permState === 'inherited'
-                              ? 'bg-white text-slate-800 shadow-2xs'
-                              : 'text-slate-500 hover:text-slate-800'
-                          }`}
-                        >
-                          Mặc định ({roleHas ? 'Bật' : 'Tắt'})
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleSetUserPermissionState(editingUserOverrides, perm.code, 'granted')}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                            permState === 'granted'
-                              ? 'bg-emerald-600 text-white shadow-2xs'
-                              : 'text-emerald-700 hover:bg-emerald-100'
-                          }`}
-                        >
-                          + Cho phép
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleSetUserPermissionState(editingUserOverrides, perm.code, 'revoked')}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                            permState === 'revoked'
-                              ? 'bg-red-600 text-white shadow-2xs'
-                              : 'text-red-700 hover:bg-red-100'
-                          }`}
-                        >
-                          - Chặn
-                        </button>
-                      </div>
-                    </div>
                   );
                 })}
-              </div>
-            </div>
+                {shown.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-6 text-center text-slate-500">
+                      Không có nhân sự phù hợp.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {!canManage && <p className="p-3 text-[11px] text-slate-500 border-t border-slate-100">Bạn chỉ có quyền xem danh sách nhân sự.</p>}
+        </div>
+      )}
 
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
-              <span className="text-xs text-slate-500">
-                Hiệu lực tức thì đối với nhân sự <strong>{editingUserOverrides.name}</strong>.
-              </span>
-              <button
-                type="button"
-                onClick={() => setEditingUserOverrides(null)}
-                className="px-5 py-2 bg-[#0073C1] hover:bg-[#005fa3] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
-              >
-                Hoàn Tất & Đóng
-              </button>
-            </div>
+      {/* ================= ROLE DEFAULTS (read-only) ================= */}
+      {tab === 'roles' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
+          <p className="text-xs text-slate-500">
+            Quyền mặc định của từng vai trò do hệ thống quy định (không sửa ở đây). Cần khác đi cho một người: dùng “Quyền riêng” ở danh sách
+            nhân sự. Quản trị tối cao luôn có toàn quyền.
+          </p>
+          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-900 text-white text-[11px]">
+                <tr>
+                  <th className="p-3 text-left min-w-[260px]">Quyền</th>
+                  {ROLES.map((r) => (
+                    <th key={r} className="p-3 text-center min-w-[96px]">
+                      {roleName(r)}
+                      <span className="block font-normal text-slate-300">{users.filter((u) => u.role === r).length} người</span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {CATEGORIES.map(([cat, label]) => (
+                  <React.Fragment key={cat}>
+                    <tr className="bg-slate-50">
+                      <td colSpan={ROLES.length + 1} className="px-3 py-2 font-bold text-slate-700">
+                        {label}
+                      </td>
+                    </tr>
+                    {SYSTEM_PERMISSIONS.filter((p) => p.category === cat).map((p) => (
+                      <tr key={p.code} className="border-t border-slate-100">
+                        <td className="p-3">
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            {p.name}
+                            {p.riskLevel === 'high' && <span className="px-1.5 rounded bg-red-100 text-red-700 text-[9px]">Nhạy cảm</span>}
+                          </div>
+                          <div className="text-[11px] text-slate-500">{p.description}</div>
+                          <code className="text-[10px] text-[#0073C1]">{p.code}</code>
+                        </td>
+                        {ROLES.map((r) => (
+                          <td key={r} className="p-3 text-center">
+                            {roleHas(r, p.code) ? <CheckCircle2 className="w-4 h-4 text-emerald-600 inline" aria-label="Có" /> : <span className="text-slate-300">—</span>}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* =============================================================== */}
-      {/* MODAL 3: XÁC NHẬN ĐẶT LẠI CHUẨN MA TRẬN (NO WINDOW.CONFIRM) */}
-      {/* =============================================================== */}
-      {showResetConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden p-6 space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
-              <RotateCcw className="w-6 h-6" />
+      {/* ================= REVIEW ================= */}
+      {tab === 'review' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {(
+            [
+              {
+                title: 'Quản trị tối cao đang hoạt động',
+                people: review.supers,
+                warn: review.supers.length < 2,
+                note:
+                  review.supers.length < 2
+                    ? 'Chỉ có một người: nếu người này bị khóa hoặc quên mật khẩu thì không ai quản lý được tài khoản. Nên có thêm một người dự phòng.'
+                    : 'Toàn quyền hệ thống, kể cả xóa dữ liệu và sửa quyền. Giữ càng ít người càng tốt.'
+              },
+              {
+                title: 'Tư vấn viên nhận lead mới',
+                people: review.consultantsTaking,
+                warn: review.consultantsTaking.length === 0,
+                note:
+                  review.consultantsTaking.length === 0
+                    ? `Không ai nhận lead tự động: lead mới từ website nằm ở “chưa có tư vấn viên” cho tới khi được giao tay. ${
+                        review.consultants.length ? 'Bật “Nhận lead mới” ở Tư vấn & lịch hẹn.' : 'Gán vai trò “Tư vấn Tuyển sinh & CRM” cho nhân viên tư vấn.'
+                      }`
+                    : 'Lead mới chia cho người đang ít lead mở nhất.'
+              },
+              {
+                title: 'Người không phải quản trị tối cao nhưng quản lý được tài khoản',
+                people: review.admins,
+                warn: false,
+                note: 'Có quyền gán vai trò hoặc sửa quyền riêng. Chỉ quản lý được tài khoản không có quyền nào hơn họ.'
+              },
+              {
+                title: 'Có quyền riêng (cấp thêm / chặn)',
+                people: review.overrides,
+                warn: false,
+                note: 'Ngoại lệ so với vai trò: nên rà lại định kỳ, bỏ khi không còn cần.',
+                detail: (u: StaffUser) =>
+                  [...(u.permissionOverrides?.granted || []).map((c) => `+${permName(c)}`), ...(u.permissionOverrides?.revoked || []).map((c) => `−${permName(c)}`)].join(', ')
+              },
+              {
+                title: 'Hơn 60 ngày không đăng nhập',
+                people: review.idle,
+                warn: review.idle.length > 0,
+                note: 'Tài khoản còn mở nhưng không dùng: cân nhắc khóa nếu người đó đã nghỉ.',
+                detail: (u: StaffUser) => `lần cuối ${dateTime(u.lastLogin)}`
+              },
+              {
+                title: 'Chưa đăng nhập lần nào',
+                people: review.neverLoggedIn,
+                warn: false,
+                note: 'Đã tạo nhưng chưa dùng. Nếu họ chưa nhận được mật khẩu: gửi liên kết đặt lại mật khẩu.',
+                detail: (u: StaffUser) => `tạo ${dateTime(u.dateJoined)}`
+              }
+            ] as { title: string; people: StaffUser[]; warn: boolean; note: string; detail?: (u: StaffUser) => string }[]
+          ).map((card) => (
+            <div key={card.title} className={`bg-white rounded-2xl border p-5 space-y-2 ${card.warn ? 'border-amber-300' : 'border-slate-200'}`}>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  {card.warn && <AlertTriangle className="w-4 h-4 text-amber-600" />}
+                  {card.title}
+                </h3>
+                <span className="text-sm font-black text-slate-900">{card.people.length}</span>
+              </div>
+              <p className={`text-xs ${card.warn ? 'text-amber-800' : 'text-slate-500'}`}>{card.note}</p>
+              {card.people.length > 0 && (
+                <ul className="text-xs text-slate-700 space-y-0.5">
+                  {card.people.slice(0, 12).map((u) => (
+                    <li key={u.id}>
+                      <strong>{u.name || u.email}</strong> <span className="text-slate-400">{u.email}</span>
+                      {card.detail && <span className="text-slate-500"> · {card.detail(u)}</span>}
+                    </li>
+                  ))}
+                  {card.people.length > 12 && <li className="text-slate-400">… và {card.people.length - 12} người khác</li>}
+                </ul>
+              )}
             </div>
-
-            <div className="text-center space-y-1.5">
-              <h3 className="font-bold text-base text-slate-900">
-                Xác nhận đặt lại ma trận phân quyền?
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Hành động này sẽ khôi phục toàn bộ quyền hạn của 5 vai trò về thiết lập mặc định của TWings Academy. Các đặc cách riêng của từng người dùng sẽ không bị ảnh hưởng.
-              </p>
-            </div>
-
-            <div className="pt-2 flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => setShowResetConfirmModal(false)}
-                className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                Hủy Bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmResetMatrix}
-                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md cursor-pointer"
-              >
-                Đồng Ý Đặt Lại Chuẩn
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
+      )}
+
+      {/* ================= AUDIT TRAIL ================= */}
+      {tab === 'audit' && canOverride && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-slate-500">200 thay đổi gần nhất về tài khoản nhân sự: tạo, đổi vai trò, quyền riêng, khóa, mật khẩu.</p>
+            <button type="button" onClick={loadAudit} className="p-2 rounded-xl border border-slate-200 text-slate-600 cursor-pointer" aria-label="Tải lại nhật ký">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+          <ErrorLine text={auditError} />
+          {!audit && !auditError && <Loader2 className="w-5 h-5 animate-spin text-slate-400" />}
+          {audit && audit.length === 0 && <p className="text-xs text-slate-500">Chưa có thay đổi nào.</p>}
+          {audit && audit.length > 0 && (
+            <div className="divide-y divide-slate-100 text-xs">
+              {audit.map((a) => {
+                const target = users.find((u) => u.id === a.objectId);
+                const what = describeChange(a.details || {});
+                return (
+                  <div key={a.id} className="py-2.5 flex flex-col sm:flex-row sm:items-start justify-between gap-1">
+                    <div>
+                      <span className="font-bold text-slate-900">{AUDIT_LABELS[a.action] || a.action}</span>
+                      {' · '}
+                      <span className="text-slate-700">{target ? target.name || target.email : String(a.details?.email || a.objectId)}</span>
+                      {what && <div className="text-slate-500">{what}</div>}
+                    </div>
+                    <div className="text-[11px] text-slate-400 sm:text-right shrink-0">
+                      {dateTime(a.at)}
+                      <div>bởi {a.actorLabel}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================= MODALS ================= */}
+      {confirm && (
+        <Modal title={confirm.title} onClose={() => !confirmBusy && setConfirm(null)}>
+          <div className="space-y-2 text-slate-700">{confirm.body}</div>
+          <ErrorLine text={confirmError} />
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setConfirm(null)} disabled={confirmBusy} className={btnGhost}>
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={runConfirm}
+              disabled={confirmBusy}
+              className={confirm.danger ? 'px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold rounded-xl cursor-pointer' : btnPrimary}
+            >
+              {confirmBusy ? 'Đang lưu…' : confirm.label}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {form && (
+        <Modal title={form.id ? 'Sửa thông tin nhân sự' : 'Thêm nhân sự'} onClose={() => !formBusy && setForm(null)}>
+          <form onSubmit={saveForm} className="space-y-3">
+            <label className="block">
+              <span className="font-bold text-slate-700 block mb-1">Họ và tên *</span>
+              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={input} />
+            </label>
+            <label className="block">
+              <span className="font-bold text-slate-700 block mb-1">Email đăng nhập *</span>
+              <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={input} />
+            </label>
+            <label className="block">
+              <span className="font-bold text-slate-700 block mb-1">Số điện thoại</span>
+              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={`${input} font-mono`} />
+            </label>
+            {!form.id && (
+              <>
+                <label className="block">
+                  <span className="font-bold text-slate-700 block mb-1">Vai trò *</span>
+                  <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })} className={`${input} font-bold`}>
+                    {assignableRoles.map((r) => (
+                      <option key={r} value={r}>
+                        {roleName(r)}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    {DEFAULT_ROLE_CONFIGS[form.role].description}
+                    {form.role === 'sales_crm' && '. Tự nhận lead mới từ website.'}
+                  </span>
+                </label>
+                <label className="block">
+                  <span className="font-bold text-slate-700 block mb-1">Mật khẩu ban đầu * (tối thiểu 12 ký tự)</span>
+                  <input type="password" autoComplete="new-password" minLength={12} required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={`${input} font-mono`} />
+                </label>
+              </>
+            )}
+            {form.id && <p className="text-slate-500">Đổi email thì người này đăng nhập bằng email mới.</p>}
+            <ErrorLine text={formError} />
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setForm(null)} disabled={formBusy} className={btnGhost}>
+                Hủy
+              </button>
+              <button type="submit" disabled={formBusy} className={btnPrimary}>
+                {formBusy ? 'Đang lưu…' : form.id ? 'Lưu' : 'Tạo tài khoản'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {resetTarget && (
+        <Modal title="Đặt lại mật khẩu" onClose={() => !resetBusy && setResetTarget(null)}>
+          <p className="text-slate-600">
+            Nhân sự: <strong className="text-slate-900">{resetTarget.name}</strong> <span className="font-mono">({resetTarget.email})</span>
+          </p>
+          <div className="space-y-2">
+            <div className="font-bold text-slate-800">Cách 1 (khuyến nghị): gửi liên kết qua email</div>
+            <p className="text-slate-500">Nhân sự tự đặt mật khẩu mới qua liên kết dùng một lần, hiệu lực 1 giờ. Quản trị viên không biết mật khẩu.</p>
+            <button
+              type="button"
+              disabled={resetBusy || resetTarget.status !== 'active'}
+              onClick={() =>
+                runReset(
+                  () => api.post(`/staff/users/${resetTarget.id}/send-password-reset/`),
+                  `Đã gửi liên kết đặt lại mật khẩu tới ${resetTarget.email} (hiệu lực 1 giờ).`
+                )
+              }
+              className={`${btnPrimary} flex items-center gap-2`}
+            >
+              <Mail className="w-3.5 h-3.5" /> Gửi liên kết đặt lại
+            </button>
+            {resetTarget.status !== 'active' && <p className="text-amber-700">Tài khoản đang khóa: hãy mở khóa trước khi gửi liên kết.</p>}
+          </div>
+          <form
+            className="space-y-2 border-t border-slate-200 pt-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (tempPassword.length < 12) return setResetError('Mật khẩu tạm thời cần tối thiểu 12 ký tự.');
+              runReset(
+                () => api.patch(`/staff/users/${resetTarget.id}/`, { password: tempPassword }),
+                `Đã đặt mật khẩu tạm thời cho ${resetTarget.name}; các phiên đăng nhập cũ của họ đã bị đăng xuất. Gửi mật khẩu qua kênh riêng và đề nghị đổi ngay.`
+              );
+            }}
+          >
+            <div className="font-bold text-slate-800">Cách 2: đặt mật khẩu tạm thời</div>
+            <p className="text-slate-500">Dùng khi email không nhận được. Các phiên đăng nhập hiện tại của nhân sự sẽ bị đăng xuất.</p>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={tempPassword}
+              onChange={(e) => setTempPassword(e.target.value)}
+              minLength={12}
+              required
+              placeholder="Tối thiểu 12 ký tự"
+              aria-label="Mật khẩu tạm thời"
+              className={`${input} font-mono`}
+            />
+            <button type="submit" disabled={resetBusy} className={btnGhost}>
+              Đặt mật khẩu tạm thời
+            </button>
+          </form>
+          <ErrorLine text={resetError} />
+        </Modal>
+      )}
+
+      {overrideUser && (
+        <Modal
+          wide
+          onClose={() => !overrideBusy && setOverrideUserId(null)}
+          title={
+            <span className="flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-blue-300" /> Quyền riêng: {overrideUser.name} · {roleName(overrideUser.role)}
+            </span>
+          }
+        >
+          <p className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900">
+            “Theo vai trò”: giống mọi người cùng vai trò. “Cho phép”: cấp thêm dù vai trò không có. “Chặn”: bỏ dù vai trò có. Lưu ngay khi
+            bấm; bạn chỉ cấp được quyền mà chính bạn có.
+          </p>
+          <ErrorLine text={overrideError} />
+          {CATEGORIES.map(([cat, label]) => (
+            <div key={cat} className="space-y-2">
+              <div className="font-bold text-slate-700 pt-1">{label}</div>
+              {SYSTEM_PERMISSIONS.filter((p) => p.category === cat).map((p) => {
+                const fromRole = roleHas(overrideUser.role, p.code);
+                const state = overrideUser.permissionOverrides?.revoked?.includes(p.code)
+                  ? 'revoked'
+                  : overrideUser.permissionOverrides?.granted?.includes(p.code)
+                    ? 'granted'
+                    : 'inherited';
+                const can = actorPerms.has(p.code);
+                const opt = (s: typeof state, text: string, on: string) => (
+                  <button
+                    type="button"
+                    disabled={overrideBusy || (s === 'granted' && !can)}
+                    onClick={() => state !== s && setOverride(overrideUser, p.code, s)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${state === s ? on : 'text-slate-600 hover:bg-white'}`}
+                  >
+                    {text}
+                  </button>
+                );
+                return (
+                  <div
+                    key={p.code}
+                    className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                      state === 'granted' ? 'bg-emerald-50/60 border-emerald-300' : state === 'revoked' ? 'bg-red-50/60 border-red-300' : 'border-slate-200'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                        {p.name}
+                        {p.riskLevel === 'high' && <span className="px-1.5 rounded bg-amber-100 text-amber-800 text-[9px]">Nhạy cảm</span>}
+                      </div>
+                      <div className="text-[11px] text-slate-500">{p.description}</div>
+                    </div>
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
+                      {opt('inherited', `Theo vai trò (${fromRole ? 'có' : 'không'})`, 'bg-white text-slate-900 shadow-2xs')}
+                      {opt('granted', '+ Cho phép', 'bg-emerald-600 text-white')}
+                      {opt('revoked', '− Chặn', 'bg-red-600 text-white')}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </Modal>
       )}
     </div>
   );

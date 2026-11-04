@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 
 from .models import User
 from .permissions import ActionPermission
-from .rbac import Role, has_perm_code
+from .rbac import Role, effective_permissions, has_perm_code
 from .serializers import (
     LoginSerializer,
     MeSerializer,
@@ -276,3 +276,36 @@ class StaffUserViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Chỉ Super Admin mới đặt được mật khẩu cho tài khoản Super Admin.")
         if instance is not None and instance.pk == actor.pk and data.get("is_active_label") == "suspended":
             raise PermissionDenied("Không thể tự khóa tài khoản của chính mình.")
+
+        # Nobody manages an account with more power than their own: changing its email (then resetting
+        # the password), demoting or locking it would hand that power over. Same for the account as it
+        # will be after the change: no one hands out permissions they do not hold themselves.
+        mine = effective_permissions(actor)
+        if instance is not None and instance.pk != actor.pk and not effective_permissions(instance) <= mine:
+            raise PermissionDenied("Tài khoản này có quyền mà bạn không có, nên bạn không sửa được.")
+        if not self._permissions_after(instance, data) <= mine:
+            raise PermissionDenied("Không thể cấp cho người khác quyền mà chính bạn không có.")
+
+        # The last active super admin stays one: otherwise nobody can manage roles any more.
+        if instance is not None and instance.is_active and _is_super(instance):
+            demoted = "role" in data and data["role"] != Role.SUPER_ADMIN and not instance.is_superuser
+            locked = data.get("is_active_label") == "suspended"
+            others = User.objects.filter(is_active=True, is_staff=True).exclude(pk=instance.pk)
+            if (demoted or locked) and not any(_is_super(u) for u in others):
+                raise PermissionDenied("Đây là Super Admin cuối cùng còn hoạt động: hãy tạo thêm một người.")
+
+    @staticmethod
+    def _permissions_after(instance, data):
+        probe = User(
+            role=data.get("role", getattr(instance, "role", Role.SALES_CRM)),
+            is_superuser=getattr(instance, "is_superuser", False),
+            is_active=True,
+            permission_overrides=data.get(
+                "permission_overrides", getattr(instance, "permission_overrides", {}) or {}
+            ),
+        )
+        return effective_permissions(probe)
+
+
+def _is_super(user) -> bool:
+    return user.role == Role.SUPER_ADMIN or user.is_superuser

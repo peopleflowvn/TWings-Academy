@@ -620,67 +620,6 @@ export const COURSES: Course[] = [
 // -------------------------------------------------------------
 
 // -------------------------------------------------------------
-// ADMIN USERS WITH RBAC (Role-Based Access Control)
-// -------------------------------------------------------------
-export const INITIAL_ADMIN_USERS: AdminUser[] = [
-  {
-    id: 'user-admin',
-    name: 'Hoàng Tùng (Super Admin)',
-    email: 'tunglehoang.vn@gmail.com',
-    role: 'super_admin',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    phone: '0912883344',
-    status: 'active',
-    lastActive: 'Đang online',
-    permissions: ['*']
-  },
-  {
-    id: 'user-huong',
-    name: 'Nguyễn Thu Hường (Sales & CRM)',
-    email: 'huongnt@twings.edu.vn',
-    role: 'sales_crm',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-    phone: '0843314382',
-    status: 'active',
-    lastActive: '5 phút trước',
-    permissions: ['crm:read', 'crm:write', 'orders:read', 'orders:write']
-  },
-  {
-    id: 'user-phuong',
-    name: 'Vũ Thu Phương (Quản lý Đào tạo & Việc làm)',
-    email: 'phuong.vu@twings.edu.vn',
-    role: 'academic_management',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
-    phone: '0988776655',
-    status: 'active',
-    lastActive: '1 giờ trước',
-    permissions: ['academic:read', 'academic:write', 'certificates:issue']
-  },
-  {
-    id: 'user-chi',
-    name: 'Nguyễn Kim Chi (Content & SEO)',
-    email: 'chi.nk@twings.edu.vn',
-    role: 'content_seo',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
-    phone: '0977112233',
-    status: 'active',
-    lastActive: '30 phút trước',
-    permissions: ['articles:read', 'articles:write', 'seo:manage']
-  },
-  {
-    id: 'user-finance',
-    name: 'Đặng Thanh Loan (Kế toán & Đối soát)',
-    email: 'loan.dt@twings.edu.vn',
-    role: 'finance_accountant',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80',
-    phone: '0966442211',
-    status: 'active',
-    lastActive: 'Hôm qua',
-    permissions: ['finance:read', 'finance:reconcile', 'rewards:approve']
-  }
-];
-
-// -------------------------------------------------------------
 // ARTICLES WITH REAL-TIME SEO SCORING
 // -------------------------------------------------------------
 export const INITIAL_ARTICLES: Article[] = [

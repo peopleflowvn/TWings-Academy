@@ -6,7 +6,9 @@ import time
 
 import pytest
 from django.db import connection
+from rest_framework.test import APIClient
 
+from apps.accounts.models import User
 from apps.accounts.rbac import Role
 from apps.catalog.models import Coupon
 from apps.crm.models import Order
@@ -468,3 +470,52 @@ def test_bot_page_escapes_course_text(client, course):
     course.save()
     html = client.get(f"/_seo/khoa-hoc/{course.slug}").content.decode()
     assert "<script>alert" not in html and "<img src=x" not in html
+
+
+def _patch(client, user, data):
+    return client.patch(f"/api/v1/staff/users/{user.pk}/", data, format="json").status_code
+
+
+def _manager_with(*codes):
+    """A non-super-admin staff member given extra rbac permissions by override."""
+    m = make_staff(Role.ACADEMIC_MANAGEMENT)
+    m.permission_overrides = {"granted": list(codes), "revoked": []}
+    m.save()
+    client = APIClient()
+    client.force_authenticate(m)
+    return m, client
+
+
+def test_user_manager_cannot_touch_a_more_powerful_account():
+    boss = make_staff(Role.SUPER_ADMIN, "boss@twings.test")
+    _, c = _manager_with("rbac.manage_roles")
+    url = f"/api/v1/staff/users/{boss.pk}/"
+    # Changing the email, then asking for a reset link, would hand over the super admin account.
+    assert c.patch(url, {"email": "evil@twings.test"}, format="json").status_code == 403
+    assert c.patch(url, {"role": "sales_crm"}, format="json").status_code == 403
+    assert c.patch(url, {"status": "suspended"}, format="json").status_code == 403
+    boss.refresh_from_db()
+    assert boss.email == "boss@twings.test" and boss.role == Role.SUPER_ADMIN and boss.is_active
+
+
+def test_user_manager_cannot_hand_out_permissions_they_lack():
+    _, c = _manager_with("rbac.manage_roles")
+    peer = make_staff(Role.ACADEMIC_MANAGEMENT)
+    # finance.refund is not among the manager's own permissions.
+    assert _patch(c, peer, {"role": "finance_accountant"}) == 403
+    assert _patch(c, peer, {"name": "Lan"}) == 200
+    # Taking over a sales account (temporary password) would give the manager crm.export_excel.
+    assert _patch(c, make_staff(Role.SALES_CRM), {"password": "Temporary-Passw0rd!"}) == 403
+    me, c2 = _manager_with("rbac.manage_roles", "rbac.edit_matrix")
+    assert _patch(c2, me, {"permissionOverrides": {"granted": ["finance.refund"]}}) == 403
+
+
+def test_last_active_super_admin_stays_one():
+    User.objects.filter(role=Role.SUPER_ADMIN).delete()
+    only = make_staff(Role.SUPER_ADMIN, "only@twings.test")
+    c = APIClient()
+    c.force_authenticate(only)
+    assert _patch(c, only, {"role": "sales_crm"}) == 403
+    second = make_staff(Role.SUPER_ADMIN, "second@twings.test")
+    assert _patch(c, second, {"status": "suspended"}) == 200
+    assert _patch(c, only, {"role": "sales_crm"}) == 403
