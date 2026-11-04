@@ -63,7 +63,7 @@ case "$TASK" in
 
   gateway-sync)
     # Adds/updates the TWings block in the shared gateway's Caddyfile (approved by the owner).
-    remote "sudo $APP/bin/gateway-sync.sh && sudo docker logs --since 2m \$(sudo sed -n 's/^GATEWAY_CONTAINER=//p' $APP/env/gateway.env) 2>&1 | grep -i -E 'twings|tuyensinh|certificate|error' | tail -30"
+    remote "sudo $APP/bin/gateway-sync.sh && sudo bash -c 'source $APP/env/gateway.env && echo \"gateway sends X-Gateway-Auth to TWings: \$(grep -c \"header_up X-Gateway-Auth \" \"\$GATEWAY_FILE\") upstream(s)\"' && sudo docker logs --since 2m \$(sudo sed -n 's/^GATEWAY_CONTAINER=//p' $APP/env/gateway.env) 2>&1 | grep -i -E 'twings|tuyensinh|certificate|error' | tail -30"
     ;;
 
   smoke)
