@@ -25,15 +25,15 @@ END="# <<< security headers"
 IMPORT="    import gw_security_headers"
 TW_BEGIN="# >>> twings (managed by /opt/twings/bin/gateway-sync.sh - do not edit)"
 TW_END="# <<< twings"
+# One "header" directive per default: the "?" defaults of a single header block share one condition
+# (ALL of their fields absent), so an application sending nosniff would also lose the HSTS default.
 SNIPPET="$BEGIN
 (gw_security_headers) {
-    header {
-        ?Strict-Transport-Security \"max-age=31536000\"
-        ?X-Content-Type-Options nosniff
-        ?Referrer-Policy strict-origin-when-cross-origin
-        -Server
-        -X-Powered-By
-    }
+    header ?Strict-Transport-Security \"max-age=31536000\"
+    header ?X-Content-Type-Options nosniff
+    header ?Referrer-Policy strict-origin-when-cross-origin
+    header -Server
+    header -X-Powered-By
 }
 $END"
 
