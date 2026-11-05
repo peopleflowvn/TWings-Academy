@@ -117,10 +117,9 @@ fi
 
 section "TWings application"
 cd /opt/twings 2>/dev/null && docker compose exec -T backend python manage.py shell <<'PY' 2>&1 | tail -30
-import json
-from pathlib import Path
 from django.utils import timezone
 from apps.accounts.models import User
+from apps.notifications.defaults import BY_CODE as seed
 from apps.notifications.engine import LOCKED_TEMPLATES
 from apps.notifications.models import EmailTemplate
 
@@ -129,14 +128,13 @@ print("staff:", User.objects.filter(is_staff=True, is_active=True).count(),
 stale = timezone.now() - timezone.timedelta(days=90)
 print("active staff not signed in for 90 days:",
       list(User.objects.filter(is_staff=True, is_active=True, last_login__lt=stale).values_list("email", flat=True)))
-seed = {t["code"]: t for t in json.loads(Path("fixtures/seed_content.json").read_text(encoding="utf-8"))["emailTemplates"]}
 for code in sorted(LOCKED_TEMPLATES):
     db = EmailTemplate.objects.filter(code=code).first()
     if db is None:
         print(f"template {code}: not in DB (built-in default is used)")
         continue
     same = db.body == seed.get(code, {}).get("body") and db.subject == seed.get(code, {}).get("subject")
-    print(f"template {code}: {'same as seed' if same else '!! DIFFERS FROM SEED: review before trusting it'} (updated {db.updated_at:%Y-%m-%d})")
+    print(f"template {code}: {'same as standard' if same else '!! DIFFERS FROM THE STANDARD (defaults.py): review before trusting it'} (updated {db.updated_at:%Y-%m-%d})")
 PY
 echo "--- Moodle security settings and site administrators"
 docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d moodle -tA -F " = "' <<'SQL' 2>/dev/null

@@ -144,7 +144,7 @@ def test_email_from_the_lead_workspace_goes_into_its_history(staff_client, cours
     order.refresh_from_db()
     assert order.first_response_at is None
 
-    monkeypatch.setattr("apps.notifications.views.send_email", lambda **kw: "msg_1")
+    monkeypatch.setattr("apps.notifications.outbox.send_email", lambda **kw: "msg_1")
     res = client.post("/api/v1/staff/emails/send/", body, format="json")
     assert res.json()["status"] == "sent"
     assert order.timeline_activities.filter(title="Email: Chào bạn").exists()
@@ -299,7 +299,9 @@ def test_tuition_template_migration_removes_the_sample_account(db):
         "<p><strong>Chủ tài khoản:</strong> CONG TY CP TWINGS ACADEMY</p>"
         "<p>Nội dung CK: TW3 {{orderCode}} {{customerName}}</p><p>Đoạn nhân viên tự viết</p>"
     )
-    EmailTemplate.objects.create(code="vietqr_tuition_invoice", name="Học phí", subject="Học phí", body=body)
+    EmailTemplate.objects.update_or_create(
+        code="vietqr_tuition_invoice", defaults={"name": "Học phí", "subject": "Học phí", "body": body}
+    )
     migration.forwards(django_apps, None)
     fixed = EmailTemplate.objects.get(code="vietqr_tuition_invoice")
     assert "03001010099999" not in fixed.body and "TW3" not in fixed.body

@@ -146,11 +146,15 @@ class Command(BaseCommand):
             )
             bump("articles")
 
-        for t in data.get("email_templates", []):
-            EmailTemplate.objects.update_or_create(
-                code=t["code"], defaults=pick(EmailTemplate, t, exclude={"code"})
+        # Standard e-mail templates (defaults.py): created when missing, staff edits are kept.
+        from apps.notifications.defaults import TEMPLATES
+
+        for t in TEMPLATES:
+            _, created = EmailTemplate.objects.get_or_create(
+                code=t["code"], defaults={**pick(EmailTemplate, t, exclude={"code"}), "is_default": True}
             )
-            bump("email_templates")
+            if created:
+                bump("email_templates")
 
         if data.get("site_seo"):
             SiteConfig.objects.update_or_create(

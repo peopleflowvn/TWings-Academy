@@ -144,9 +144,9 @@ export interface Instructor {
 }
 
 // -------------------------------------------------------------
-// EMAIL TEMPLATES & RESEND API HUB (WITH WEBHOOK TRACKING)
+// E-MAIL TEMPLATES AND SEND HISTORY (Resend, statuses updated by its webhook on the server)
 // -------------------------------------------------------------
-export type ResendEmailStatus = 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'failed' | 'simulated';
+export type ResendEmailStatus = 'queued' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained' | 'failed' | 'simulated';
 
 export interface EmailTemplate {
   id: string;
@@ -158,18 +158,13 @@ export interface EmailTemplate {
   variables: string[];
   description: string;
   isDefault?: boolean;
+  /** Frame and sender it goes out with. */
+  brand?: 'twings' | 'corporate';
+  /** One of the system's standard templates (can be restored, not deleted). */
+  isStandard?: boolean;
+  /** Carries a sign-in code / password link: only changed by system administrators. */
+  isLocked?: boolean;
   updatedAt: string;
-}
-
-export interface ResendWebhookEvent {
-  id: string;
-  type: 'email.sent' | 'email.delivered' | 'email.delivery_delayed' | 'email.complained' | 'email.bounced' | 'email.opened' | 'email.clicked';
-  createdAt: string;
-  emailId: string;
-  from: string;
-  to: string[];
-  subject: string;
-  payload?: any;
 }
 
 export interface EmailSendLog {
@@ -198,14 +193,6 @@ export interface EmailSendLog {
     timestamp: string;
     details?: string;
   }>;
-}
-
-export interface ResendWebhookConfig {
-  webhookUrl: string;
-  signingSecret: string;
-  enabledEvents: string[];
-  status: 'active' | 'listening' | 'not_configured';
-  lastPingAt?: string;
 }
 
 export interface CourseReview {

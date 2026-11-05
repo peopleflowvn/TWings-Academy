@@ -24,27 +24,12 @@ def _vnd(value: int) -> str:
 
 
 def send_installment_email(installment: Installment) -> None:
-    from apps.lms.emails import account_url
+    from apps.notifications.components import payment_block
     from apps.notifications.engine import render_template
 
     order = installment.order
     qr = vietqr_payload(order)
     overdue = installment.due_date < timezone.localdate()
-    when = "đã quá hạn từ" if overdue else "đến hạn vào"
-    due = installment.due_date.strftime("%d/%m/%Y")
-    default_html = f"""
-<p>Chào {escape(order.customer_name)},</p>
-<p>Kỳ học phí {installment.sequence}/{order.installment_count} của
-<strong>{escape(order.course_title)}</strong> {when} ngày <strong>{due}</strong>.</p>
-<p>Số tiền cần chuyển: <strong>{_vnd(qr["amount"])}</strong><br>
-Ngân hàng: {escape(qr["bank_name"])}<br>
-Số tài khoản: <strong>{escape(qr["account_number"])}</strong> – {escape(qr["account_name"])}<br>
-Nội dung chuyển khoản: <strong>{escape(qr["transfer_content"])}</strong></p>
-<p><img src="{qr["qr_image_url"]}" alt="VietQR" width="220"></p>
-<p>Hệ thống tự xác nhận sau khi nhận tiền. Xem lịch trả góp tại
-<a href="{account_url()}">{account_url()}</a>.</p>
-<p>TWings Academy</p>
-"""
     subject, html = render_template(
         "installment_reminder",
         context={
@@ -52,20 +37,13 @@ Nội dung chuyển khoản: <strong>{escape(qr["transfer_content"])}</strong></
             "sequence": str(installment.sequence),
             "total_installments": str(order.installment_count),
             "course_title": escape(order.course_title),
-            "due_date": due,
+            "order_code": escape(order.order_code),
+            "due_date": installment.due_date.strftime("%d/%m/%Y"),
+            "due_phrase": "đã quá hạn từ" if overdue else "đến hạn vào",
+            "reminder_label": "Quá hạn" if overdue else "Nhắc",
             "amount": _vnd(qr["amount"]),
-            "bank_name": escape(qr["bank_name"]),
-            "account_number": escape(qr["account_number"]),
-            "account_name": escape(qr["account_name"]),
-            "transfer_content": escape(qr["transfer_content"]),
-            "qr_image_url": qr["qr_image_url"],
-            "account_url": account_url(),
+            "payment_details": payment_block(qr),
         },
-        default_subject=(
-            f"{'Quá hạn' if overdue else 'Nhắc'} học phí kỳ {installment.sequence} – "
-            f"{order.order_code} | TWings Academy"
-        ),
-        default_body=default_html,
     )
     send_logged(
         to=order.customer_email,
@@ -131,45 +109,25 @@ def hold_until(order) -> str:
 
 
 def payment_details_html(order) -> str:
-    """Amount, account, memo and QR of an unpaid order, plus where to follow it (e-mails)."""
-    from apps.lms.emails import account_url
+    """Amount, account, transfer content and QR of an unpaid order (e-mails)."""
+    from apps.notifications.components import payment_block
 
-    qr = vietqr_payload(order)
-    return f"""
-<p>Số tiền cần chuyển: <strong>{_vnd(qr["amount"])}</strong><br>
-Ngân hàng: {escape(qr["bank_name"])}<br>
-Số tài khoản: <strong>{escape(qr["account_number"])}</strong> – {escape(qr["account_name"])}<br>
-Nội dung chuyển khoản: <strong>{escape(qr["transfer_content"])}</strong></p>
-<p><img src="{qr["qr_image_url"]}" alt="VietQR" width="220"></p>
-<p>Hệ thống tự xác nhận sau khi nhận tiền. Theo dõi đơn tại
-<a href="{account_url()}">{account_url()}</a>.</p>
-"""
+    return payment_block(vietqr_payload(order))
 
 
 def send_hold_email(order) -> None:
     """The checkout is still unpaid and its hold ends soon: the same QR, and when it ends."""
     from apps.notifications.engine import render_template
 
-    until = hold_until(order)
-    default_html = f"""
-<p>Chào {escape(order.customer_name)},</p>
-<p>TWings Academy đang giữ chỗ và học phí ưu đãi của bạn cho
-<strong>{escape(order.course_title)}</strong> đến <strong>{until}</strong>.
-Sau thời điểm này đơn chưa thanh toán sẽ tự hủy và chỗ được nhường cho học viên khác.</p>
-{payment_details_html(order)}
-<p>TWings Academy</p>
-"""
     subject, html = render_template(
         "checkout_hold_reminder",
         context={
             "customer_name": escape(order.customer_name),
             "course_title": escape(order.course_title),
-            "hold_until": until,
+            "hold_until": hold_until(order),
             "order_code": escape(order.order_code),
             "payment_details": payment_details_html(order),
         },
-        default_subject=f"Giữ chỗ đến {until} – {order.order_code} | TWings Academy",
-        default_body=default_html,
     )
     send_logged(
         to=order.customer_email,

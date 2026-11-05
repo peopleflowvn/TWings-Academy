@@ -44,7 +44,7 @@ def test_a_lead_nobody_takes_goes_to_the_lead_managers(
     assert order.assigned_to is None
     task = FollowupTask.objects.get(order=order)
     assert task.owner is None and task.title.startswith("Phân công lead mới")
-    assert ("boss@twings.test", f"[TWings] Lead chưa có người nhận: {order.customer_name}") in sent
+    assert ("boss@twings.test", f"[TWings CRM] Lead chưa có người nhận: {order.customer_name}") in sent
     # the manager's day lists it; a consultant's day does not
     from rest_framework.test import APIClient
 

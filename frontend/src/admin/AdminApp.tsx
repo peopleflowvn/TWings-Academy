@@ -191,7 +191,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { path: '/content/links', label: 'Link chiến dịch (UTM)', icon: Link2, perms: ['crm.view_leads', 'homepage.intro_about'] },
       { path: '/content/reviews', label: 'Đánh giá của học viên', icon: MessageSquareQuote, perms: ['courses.reviews', 'courses.view'] },
       { path: '/content/journeys', label: 'Email tự động theo hành trình', icon: Send, perms: ['crm.view_leads'] },
-      { path: '/content/email', label: 'Mẫu email & lịch sử gửi', icon: Mail, perms: ['crm.view_leads', 'crm.edit_status'] }
+      { path: '/content/email', label: 'Email: mẫu, lịch sử & cấu hình', icon: Mail, perms: ['crm.view_leads', 'crm.edit_status', 'email.settings'] }
     ]
   },
   {

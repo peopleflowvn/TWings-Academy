@@ -30,6 +30,7 @@ def send_logged(
         corporate_enrollment=corporate_enrollment,
         recipient_email=to,
         recipient_name=name,
+        brand=brand,
         cc=list(cc or []),
         bcc=list(bcc or []),
         reply_to=reply_to,

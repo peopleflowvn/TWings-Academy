@@ -200,6 +200,10 @@ export const EMAIL_TEMPLATES: CollectionOptions<EmailTemplate> = {
     body: d.body,
     variables: d.variables || [],
     description: d.description || '',
+    isDefault: Boolean(d.isDefault),
+    brand: d.brand === 'corporate' ? 'corporate' : 'twings',
+    isStandard: Boolean(d.isStandard),
+    isLocked: Boolean(d.isLocked),
     updatedAt: d.updatedAt ? new Date(d.updatedAt).toLocaleString('vi-VN') : ''
   }),
   toServer: (t) => ({

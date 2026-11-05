@@ -209,11 +209,13 @@ def test_demo_banners_hidden_again_and_coursera_wording_removed():
     from apps.notifications.models import EmailTemplate
 
     fix = _migration("notifications", "0002_remove_coursera_wording")
-    seeded = EmailTemplate.objects.create(
+    seeded, _ = EmailTemplate.objects.update_or_create(
         code="admission_welcome",
-        name="Giấy báo nhập học",
-        subject="x",
-        body="<p>Chào {{name}}</p>" + fix.REPLACEMENTS[1][0] + "<p>Lịch học do TWings gửi riêng.</p>",
+        defaults={
+            "name": "Giấy báo nhập học",
+            "subject": "x",
+            "body": "<p>Chào {{name}}</p>" + fix.REPLACEMENTS[1][0] + "<p>Lịch học do TWings gửi riêng.</p>",
+        },
     )
     fix.fix_templates(django_apps, None)
     seeded.refresh_from_db()

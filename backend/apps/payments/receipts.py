@@ -84,16 +84,7 @@ def send_receipt(payment_id: str) -> None:
     ctx = _context(payment)
     order = payment.order
     vnd = _vnd
-    default_html = f"""
-<p>Chào {escape(order.customer_name)},</p>
-<p>TWings Academy đã nhận <strong>{vnd(payment.amount)}</strong> cho đơn
-<strong>{escape(order.order_code)}</strong> ({escape(order.course_title)}).</p>
-<p>Đã đóng: {vnd(ctx["total_paid"])} / {vnd(ctx["receivable"])}
-{f"– còn lại {vnd(ctx['remaining'])}" if ctx["remaining"] else "– đã hoàn tất học phí"}.</p>
-<p>Biên nhận (in / lưu PDF được): <a href="{receipt_url(payment)}">{ctx["number"]}</a></p>
-<p>Cần hóa đơn VAT? Gửi yêu cầu trong Tài khoản học viên hoặc trả lời email này.</p>
-<p>TWings Academy</p>
-"""
+    remaining = ctx["remaining"]
     subject, html = render_template(
         "payment_receipt",
         context={
@@ -103,12 +94,11 @@ def send_receipt(payment_id: str) -> None:
             "course_title": escape(order.course_title),
             "total_paid": vnd(ctx["total_paid"]),
             "receivable": vnd(ctx["receivable"]),
-            "remaining": vnd(ctx["remaining"]),
+            "remaining": vnd(remaining),
+            "balance_status": f"Còn lại {vnd(remaining)}" if remaining else "Đã hoàn tất học phí",
             "receipt_number": ctx["number"],
             "receipt_url": receipt_url(payment),
         },
-        default_subject=f"Biên nhận học phí {ctx['number']} – {order.order_code} | TWings Academy",
-        default_body=default_html,
     )
     try:
         send_logged(

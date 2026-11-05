@@ -1,91 +1,116 @@
 # ruff: noqa: E501  (inline e-mail HTML and CSS)
 """
-The e-mail frame (brand bar, body, footer links), shared by every e-mail the backend sends. Two brands:
-"twings" (B2C, the default) and "corporate" (B2B corporate training, TNTalent: settings
-CORPORATE_BRAND_*). Moodle's e-mails use the TWings frame: lms/public/theme/twings/templates/core/
-email_html.mustache (keep both in step). A message that is already a full HTML document (staff
-templates) is sent as it is.
+The e-mail frame (logo header, body, signature, footer), shared by every e-mail the backend sends.
+Two brands: "twings" (B2C, the default) and "corporate" (B2B corporate training, TNTalent).
+
+What the frame shows comes from /app/content/email (config.py) with the website settings
+(/app/content/seo) as fallback: logo, hotline, support e-mail and address are the website's.
+Moodle's e-mails use a static copy of this frame: lms/public/theme/twings/templates/core/email_html.mustache
+(its logo is /api/v1/public/email-logo/, so it follows the configured logo).
+
+A message that is already a full HTML document is sent as it is.
 """
 
 import re
 
+from django.utils.html import escape
+
+from . import config
+
 FULL_DOCUMENT = re.compile(r"<(html|body)\b", re.IGNORECASE)
-TABLE = 'role="presentation" width="100%" cellpadding="0" cellspacing="0"'
+TABLE = 'role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"'
+FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 
 
 def sender_address() -> str:
-    """The bare address of RESEND_FROM_EMAIL ("Name <a@b>" -> "a@b")."""
-    from django.conf import settings
-
-    value = settings.RESEND_FROM_EMAIL.strip()
-    return value[value.rfind("<") + 1 : -1] if value.endswith(">") and "<" in value else value
+    """The bare TWings sender address (settings, else RESEND_FROM_EMAIL)."""
+    return config.effective("twings")["from_address"]
 
 
 def brand(name: str = "twings") -> dict:
-    """Display name, colour, sender, logo badges and footer of a brand."""
-    from django.conf import settings
+    """Effective settings of a brand (sender, reply-to, logo, contact details...)."""
+    return config.effective("corporate" if name == "corporate" else "twings")
 
-    from apps.lms.emails import account_url, learn_url
 
-    if name == "corporate":
-        sender = settings.CORPORATE_FROM_EMAIL or f"{settings.CORPORATE_BRAND_NAME} <{sender_address()}>"
-        contact = settings.CORPORATE_CONTACT_EMAIL
-        footer_links = f'<a href="{learn_url()}" style="color:{settings.CORPORATE_BRAND_COLOR};text-decoration:none;font-weight:700;">Học trực tuyến</a>'
-        if contact:
-            footer_links += f' · <a href="mailto:{contact}" style="color:{settings.CORPORATE_BRAND_COLOR};text-decoration:none;">{contact}</a>'
-        provider_name = settings.CORPORATE_PROVIDER.get(
-            "legal_name", "Công ty CP Quản trị Nguồn nhân lực TNTalent"
+def _logo(b: dict) -> str:
+    if b["logo_url"]:
+        return (
+            f'<img src="{escape(b["logo_url"])}" alt="{escape(b["brand_name"])}" height="44" '
+            f'style="display:block;height:44px;width:auto;max-width:220px;border:0;outline:none;text-decoration:none;">'
         )
-        address_info = (
-            f"{provider_name}<br>Tòa nhà ROX Tower, số 54A Nguyễn Chí Thanh, Phường Láng Hạ, Hà Nội"
+    # No logo uploaded yet: the name as a wordmark.
+    return (
+        f'<span style="font-family:{FONT};font-size:20px;font-weight:800;letter-spacing:0.2px;'
+        f'color:{b["color"]};">{escape(b["brand_name"])}</span>'
+    )
+
+
+def _signature(b: dict) -> str:
+    lines = [escape(line.strip()) for line in (b["signature"] or "").splitlines() if line.strip()]
+    if not lines:
+        return ""
+    *first, last = lines
+    head = "<br>".join(first)
+    return (
+        f'<p style="margin:24px 0 0 0;color:#334155;">{head + "<br>" if head else ""}'
+        f'<strong style="color:#0F172A;">{last}</strong></p>'
+    )
+
+
+def _footer(b: dict) -> str:
+    link = f"color:{b['color']};text-decoration:none;font-weight:700;"
+    if b["brand_name"] == "TWings Academy":
+        links = [
+            f'<a href="{b["site_url"]}/" style="{link}">Website</a>',
+            f'<a href="{b["learn_url"]}" style="{link}">Vào học (LMS)</a>',
+            f'<a href="{b["account_url"]}" style="{link}">Học phí &amp; hồ sơ</a>',
+        ]
+    else:
+        links = [f'<a href="{b["learn_url"]}" style="{link}">Vào học trực tuyến</a>']
+    contact = []
+    if b["show_hotline"] and b["hotline"]:
+        number = escape(b["hotline"])
+        contact.append(
+            f'Hotline: <a href="tel:{b["hotline_tel"]}" style="color:#475569;text-decoration:none;font-weight:700;">{number}</a>'
+            if b["hotline_tel"]
+            else f"Hotline: {number}"
         )
-        return {
-            "name": settings.CORPORATE_BRAND_NAME,
-            "color": settings.CORPORATE_BRAND_COLOR,
-            "badge_gradient": "linear-gradient(135deg, #991B1B 0%, #DC2626 100%)",
-            "badge_shadow": "rgba(200, 16, 46, 0.4)",
-            "monogram": "TN",
-            "tagline": "Giải Pháp Đào Tạo Nhân Lực Doanh Nghiệp",
-            "tagline_color": "#FCA5A5",
-            "badge_label": "CORPORATE",
-            "accent_gradient": "linear-gradient(90deg, #991B1B 0%, #DC2626 50%, #F87171 100%)",
-            "sender": sender,
-            "footer_links": footer_links,
-            "address_info": address_info,
-            "footer": footer_links + (f" · {contact}" if contact else ""),
-        }
-
-    footer_links = (
-        f'<a href="{learn_url()}" style="color:#0056D2;text-decoration:none;font-weight:700;">Cổng học viên LMS</a> · '
-        f'<a href="{account_url()}" style="color:#0056D2;text-decoration:none;font-weight:700;">Học phí &amp; hồ sơ</a> · '
-        f'<a href="mailto:hello@twings.edu.vn" style="color:#0056D2;text-decoration:none;font-weight:700;">hello@twings.edu.vn</a>'
-    )
-    address_info = (
-        "Trụ sở: Tòa nhà ROX Tower, 54A Nguyễn Chí Thanh, Q. Đống Đa, TP. Hà Nội<br>"
-        'Hotline: 1900 633 898 / 0843 314 382 · Website: <a href="https://twings.edu.vn" style="color:#64748B;text-decoration:none;">twings.edu.vn</a>'
-    )
-    return {
-        "name": "TWings Academy",
-        "color": "#0056D2",
-        "badge_gradient": "linear-gradient(135deg, #00388A 0%, #0073C1 100%)",
-        "badge_shadow": "rgba(0, 115, 193, 0.4)",
-        "monogram": "TW",
-        "tagline": "Học Viện Đào Tạo Thực Chiến Tài Chính Ngân Hàng",
-        "tagline_color": "#93C5FD",
-        "badge_label": "CỔNG THÔNG BÁO",
-        "accent_gradient": "linear-gradient(90deg, #00388A 0%, #0073C1 50%, #38BDF8 100%)",
-        "sender": settings.RESEND_FROM_EMAIL,
-        "footer_links": footer_links,
-        "address_info": address_info,
-        "footer": f'<a href="{learn_url()}" style="color:#0056D2">Cổng học viên</a> · '
-        f'<a href="{account_url()}" style="color:#0056D2">Học phí &amp; hồ sơ</a> · hello@twings.edu.vn',
-    }
+    if b["support_email"]:
+        mail = escape(b["support_email"])
+        contact.append(
+            f'Email: <a href="mailto:{mail}" style="color:#475569;text-decoration:none;">{mail}</a>'
+        )
+    lines = []
+    if b["company_name"]:
+        lines.append(f'<strong style="color:#475569;">{escape(b["company_name"])}</strong>')
+    if b["show_address"] and b["address"]:
+        lines.append(escape(b["address"]))
+    if contact:
+        lines.append(" · ".join(contact))
+    note = f"{escape(b['footer_note'])}<br>" if b["footer_note"] else ""
+    return f"""<div style="font-size:12px;font-weight:700;margin-bottom:10px;">{" &nbsp;·&nbsp; ".join(links)}</div>
+      <div style="font-size:12px;color:#64748B;line-height:1.7;margin-bottom:10px;">{"<br>".join(lines)}</div>
+      <div style="font-size:11px;color:#94A3B8;line-height:1.6;">{note}&copy; {b["year"]} {escape(b["brand_name"])}.</div>"""
 
 
-def wrap(html: str, brand_name: str = "twings") -> str:
+def wrap(html: str, brand_name: str = "twings", *, signature: bool = True, preheader: str = "") -> str:
+    """Frame a message body and fill the brand variables ({{hotline}}, {{support_email}}...)."""
+    from .engine import interpolate
+
+    b = brand(brand_name)
+    html = interpolate(html, config.global_context(brand_name, b))
     if FULL_DOCUMENT.search(html):
         return html
-    b = brand(brand_name)
+    hidden = (
+        f'<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#F1F5F9;">{escape(preheader)}</div>'
+        if preheader
+        else ""
+    )
+    tagline = (
+        f'<td class="email-tagline" align="right" valign="middle" style="font-family:{FONT};font-size:11px;font-weight:600;color:#64748B;line-height:1.4;">{escape(b["tagline"])}</td>'
+        if b["tagline"]
+        else ""
+    )
     return f"""<!doctype html>
 <html lang="vi" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -93,94 +118,52 @@ def wrap(html: str, brand_name: str = "twings") -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light" />
   <meta name="supported-color-schemes" content="light" />
-  <title>{b["name"]}</title>
+  <title>{escape(b["brand_name"])}</title>
   <style>
     body {{ margin: 0; padding: 0; background-color: #F1F5F9; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }}
     table {{ border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }}
     img {{ border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }}
     p {{ margin: 0 0 14px 0; }}
+    a {{ color: {b["color"]}; }}
     @media only screen and (max-width: 620px) {{
       .email-container {{ width: 100% !important; max-width: 100% !important; }}
-      .email-header {{ padding: 20px 18px !important; }}
-      .email-body {{ padding: 24px 18px !important; }}
-      .email-footer {{ padding: 20px 18px !important; }}
+      .email-pad {{ padding-left: 20px !important; padding-right: 20px !important; }}
+      .email-tagline {{ display: none !important; }}
     }}
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#F1F5F9;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
-<table {TABLE} border="0" style="background-color:#F1F5F9;padding:32px 12px;">
-<tr><td align="center">
-<!--[if mso]>
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" align="center">
-<tr><td>
-<![endif]-->
-<table {TABLE} border="0" class="email-container" style="max-width:600px;width:100%;background:#ffffff;border:1px solid #E2E8F0;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px rgba(15,23,42,0.06);">
-  <!-- Brand Header Bar with Logo Monogram -->
+<body style="margin:0;padding:0;background-color:#F1F5F9;font-family:{FONT};-webkit-font-smoothing:antialiased;">
+{hidden}
+<table {TABLE} style="background-color:#F1F5F9;">
+<tr><td align="center" style="padding:28px 12px;">
+<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td><![endif]-->
+<table {TABLE} class="email-container" style="max-width:600px;width:100%;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:14px;overflow:hidden;">
   <tr>
-    <td class="email-header" style="background:#0F172A;padding:24px 30px;border-radius:16px 16px 0 0;">
-      <table {TABLE} border="0">
+    <td height="4" style="background:{b["color"]};font-size:0;line-height:0;">&nbsp;</td>
+  </tr>
+  <tr>
+    <td class="email-pad" style="padding:22px 32px 18px 32px;border-bottom:1px solid #E2E8F0;">
+      <table {TABLE}>
         <tr>
-          <td valign="middle" style="width:44px;">
-            <!-- Brand Monogram Logo Badge -->
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-              <tr>
-                <td align="center" valign="middle" style="width:40px;height:40px;border-radius:10px;background:{b["badge_gradient"]};color:#ffffff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:900;font-size:16px;text-align:center;box-shadow:0 4px 12px {b["badge_shadow"]};">
-                  {b["monogram"]}
-                </td>
-              </tr>
-            </table>
-          </td>
-          <td valign="middle" style="padding-left:14px;">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-              <tr>
-                <td style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:800;font-size:17px;line-height:1.2;color:#ffffff;letter-spacing:0.3px;">{b["name"]}</td>
-              </tr>
-            </table>
-            <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:10px;font-weight:600;color:{b["tagline_color"]};letter-spacing:0.8px;text-transform:uppercase;margin-top:3px;">
-              {b["tagline"]}
-            </div>
-          </td>
-          <td align="right" valign="middle">
-            <span style="display:inline-block;padding:4px 10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:20px;font-family:'Plus Jakarta Sans',Segoe UI,Arial,sans-serif;font-size:10px;font-weight:700;color:#93C5FD;letter-spacing:0.5px;">
-              {b["badge_label"]}
-            </span>
-          </td>
+          <td valign="middle"><a href="{b["site_url"]}/" style="text-decoration:none;">{_logo(b)}</a></td>
+          {tagline}
         </tr>
       </table>
     </td>
   </tr>
-
-  <!-- Brand Accent Separator Line -->
   <tr>
-    <td height="3" style="background:{b["accent_gradient"]};font-size:0;line-height:0;">&nbsp;</td>
-  </tr>
-
-  <!-- Content Body Area -->
-  <tr>
-    <td class="email-body" style="padding:32px 30px 24px 30px;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1E293B;font-size:14px;line-height:1.65;">
+    <td class="email-pad" style="padding:30px 32px 28px 32px;font-family:{FONT};color:#1E293B;font-size:15px;line-height:1.65;">
       {html}
+      {_signature(b) if signature else ""}
     </td>
   </tr>
-
-  <!-- Brand Footer -->
   <tr>
-    <td class="email-footer" style="background:#F8FAFC;border-top:1px solid #E2E8F0;border-radius:0 0 16px 16px;padding:24px 30px;text-align:center;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-      <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:#475569;">
-        {b["footer_links"]}
-      </div>
-      <div style="font-size:11px;color:#94A3B8;line-height:1.6;margin-bottom:8px;">
-        {b["address_info"]}
-      </div>
-      <div style="font-size:10px;color:#CBD5E1;">
-        &copy; 2026 {b["name"]}. Bản quyền được bảo lưu. Email được gửi tự động từ hệ thống.
-      </div>
+    <td class="email-pad" style="background:#F8FAFC;border-top:1px solid #E2E8F0;padding:22px 32px;text-align:center;font-family:{FONT};">
+      {_footer(b)}
     </td>
   </tr>
 </table>
-<!--[if mso]>
-</td></tr>
-</table>
-<![endif]-->
+<!--[if mso]></td></tr></table><![endif]-->
 </td></tr>
 </table>
 </body></html>"""

@@ -147,11 +147,12 @@ def remind_owners(now: datetime | None = None) -> int:
         try:
             send_email(
                 to=to,
-                subject=f"{len(reqs)} yêu cầu khách hàng cần xử lý theo SLA",
+                subject=f"[{settings.CORPORATE_BRAND_NAME}] {len(reqs)} yêu cầu khách hàng cần xử lý (SLA)",
                 html=f"<p>Các yêu cầu đào tạo quá hạn hoặc sắp đến hạn SLA:</p><ul>{rows}</ul>"
                 "<p>Cập nhật trạng thái trong mục Đào tạo doanh nghiệp → Yêu cầu.</p>",
                 idempotency_key=f"corp-request-remind-{to}-{now.astimezone(VN):%Y%m%d}",
                 brand="corporate",
+                kind="internal",
             )
         except ResendError:
             logging.getLogger(__name__).warning("Request reminder to %s not sent", to)

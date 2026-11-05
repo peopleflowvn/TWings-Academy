@@ -59,6 +59,8 @@ class EmailLog(BaseModel):
     )
     recipient_email = models.EmailField()
     recipient_name = models.CharField(max_length=200, blank=True)
+    # Frame and sender of the message ("twings" or "corporate"): kept for delivery by the worker.
+    brand = models.CharField(max_length=20, default="twings")
     # Who else got this same message, as sent (a later change of manager does not rewrite it).
     cc = models.JSONField(default=list, blank=True)
     bcc = models.JSONField(default=list, blank=True)

@@ -30,6 +30,7 @@ def deliver_email_task(log_id: str) -> None:
             cc=log.cc,
             bcc=log.bcc,
             reply_to=log.reply_to,
+            brand=log.brand,
         )
     except ResendError as exc:
         log.status = "failed"

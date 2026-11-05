@@ -122,9 +122,8 @@ def test_remind_owners(client_co, monkeypatch, settings):
     assert sla.remind_owners(monday) == 2
     by_to = {m["to"]: m for m in sent}
     assert "QUÁ HẠN" in by_to[owner.email]["html"] and "Xa" not in by_to[owner.email]["html"]
-    assert (
-        by_to[owner.email]["subject"].startswith("2 yêu cầu") and by_to[owner.email]["brand"] == "corporate"
-    )
+    mail = by_to[owner.email]
+    assert mail["subject"].startswith("[TNTalent] 2 yêu cầu") and mail["brand"] == "corporate"
     assert "Chưa giao" in by_to["daotao@tntalent.test"]["html"]
     assert sla.remind_owners(vn(2026, 10, 25, 8, 15)) == 0  # Sunday
 

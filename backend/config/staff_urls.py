@@ -50,7 +50,10 @@ from apps.crm.views import (
     OrderViewSet,
 )
 from apps.notifications.views import (
+    EmailConnectionCheckView,
     EmailLogViewSet,
+    EmailSettingsView,
+    EmailStatsView,
     EmailTemplateViewSet,
     PreviewEmailView,
     SendEmailView,
@@ -89,6 +92,9 @@ urlpatterns = [
     path("emails/send/", SendEmailView.as_view(), name="staff-email-send"),
     path("emails/test-send/", TestSendEmailView.as_view(), name="staff-email-test-send"),
     path("emails/preview/", PreviewEmailView.as_view(), name="staff-email-preview"),
+    path("emails/settings/", EmailSettingsView.as_view(), name="staff-email-settings"),
+    path("emails/settings/check/", EmailConnectionCheckView.as_view(), name="staff-email-check"),
+    path("emails/stats/", EmailStatsView.as_view(), name="staff-email-stats"),
     path("uploads/images/", ImageUploadView.as_view(), name="staff-image-upload"),
     path("uploads/fonts/", FontUploadView.as_view(), name="staff-font-upload"),
     path(

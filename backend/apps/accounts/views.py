@@ -150,28 +150,12 @@ def _send_reset_email(user):
     from apps.notifications.engine import render_template
 
     url = f"{settings.PUBLIC_SITE_URL.rstrip('/')}/app/#reset={uid}.{token}"
-    default_subject = "Đặt lại mật khẩu quản trị | TWings Academy"
 
     def render(link):
-        default_html = f"""
-<p>Chào {escape(user.name)},</p>
-<p>Có yêu cầu đặt lại mật khẩu cho tài khoản quản trị TWings <strong>{escape(user.email)}</strong>.</p>
-<p><a href="{link}">Đặt mật khẩu mới</a> (liên kết dùng một lần, hết hạn sau 1 giờ).</p>
-<p>Nếu bạn không yêu cầu, hãy bỏ qua email này và báo cho quản trị hệ thống.
-Mật khẩu hiện tại vẫn giữ nguyên.</p>
-<p>TWings Academy</p>
-"""
-        subj, html = render_template(
+        return render_template(
             "staff_password_reset",
-            context={
-                "name": escape(user.name),
-                "email": escape(user.email),
-                "reset_link": link,
-            },
-            default_subject=default_subject,
-            default_body=default_html,
+            context={"name": escape(user.name), "email": escape(user.email), "reset_link": link},
         )
-        return subj, html
 
     subject, html_body = render(url)
     _, html_masked = render("#liên-kết-đã-ẩn")
@@ -185,7 +169,9 @@ Mật khẩu hiện tại vẫn giữ nguyên.</p>
         rendered_html=html_masked,
     )
     try:
-        message_id = send_email(to=user.email, subject=subject, html=html_body, idempotency_key=log.pk)
+        message_id = send_email(
+            to=user.email, subject=subject, html=html_body, idempotency_key=log.pk, kind="sensitive"
+        )
     except ResendError as exc:
         log.status, log.error_message = "failed", str(exc)[:500]
         log.save(update_fields=["status", "error_message", "updated_at"])

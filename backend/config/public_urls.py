@@ -16,6 +16,7 @@ from apps.cms.views import PublicArticleViewSet, PublicBannerViewSet, PublicSite
 from apps.crm.list_views import PublicListsView
 from apps.crm.public_classes import PublicClassView
 from apps.crm.views import PublicRegistrationView
+from apps.notifications.views import email_logo
 from apps.payments.views import PublicCheckoutView, PublicOrderStatusView
 from apps.sso import account
 
@@ -36,6 +37,7 @@ urlpatterns = [
     path("checkout/", PublicCheckoutView.as_view(), name="public-checkout"),
     path("orders/<str:order_code>/status/", PublicOrderStatusView.as_view(), name="public-order-status"),
     path("legal/<str:key>/", legal_view, name="public-legal"),
+    path("email-logo/", email_logo, name="public-email-logo"),
     path("track/", TrackView.as_view(), name="public-track"),
     path("account/", account.AccountView.as_view(), name="public-account"),
     path("account/send-code/", account.SendCodeView.as_view(), name="public-account-send-code"),

@@ -136,25 +136,13 @@ def candidates(key: str, now=None):
 
 # ---------------------------------------------------------------- content
 def _abandoned(order: Order) -> tuple[str, str]:
+    from apps.notifications.components import payment_block
     from apps.notifications.engine import render_template
     from apps.payments.billing import payment_instructions
 
     qr = payment_instructions(order)
     if qr is None:
         raise ValueError("no payment instructions")
-    default_html = f"""
-<p>Chào {escape(order.customer_name)},</p>
-<p>Bạn đã đăng ký <strong>{escape(order.course_title)}</strong> nhưng TWings chưa nhận được học phí.
-Chỗ học vẫn được giữ cho bạn – chỉ cần chuyển khoản theo thông tin dưới đây,
-hệ thống tự xác nhận và mở khóa học.</p>
-<p>Số tiền: <strong>{_vnd(qr["amount"])}</strong><br>
-Ngân hàng: {escape(qr["bank_name"])}<br>
-Số tài khoản: <strong>{escape(qr["account_number"])}</strong> – {escape(qr["account_name"])}<br>
-Nội dung chuyển khoản: <strong>{escape(qr["transfer_content"])}</strong></p>
-<p><img src="{qr["qr_image_url"]}" alt="VietQR" width="220"></p>
-<p>Cần tư vấn thêm hoặc muốn trả góp? Trả lời email này, TWings sẽ liên hệ bạn.</p>
-<p>TWings Academy</p>
-"""
     return render_template(
         "journey_abandoned_checkout",
         context={
@@ -162,30 +150,16 @@ Nội dung chuyển khoản: <strong>{escape(qr["transfer_content"])}</strong></
             "course_title": escape(order.course_title),
             "order_code": escape(order.order_code),
             "amount": _vnd(qr["amount"]),
-            "bank_name": escape(qr["bank_name"]),
-            "account_number": escape(qr["account_number"]),
-            "account_name": escape(qr["account_name"]),
-            "transfer_content": escape(qr["transfer_content"]),
-            "qr_image_url": qr["qr_image_url"],
+            "payment_details": payment_block(qr),
         },
-        default_subject=f"Hoàn tất đăng ký {order.course_title} – mã {order.order_code} | TWings Academy",
-        default_body=default_html,
     )
 
 
 def _intake_starting(order: Order) -> tuple[str, str]:
+    from apps.lms.emails import class_details
     from apps.notifications.engine import render_template
 
     cohort = order.cohort
-    where = f"<br>Địa điểm: {escape(cohort.location)}" if cohort.location else ""
-    default_html = f"""
-<p>Chào {escape(order.customer_name)},</p>
-<p>Lớp <strong>{escape(cohort.name)}</strong> của khóa <strong>{escape(order.course_title)}</strong>
-khai giảng ngày <strong>{cohort.start_date.strftime("%d/%m/%Y")}</strong>.{where}</p>
-<p>Học liệu, lịch học và bài tập có trên <a href="{_site()}/learn/">TWings LMS</a> – đăng nhập bằng nút
-“Đăng nhập bằng TWings” với email {escape(order.customer_email)}.</p>
-<p>Hẹn gặp bạn tại lớp!<br>TWings Academy</p>
-"""
     return render_template(
         "journey_intake_starting",
         context={
@@ -193,27 +167,16 @@ khai giảng ngày <strong>{cohort.start_date.strftime("%d/%m/%Y")}</strong>.{wh
             "cohort_name": escape(cohort.name),
             "course_title": escape(order.course_title),
             "start_date": cohort.start_date.strftime("%d/%m/%Y"),
-            "location_info": where,
+            "class_details": class_details(cohort, with_start=False),
             "customer_email": escape(order.customer_email),
             "lms_url": f"{_site()}/learn/",
         },
-        default_subject=f"Sắp khai giảng {cohort.name} – {order.course_title} | TWings Academy",
-        default_body=default_html,
     )
 
 
 def _not_started(order: Order) -> tuple[str, str]:
     from apps.notifications.engine import render_template
 
-    default_html = f"""
-<p>Chào {escape(order.customer_name)},</p>
-<p>Khóa <strong>{escape(order.course_title)}</strong> đã mở cho bạn được một tuần
-nhưng bạn chưa bắt đầu bài học nào. Chỉ 20 phút mỗi ngày là đủ để theo kịp lộ trình.</p>
-<p><a href="{_site()}/learn/">Vào học ngay trên TWings LMS</a> · Xem tiến độ tại
-<a href="{_account()}">Học phí & hồ sơ</a></p>
-<p>Gặp khó khăn khi đăng nhập hay sắp xếp thời gian? Trả lời email này để được hỗ trợ.</p>
-<p>TWings Academy</p>
-"""
     return render_template(
         "journey_not_started",
         context={
@@ -222,8 +185,6 @@ nhưng bạn chưa bắt đầu bài học nào. Chỉ 20 phút mỗi ngày là 
             "lms_url": f"{_site()}/learn/",
             "account_url": _account(),
         },
-        default_subject=f"Bắt đầu khóa {order.course_title} ngay hôm nay | TWings Academy",
-        default_body=default_html,
     )
 
 
@@ -249,28 +210,27 @@ def _suggestions(order: Order) -> list[tuple[str, str]]:
 
 
 def _completed_next(order: Order) -> tuple[str, str]:
+    from apps.notifications.components import button
     from apps.notifications.engine import render_template
 
     enrollment = order.lms_enrollment
     certificate = getattr(enrollment, "certificate", None)
     cert = (
-        f'<p>Chứng chỉ của bạn: <a href="{_site()}/xac-minh/{certificate.code}/">{certificate.code}</a></p>'
+        f"<p>Chứng chỉ của bạn (mã <strong>{escape(certificate.code)}</strong>) đã được cấp:</p>"
+        + button(f"{_site()}/xac-minh/{certificate.code}/", "Xem chứng chỉ")
         if certificate and not certificate.revoked
         else ""
     )
     items = _suggestions(order)
-    suggestions = "".join(f'<li><a href="{url}">{escape(title)}</a></li>' for title, url in items)
-    next_steps = f"<p>Gợi ý học tiếp:</p><ul>{suggestions}</ul>" if suggestions else ""
-    default_html = f"""
-<p>Chào {escape(order.customer_name)},</p>
-<p>Chúc mừng bạn đã hoàn thành <strong>{escape(order.course_title)}</strong>!</p>
-{cert}
-<p>Cảm nhận của bạn giúp TWings dạy tốt hơn và giúp người đến sau chọn đúng khóa học:
-<a href="{_account()}">viết đánh giá trong cổng học viên (Học phí & hồ sơ)</a>
-(vài phút, chỉ đăng lên website khi bạn đồng ý).</p>
-{next_steps}
-<p>TWings Academy</p>
-"""
+    suggestions = "".join(
+        f'<li style="margin-bottom:4px;"><a href="{url}">{escape(title)}</a></li>' for title, url in items
+    )
+    next_steps = (
+        "<p><strong>Gợi ý học tiếp:</strong></p>"
+        f'<ul style="margin:0 0 14px 0;padding-left:20px;">{suggestions}</ul>'
+        if suggestions
+        else ""
+    )
     return render_template(
         "journey_completed_next",
         context={
@@ -280,8 +240,6 @@ def _completed_next(order: Order) -> tuple[str, str]:
             "account_url": _account(),
             "next_steps_block": next_steps,
         },
-        default_subject=f"Chúc mừng bạn hoàn thành {order.course_title} | TWings Academy",
-        default_body=default_html,
     )
 
 

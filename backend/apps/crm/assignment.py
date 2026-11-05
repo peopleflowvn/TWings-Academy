@@ -239,11 +239,12 @@ def _notify_consultant(order: Order, consultant, due, handed_over: bool = False)
         send_email(
             to=consultant.email,
             subject=(
-                f"[TWings] {'Chuyển lead' if handed_over else 'Lead mới'}: "
+                f"[TWings CRM] {'Chuyển lead' if handed_over else 'Lead mới'}: "
                 f"{order.customer_name} – {order.course_title}"
             )[:200],
             html=html,
             idempotency_key=f"lead-assigned-{order.pk}-{consultant.pk}",
+            kind="internal",
         )
     except ResendError:
         logger.warning("Lead assignment e-mail for %s not sent", order.order_code)
@@ -269,7 +270,9 @@ def _send(to: list[str], subject: str, html: str, key: str) -> None:
 
     for email in to:
         try:
-            send_email(to=email, subject=subject[:200], html=html, idempotency_key=f"{key}-{email}")
+            send_email(
+                to=email, subject=subject[:200], html=html, idempotency_key=f"{key}-{email}", kind="internal"
+            )
         except ResendError:
             logger.warning("Lead alert %s to %s not sent", key, email)
 
@@ -292,7 +295,9 @@ def _notify_managers_unassigned(order: Order) -> None:
 <ul>{_lead_rows([order])}</ul>
 <p><a href="{base_url()}/app/sales/consulting">Phân công trong CRM</a></p>
 """
-    _send(emails, f"[TWings] Lead chưa có người nhận: {order.customer_name}", html, f"unassigned-{order.pk}")
+    _send(
+        emails, f"[TWings CRM] Lead chưa có người nhận: {order.customer_name}", html, f"unassigned-{order.pk}"
+    )
 
 
 def alert_overdue_leads(now=None) -> dict:
@@ -323,7 +328,7 @@ def alert_overdue_leads(now=None) -> dict:
 """
         _send(
             [consultant.email],
-            f"[TWings] {len(orders)} lead quá hạn liên hệ",
+            f"[TWings CRM] {len(orders)} lead quá hạn liên hệ",
             html,
             f"overdue-{now:%Y%m%d%H%M}",
         )
@@ -374,7 +379,12 @@ def alert_overdue_leads(now=None) -> dict:
 {unassigned_html}
 <p><a href="{base_url()}/app/sales/consulting">Mở CRM để phân công / nhắc tư vấn viên</a></p>
 """
-        _send(emails, f"[TWings] {len(escalated)} lead cần quản lý xử lý", html, f"escalate-{now:%Y%m%d%H%M}")
+        _send(
+            emails,
+            f"[TWings CRM] {len(escalated)} lead cần quản lý xử lý",
+            html,
+            f"escalate-{now:%Y%m%d%H%M}",
+        )
         for o in escalated:
             Activity.objects.create(
                 order=o,
@@ -387,27 +397,24 @@ def alert_overdue_leads(now=None) -> dict:
 
 
 # ---------------------------------------------------------------- appointments
-def _appointment_html(appt: Appointment, intro: str) -> str:
+def _appointment_context(appt: Appointment) -> dict:
     when = timezone.localtime(appt.starts_at)
     where = {
         "call": "TWings sẽ gọi cho bạn qua số điện thoại đã đăng ký.",
         "zalo": "TWings sẽ liên hệ qua Zalo theo số điện thoại đã đăng ký.",
-        "online": f"Họp online: {escape(appt.location)}"
+        "online": f"Họp trực tuyến: {escape(appt.location)}"
         if appt.location
-        else "Link họp online sẽ được gửi trước giờ hẹn.",
+        else "Đường dẫn họp trực tuyến sẽ được gửi trước giờ hẹn.",
         "office": f"Địa điểm: {escape(appt.location or 'Văn phòng TWings Academy')}",
     }[appt.channel]
-    return f"""
-<p>Chào {escape(appt.order.customer_name)},</p>
-<p>{intro}</p>
-<ul>
-<li>Thời gian: <strong>{when:%H:%M ngày %d/%m/%Y}</strong> ({appt.duration_minutes} phút)</li>
-<li>Hình thức: {appt.get_channel_display()} – {where}</li>
-<li>Nội dung: tư vấn {escape(appt.order.course_title or appt.order.interested_course or "khóa học")}</li>
-</ul>
-<p>Cần đổi lịch, vui lòng trả lời email này.</p>
-<p>TWings Academy</p>
-"""
+    return {
+        "customer_name": escape(appt.order.customer_name),
+        "starts_at": f"{when:%H:%M ngày %d/%m/%Y}",
+        "duration": str(appt.duration_minutes),
+        "channel": appt.get_channel_display(),
+        "where": where,
+        "course": escape(appt.order.course_title or appt.order.interested_course or "khóa học"),
+    }
 
 
 def send_appointment_confirmation(appt: Appointment) -> None:
@@ -417,20 +424,7 @@ def send_appointment_confirmation(appt: Appointment) -> None:
 
     if not appt.order.customer_email:
         return
-    when = timezone.localtime(appt.starts_at)
-    default_html = _appointment_html(appt, "TWings Academy xác nhận lịch tư vấn với bạn:")
-    subject, html = render_template(
-        "appointment_confirmation",
-        context={
-            "customer_name": escape(appt.order.customer_name),
-            "starts_at": f"{when:%H:%M ngày %d/%m/%Y}",
-            "duration": str(appt.duration_minutes),
-            "channel": appt.get_channel_display(),
-            "course": escape(appt.order.course_title or appt.order.interested_course or "khóa học"),
-        },
-        default_subject="Xác nhận lịch tư vấn | TWings Academy",
-        default_body=default_html,
-    )
+    subject, html = render_template("appointment_confirmation", _appointment_context(appt))
     try:
         send_logged(
             to=appt.order.customer_email,
@@ -446,6 +440,7 @@ def send_appointment_confirmation(appt: Appointment) -> None:
 
 def remind_appointments(now=None) -> int:
     """Reminder ~2 hours before planned appointments (learner and consultant). Run hourly."""
+    from apps.cms.seo import base_url
     from apps.notifications.engine import render_template
     from apps.notifications.outbox import send_logged
     from apps.notifications.resend import ResendError, send_email
@@ -458,22 +453,7 @@ def remind_appointments(now=None) -> int:
     for appt in due:
         try:
             if appt.order.customer_email:
-                when = timezone.localtime(appt.starts_at)
-                default_html = _appointment_html(appt, "Nhắc bạn lịch tư vấn sắp tới với TWings Academy:")
-                subject, html = render_template(
-                    "appointment_reminder",
-                    context={
-                        "customer_name": escape(appt.order.customer_name),
-                        "starts_at": f"{when:%H:%M ngày %d/%m/%Y}",
-                        "duration": str(appt.duration_minutes),
-                        "channel": appt.get_channel_display(),
-                        "course": escape(
-                            appt.order.course_title or appt.order.interested_course or "khóa học"
-                        ),
-                    },
-                    default_subject="Nhắc lịch tư vấn hôm nay | TWings Academy",
-                    default_body=default_html,
-                )
+                subject, html = render_template("appointment_reminder", _appointment_context(appt))
                 send_logged(
                     to=appt.order.customer_email,
                     subject=subject,
@@ -486,10 +466,14 @@ def remind_appointments(now=None) -> int:
                 when = timezone.localtime(appt.starts_at)
                 send_email(
                     to=appt.staff.email,
-                    subject=f"[TWings] {when:%H:%M} hẹn tư vấn {appt.order.customer_name}"[:200],
-                    html=f"<p>{escape(appt.order.customer_name)} – {escape(appt.order.customer_phone)} – "
-                    f"{appt.get_channel_display()} lúc {when:%H:%M %d/%m}.</p>",
+                    subject=f"[TWings CRM] {when:%H:%M} hẹn tư vấn {appt.order.customer_name}"[:200],
+                    html=f"<p>Nhắc lịch hẹn tư vấn lúc <strong>{when:%H:%M %d/%m}</strong>:</p>"
+                    f"<p><strong>{escape(appt.order.customer_name)}</strong>"
+                    f" – {escape(appt.order.customer_phone)}"
+                    f" – {appt.get_channel_display()}</p>"
+                    f'<p><a href="{base_url()}/app/sales/crm">Mở CRM</a></p>',
                     idempotency_key=f"appt-remind-staff-{appt.pk}",
+                    kind="internal",
                 )
         except ResendError:
             logger.warning("Appointment reminder %s not sent", appt.pk)

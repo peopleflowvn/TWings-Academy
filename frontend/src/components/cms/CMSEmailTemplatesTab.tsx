@@ -1,1033 +1,716 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, Paginated } from '../../lib/api';
 import { useServerCollection } from '../../lib/serverCollection';
 import { EMAIL_TEMPLATES, emailLogFromServer } from '../../lib/cmsCollections';
 import {
-  Mail,
-  Send,
-  Plus,
-  Edit,
-  Trash2,
-  Copy,
+  AlertCircle,
   Check,
+  CheckCircle2,
+  Clock,
+  Copy,
   Eye,
   FileText,
-  Sparkles,
-  AlertCircle,
-  CheckCircle2,
+  Lock,
+  Mail,
+  Monitor,
+  MousePointer,
+  Plus,
   RefreshCw,
-  ExternalLink,
-  Code,
-  Layers,
+  RotateCcw,
   Search,
-  Filter,
-  Users,
-  Building2,
-  Clock,
-  Zap,
-  Info,
+  Send,
   Settings,
   Smartphone,
-  Monitor,
-  Key,
-  ShieldCheck,
-  Webhook,
-  MousePointer,
-  Play,
+  Sparkles,
+  Trash2,
   X
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { EmailTemplate, EmailSendLog, Order, ResendEmailStatus } from '../../types';
-import { 
-  INITIAL_EMAIL_TEMPLATES, 
-  renderEmailTemplate, 
-  sendEmailWithResend,
-  testSendEmailWithBackend,
-  wrapEmailPreview,
-  extractOrderEmailVariables,
-  withPlaceholders,
+import { EmailSendLog, EmailTemplate, Order } from '../../types';
+import {
   EMAIL_VARIABLE_LABELS,
-  isLiveEmailEnabled,
-  SENDER_DISPLAY,
-  getSavedEmailSendLogs,
-  getSavedWebhookConfig
+  EmailSettingsResponse,
+  extractOrderEmailVariables,
+  loadEmailSettings,
+  previewEmail,
+  testSendEmailWithBackend,
+  withPlaceholders
 } from '../../utils/resendEmail';
-import { CMSResendWebhookModal } from './CMSResendWebhookModal';
 import { CMSEmailDetailModal } from './CMSEmailDetailModal';
+import { CMSEmailSettingsPanel } from './CMSEmailSettingsPanel';
 import { SandboxedHtmlPreview } from './SandboxedHtmlPreview';
+import { EMAIL_CATEGORIES, EMAIL_CATEGORY_LABELS, EMAIL_STATUS_LABELS } from './emailCategories';
 
 interface CMSEmailTemplatesTabProps {
   orders: Order[];
 }
 
+const NEW_TEMPLATE_BODY = `<h1 style="margin:0 0 6px 0;font-size:21px;line-height:1.35;font-weight:800;color:#0F172A;">Tiêu đề email</h1>
+<p style="margin:0 0 22px 0;font-size:14px;line-height:1.5;color:#64748B;">Một dòng mô tả ngắn</p>
+<p>Chào {{customer_name}},</p>
+<p>Nội dung chính của email về khóa học <strong>{{course_title}}</strong>.</p>
+<p>Cần hỗ trợ? Gọi hotline <strong>{{hotline}}</strong> hoặc trả lời email này.</p>`;
+
+const STATUS_STYLE: Record<string, string> = {
+  clicked: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  opened: 'bg-purple-100 text-purple-800 border-purple-200',
+  delivered: 'bg-blue-100 text-blue-800 border-blue-200',
+  sent: 'bg-slate-100 text-slate-700 border-slate-200',
+  queued: 'bg-slate-100 text-slate-600 border-slate-200',
+  simulated: 'bg-amber-50 text-amber-800 border-amber-200',
+  bounced: 'bg-rose-100 text-rose-800 border-rose-200',
+  complained: 'bg-rose-100 text-rose-800 border-rose-200',
+  failed: 'bg-red-100 text-red-800 border-red-200'
+};
+
+const isAutomatic = (t: EmailTemplate) => t.description.startsWith('Tự động');
+
 export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orders }) => {
-  // Live: templates are saved through /staff/email-templates/, history comes from /staff/email-logs/
-  // (statuses updated by Resend webhooks on the server). Demo: bundled samples.
-  const { items: templates, update: setTemplates, live } = useServerCollection<EmailTemplate>(
-    EMAIL_TEMPLATES,
-    INITIAL_EMAIL_TEMPLATES
-  );
-  const [sendLogs, setSendLogs] = useState<EmailSendLog[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate>(INITIAL_EMAIL_TEMPLATES[0]);
+  const { items: templates, update: setTemplates, reload, live } = useServerCollection<EmailTemplate>(EMAIL_TEMPLATES, []);
+  const [settings, setSettings] = useState<EmailSettingsResponse | null>(null);
   useEffect(() => {
-    if (templates.length && !templates.some((t) => t.id === selectedTemplate.id)) setSelectedTemplate(templates[0]);
+    if (live) loadEmailSettings().then(setSettings).catch(() => undefined);
+  }, [live]);
+
+  const [viewSubTab, setViewSubTab] = useState<'editor' | 'logs' | 'settings'>('editor');
+  const [selectedId, setSelectedId] = useState('');
+  const selected = templates.find((t) => t.id === selectedId) || templates[0];
+  const [editName, setEditName] = useState('');
+  const [editSubject, setEditSubject] = useState('');
+  const [editBody, setEditBody] = useState('');
+  useEffect(() => {
+    if (!selected) return;
+    setEditName(selected.name);
+    setEditSubject(selected.subject);
+    setEditBody(selected.body);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templates]);
+  }, [selected?.id, selected?.updatedAt]);
+  const dirty = !!selected && (editName !== selected.name || editSubject !== selected.subject || editBody !== selected.body);
+  const locked = !!selected?.isLocked;
+
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [previewOrderId, setPreviewOrderId] = useState('');
+  const previewOrder = orders.find((o) => o.id === previewOrderId);
+  const [devicePreview, setDevicePreview] = useState<'desktop' | 'mobile'>('desktop');
+  const [preview, setPreview] = useState<{ subject: string; html: string }>({ subject: '', html: '' });
+  const [testEmailTo, setTestEmailTo] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [toast, setToast] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const showToast = (text: string, tone: 'ok' | 'error' = 'ok') => {
+    setToast({ tone, text });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  // ------------------------------------------------------------ history
+  const [sendLogs, setSendLogs] = useState<EmailSendLog[]>([]);
+  const [logStatusFilter, setLogStatusFilter] = useState('all');
+  const [logSearch, setLogSearch] = useState('');
+  const [inspectedLog, setInspectedLog] = useState<EmailSendLog | null>(null);
   const loadSendLogs = useCallback(() => {
     if (!live) return;
     api
-      .get<Paginated<Record<string, unknown>>>('/staff/email-logs/?pageSize=100')
+      .get<Paginated<Record<string, unknown>>>('/staff/email-logs/?pageSize=200')
       .then((res) => setSendLogs(res.results.map(emailLogFromServer)))
       .catch(() => undefined);
   }, [live]);
   useEffect(loadSendLogs, [loadSendLogs]);
-  const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // Editor State
-  const [editSubject, setEditSubject] = useState(selectedTemplate.subject);
-  const [editBody, setEditBody] = useState(selectedTemplate.body);
-  const [editName, setEditName] = useState(selectedTemplate.name);
+  // ------------------------------------------------------------ preview (server frame, debounced)
+  const variables = useMemo(() => {
+    const fromOrder = previewOrder
+      ? withPlaceholders(extractOrderEmailVariables(previewOrder))
+      : withPlaceholders(Object.fromEntries(Object.keys(EMAIL_VARIABLE_LABELS).map((k) => [k, ''])));
+    const own = Object.fromEntries((selected?.variables || []).map((v) => [v, `[${EMAIL_VARIABLE_LABELS[v] || v}]`]));
+    return { ...own, ...fromOrder };
+  }, [previewOrder, selected?.variables]);
 
-  // Preview target lead
-  // Preview: a real lead if one is chosen; otherwise every variable shows as [its meaning].
-  const [previewOrder, setPreviewOrder] = useState<Order>(orders[0] || ({ id: 'ord-preview', customerName: '', orderCode: '', amount: 0, status: 'pending' } as unknown as Order));
-
-  // Device Preview: desktop or mobile
-  const [devicePreview, setDevicePreview] = useState<'desktop' | 'mobile'>('desktop');
-
-  // Test Dispatch State
-  // A test goes to a staff mailbox typed here, never to a learner by default.
-  const [testEmailTo, setTestEmailTo] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Sub-tab view: 'editor' | 'logs'
-  const [viewSubTab, setViewSubTab] = useState<'editor' | 'logs'>('editor');
-
-  // Logs sub-filter
-  const [logStatusFilter, setLogStatusFilter] = useState<'all' | 'opened' | 'clicked' | 'delivered' | 'bounced'>('all');
-  const [logSearch, setLogSearch] = useState('');
-
-  // Selected Log for Inspector
-  const [inspectedLog, setInspectedLog] = useState<EmailSendLog | null>(null);
-
-  // Modals state
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [showWebhookModal, setShowWebhookModal] = useState(false);
-
-  // Demo mode only: the history kept in this browser (live: the server's e-mail log).
   useEffect(() => {
-    if (!live) setSendLogs(getSavedEmailSendLogs());
-  }, [live]);
+    if (!selected) return;
+    const timer = setTimeout(() => {
+      previewEmail({ subject: editSubject, html: editBody, brand: selected.brand, variables })
+        .then(setPreview)
+        .catch(() => setPreview({ subject: editSubject, html: editBody }));
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [editSubject, editBody, selected?.brand, variables, selected]);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  };
-
-  const handleSelectTemplate = (t: EmailTemplate) => {
-    setSelectedTemplate(t);
-    setEditSubject(t.subject);
-    setEditBody(t.body);
-    setEditName(t.name);
-  };
-
-  const handleInsertVariable = (varName: string) => {
-    const tag = `{{${varName}}}`;
-    setEditBody((prev) => prev + tag);
-    showToast(`Đã chèn biến ${tag} vào nội dung email.`);
-  };
-
-  const handleSaveTemplate = () => {
-    const updated = templates.map((t) =>
-      t.id === selectedTemplate.id
-        ? {
-            ...t,
-            name: editName,
-            subject: editSubject,
-            body: editBody,
-            updatedAt: new Date().toLocaleDateString('vi-VN')
-          }
-        : t
+  // ------------------------------------------------------------ actions
+  const save = () => {
+    if (!selected) return;
+    setTemplates(
+      templates.map((t) =>
+        t.id === selected.id ? { ...t, name: editName, subject: editSubject, body: editBody, updatedAt: new Date().toLocaleString('vi-VN') } : t
+      )
     );
-    setTemplates(updated);
-    setSelectedTemplate({
-      ...selectedTemplate,
-      name: editName,
-      subject: editSubject,
-      body: editBody
-    });
-    showToast('Template email đã được lưu thành công!');
+    showToast('Đã lưu mẫu email.');
   };
 
-  const handleDuplicateTemplate = (tmpl: EmailTemplate) => {
-    const duplicated: EmailTemplate = {
-      ...tmpl,
-      id: `tmpl-${Date.now()}`,
-      code: `${tmpl.code}_copy`,
-      name: `${tmpl.name} (Bản sao)`,
-      updatedAt: new Date().toLocaleDateString('vi-VN')
+  const addTemplate = () => {
+    const stamp = Date.now();
+    const created: EmailTemplate = {
+      id: `tmpl-${stamp}`,
+      code: `custom_${stamp}`,
+      name: 'Mẫu email mới',
+      category: 'admission',
+      subject: 'Tiêu đề email | {{site_name}}',
+      description: 'Gửi thủ công từ hồ sơ học viên (CRM).',
+      variables: ['customer_name', 'course_title'],
+      updatedAt: new Date().toLocaleString('vi-VN'),
+      body: NEW_TEMPLATE_BODY,
+      brand: 'twings'
     };
-    setTemplates([duplicated, ...templates]);
-    setSelectedTemplate(duplicated);
-    setEditName(duplicated.name);
-    setEditSubject(duplicated.subject);
-    setEditBody(duplicated.body);
-    showToast(`Đã nhân bản mẫu "${tmpl.name}" thành công!`);
+    setTemplates([created, ...templates]);
+    setSelectedId(created.id);
+    showToast('Đã thêm mẫu mới theo khung chuẩn.');
   };
 
-  const handleDeleteTemplate = (tmplId: string, name: string) => {
-    if (templates.length <= 1) {
-      alert('Hệ thống cần tối thiểu 1 mẫu email trong thư viện.');
-      return;
-    }
-    if (window.confirm(`Bạn có chắc muốn xóa mẫu email "${name}"?`)) {
-      const remaining = templates.filter((t) => t.id !== tmplId);
-      setTemplates(remaining);
-      setSelectedTemplate(remaining[0]);
-      setEditName(remaining[0].name);
-      setEditSubject(remaining[0].subject);
-      setEditBody(remaining[0].body);
-      showToast(`Đã xóa mẫu email "${name}".`);
+  const duplicate = (t: EmailTemplate) => {
+    const copy: EmailTemplate = {
+      ...t,
+      id: `tmpl-${Date.now()}`,
+      code: `${t.code}_copy_${Date.now().toString(36)}`,
+      name: `${t.name} (bản sao)`,
+      description: 'Gửi thủ công từ hồ sơ học viên (CRM).',
+      isStandard: false,
+      isLocked: false,
+      isDefault: false,
+      updatedAt: new Date().toLocaleString('vi-VN')
+    };
+    setTemplates([copy, ...templates]);
+    setSelectedId(copy.id);
+    showToast(`Đã nhân bản “${t.name}”.`);
+  };
+
+  const remove = (t: EmailTemplate) => {
+    if (!window.confirm(`Xóa mẫu email “${t.name}”?`)) return;
+    setTemplates(templates.filter((x) => x.id !== t.id));
+    setSelectedId('');
+    showToast(`Đã xóa “${t.name}”.`);
+  };
+
+  const restore = async () => {
+    if (!selected || !window.confirm(`Khôi phục “${selected.name}” về nội dung chuẩn của hệ thống? Nội dung đang có sẽ bị thay thế.`)) return;
+    try {
+      await api.post(`/staff/email-templates/${selected.id}/restore/`, {});
+      await reload();
+      showToast('Đã khôi phục nội dung chuẩn.');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Không khôi phục được', 'error');
     }
   };
 
-  const handleSendTestEmail = async () => {
+  const restoreMissing = async () => {
+    try {
+      const res = await api.post<{ created: string[] }>('/staff/email-templates/restore-missing/', {});
+      await reload();
+      showToast(res.created.length ? `Đã tạo lại ${res.created.length} mẫu chuẩn còn thiếu.` : 'Đủ tất cả mẫu chuẩn.');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Không thực hiện được', 'error');
+    }
+  };
+
+  const sendTest = async () => {
+    if (!selected) return;
     if (!testEmailTo.trim()) {
-      alert('Vui lòng nhập địa chỉ email nhận thư.');
+      showToast('Nhập địa chỉ email nhận thư thử.', 'error');
       return;
     }
-
     setIsSending(true);
-    const variables = withPlaceholders(extractOrderEmailVariables(previewOrder));
-    const isCorp = selectedTemplate.category === 'corporate';
-
     const result = await testSendEmailWithBackend({
       to: testEmailTo.trim(),
-      code: selectedTemplate.code,
+      code: selected.code,
       subject: editSubject,
       body: editBody,
-      brand: isCorp ? 'corporate' : 'twings',
+      brand: selected.brand,
       variables
     });
-    loadSendLogs();
-
     setIsSending(false);
-
-    if (!result.success && result.error) {
-      showToast(`Không thể gửi: ${result.error}`);
+    loadSendLogs();
+    if (!result.success) {
+      showToast(`Không gửi được: ${result.error || result.status}`, 'error');
       return;
     }
-
-    if (!live) setSendLogs(getSavedEmailSendLogs());
     showToast(
       result.status === 'simulated'
-        ? 'Chế độ mô phỏng: máy chủ chưa cấu hình khóa Resend thật (RESEND_API_KEY).'
-        : `Đã gửi thư thử nghiệm tới ${testEmailTo} thành công!`
+        ? 'Chế độ mô phỏng: chưa có khóa API Resend nên thư không được gửi đi.'
+        : `Đã gửi thư thử tới ${testEmailTo}.`
     );
   };
 
-  // Filtered Templates
+  const insertVariable = (name: string) => {
+    setEditBody((prev) => `${prev}{{${name}}}`);
+    showToast(`Đã chèn {{${name}}} vào cuối nội dung.`);
+  };
+
+  // ------------------------------------------------------------ lists
   const filteredTemplates = templates.filter((t) => {
-    const matchCat = activeCategory === 'all' || t.category === activeCategory;
-    const matchQuery =
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.subject.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchCat && matchQuery;
+    const q = searchQuery.toLowerCase();
+    return (
+      (activeCategory === 'all' || t.category === activeCategory) &&
+      (t.name.toLowerCase().includes(q) || t.subject.toLowerCase().includes(q) || t.code.includes(q))
+    );
   });
-
-  // Filtered Logs
   const filteredLogs = sendLogs.filter((log) => {
-    const matchStatus = logStatusFilter === 'all' || log.status === logStatusFilter;
-    const matchSearch =
-      log.recipientName.toLowerCase().includes(logSearch.toLowerCase()) ||
-      log.recipientEmail.toLowerCase().includes(logSearch.toLowerCase()) ||
-      (log.resendMessageId && log.resendMessageId.toLowerCase().includes(logSearch.toLowerCase())) ||
-      log.subject.toLowerCase().includes(logSearch.toLowerCase());
-    return matchStatus && matchSearch;
+    const q = logSearch.toLowerCase();
+    return (
+      (logStatusFilter === 'all' || log.status === logStatusFilter) &&
+      (log.recipientName.toLowerCase().includes(q) ||
+        log.recipientEmail.toLowerCase().includes(q) ||
+        (log.resendMessageId || '').toLowerCase().includes(q) ||
+        log.subject.toLowerCase().includes(q))
+    );
   });
-
-  const previewVariables = withPlaceholders(extractOrderEmailVariables(previewOrder));
-  const renderedPreviewBody = wrapEmailPreview(
-    renderEmailTemplate(editBody, previewVariables),
-    selectedTemplate.category === 'corporate' ? 'corporate' : 'twings'
-  );
-  const renderedPreviewSubject = renderEmailTemplate(editSubject, previewVariables);
-  const hasLiveApiKey = isLiveEmailEnabled();
-  const webhookConfig = getSavedWebhookConfig();
-
-  const AVAILABLE_VARIABLES = [
-    { tag: 'customerName', desc: 'Họ tên học viên' },
-    { tag: 'courseTitle', desc: 'Tên khóa đào tạo' },
-    { tag: 'batchCohort', desc: 'Tên lớp / Đợt khai giảng' },
-    { tag: 'startDate', desc: 'Lịch khai giảng' },
-    { tag: 'instructorName', desc: 'Giảng viên phụ trách' },
-    { tag: 'amount', desc: 'Số tiền học phí' },
-    { tag: 'orderCode', desc: 'Mã hồ sơ / đơn hàng' },
-    { tag: 'bankAccount', desc: EMAIL_VARIABLE_LABELS.bankAccount },
-    { tag: 'location', desc: 'Địa điểm đào tạo' },
-    { tag: 'pic', desc: 'Chuyên viên cố vấn' },
-    { tag: 'customerPhone', desc: 'SĐT học viên' }
+  const variableChips = [
+    ...(selected?.variables || []).map((v) => ({ name: v, label: EMAIL_VARIABLE_LABELS[v] || 'Biến của mẫu này' })),
+    ...(settings?.globalVariables || [])
   ];
 
+  const tabButton = (id: typeof viewSubTab, icon: React.ReactNode, label: string) => (
+    <button
+      type="button"
+      onClick={() => setViewSubTab(id)}
+      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+        viewSubTab === id ? 'bg-[#0073C1] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+
   return (
-    <div className="space-y-6">
-      {/* 1. Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl border border-slate-800 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400">
-                <Mail className="w-4 h-4" />
-              </div>
-              <h2 className="text-lg font-bold tracking-tight">
-                Hệ Thống Email Tuyển Sinh &amp; Quản Lý Template (Resend API)
-              </h2>
-            </div>
-            <p className="text-xs text-slate-300">
-              Mẫu thư chuẩn nhận diện <strong>TWings Academy &amp; Ngân hàng MSB</strong>, hiển thị tối ưu trên di động &amp; máy tính, tích hợp <strong>Resend Webhook</strong> đối soát thời gian thực.
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0073C1]">
+            <Mail className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Email hệ thống</h2>
+            <p className="text-xs text-slate-500">
+              Mẫu thư, nhật ký gửi và cấu hình gửi qua Resend. Mọi email dùng chung một khung: logo, chữ ký và hotline theo Cài đặt SEO website.
             </p>
           </div>
-
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setShowWebhookModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 text-xs font-bold border border-indigo-400/30 flex items-center gap-2 transition-colors cursor-pointer"
-            >
-              <Webhook className="w-4 h-4 text-indigo-300" />
-              <span>Cấu Hình Webhook</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowConfigModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-700 flex items-center gap-2 transition-colors cursor-pointer"
-            >
-              <Settings className="w-4 h-4 text-slate-300" />
-              <span>Cấu Hình Gửi Thư</span>
-            </button>
-
-            <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border ${
-              hasLiveApiKey 
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                : 'bg-blue-500/10 border-blue-500/20 text-blue-300'
-            }`}>
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>{hasLiveApiKey ? 'Resend Live API' : 'Resend Sandbox'}</span>
-            </div>
-          </div>
         </div>
+        {settings && (
+          <div className="flex flex-wrap gap-2 text-[11px] font-bold">
+            <span className={`px-2.5 py-1 rounded-lg border ${settings.live ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
+              {settings.live ? '● Resend: đang gửi thật' : '● Resend: mô phỏng (chưa có khóa API)'}
+            </span>
+            <span className={`px-2.5 py-1 rounded-lg border ${settings.webhookConfigured ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
+              {settings.webhookConfigured ? '● Webhook: đã cấu hình' : '● Webhook: chưa cấu hình'}
+            </span>
+            {settings.effective.redirectTo && (
+              <span className="px-2.5 py-1 rounded-lg border bg-red-50 text-red-700 border-red-200">● Đang chuyển hướng thử nghiệm</span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Toast Alert */}
-      {toastMessage && (
-        <div className="bg-emerald-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center justify-between animate-fadeIn shadow-md">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{toastMessage}</span>
-          </div>
-          <button onClick={() => setToastMessage(null)} className="text-white/80 hover:text-white cursor-pointer">
+      {/* Sub-tabs */}
+      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs flex flex-wrap items-center gap-1.5">
+        {tabButton('editor', <FileText className="w-4 h-4" />, `Mẫu email (${templates.length})`)}
+        {tabButton('logs', <Clock className="w-4 h-4" />, `Nhật ký gửi (${sendLogs.length})`)}
+        {tabButton('settings', <Settings className="w-4 h-4" />, 'Cấu hình gửi thư')}
+      </div>
+
+      {toast && (
+        <div
+          className={`text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center justify-between shadow-md ${
+            toast.tone === 'ok' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            {toast.tone === 'ok' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+            {toast.text}
+          </span>
+          <button type="button" onClick={() => setToast(null)} className="cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* 2. Sub-tab Navigator (Templates Editor vs Send Logs) */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setViewSubTab('editor')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              viewSubTab === 'editor'
-                ? 'bg-[#0073C1] text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Biên Tập &amp; Quản Lý Template ({templates.length})</span>
-          </button>
+      {viewSubTab === 'settings' && <CMSEmailSettingsPanel />}
 
-          <button
-            type="button"
-            onClick={() => setViewSubTab('logs')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              viewSubTab === 'logs'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <Clock className="w-4 h-4" />
-            <span>Nhật Ký Thư &amp; Webhook ({sendLogs.length})</span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3 text-xs text-slate-500 font-mono pr-2">
-          <span className="flex items-center gap-1 text-emerald-600 font-bold">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Webhook: {webhookConfig.status === 'active' ? 'Đang Lắng Nghe' : 'Chờ Kết Nối'}
-          </span>
-          <span className="hidden sm:inline text-slate-300">|</span>
-          <span className="hidden sm:inline">Tỷ lệ phát: <strong>99.8%</strong></span>
-        </div>
-      </div>
-
-      {/* =============================================================== */}
-      {/* VIEW 1: TEMPLATE MANAGER & LIVE PREVIEW EDITOR */}
-      {/* =============================================================== */}
+      {/* ============================================================ templates */}
       {viewSubTab === 'editor' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Template List (4 Cols) */}
-          <div className="lg:col-span-4 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-slate-900 uppercase tracking-wider">
-                Kho Mẫu Email Tuyển Sinh
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  const newTmpl: EmailTemplate = {
-                    id: `tmpl-${Date.now()}`,
-                    code: `custom_${Date.now()}`,
-                    name: 'Mẫu Email Mới',
-                    category: 'admission',
-                    subject: '[TWings x MSB] Thông báo mới cho học viên {{customerName}}',
-                    description: 'Mẫu email tùy chỉnh do chuyên viên khởi tạo.',
-                    variables: ['customerName', 'courseTitle', 'batchCohort', 'pic'],
-                    updatedAt: new Date().toLocaleDateString('vi-VN'),
-                    body: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <h2>Thông Báo Từ TWings Academy & MSB</h2>
-  <p>Kính gửi Bạn <strong>{{customerName}}</strong>,</p>
-  <p>Hệ thống trân trọng thông báo thông tin khóa học <strong>{{courseTitle}}</strong>.</p>
-</div>`
-                  };
-                  setTemplates([newTmpl, ...templates]);
-                  handleSelectTemplate(newTmpl);
-                  showToast('Đã thêm mẫu email mới.');
-                }}
-                className="p-1.5 bg-[#0073C1] text-white rounded-lg hover:bg-[#005fa3] text-xs font-bold flex items-center gap-1 cursor-pointer"
-                title="Tạo mẫu email mới"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Thêm Mẫu</span>
-              </button>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          <div className="lg:col-span-4 bg-white p-4 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold text-xs text-slate-900 uppercase tracking-wider">Thư viện mẫu</span>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={restoreMissing}
+                  title="Tạo lại các mẫu chuẩn đã bị xóa"
+                  className="p-1.5 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={addTemplate}
+                  className="px-2.5 py-1.5 bg-[#0073C1] text-white rounded-lg hover:bg-[#005fa3] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Thêm mẫu
+                </button>
+              </div>
             </div>
-
-            {/* Search Input */}
             <div className="relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm mẫu thư theo tên, tiêu đề..."
+                placeholder="Tìm theo tên, tiêu đề, mã…"
                 className="w-full pl-8 pr-3 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
             </div>
-
-            {/* Category Filter Pills */}
             <div className="flex flex-wrap gap-1.5 text-[11px] font-bold">
-              {[
-                { id: 'all', label: 'Tất cả' },
-                { id: 'admission', label: '🎓 Tuyển sinh' },
-                { id: 'payment', label: '💳 Học phí' },
-                { id: 'lms', label: '📚 Đào tạo LMS' },
-                { id: 'crm', label: '🤝 Chăm sóc CRM' },
-                { id: 'security', label: '🔐 Bảo mật' },
-                { id: 'corporate', label: '🏢 B2B' },
-                { id: 'scheduling', label: '📅 Lịch học & PV' }
-              ].map((c) => (
+              {['all', ...EMAIL_CATEGORIES].map((c) => (
                 <button
-                  key={c.id}
+                  key={c}
                   type="button"
-                  onClick={() => setActiveCategory(c.id)}
-                  className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                    activeCategory === c.id
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                  onClick={() => setActiveCategory(c)}
+                  className={`px-2.5 py-1 rounded-lg cursor-pointer ${activeCategory === c ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                 >
-                  {c.label}
+                  {c === 'all' ? 'Tất cả' : EMAIL_CATEGORY_LABELS[c]}
                 </button>
               ))}
             </div>
-
-            {/* Template Card List */}
-            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-              {filteredTemplates.map((t) => {
-                const isSelected = t.id === selectedTemplate.id;
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => handleSelectTemplate(t)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative group ${
-                      isSelected
-                        ? 'border-[#0073C1] bg-blue-50/60 shadow-2xs ring-2 ring-blue-500/20'
-                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="font-bold text-xs text-slate-900 leading-snug">
-                        {t.name}
-                      </div>
-
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="space-y-2 max-h-[680px] overflow-y-auto pr-1">
+              {filteredTemplates.map((t) => (
+                <div
+                  key={t.id}
+                  onClick={() => setSelectedId(t.id)}
+                  className={`p-3 rounded-2xl border cursor-pointer group ${
+                    t.id === selected?.id ? 'border-[#0073C1] bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-bold text-xs text-slate-900 leading-snug flex items-center gap-1">
+                      {t.isLocked && <Lock className="w-3 h-3 text-slate-500 shrink-0" />}
+                      {t.name}
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          duplicate(t);
+                        }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-500"
+                        title="Nhân bản"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                      {!t.isStandard && (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDuplicateTemplate(t);
-                          }}
-                          className="p-1 hover:bg-slate-200 rounded text-slate-500"
-                          title="Nhân bản mẫu này"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteTemplate(t.id, t.name);
+                            remove(t);
                           }}
                           className="p-1 hover:bg-red-100 rounded text-red-500"
-                          title="Xóa mẫu này"
+                          title="Xóa"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
-                      </div>
-                    </div>
-
-                    <div className="text-[11px] text-slate-500 mt-1 line-clamp-1">
-                      {t.subject}
-                    </div>
-
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 font-mono">
-                      <span>Cập nhật: {t.updatedAt}</span>
-                      <span className="bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600 font-sans">
-                        {t.category === 'payment'
-                          ? '💳 Học phí'
-                          : t.category === 'admission'
-                          ? '🎓 Tuyển sinh'
-                          : t.category === 'lms'
-                          ? '📚 LMS'
-                          : t.category === 'crm'
-                          ? '🤝 CRM'
-                          : t.category === 'security'
-                          ? '🔐 Bảo mật'
-                          : t.category === 'corporate'
-                          ? '🏢 B2B'
-                          : '📅 Lịch học'}
-                      </span>
+                      )}
                     </div>
                   </div>
-                );
-              })}
+                  <div className="text-[11px] text-slate-500 mt-1 line-clamp-1">{t.subject}</div>
+                  <div className="flex items-center gap-1.5 mt-2 text-[10px] font-bold flex-wrap">
+                    <span className="bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-600">{EMAIL_CATEGORY_LABELS[t.category] || t.category}</span>
+                    <span className={`px-1.5 py-0.5 rounded border ${isAutomatic(t) ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                      {isAutomatic(t) ? 'Tự động' : 'Gửi tay'}
+                    </span>
+                    {t.brand === 'corporate' && <span className="px-1.5 py-0.5 rounded border bg-red-50 text-red-700 border-red-100">TNTalent</span>}
+                  </div>
+                </div>
+              ))}
+              {!filteredTemplates.length && <p className="text-xs text-slate-500 text-center py-6">Không có mẫu nào.</p>}
             </div>
           </div>
 
-          {/* Right Column: Template Editor & Live Preview (8 Cols) */}
-          <div className="lg:col-span-8 space-y-6">
-            {/* Editor Card */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                <div className="space-y-0.5">
-                  <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">
-                    Biên Tập Nội Dung Template
-                  </span>
+          {selected ? (
+            <div className="lg:col-span-8 space-y-5">
+              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="space-y-1 flex-1">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      disabled={locked}
+                      className="font-bold text-base text-slate-900 border-b border-dashed border-slate-300 focus:border-[#0073C1] focus:outline-none w-full bg-transparent"
+                    />
+                    <div className="text-[11px] text-slate-500">
+                      Mã: <span className="font-mono">{selected.code}</span> · {selected.description || 'Mẫu tự tạo'}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selected.isStandard && (
+                      <button
+                        type="button"
+                        onClick={restore}
+                        className="px-3 py-2 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" /> Khôi phục bản chuẩn
+                      </button>
+                    )}
+                    {!locked && (
+                      <button
+                        type="button"
+                        onClick={save}
+                        disabled={!dirty}
+                        className="px-4 py-2 bg-[#0073C1] hover:bg-[#005fa3] disabled:opacity-50 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Check className="w-3.5 h-3.5" /> Lưu thay đổi
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {locked && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 flex items-center gap-2">
+                    <Lock className="w-4 h-4" /> Mẫu chứa mã đăng nhập / liên kết đặt lại mật khẩu: chỉ quản trị hệ thống thay đổi được (bảo mật).
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">Tiêu đề email</label>
                   <input
                     type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="font-bold text-base text-slate-900 border-b border-dashed border-slate-300 focus:border-[#0073C1] focus:outline-none w-full"
+                    value={editSubject}
+                    onChange={(e) => setEditSubject(e.target.value)}
+                    disabled={locked}
+                    className="w-full p-2.5 text-xs font-medium border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
                   />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSaveTemplate}
-                    className="px-4 py-2 bg-[#0073C1] hover:bg-[#005fa3] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Lưu Thay Đổi</span>
-                  </button>
+                {!locked && (
+                  <div className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <div className="flex items-center gap-1.5 text-slate-700 text-xs font-bold">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Biến có thể dùng (bấm để chèn)
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {variableChips.map((v) => (
+                        <button
+                          key={v.name}
+                          type="button"
+                          onClick={() => insertVariable(v.name)}
+                          title={v.label}
+                          className="px-2 py-1 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-slate-700 rounded-lg text-[11px] font-mono cursor-pointer"
+                        >
+                          {`{{${v.name}}}`}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Không cần viết chữ ký, logo hay chân thư: hệ thống tự thêm theo Cấu hình gửi thư. Không ghi cứng số hotline, dùng <code>{'{{hotline}}'}</code>.
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">Nội dung (HTML)</label>
+                  <textarea
+                    rows={14}
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    disabled={locked}
+                    className="w-full p-3 font-mono text-xs border border-slate-300 rounded-2xl bg-slate-900 text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
                 </div>
               </div>
 
-              {/* Subject Input */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 block">
-                  Tiêu Đề Email (Subject Line) - Hỗ trợ gán tag biến:
-                </label>
-                <input
-                  type="text"
-                  value={editSubject}
-                  onChange={(e) => setEditSubject(e.target.value)}
-                  className="w-full p-2.5 text-xs font-medium border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
-                />
-              </div>
-
-              {/* Dynamic Variables Guide Chips */}
-              <div className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                <div className="flex items-center gap-1.5 text-slate-700 text-xs font-bold">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Chèn Biến Động (Click để chèn vào nội dung thư):</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {AVAILABLE_VARIABLES.map((v) => (
-                    <button
-                      key={v.tag}
-                      type="button"
-                      onClick={() => handleInsertVariable(v.tag)}
-                      className="px-2 py-1 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 rounded-lg text-[11px] font-mono font-medium transition-colors cursor-pointer"
-                      title={v.desc}
-                    >
-                      {`{{${v.tag}}}`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* HTML & Body Editor */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 block">
-                  Mã Nguồn Thư (HTML Chuẩn Email - Responsive Tables):
-                </label>
-                <textarea
-                  rows={12}
-                  value={editBody}
-                  onChange={(e) => setEditBody(e.target.value)}
-                  className="w-full p-3 font-mono text-xs border border-slate-300 rounded-2xl bg-slate-900 text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-            </div>
-
-            {/* Live Interactive Preview Card */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-blue-600" />
-                  <span className="font-bold text-xs text-slate-900 uppercase tracking-wider">
-                    Xem Trước Bản Render Thực Tế
+              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <span className="font-bold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-blue-600" /> Xem trước như người nhận thấy
                   </span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {/* Target Lead Selector */}
-                  <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                    <span>Xem thử với:</span>
+                  <div className="flex items-center gap-3">
                     <select
-                      value={previewOrder.id}
-                      onChange={(e) => {
-                        const found = orders.find((o) => o.id === e.target.value);
-                        if (found) setPreviewOrder(found);
-                      }}
-                      className="p-1.5 border border-slate-300 rounded-xl bg-slate-50 font-bold text-xs"
+                      value={previewOrderId}
+                      onChange={(e) => setPreviewOrderId(e.target.value)}
+                      className="p-1.5 border border-slate-300 rounded-xl bg-slate-50 text-xs max-w-[220px]"
                     >
-                      {orders.map((o) => (
+                      <option value="">Dữ liệu mẫu [tên biến]</option>
+                      {orders.slice(0, 200).map((o) => (
                         <option key={o.id} value={o.id}>
                           {o.customerName} ({o.orderCode})
                         </option>
                       ))}
                     </select>
-                  </div>
-
-                  {/* Device Toggle */}
-                  <div className="flex items-center bg-slate-100 p-1 rounded-xl">
-                    <button
-                      type="button"
-                      onClick={() => setDevicePreview('desktop')}
-                      className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                        devicePreview === 'desktop' ? 'bg-white shadow-2xs text-slate-900' : 'text-slate-500'
-                      }`}
-                      title="Xem trên máy tính (Desktop)"
-                    >
-                      <Monitor className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDevicePreview('mobile')}
-                      className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                        devicePreview === 'mobile' ? 'bg-white shadow-2xs text-slate-900' : 'text-slate-500'
-                      }`}
-                      title="Xem trên điện thoại (Mobile 375px)"
-                    >
-                      <Smartphone className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                      {(['desktop', 'mobile'] as const).map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setDevicePreview(d)}
+                          className={`p-1.5 rounded-lg cursor-pointer ${devicePreview === d ? 'bg-white shadow-2xs text-slate-900' : 'text-slate-500'}`}
+                          title={d === 'desktop' ? 'Máy tính' : 'Điện thoại (375px)'}
+                        >
+                          {d === 'desktop' ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Rendered Subject */}
-              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs">
-                <span className="text-slate-400 font-bold block mb-0.5">Tiêu đề thực tế gửi đi:</span>
-                <span className="font-bold text-slate-900">{renderedPreviewSubject}</span>
-              </div>
-
-              {/* Rendered HTML Container */}
-              <div className="flex justify-center bg-slate-100 p-4 sm:p-6 rounded-2xl border border-slate-200">
-                <div
-                  className={`bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden transition-all duration-300 ${
-                    devicePreview === 'mobile' ? 'w-[375px]' : 'w-full'
-                  }`}
-                >
-                  <div className="p-3 bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
-                    <span>To: {previewOrder.customerEmail || 'hocvien@gmail.com'}</span>
-                    <span>Resend Render View ({devicePreview.toUpperCase()})</span>
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs space-y-0.5">
+                  <div>
+                    <span className="text-slate-400 font-bold">Từ: </span>
+                    <span className="font-mono">{settings?.effective[selected.brand === 'corporate' ? 'corporate' : 'twings'].sender || '…'}</span>
                   </div>
-                  <SandboxedHtmlPreview html={renderedPreviewBody} minHeight={500} />
+                  <div>
+                    <span className="text-slate-400 font-bold">Tiêu đề: </span>
+                    <span className="font-bold text-slate-900">{preview.subject}</span>
+                  </div>
                 </div>
-              </div>
-
-              {/* Test Dispatch Strip */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Gửi Thử Nghiệm Tới:</span>
-                  <input
-                    type="email"
-                    value={testEmailTo}
-                    onChange={(e) => setTestEmailTo(e.target.value)}
-                    placeholder="email@example.com"
-                    className="p-2 text-xs border border-slate-300 rounded-xl bg-white w-full sm:w-64 font-mono"
-                  />
+                <div className="flex justify-center bg-slate-100 p-4 rounded-2xl border border-slate-200">
+                  <div className={`bg-white rounded-2xl shadow-md overflow-hidden transition-all ${devicePreview === 'mobile' ? 'w-[375px]' : 'w-full'}`}>
+                    <SandboxedHtmlPreview html={preview.html} minHeight={620} />
+                  </div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleSendTestEmail}
-                  disabled={isSending}
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
-                >
-                  <Send className={`w-3.5 h-3.5 ${isSending ? 'animate-spin' : ''}`} />
-                  <span>{isSending ? 'Đang gửi qua Resend...' : 'Gửi Thử Qua Resend API'}</span>
-                </button>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Gửi thử tới:</span>
+                    <input
+                      type="email"
+                      value={testEmailTo}
+                      onChange={(e) => setTestEmailTo(e.target.value)}
+                      placeholder="email@twings.edu.vn"
+                      className="p-2 text-xs border border-slate-300 rounded-xl bg-white w-full sm:w-64 font-mono"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={sendTest}
+                    disabled={isSending}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <Send className={`w-3.5 h-3.5 ${isSending ? 'animate-pulse' : ''}`} />
+                    {isSending ? 'Đang gửi…' : 'Gửi thư thử (nội dung đang soạn)'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="lg:col-span-8 bg-white p-10 rounded-3xl border border-slate-200 text-center text-xs text-slate-500">
+              Chưa có mẫu email. Bấm <RotateCcw className="w-3.5 h-3.5 inline" /> để tạo lại các mẫu chuẩn.
+            </div>
+          )}
         </div>
       )}
 
-      {/* =============================================================== */}
-      {/* VIEW 2: RESEND DISPATCH LOGS & WEBHOOK AUDIT */}
-      {/* =============================================================== */}
+      {/* ============================================================ history */}
       {viewSubTab === 'logs' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden space-y-5 p-5">
-          {/* 1. DEDICATED RESEND WEBHOOK CONFIGURATION & LIVE STATUS PANEL */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-2xl border border-slate-800 space-y-4 shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
-                    <Webhook className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                      <span>Cấu Hình Resend Webhook &amp; Giám Sát Thời Gian Thực</span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
-                        Đang Lắng Nghe
-                      </span>
-                    </h3>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-300">
-                  Cơ chế đối soát 2 chiều: Resend Webhook tự động đẩy dữ liệu khi học viên <strong>Mở thư</strong>, <strong>Bấm vào link</strong>, hoặc khi máy chủ <strong>Tiếp nhận thành công</strong>.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowWebhookModal(true)}
-                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 border border-indigo-400/30 shadow-xs"
-                >
-                  <Settings className="w-3.5 h-3.5 text-indigo-200" />
-                  <span>Cài Đặt Webhook Chi Tiết</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Webhook URLs & Secrets Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/80 space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="font-semibold flex items-center gap-1">
-                    <ExternalLink className="w-3 h-3 text-indigo-400" /> Endpoint Webhook URL (Nhận Sự Kiện):
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(webhookConfig.webhookUrl);
-                      showToast('Đã sao chép Webhook URL vào clipboard!');
-                    }}
-                    className="text-indigo-300 hover:text-white font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Copy className="w-3 h-3" />
-                    <span>Sao chép</span>
-                  </button>
-                </div>
-                <div className="font-mono text-indigo-200 text-xs truncate bg-slate-900/90 p-2 rounded-lg border border-slate-700 select-all">
-                  {webhookConfig.webhookUrl}
-                </div>
-              </div>
-
-              <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/80 space-y-1.5">
-                <div className="text-[11px] text-slate-400 font-semibold flex items-center gap-1">
-                  <Key className="w-3 h-3 text-emerald-400" /> Signing Secret (Xác thực chữ ký Svix):
-                </div>
-                <div className="text-emerald-300 text-xs bg-slate-900/90 p-2 rounded-lg border border-slate-700">
-                  Lưu an toàn trên máy chủ (RESEND_WEBHOOK_SECRET) – không hiển thị trên trình duyệt.
-                </div>
-              </div>
-            </div>
-
-            {/* Subscribed Events & Live Simulator Controls */}
-            <div className="p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-slate-400 font-semibold mr-1">Sự kiện kích hoạt:</span>
-                {['email.sent', 'email.delivered', 'email.opened', 'email.clicked', 'email.bounced'].map((ev) => (
-                  <span key={ev} className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-mono text-[10px] border border-indigo-400/20">
-                    ✓ {ev}
-                  </span>
-                ))}
-              </div>
-
-            </div>
-          </div>
-
-          {/* 2. LOGS TABLE CONTROLS & FILTER BAR */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-blue-600" />
-                <span>Nhật Ký Thư Resend Đã Phát &amp; Ghi Nhận Webhook ({sendLogs.length})</span>
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Cập nhật tự động thời gian thực khi học viên tiếp nhận, mở thư hoặc click vào link trong email.
+              <h3 className="font-bold text-base text-slate-900">Nhật ký gửi email</h3>
+              <p className="text-xs text-slate-500">
+                Trạng thái (đã tới hộp thư, đã mở, đã bấm liên kết, bị trả về) cập nhật tự động qua webhook Resend.
               </p>
             </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSendLogs(getSavedEmailSendLogs());
-                  showToast('Đã làm mới nhật ký phát thư.');
-                }}
-                className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer border border-slate-200"
-                title="Làm mới danh sách"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                loadSendLogs();
+                showToast('Đã làm mới nhật ký.');
+              }}
+              className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl border border-slate-200 cursor-pointer"
+              title="Làm mới"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
           </div>
-
-          {/* Filter Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
             <div className="w-full sm:w-80 relative">
               <input
                 type="text"
                 value={logSearch}
                 onChange={(e) => setLogSearch(e.target.value)}
-                placeholder="Tìm theo học viên, email, mã Msg ID..."
-                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-[#0073C1]"
+                placeholder="Tìm theo người nhận, email, tiêu đề, mã thư…"
+                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:outline-none"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
             </div>
-
-            {/* Status Pills */}
-            <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
-              {[
-                { id: 'all', label: 'Tất cả' },
-                { id: 'opened', label: '👁️ Đã mở (Opened)' },
-                { id: 'clicked', label: '🖱️ Đã bấm link (Clicked)' },
-                { id: 'delivered', label: '✓ Tiếp nhận (Delivered)' },
-                { id: 'bounced', label: '⚠️ Bị dội (Bounced)' }
-              ].map((st) => (
+            <div className="flex flex-wrap gap-1.5 text-xs font-bold">
+              {['all', 'delivered', 'opened', 'clicked', 'bounced', 'failed', 'simulated'].map((s) => (
                 <button
-                  key={st.id}
+                  key={s}
                   type="button"
-                  onClick={() => setLogStatusFilter(st.id as any)}
-                  className={`px-3 py-1.5 rounded-xl transition-colors cursor-pointer ${
-                    logStatusFilter === st.id
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                  onClick={() => setLogStatusFilter(s)}
+                  className={`px-3 py-1.5 rounded-xl cursor-pointer ${logStatusFilter === s ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                 >
-                  {st.label}
+                  {s === 'all' ? 'Tất cả' : EMAIL_STATUS_LABELS[s]}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Table */}
           <div className="overflow-x-auto border border-slate-200 rounded-2xl">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="p-3.5">Người Nhận</th>
-                  <th className="p-3.5">Mẫu Thư (Template)</th>
-                  <th className="p-3.5">Tiêu Đề Email</th>
-                  <th className="p-3.5">Thời Gian Gửi</th>
-                  <th className="p-3.5">Mã Thông Điệp Resend</th>
-                  <th className="p-3.5 text-center">Trạng Thái Webhook</th>
-                  <th className="p-3.5 text-right">Chi Tiết</th>
+                  <th className="p-3">Người nhận</th>
+                  <th className="p-3">Mẫu</th>
+                  <th className="p-3">Tiêu đề</th>
+                  <th className="p-3">Thời gian</th>
+                  <th className="p-3 text-center">Trạng thái</th>
+                  <th className="p-3 text-right"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredLogs.map((log) => {
-                  return (
-                    <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="p-3.5">
-                        <div className="font-bold text-slate-900">{log.recipientName}</div>
-                        <div className="font-mono text-slate-400 text-[11px]">{log.recipientEmail}</div>
-                      </td>
-
-                      <td className="p-3.5 font-medium text-slate-800">
-                        {log.templateName}
-                      </td>
-
-                      <td className="p-3.5 text-slate-600 max-w-xs truncate" title={log.subject}>
-                        {log.subject}
-                      </td>
-
-                      <td className="p-3.5 font-mono text-slate-500 text-[11px]">
-                        {log.sentAt}
-                      </td>
-
-                      <td className="p-3.5 font-mono text-slate-700 text-[11px]">
-                        {log.resendMessageId || 'msg_simulated'}
-                      </td>
-
-                      <td className="p-3.5 text-center">
-                        {log.status === 'clicked' ? (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
-                            <MousePointer className="w-3 h-3" />
-                            <span>Đã click link ({log.clickCount || 1}x)</span>
-                          </span>
-                        ) : log.status === 'opened' ? (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 inline-flex items-center gap-1">
-                            <Eye className="w-3 h-3" />
-                            <span>Đã mở ({log.openCount || 1}x)</span>
-                          </span>
-                        ) : log.status === 'delivered' ? (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 inline-flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>Đã tiếp nhận</span>
-                          </span>
-                        ) : log.status === 'bounced' ? (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 inline-flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            <span>Bị dội (Bounce)</span>
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 inline-flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span>Đã phát đi</span>
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="p-3.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setInspectedLog(log)}
-                          className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0073C1] font-bold text-[11px] transition-colors cursor-pointer inline-flex items-center gap-1"
-                        >
-                          <Eye className="w-3 h-3" />
-                          <span>Xem Thư</span>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {filteredLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50/80">
+                    <td className="p-3">
+                      <div className="font-bold text-slate-900">{log.recipientName || '—'}</div>
+                      <div className="font-mono text-slate-400 text-[11px]">{log.recipientEmail}</div>
+                    </td>
+                    <td className="p-3 text-slate-700">{log.templateName}</td>
+                    <td className="p-3 text-slate-600 max-w-xs truncate" title={log.subject}>
+                      {log.subject}
+                    </td>
+                    <td className="p-3 font-mono text-slate-500 text-[11px]">{log.sentAt}</td>
+                    <td className="p-3 text-center">
+                      <span
+                        title={log.errorMessage || log.bounceReason || ''}
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border inline-flex items-center gap-1 ${STATUS_STYLE[log.status] || STATUS_STYLE.sent}`}
+                      >
+                        {log.status === 'clicked' && <MousePointer className="w-3 h-3" />}
+                        {log.status === 'opened' && <Eye className="w-3 h-3" />}
+                        {EMAIL_STATUS_LABELS[log.status] || log.status}
+                        {log.status === 'opened' && log.openCount ? ` (${log.openCount})` : ''}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setInspectedLog(log)}
+                        className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0073C1] font-bold text-[11px] cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" /> Xem thư
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!filteredLogs.length && (
+                  <tr>
+                    <td colSpan={6} className="p-6 text-center text-slate-500">
+                      Chưa có email nào.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* =============================================================== */}
-      {/* 3. RESEND API CONFIGURATION MODAL */}
-      {/* =============================================================== */}
-      {showConfigModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-600 flex items-center justify-center">
-                  <Key className="w-4 h-4" />
-                </div>
-                <h3 className="font-bold text-sm text-slate-900">Cấu Hình Kết Nối Resend API</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowConfigModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs text-slate-700">
-              <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50">
-                <span className="font-bold">Chế độ gửi:</span>
-                <span className={hasLiveApiKey ? 'text-emerald-700 font-bold' : 'text-blue-700 font-bold'}>
-                  {hasLiveApiKey ? 'Resend Live (qua máy chủ TWings)' : 'Sandbox mô phỏng'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50">
-                <span className="font-bold">Người gửi:</span>
-                <span className="font-mono text-[11px]">{SENDER_DISPLAY}</span>
-              </div>
-              <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-[11px] text-blue-900 space-y-1">
-                <div className="font-bold flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Cơ Chế Bảo Mật Resend</span>
-                </div>
-                <p>
-                  Khóa API Resend chỉ tồn tại trên máy chủ (biến môi trường <code>RESEND_API_KEY</code>). Trình duyệt chỉ gửi yêu cầu
-                  đã xác thực tới API TWings; máy chủ kiểm tra quyền <code>email.send</code>, ghi nhật ký và gọi Resend.
-                  Thay đổi khóa hoặc địa chỉ gửi bằng cách cập nhật tệp <code>.env</code> trên VPS.
-                </p>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowConfigModal(false)}
-                  className="px-5 py-2 text-xs font-bold bg-[#0073C1] hover:bg-[#005fa3] text-white rounded-xl shadow-xs"
-                >
-                  Đóng
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =============================================================== */}
-      {/* 4. RESEND WEBHOOK CONFIGURATION & SIMULATOR MODAL */}
-      {/* =============================================================== */}
-      {showWebhookModal && (
-        <CMSResendWebhookModal
-          isOpen={showWebhookModal}
-          onClose={() => setShowWebhookModal(false)}
-          onWebhookProcessed={() => {
-            setSendLogs(getSavedEmailSendLogs());
-          }}
-        />
-      )}
-
-      {/* =============================================================== */}
-      {/* 5. EMAIL DETAIL INSPECTOR MODAL */}
-      {/* =============================================================== */}
-      {inspectedLog && (
-        <CMSEmailDetailModal
-          log={inspectedLog}
-          onClose={() => setInspectedLog(null)}
-        />
-      )}
+      {inspectedLog && <CMSEmailDetailModal log={inspectedLog} onClose={() => setInspectedLog(null)} />}
     </div>
   );
 };

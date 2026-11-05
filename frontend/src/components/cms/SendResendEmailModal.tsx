@@ -24,19 +24,20 @@ import {
 } from 'lucide-react';
 import { Order, EmailTemplate, EmailSendLog } from '../../types';
 import {
-  INITIAL_EMAIL_TEMPLATES,
   extractOrderEmailVariables,
   missingEmailVariables,
   EMAIL_VARIABLE_LABELS,
   EmailContext,
   renderEmailTemplate,
   sendEmailWithResend,
-  wrapEmailPreview,
-  isLiveEmailEnabled,
-  SENDER_DISPLAY
+  previewEmail,
+  loadEmailSettings,
+  isManualTemplate,
+  isLiveEmailEnabled
 } from '../../utils/resendEmail';
 import { SandboxedHtmlPreview } from './SandboxedHtmlPreview';
 import { api } from '../../lib/api';
+import { EMAIL_CATEGORY_LABELS } from './emailCategories';
 
 interface SendResendEmailModalProps {
   isOpen: boolean;
@@ -52,18 +53,23 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
   order,
   onEmailSent
 }) => {
-  // Determine smart default template based on order status
-  const defaultTemplateId = order.status === 'paid' 
-    ? 'tmpl-receipt' 
-    : order.status === 'pending' || !order.status
-    ? 'tmpl-invoice'
-    : 'tmpl-welcome';
-
-  // Live: templates edited in the CMS (server); demo: bundled samples.
-  const { items: serverTemplates } = useServerCollection<EmailTemplate>(EMAIL_TEMPLATES, INITIAL_EMAIL_TEMPLATES);
-  // Live: only the templates stored on the server (the bundled samples are for the demo mode).
-  const templateList = serverTemplates.length || isLiveEmailEnabled() ? serverTemplates : INITIAL_EMAIL_TEMPLATES;
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(defaultTemplateId);
+  // Templates edited in /app/content/email; only those a consultant sends by hand (no sign-in codes, no B2B).
+  const { items: serverTemplates } = useServerCollection<EmailTemplate>(EMAIL_TEMPLATES, []);
+  const templateList = serverTemplates.filter(isManualTemplate);
+  // A sensible first choice: tuition details while unpaid, the admission letter once paid.
+  const preferredCode = order.status === 'paid' ? 'admission_welcome' : 'vietqr_tuition_invoice';
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  useEffect(() => {
+    if (!selectedTemplateId && templateList.length) {
+      setSelectedTemplateId((templateList.find((t) => t.code === preferredCode) || templateList[0]).id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateList.length]);
+  const [senderFrom, setSenderFrom] = useState('');
+  useEffect(() => {
+    if (isOpen && isLiveEmailEnabled()) loadEmailSettings().then((s) => setSenderFrom(s.effective.twings.sender)).catch(() => undefined);
+  }, [isOpen]);
+  const [previewHtml, setPreviewHtml] = useState('');
   const [recipientEmail, setRecipientEmail] = useState<string>(order.customerEmail || '');
   const [subject, setSubject] = useState<string>('');
   const [htmlBody, setHtmlBody] = useState<string>('');
@@ -105,6 +111,17 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTemplateId, order, context, templateList.length]);
 
+  // The e-mail as it will arrive (server frame: logo, signature, footer with the website's hotline).
+  useEffect(() => {
+    if (!isOpen || !htmlBody) return;
+    const timer = setTimeout(() => {
+      previewEmail({ subject, html: htmlBody })
+        .then((r) => setPreviewHtml(r.html))
+        .catch(() => setPreviewHtml(htmlBody));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [isOpen, subject, htmlBody]);
+
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -119,14 +136,13 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
     return (
       <div className="fixed inset-0 z-50 bg-slate-950/75 flex items-center justify-center p-4" onClick={onClose}>
         <div className="bg-white rounded-2xl p-5 max-w-md text-sm space-y-3" onClick={(e) => e.stopPropagation()}>
-          <p>Chưa có mẫu email nào trên máy chủ. Tạo mẫu ở <strong>Mẫu email & lịch sử gửi</strong> rồi gửi lại.</p>
+          <p>Chưa có mẫu email nào để gửi. Tạo hoặc khôi phục mẫu ở <strong>Nội dung → Email</strong> rồi gửi lại.</p>
           <button type="button" onClick={onClose} className="px-3 py-2 rounded-xl border border-slate-200 font-bold cursor-pointer">Đóng</button>
         </div>
       </div>
     );
   }
   const hasLiveApiKey = isLiveEmailEnabled();
-  const senderFrom = SENDER_DISPLAY;
 
   const handleSend = async () => {
     if (!recipientEmail || !recipientEmail.includes('@')) {
@@ -147,8 +163,6 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
         to: recipientEmail.trim(),
         subject: subject,
         html: htmlBody,
-        templateId: currentTemplate.id,
-        templateName: currentTemplate.name,
         recipientName: order.customerName,
         templateCode: currentTemplate.code,
         orderId: order.id
@@ -216,7 +230,7 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
                 <div className="space-y-1">
                   <h4 className="font-bold text-sm">Đã gửi email</h4>
                   <p className="text-xs text-emerald-700">
-                    Gửi tới <strong>{recipientEmail}</strong>, đã ghi vào lịch sử hồ sơ. Trạng thái giao thư (đã nhận, bị trả về…) cập nhật theo webhook trong Mẫu email & lịch sử gửi.
+                    Gửi tới <strong>{recipientEmail}</strong>, đã ghi vào lịch sử hồ sơ. Trạng thái giao thư (đã nhận, đã mở, bị trả về…) xem tại Nội dung → Email → Nhật ký gửi.
                   </p>
                   {sendResult.messageId && (
                     <div className="text-[11px] font-mono text-emerald-800 bg-white/60 px-2 py-1 rounded-md border border-emerald-200 inline-block mt-1">
@@ -234,7 +248,7 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-amber-900 text-xs">
               <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
               <span>
-                <strong>Email chưa được gửi thật:</strong> máy chủ chưa cấu hình khóa Resend (RESEND_API_KEY). Thư được lưu ở chế độ mô phỏng; học viên không nhận được.
+                <strong>Email chưa được gửi thật:</strong> hệ thống chưa có khóa API Resend (Nội dung → Email → Cấu hình gửi thư). Thư được lưu ở chế độ mô phỏng; học viên không nhận được.
               </span>
             </div>
           )}
@@ -312,19 +326,7 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
                       {tmpl.name}
                     </div>
                     <div className="text-[11px] text-slate-500 line-clamp-1 mt-1">
-                      {tmpl.category === 'payment'
-                        ? '💳 Học phí'
-                        : tmpl.category === 'admission'
-                        ? '🎓 Tuyển sinh'
-                        : tmpl.category === 'lms'
-                        ? '📚 LMS'
-                        : tmpl.category === 'crm'
-                        ? '🤝 CRM'
-                        : tmpl.category === 'security'
-                        ? '🔐 Bảo mật'
-                        : tmpl.category === 'corporate'
-                        ? '🏢 B2B'
-                        : '📅 Lịch học'}
+                      {EMAIL_CATEGORY_LABELS[tmpl.category] || tmpl.category}
                     </div>
                   </button>
                 );
@@ -341,7 +343,7 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={senderFrom}
+                  value={senderFrom || 'Theo cấu hình gửi thư'}
                   disabled
                   className="w-full p-2.5 text-xs border border-slate-200 rounded-xl bg-slate-100 text-slate-600 font-mono"
                 />
@@ -407,10 +409,7 @@ export const SendResendEmailModal: React.FC<SendResendEmailModalProps> = ({
             {previewTab === 'preview' ? (
               <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 p-4 max-h-72 overflow-y-auto shadow-inner">
                 <SandboxedHtmlPreview
-                  html={wrapEmailPreview(
-                    htmlBody,
-                    templateList.find((t) => t.id === selectedTemplateId)?.category === 'corporate' ? 'corporate' : 'twings'
-                  )}
+                  html={previewHtml || htmlBody}
                   className="rounded-xl shadow-xs"
                   minHeight={260}
                 />

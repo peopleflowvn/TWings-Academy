@@ -236,6 +236,15 @@ export const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
     categoryLabel: '4. Bài Viết & Chấm Điểm SEO',
     riskLevel: 'high'
   },
+  {
+    id: 'perm-email-settings',
+    code: 'email.settings',
+    name: 'Cấu hình gửi email (Resend)',
+    description: 'Người gửi, địa chỉ nhận phản hồi, khóa API Resend, logo và chân thư của mọi email',
+    category: 'articles_seo',
+    categoryLabel: '4. Bài Viết & Chấm Điểm SEO',
+    riskLevel: 'high'
+  },
 
   // Category 5: Kế toán & VietQR
   {

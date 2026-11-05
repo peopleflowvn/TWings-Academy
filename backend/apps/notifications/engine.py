@@ -1,5 +1,5 @@
 """
-Unified template rendering engine: loads EmailTemplate from database or falls back to hardcoded defaults.
+Template rendering: the stored EmailTemplate, else the standard template (defaults.py).
 Supports both {{variable}} and {variable} placeholder syntax safely.
 """
 
@@ -58,17 +58,19 @@ def render_template(
     context: dict[str, Any],
     default_subject: str = "",
     default_body: str = "",
+    brand: str | None = None,
 ) -> tuple[str, str]:
     """
-    Look up EmailTemplate by code in the database.
-    If found and active, renders its subject and body with `context`.
-    If not found, falls back to `default_subject` and `default_body`.
-    Returns (rendered_subject, rendered_body).
+    (subject, body) of a template: the database version (edited in /app/content/email), else the
+    standard one (defaults.py), else the caller's. Brand variables ({{site_name}}, {{hotline}},
+    {{support_email}}...) are filled too; `context` wins over them.
     """
-    tmpl = EmailTemplate.objects.filter(code=code).first()
-    raw_subject = tmpl.subject if tmpl and tmpl.subject else default_subject
-    raw_body = tmpl.body if tmpl and tmpl.body else default_body
+    from .config import global_context
+    from .defaults import BY_CODE
 
-    rendered_subject = interpolate(raw_subject, context)
-    rendered_body = interpolate(raw_body, context)
-    return rendered_subject, rendered_body
+    tmpl = EmailTemplate.objects.filter(code=code).first()
+    standard = BY_CODE.get(code) or {}
+    raw_subject = (tmpl and tmpl.subject) or standard.get("subject") or default_subject
+    raw_body = (tmpl and tmpl.body) or standard.get("body") or default_body
+    ctx = {**global_context(brand or standard.get("brand", "twings")), **context}
+    return interpolate(raw_subject, ctx), interpolate(raw_body, ctx)

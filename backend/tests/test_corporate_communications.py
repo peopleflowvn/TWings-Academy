@@ -188,8 +188,8 @@ def test_b2b_mail_is_tntalent_b2c_stays_twings(cls, resend_calls, settings):
 
     send_invitations(cls, sent_by=None)
     b2b = resend_calls[-1]
-    assert b2b["from"] == "TNTalent <tuyensinh@twings.test>" and ">TNTalent</td>" in b2b["html"]
+    assert b2b["from"] == "TNTalent <tuyensinh@twings.test>" and ">TNTalent</span>" in b2b["html"]
     assert "Học phí" not in b2b["html"]  # no B2C tuition links in a B2B e-mail
     send_email(to="hv@example.com", subject="B2C", html="<p>x</p>", idempotency_key="k")
     b2c = resend_calls[-1]
-    assert b2c["from"] == "TWings Academy <tuyensinh@twings.test>" and "TWings Academy</td>" in b2c["html"]
+    assert b2c["from"] == "TWings Academy <tuyensinh@twings.test>" and ">TWings Academy</span>" in b2c["html"]

@@ -98,33 +98,27 @@ def class_calendar(corporate_class) -> bytes:
 
 
 # ---------------------------------------------------------------- invitation
-def invitation_html(listing) -> str:
+def invitation_details(listing) -> str:
+    """Place and every session of the class, as an info table (the .ics carries the same schedule)."""
+    from apps.notifications.components import CORPORATE, info_table
+
     cohort = listing.corporate_class.cohort
     sessions = list(cohort.sessions.order_by("starts_at"))
-    rows = "".join(
-        f"<li>{timezone.localtime(s.starts_at):%H:%M %d/%m/%Y} – {timezone.localtime(s.ends_at):%H:%M}"
-        f" · {escape(s.title or 'Buổi học')}{' · ' + escape(s.location) if s.location else ''}</li>"
+    schedule = "<br>".join(
+        f"{timezone.localtime(s.starts_at):%H:%M %d/%m/%Y} – {timezone.localtime(s.ends_at):%H:%M}"
+        f" · {escape(s.title or 'Buổi học')}{' · ' + escape(s.location) if s.location else ''}"
         for s in sessions
     )
-    url = learn_url()
-    title = f"{escape(cohort.course.title)} – {escape(cohort.name)}"
-    place = f"<p>Địa điểm: {escape(cohort.location)}</p>" if cohort.location else ""
-    schedule = (
-        f"<p><strong>Lịch học ({len(sessions)} buổi):</strong></p><ul>{rows}</ul>"
-        if sessions
-        else "<p>Lịch học sẽ được gửi sau.</p>"
+    return info_table(
+        [
+            ("Địa điểm", escape(cohort.location or "")),
+            (
+                f"Lịch học ({len(sessions)} buổi)" if sessions else "Lịch học",
+                schedule or "Sẽ được thông báo sau",
+            ),
+        ],
+        CORPORATE,
     )
-    return f"""
-<p>Chào {escape(listing.learner.full_name)},</p>
-<p>Đơn vị của bạn đã đăng ký cho bạn tham gia lớp <strong>{title}</strong>.</p>
-{place}
-{schedule}
-<p>Lịch học được đính kèm (tệp .ics): mở tệp để thêm vào Outlook / Google Calendar / điện thoại.</p>
-<p><strong>Vào học trực tuyến:</strong> mở <a href="{url}">{url}</a>, bấm “Đăng nhập bằng TWings”, nhập email
-<strong>{escape(listing.learner.email)}</strong> và mã 6 chữ số được gửi tới email này.
-Ở mỗi buổi học, điểm danh bằng cách quét mã QR giảng viên chiếu trên lớp.</p>
-<p>Cần hỗ trợ, vui lòng trả lời email này.</p>
-"""
 
 
 def invitation_rows(corporate_class, only_new: bool = True) -> list[dict]:
@@ -164,22 +158,16 @@ def _send_invitation(listing, row, calendar, sent_by) -> bool:
     from apps.notifications.engine import render_template
 
     cohort = listing.corporate_class.cohort
-    default_subject = f"Thư mời tham gia lớp {cohort.course.title} – {cohort.name}"
-    default_body = invitation_html(listing)
     context = {
-        "learner_name": listing.learner.full_name,
-        "course_title": cohort.course.title,
-        "cohort_name": cohort.name,
-        "location": cohort.location or "",
+        "learner_name": escape(listing.learner.full_name),
+        "course_title": escape(cohort.course.title),
+        "cohort_name": escape(cohort.name),
+        "location": escape(cohort.location or ""),
+        "class_details": invitation_details(listing),
         "learn_url": learn_url(),
-        "learner_email": listing.learner.email,
+        "learner_email": escape(listing.learner.email),
     }
-    subject, html = render_template(
-        "corporate_invitation",
-        context,
-        default_subject=default_subject,
-        default_body=default_body,
-    )
+    subject, html = render_template("corporate_invitation", context, brand="corporate")
     try:
         send_logged(
             to=row["to"],
@@ -286,7 +274,7 @@ def _managers(corporate_class, snapshot, listings) -> dict[str, tuple[str, list[
 def digest_html(batch, staff: list[dict], name: str) -> str:
     cohort = batch.corporate_class.cohort
     rows = "".join(
-        "<tr>"
+        '<tr style="border-top:1px solid #E2E8F0;">'
         f"<td>{escape(r['name'])}</td><td>{escape(r.get('employee_code') or '')}</td>"
         f"<td>{r['sessions_attended']}/{r['sessions_taken']}</td>"
         f"<td>{'' if r.get('grade_percent') is None else str(r['grade_percent']) + '%'}</td>"
@@ -299,9 +287,10 @@ def digest_html(batch, staff: list[dict], name: str) -> str:
 <p>Kính gửi {escape(name or "Anh/Chị")},</p>
 <p>Lớp <strong>{escape(cohort.course.title)} – {escape(cohort.name)}</strong> đã kết thúc. Kết quả của
 {len(staff)} nhân viên thuộc quyền quản lý của Anh/Chị:</p>
-<table cellpadding="6" style="border-collapse:collapse;font-size:14px">
-<tr><th align="left">Họ tên</th><th align="left">Mã NV</th><th align="left">Buổi có mặt</th>
-<th align="left">Điểm</th><th align="left">Kết quả</th></tr>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" border="0"
+ style="border-collapse:collapse;font-size:13px;margin:16px 0 20px 0;border:1px solid #E2E8F0;">
+<tr style="background:#F8FAFC;color:#475569;"><th align="left">Họ tên</th><th align="left">Mã NV</th>
+<th align="left">Buổi có mặt</th><th align="left">Điểm</th><th align="left">Kết quả</th></tr>
 {rows}
 </table>
 {message}

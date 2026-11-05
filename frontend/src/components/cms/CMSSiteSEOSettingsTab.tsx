@@ -256,7 +256,7 @@ export const CMSSiteSEOSettingsTab: React.FC = () => {
               </span>
             </div>
             <p className="text-[11px] text-slate-500">
-              Các thông tin này dùng trên toàn bộ website: chân trang (Footer), nút gọi hotline góc màn hình, form đăng ký và dữ liệu có cấu trúc SEO của Google.
+              Các thông tin này dùng trên toàn bộ website (chân trang, nút gọi hotline, form đăng ký, dữ liệu có cấu trúc của Google) và trong mọi email gửi học viên (chân thư, biến {'{{hotline}}'}). Logo ở mục 1 cũng là logo đầu email.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -269,7 +269,7 @@ export const CMSSiteSEOSettingsTab: React.FC = () => {
                   type="text"
                   value={settings.hotline || ''}
                   onChange={(e) => setSettings({ ...settings, hotline: e.target.value })}
-                  placeholder="0843 314 382 (Ms. Hường) hoặc 1900 633 898"
+                  placeholder="0843 314 382 (Ms. Hường)"
                   className="w-full p-2.5 border border-slate-300 rounded-lg"
                 />
               </div>

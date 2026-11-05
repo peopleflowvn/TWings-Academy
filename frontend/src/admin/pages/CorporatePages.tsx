@@ -635,7 +635,7 @@ const InvitationDialog: React.FC<{ cls: CorpClass; onClose: () => void; onSent: 
     setError('');
     try {
       const res = await api.post<SendResult>(`/staff/corporate/classes/${cls.id}/invitations/`, { all });
-      setResult(res.queued ? QUEUED_TEXT : `Đã gửi ${res.sent} thư${res.failed ? `, ${res.failed} thư lỗi (xem Mẫu email & lịch sử gửi)` : ''}.`);
+      setResult(res.queued ? QUEUED_TEXT : `Đã gửi ${res.sent} thư${res.failed ? `, ${res.failed} thư lỗi (xem Nội dung → Email)` : ''}.`);
       onSent();
     } catch (e) {
       setError(errorText(e));

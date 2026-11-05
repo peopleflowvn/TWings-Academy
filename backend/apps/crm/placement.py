@@ -340,33 +340,8 @@ def notify_learner(placement_id: str) -> bool:
         return False
     name = escape(p.order.customer_name)
     role = escape(" – ".join(x for x in (p.job_title, p.unit) if x) or p.employer)
-    if p.stage == "interview":
-        default_subject = f"Lịch phỏng vấn tại {p.employer}"
-        body = (
-            f"<p>Hồ sơ của bạn đã được {escape(p.employer)} chọn phỏng vấn cho vị trí "
-            f"<strong>{role}</strong>.</p>"
-            f"<p><strong>Thời gian:</strong> {timezone.localtime(p.interview_at):%H:%M ngày %d/%m/%Y}<br>"
-            f"<strong>Địa điểm / link:</strong> {escape(p.interview_location or 'TWings sẽ báo sau')}</p>"
-            "<p>Vui lòng phản hồi email này để xác nhận tham gia. Chúc bạn phỏng vấn thành công!</p>"
-        )
-    elif p.stage == "offer":
-        default_subject = f"Chúc mừng – {p.employer} gửi đề nghị làm việc"
-        body = (
-            f"<p>Chúc mừng bạn đã vượt qua vòng phỏng vấn vị trí <strong>{role}</strong> tại "
-            f"{escape(p.employer)}. Bộ phận tuyển dụng sẽ liên hệ để thống nhất thư mời nhận việc.</p>"
-        )
-    elif p.stage == "hired":
-        default_subject = f"Chúc mừng bạn chính thức gia nhập {p.employer}"
-        body = (
-            f"<p>Chúc mừng bạn nhận việc vị trí <strong>{role}</strong> tại {escape(p.employer)}, "
-            f"ngày bắt đầu {p.start_date:%d/%m/%Y}.</p>"
-            "<p>TWings sẽ đồng hành cùng bạn trong thời gian thử việc – "
-            "có khó khăn gì hãy phản hồi email này.</p>"
-        )
-    else:
+    if p.stage not in ("interview", "offer", "hired"):
         return False
-
-    default_html = f"<p>Chào {name},</p>{body}<p>TWings Academy</p>"
     subject, html = render_template(
         f"placement_{p.stage}",
         context={
@@ -375,12 +350,10 @@ def notify_learner(placement_id: str) -> bool:
             "role": role,
             "interview_time": f"{timezone.localtime(p.interview_at):%H:%M ngày %d/%m/%Y}"
             if p.interview_at
-            else "",
-            "interview_location": escape(p.interview_location or "TWings sẽ báo sau"),
-            "start_date": f"{p.start_date:%d/%m/%Y}" if p.start_date else "",
+            else "TWings sẽ thông báo sau",
+            "interview_location": escape(p.interview_location or "TWings sẽ thông báo sau"),
+            "start_date": f"{p.start_date:%d/%m/%Y}" if p.start_date else "sẽ được đơn vị thông báo",
         },
-        default_subject=default_subject,
-        default_body=default_html,
     )
     try:
         send_logged(

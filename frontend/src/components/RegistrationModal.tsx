@@ -58,8 +58,9 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   onOpenVietQR,
 }) => {
   const seo = useSiteSeo();
-  const hotlineText = seo?.hotline || '1900 633 898';
-  const hotlineNum = phoneDigits(hotlineText) || '1900633898';
+  // The hotline of /app/content/seo only (no hard-coded fallback number): no hotline, no call button.
+  const hotlineText = seo?.hotline || '';
+  const hotlineNum = phoneDigits(hotlineText);
   const zaloUrl = zaloLink(seo?.zalo || seo?.hotline) || 'https://zalo.me/twingsacademy';
 
   const [fullName, setFullName] = useState('');
@@ -368,13 +369,15 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                   <div className="text-[11px] text-slate-600">Đội ngũ tuyển sinh trực tuyến 8h00 - 21h30 hằng ngày</div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-                  <a
-                    href={`tel:${hotlineNum}`}
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#263060] hover:bg-[#1E2750] text-white text-xs font-bold rounded-xl transition-all shadow-xs"
-                  >
-                    <PhoneCall className="w-3.5 h-3.5 text-amber-300" />
-                    <span>{hotlineText}</span>
-                  </a>
+                  {hotlineNum && (
+                    <a
+                      href={`tel:${hotlineNum}`}
+                      className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#263060] hover:bg-[#1E2750] text-white text-xs font-bold rounded-xl transition-all shadow-xs"
+                    >
+                      <PhoneCall className="w-3.5 h-3.5 text-amber-300" />
+                      <span>{hotlineText}</span>
+                    </a>
+                  )}
                   <a
                     href={zaloUrl}
                     target="_blank"

@@ -55,7 +55,7 @@ export const JourneysPage: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-slate-600 max-w-2xl">
           Hệ thống tự gửi các email này mỗi sáng 9:30 theo hành trình của từng học viên; mỗi đơn nhận mỗi email tối đa một
-          lần. Nội dung và lịch sử gửi xem trong “Mẫu email & lịch sử gửi”.
+          lần. Nội dung và lịch sử gửi xem trong “Nội dung → Email”.
         </p>
         {canEdit && (
           <button type="button" onClick={runNow} disabled={busy}

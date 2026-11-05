@@ -132,7 +132,7 @@ def test_one_reminder_e_mail_on_the_last_day_of_the_hold(api, registration_paylo
     assert remind_expiring_checkouts() == 1
     assert remind_expiring_checkouts() == 0  # once
     log = EmailLog.objects.get(template_code="checkout_hold_reminder")
-    assert order.order_code in log.rendered_html and "tự hủy" in log.rendered_html
+    assert order.order_code in log.rendered_html and "tự động hủy" in log.rendered_html
 
 
 def test_finance_restores_an_order_paid_after_its_hold(api, registration_payload, staff_client, fake_moodle):  # noqa: F811

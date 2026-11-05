@@ -7,19 +7,23 @@ import logging
 import time
 
 import requests
-from django.conf import settings
 
-from .layout import brand as brand_of
 from .layout import wrap
 
 logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
+RESEND_DOMAINS_URL = "https://api.resend.com/domains"
 WEBHOOK_TOLERANCE_SECONDS = 5 * 60
 
 
 class ResendError(Exception):
     pass
+
+
+# kind: "learner" (default: signed, archived), "internal" (staff notices: no signature, not archived),
+# "sensitive" (sign-in codes, password links: never archived nor redirected to the test mailbox).
+KINDS = ("learner", "internal", "sensitive")
 
 
 def send_email(
@@ -33,22 +37,41 @@ def send_email(
     reply_to: str = "",
     attachments: list[dict] | None = None,
     brand: str = "twings",
+    kind: str = "learner",
 ) -> str | None:
     """
     Send via Resend and return its message id, or None when no API key is configured (sandbox mode:
     the caller records the email as 'simulated'). One message: `to` is a single person, `cc` / `bcc`
     are who else receives that same message (Resend reports delivery per message, not per copy).
     `attachments`: [{"filename": "lich-hoc.ics", "content": <bytes>, "content_type": "text/calendar"}].
-    `brand`: "twings" (B2C) or "corporate" (B2B, TNTalent): sender name / address and e-mail frame.
+    `brand`: "twings" (B2C) or "corporate" (B2B, TNTalent): sender, reply-to and e-mail frame.
+    Sender, reply-to, archive copy and test redirect come from /app/content/email (config.py).
     """
-    api_key = settings.RESEND_API_KEY
+    from . import config
+
+    api_key = config.api_key()
     if not api_key:
         return None
-    payload = {"from": brand_of(brand)["sender"], "to": [to], "subject": subject, "html": wrap(html, brand)}
+    b = config.effective(brand)
+    cc, bcc = list(cc or []), list(bcc or [])
+    if b["redirect_to"] and kind != "sensitive":
+        # Test mode: nobody but the test mailbox receives anything.
+        others = ", ".join([to, *cc, *bcc])
+        subject = f"[THỬ NGHIỆM → {others}] {subject}"[:300]
+        to, cc, bcc = b["redirect_to"], [], []
+    elif b["bcc_archive"] and kind == "learner" and b["bcc_archive"] not in (to, *cc, *bcc):
+        bcc.append(b["bcc_archive"])
+    payload = {
+        "from": b["sender"],
+        "to": [to],
+        "subject": subject,
+        "html": wrap(html, brand, signature=kind != "internal"),
+    }
     if cc:
-        payload["cc"] = list(cc)
+        payload["cc"] = cc
     if bcc:
-        payload["bcc"] = list(bcc)
+        payload["bcc"] = bcc
+    reply_to = reply_to or b["reply_to"]
     if reply_to:
         payload["reply_to"] = reply_to
     if attachments:
@@ -72,12 +95,52 @@ def send_email(
     if response.status_code >= 400:
         # Never log the request (it carries the key); the response body is safe to keep.
         logger.warning("Resend rejected email: %s %s", response.status_code, response.text[:300])
-        try:
-            message = response.json().get("message", "")
-        except ValueError:
-            message = ""
-        raise ResendError(message or f"Resend trả lỗi {response.status_code}")
+        raise ResendError(_message(response) or f"Resend trả lỗi {response.status_code}")
     return response.json().get("id")
+
+
+def _message(response) -> str:
+    try:
+        return str(response.json().get("message", ""))
+    except ValueError:
+        return ""
+
+
+def check_connection(api_key: str | None = None) -> dict:
+    """
+    Is the key valid, and which sending domains does the Resend account have (status, region)?
+    A "sending access" key cannot list domains: it is reported as valid but restricted.
+    """
+    from . import config
+
+    key = api_key if api_key is not None else config.api_key()
+    if not key:
+        return {"ok": False, "detail": "Chưa có khóa API Resend (chế độ mô phỏng: thư không được gửi đi)."}
+    try:
+        response = requests.get(RESEND_DOMAINS_URL, headers={"Authorization": f"Bearer {key}"}, timeout=10)
+    except requests.RequestException:
+        return {"ok": False, "detail": "Không kết nối được Resend."}
+    if response.status_code in (401, 403) and "restricted" in response.text:
+        return {
+            "ok": True,
+            "restricted": True,
+            "domains": [],
+            "detail": "Khóa hợp lệ, chỉ có quyền gửi (không xem được danh sách tên miền).",
+        }
+    if response.status_code in (401, 403):
+        return {"ok": False, "detail": "Khóa API không hợp lệ hoặc đã bị thu hồi."}
+    if response.status_code >= 400:
+        return {"ok": False, "detail": _message(response) or f"Resend trả lỗi {response.status_code}"}
+    domains = [
+        {
+            "name": d.get("name", ""),
+            "status": d.get("status", ""),
+            "region": d.get("region", ""),
+            "created_at": d.get("created_at", ""),
+        }
+        for d in response.json().get("data", [])
+    ]
+    return {"ok": True, "restricted": False, "domains": domains, "detail": ""}
 
 
 class InvalidSignature(Exception):

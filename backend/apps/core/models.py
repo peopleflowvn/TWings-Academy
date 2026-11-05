@@ -23,10 +23,12 @@ class SiteConfig(models.Model):
     KEY_HOMEPAGE_SECTIONS = "homepage_sections"
     KEY_SITE_SEO = "site_seo"
     KEY_JOURNEYS = "journeys"
+    KEY_EMAIL_SETTINGS = "email_settings"
     KEY_CHOICES = [
         (KEY_HOMEPAGE_SECTIONS, "Homepage sections"),
         (KEY_SITE_SEO, "Site SEO settings"),
         (KEY_JOURNEYS, "Automated journey e-mails"),
+        (KEY_EMAIL_SETTINGS, "E-mail settings (sender, frame, Resend)"),
     ]
 
     key = models.CharField(primary_key=True, max_length=64, choices=KEY_CHOICES)

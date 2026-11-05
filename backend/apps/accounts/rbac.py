@@ -25,6 +25,7 @@ PERMISSIONS: dict[str, str] = {
     "articles.create_edit": "Soạn / sửa bài viết",
     "articles.publish": "Xuất bản bài viết",
     "seo.settings": "Cài đặt SEO website",
+    "email.settings": "Cấu hình gửi email (người gửi, khóa Resend, logo & chân thư)",
     "finance.transactions": "Xem giao dịch & đối soát",
     "finance.confirm_manual": "Xác nhận thanh toán thủ công",
     "finance.referral_bonus": "Duyệt thưởng giới thiệu",
