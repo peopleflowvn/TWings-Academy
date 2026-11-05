@@ -115,6 +115,9 @@ class LearnerViewSet(
         )
         order_ids = list(learner.orders.values_list("pk", flat=True))
         codes = {o.pk: (o.order_code, o.course_title) for o in learner.orders.all()}
+        emails = _email_history(learner, order_ids, codes)
+        # An e-mail sent by hand from the lead workspace also left an activity: the log row says more.
+        by_hand = {(e["order_id"], e["email"]["subject"]) for e in emails if e["email"]["sent_by"]}
         history = [
             {
                 "id": a.pk,
@@ -126,9 +129,16 @@ class LearnerViewSet(
                 "order_id": a.order_id,
                 "order_code": codes.get(a.order_id, ("", ""))[0],
                 "course_title": codes.get(a.order_id, ("", ""))[1],
+                "email": None,
             }
             for a in Activity.objects.filter(order_id__in=order_ids).order_by("-created_at")[:200]
+            if not (
+                a.type == "email"
+                and _activity_subject(a.title)
+                and (a.order_id, _activity_subject(a.title)) in by_hand
+            )
         ]
+        history = sorted(history + emails, key=lambda h: h["timestamp"], reverse=True)[:300]
         appointments = [
             {
                 "id": a.pk,
@@ -191,3 +201,65 @@ class LearnerViewSet(
             return Response({"detail": "Chọn một hồ sơ khác để gộp."}, status=400)
         merge_learners(keep, other, request)
         return self.retrieve(request, pk=keep.pk)
+
+
+def _activity_subject(title: str) -> str:
+    """The subject in the activity an e-mail sent by hand leaves ("Email: <subject>")."""
+    for prefix in ("Email: ", "Email chưa gửi (máy chủ chưa cấu hình Resend): "):
+        if title.startswith(prefix):
+            return title[len(prefix) :]
+    return ""
+
+
+def _email_history(learner, order_ids: list, codes: dict) -> list[dict]:
+    """
+    Every e-mail this learner received (automatic or by hand, from the e-mail log): those of their
+    registrations, those sent to their address, their corporate classes'. Tests and staff notices are not
+    theirs.
+    """
+    from apps.notifications.defaults import INTERNAL
+    from apps.notifications.models import EmailLog, EmailTemplate
+
+    match = Q(order_id__in=order_ids) | Q(corporate_enrollment__learner=learner)
+    if learner.email:
+        match |= Q(recipient_email__iexact=learner.email)
+    logs = (
+        EmailLog.objects.filter(match)
+        .exclude(template_code__startswith="test_")
+        .exclude(template_code__in=INTERNAL)
+        .select_related("sent_by")
+        .order_by("-created_at")[:200]
+    )
+    logs = list(logs)
+    names = dict(
+        EmailTemplate.objects.filter(code__in={log.template_code for log in logs}).values_list("code", "name")
+    )
+    out = []
+    for log in logs:
+        order_code, course = codes.get(log.order_id, ("", ""))
+        sender = (log.sent_by.name or log.sent_by.email) if log.sent_by else ""
+        out.append(
+            {
+                "id": f"email-{log.pk}",
+                "type": "email_log",
+                "title": f"Email: {log.subject}",
+                "content": f"Tới {log.recipient_email}" + (f" (CC {', '.join(log.cc)})" if log.cc else ""),
+                "actor": sender or "Hệ thống (tự động)",
+                "timestamp": log.created_at,
+                "order_id": log.order_id,
+                "order_code": order_code,
+                "course_title": course,
+                "email": {
+                    "log_id": log.pk,
+                    "subject": log.subject,
+                    "template_code": log.template_code,
+                    "template_name": names.get(log.template_code, ""),
+                    "status": log.status,
+                    "status_label": log.get_status_display(),
+                    "opened_at": log.opened_at,
+                    "error": log.error_message,
+                    "sent_by": sender,
+                },
+            }
+        )
+    return out

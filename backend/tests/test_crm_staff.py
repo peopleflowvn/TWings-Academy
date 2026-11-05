@@ -376,3 +376,40 @@ def test_changing_the_course_of_an_unpaid_registration_reprices_it(staff_client,
     order.save()
     res = client.patch(f"/api/v1/staff/orders/{order.pk}/", {"courseId": course.pk}, format="json")
     assert res.status_code == 400
+
+
+def test_learner_history_shows_every_email_they_received(staff_client, course, monkeypatch):
+    from apps.crm.services import flag_duplicates
+    from apps.notifications.outbox import send_logged
+
+    order = Order.objects.create(customer_name="Mai", course=course, customer_email="mai@example.com")
+    flag_duplicates(order)
+    client = staff_client(Role.SALES_CRM)
+    ids = iter(range(100))
+    monkeypatch.setattr("apps.notifications.outbox.send_email", lambda **kw: f"msg_{next(ids)}")
+    send_logged(
+        to="mai@example.com",
+        subject="Biên nhận",
+        html="<p>x</p>",
+        order=order,
+        template_code="payment_receipt",
+    )
+    send_logged(
+        to="MAI@example.com", subject="Mở lớp", html="<p>y</p>", template_code="lms_access"
+    )  # no order
+    send_logged(
+        to="mai@example.com", subject="[TEST] thử", html="<p>z</p>", template_code="test_payment_receipt"
+    )
+    body = {"to": "mai@example.com", "subject": "Chào Mai", "html": "<p>Hi</p>", "orderId": order.pk}
+    assert client.post("/api/v1/staff/emails/send/", body, format="json").status_code == 201
+
+    history = client.get(f"/api/v1/staff/learners/{order.learner_id}/").json()["history"]
+    emails = [h for h in history if h["email"]]
+    assert {h["email"]["subject"] for h in emails} == {"Biên nhận", "Mở lớp", "Chào Mai"}  # not the test
+    receipt = next(h for h in emails if h["email"]["subject"] == "Biên nhận")
+    assert receipt["email"]["status"] == "sent" and receipt["email"]["templateName"] == "Biên nhận học phí"
+    assert receipt["actor"] == "Hệ thống (tự động)" and receipt["orderCode"] == order.order_code
+    # The e-mail sent by hand shows once (its log row), not again as the activity it left.
+    assert sum("Chào Mai" in h["title"] for h in history) == 1
+    log_id = next(h for h in emails if h["email"]["subject"] == "Chào Mai")["email"]["logId"]
+    assert client.get(f"/api/v1/staff/email-logs/{log_id}/").json()["renderedHtml"] == "<p>Hi</p>"

@@ -17,6 +17,10 @@ import { usePrograms } from '../data';
 import { viDateToIso } from '../../lib/serverCollection';
 import { CrmLists, useCrmLists, withCurrent } from '../../lib/crmLists';
 import { StageName } from '../../components/cms/StageGate';
+import { CMSEmailDetailModal } from '../../components/cms/CMSEmailDetailModal';
+import { emailLogFromServer } from '../../lib/cmsCollections';
+import { EMAIL_STATUS_LABELS } from '../../components/cms/emailCategories';
+import { EmailSendLog } from '../../types';
 
 interface LearnerRow {
   id: string;
@@ -69,7 +73,19 @@ interface LearnerDetail extends Omit<LearnerRow, 'registrations'> {
   note: string;
   createdAt: string;
   registrations: Registration[];
-  history: { id: string; type: string; title: string; content: string; actor: string; timestamp: string; orderId: string; orderCode: string; courseTitle: string }[];
+  history: {
+    id: string;
+    type: string;
+    title: string;
+    content: string;
+    actor: string;
+    timestamp: string;
+    orderId: string | null;
+    orderCode: string;
+    courseTitle: string;
+    /** An e-mail of the send log (automatic or by hand): its delivery status and the message itself. */
+    email: { logId: string; subject: string; templateCode: string; templateName: string; status: string; statusLabel: string; openedAt: string | null; error: string; sentBy: string } | null;
+  }[];
   appointments: { id: string; orderId: string; startsAt: string; channel: string; status: string; staffName: string; note: string }[];
   placements: { id: string; orderId: string; employer: string; jobTitle: string; stage: string; startDate: string | null }[];
 }
@@ -82,6 +98,18 @@ const day = (value?: string | null) => {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString('vi-VN');
 };
+const EMAIL_STATUS_TONE: Record<string, string> = {
+  delivered: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  opened: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  clicked: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  sent: 'bg-blue-50 text-blue-700 border-blue-200',
+  queued: 'bg-amber-50 text-amber-700 border-amber-200',
+  simulated: 'bg-amber-50 text-amber-700 border-amber-200',
+  bounced: 'bg-red-50 text-red-700 border-red-200',
+  complained: 'bg-red-50 text-red-700 border-red-200',
+  failed: 'bg-red-50 text-red-700 border-red-200'
+};
+
 const openRegistration = (orderId: string) => navigate(`/sales/crm?view=kanban&campaignId=all&orderId=${encodeURIComponent(orderId)}`);
 const errorText = (e: unknown) => (e instanceof ApiError || e instanceof Error ? e.message : 'Thao tác thất bại.');
 
@@ -237,6 +265,8 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
   const [learner, setLearner] = useState<LearnerDetail | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<'courses' | 'details' | 'history' | 'meetings'>('courses');
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'email' | 'activity'>('all');
+  const [openedEmail, setOpenedEmail] = useState<EmailSendLog | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -313,6 +343,15 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
     return error ? <p className="text-sm text-red-600">{error}</p> : <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>;
   }
   const regs = learner.registrations;
+  const shownHistory = learner.history.filter((h) => historyFilter === 'all' || (historyFilter === 'email') === Boolean(h.email));
+  /** The e-mail as it was sent (body, delivery events), from the send log. */
+  const openEmail = async (logId: string) => {
+    try {
+      setOpenedEmail(emailLogFromServer(await api.get(`/staff/email-logs/${logId}/`)));
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
   const paid = regs.filter((r) => r.status === 'paid').length;
   const field = (f: (typeof PERSONAL)[number]) => (
     <label key={f.key as string} className={`block ${f.wide ? 'sm:col-span-2' : ''}`}>
@@ -467,19 +506,56 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
 
       {tab === 'history' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-2">
-          {learner.history.length === 0 && <p className="text-slate-500">Chưa có hoạt động.</p>}
-          {learner.history.map((h) => (
+          <div className="flex flex-wrap gap-1.5 pb-2">
+            {([
+              ['all', `Tất cả (${learner.history.length})`],
+              ['email', `Email đã gửi (${learner.history.filter((h) => h.email).length})`],
+              ['activity', `Hoạt động (${learner.history.filter((h) => !h.email).length})`]
+            ] as const).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setHistoryFilter(k)}
+                className={`px-3 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${historyFilter === k ? 'bg-[#0073C1] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {shownHistory.length === 0 && <p className="text-slate-500">{historyFilter === 'email' ? 'Chưa có email nào gửi tới học viên.' : 'Chưa có hoạt động.'}</p>}
+          {shownHistory.map((h) => (
             <div key={h.id} className="border-b border-slate-100 last:border-0 pb-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-bold text-slate-900">{h.title}</span>
+                <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                  {h.email && <Mail className="w-3.5 h-3.5 text-[#0073C1] shrink-0" />}
+                  {h.title}
+                </span>
                 <span className="text-slate-400">{new Date(h.timestamp).toLocaleString('vi-VN')}</span>
               </div>
               {h.content && <p className="text-slate-600 whitespace-pre-line">{h.content}</p>}
+              {h.email && (
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${EMAIL_STATUS_TONE[h.email.status] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                    {EMAIL_STATUS_LABELS[h.email.status] || h.email.statusLabel}
+                  </span>
+                  {h.email.openedAt && <span className="text-[10px] text-slate-500">mở lúc {new Date(h.email.openedAt).toLocaleString('vi-VN')}</span>}
+                  {h.email.templateName && <span className="text-[10px] text-slate-500">Mẫu: {h.email.templateName}</span>}
+                  {h.email.error && <span className="text-[10px] text-red-600">{h.email.error}</span>}
+                  <button type="button" onClick={() => openEmail(h.email!.logId)} className="text-[11px] font-bold text-[#0073C1] hover:underline cursor-pointer">
+                    Xem thư
+                  </button>
+                </div>
+              )}
               <div className="text-[10px] text-slate-400">
-                {h.actor || 'Hệ thống'} ·{' '}
-                <button type="button" onClick={() => openRegistration(h.orderId)} className="hover:text-[#0073C1] cursor-pointer">
-                  {h.courseTitle || h.orderCode}
-                </button>
+                {h.actor || 'Hệ thống'}
+                {h.orderId && (
+                  <>
+                    {' · '}
+                    <button type="button" onClick={() => openRegistration(h.orderId!)} className="hover:text-[#0073C1] cursor-pointer">
+                      {h.courseTitle || h.orderCode}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -522,6 +598,7 @@ const LearnerProfile: React.FC<{ id: string; courses: Course[] }> = ({ id, cours
           }}
         />
       )}
+      {openedEmail && <CMSEmailDetailModal log={openedEmail} onClose={() => setOpenedEmail(null)} />}
     </div>
   );
 };
