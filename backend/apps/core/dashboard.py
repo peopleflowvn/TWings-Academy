@@ -212,6 +212,18 @@ class SystemHealthView(APIView):
         )
         last_txn = BankTransaction.objects.order_by("-created_at").first()
         add(
+            "vietqr",
+            "Tài khoản nhận VietQR",
+            bool(settings.VIETQR_ACCOUNT_NUMBER and settings.VIETQR_BANK_BIN),
+            (
+                f"{settings.VIETQR_BANK_NAME} ({settings.VIETQR_BANK_BIN}) · "
+                f"STK {settings.VIETQR_ACCOUNT_NUMBER} · {settings.VIETQR_ACCOUNT_NAME}"
+            )
+            if settings.VIETQR_ACCOUNT_NUMBER
+            else "Chưa cấu hình VIETQR_ACCOUNT_NUMBER: thanh toán VietQR trên website đang tắt (503)",
+            "error",
+        )
+        add(
             "bank",
             "Webhook ngân hàng (SePay)",
             bool(settings.BANK_WEBHOOK_API_KEY),

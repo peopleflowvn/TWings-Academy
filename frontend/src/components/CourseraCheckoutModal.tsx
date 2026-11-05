@@ -18,7 +18,7 @@ import confetti from 'canvas-confetti';
 import { Course, Order } from '../types';
 import { api, ApiError, isBackendEnabled } from '../lib/api';
 import { getAttribution } from '../lib/attribution';
-import { InstallmentRow, installmentPreview, Program } from '../lib/commerce';
+import { Program } from '../lib/commerce';
 
 export interface CheckoutPrefill {
   customerName?: string;
@@ -48,9 +48,10 @@ interface CheckoutInfo {
   accountName: string;
   transferContent: string;
   qrImageUrl: string;
-  /** Whole price after discount; `amount` is what to transfer now (first installment when paying in installments). */
+  /** Whole price after discount. */
   totalAmount?: number;
-  installments?: InstallmentRow[];
+  status?: 'pending' | 'paid';
+  learningAccess?: boolean;
   /** Seat, price and coupon are held until then; an unpaid order is cancelled afterwards. */
   holdExpiresAt?: string | null;
 }
@@ -87,9 +88,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
       ? `Chương trình · ${program.courses.length} khóa học`
       : `${course!.partner?.name ?? 'TWings'} · ${course!.level}`,
     price: program?.price ?? course!.price,
-    installmentCount: (program?.installmentCount ?? course!.installmentCount) || 1
   };
-  const [payInInstallments, setPayInInstallments] = useState(false);
   // Course sold in intakes: the learner picks one, open or announced (early-bird price until the deadline).
   const intakes = (course?.upcomingCohorts || []).filter((c) => c.seatsLeft > 0);
   const [intakeName, setIntakeName] = useState(
@@ -103,8 +102,6 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
   const [couponCode, setCouponCode] = useState('');
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [wantInvoice, setWantInvoice] = useState(false);
-  const [invoice, setInvoice] = useState({ companyName: '', taxCode: '', address: '', email: '' });
   const [honeypot, setHoneypot] = useState('');
   const inputCls = 'w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:border-[#0073C1]';
   const [formError, setFormError] = useState('');
@@ -140,8 +137,8 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
       }
       const discount = code ? Math.round((item.price * DEMO_COUPONS[code]) / 100) : 0;
       const demoCode = newDemoOrderCode();
-      const amount = item.price - discount;
-      setCheckout({
+      const amount = Math.max(item.price - discount, 0);
+      const demoInfo: CheckoutInfo = {
         orderCode: demoCode,
         amount,
         originalAmount: item.price,
@@ -151,7 +148,9 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
         accountName: DEMO_BANK.accountName,
         transferContent: demoCode,
         qrImageUrl: `https://img.vietqr.io/image/${DEMO_BANK.bankBin}-${DEMO_BANK.accountNumber}-compact2.png?amount=${amount}&addInfo=${demoCode}&accountName=${encodeURIComponent(DEMO_BANK.accountName)}`
-      });
+      };
+      setCheckout(demoInfo);
+      if (amount === 0) markPaid(demoInfo);
       return;
     }
 
@@ -159,7 +158,6 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
     try {
       const info = await api.post<CheckoutInfo>('/public/checkout/', {
         ...(program ? { programId: program.id } : { courseId: course!.id }),
-        payInInstallments: payInInstallments && item.installmentCount > 1,
         ...(chosenIntake ? { batchCohort: chosenIntake.name } : {}),
         customerName: customerName.trim(),
         customerEmail: customerEmail.trim(),
@@ -168,13 +166,13 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
         privacyConsent,
         attribution: getAttribution(),
         termsAccepted,
-        ...(wantInvoice
-          ? { invoice: { buyerType: 'company', ...invoice, email: invoice.email.trim() || customerEmail.trim() } }
-          : {}),
         website: honeypot,
         source: 'Website Checkout'
       });
       setCheckout(info);
+      if (info.status === 'paid' || info.learningAccess || info.amount === 0) {
+        markPaid(info);
+      }
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Không tạo được đơn hàng, vui lòng thử lại.');
     } finally {
@@ -288,12 +286,6 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       {program ? 'Chương trình' : 'Khóa học'} <strong className="text-slate-900">{item.title}</strong> đã
                       được mở trên hệ thống học TWings LMS. Thông tin đăng nhập được gửi tới email bạn đã đăng ký trong
                       ít phút (kiểm tra cả thư mục Spam).
-                      {(checkout?.installments?.length ?? 0) > 1 && (
-                        <>
-                          {' '}Lịch đóng các kỳ tiếp theo và mã QR luôn có trong{' '}
-                          <a href="/learn/tai-khoan" className="text-[#0073C1] font-bold hover:underline">Học phí & hồ sơ</a>.
-                        </>
-                      )}
                     </>
                   ) : (
                     <>
@@ -428,54 +420,6 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       </select>
                     </label>
                   )}
-                  {liveMode && item.installmentCount > 1 && item.price > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                      {[false, true].map((split) => (
-                        <label
-                          key={String(split)}
-                          className={`p-3 rounded-xl border cursor-pointer ${
-                            payInInstallments === split ? 'border-[#0073C1] bg-[#D7F5FF]' : 'border-slate-200'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="plan"
-                            checked={payInInstallments === split}
-                            onChange={() => setPayInInstallments(split)}
-                            className="mr-2"
-                          />
-                          {split ? (
-                            <>
-                              <strong>Trả góp {item.installmentCount} kỳ</strong> – kỳ đầu{' '}
-                              {formatVND(installmentPreview(item.price, item.installmentCount)[0])}, vào học ngay
-                            </>
-                          ) : (
-                            <strong>Thanh toán một lần</strong>
-                          )}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                  {liveMode && (
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-[11px] text-slate-600 cursor-pointer">
-                        <input type="checkbox" checked={wantInvoice} onChange={(e) => setWantInvoice(e.target.checked)} />
-                        <span>Xuất hóa đơn VAT cho công ty</span>
-                      </label>
-                      {wantInvoice && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <input value={invoice.companyName} onChange={(e) => setInvoice({ ...invoice, companyName: e.target.value })} placeholder="Tên công ty *" maxLength={300}
-                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl" />
-                          <input value={invoice.taxCode} onChange={(e) => setInvoice({ ...invoice, taxCode: e.target.value.trim() })} placeholder="Mã số thuế *" maxLength={20}
-                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl font-mono" />
-                          <input value={invoice.address} onChange={(e) => setInvoice({ ...invoice, address: e.target.value })} placeholder="Địa chỉ công ty *" maxLength={500}
-                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl sm:col-span-2" />
-                          <input type="email" value={invoice.email} onChange={(e) => setInvoice({ ...invoice, email: e.target.value })} placeholder="Email nhận hóa đơn (mặc định email của bạn)" maxLength={254}
-                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl sm:col-span-2" />
-                        </div>
-                      )}
-                    </div>
-                  )}
                   {/* Honeypot: hidden from people, filled in by bots */}
                   <input
                     type="text"
@@ -506,7 +450,7 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                       <span>
                         Tôi đã đọc và đồng ý{' '}
                         <a href="/dieu-khoan" target="_blank" rel="noopener" className="text-[#0073C1] underline">Điều khoản sử dụng dịch vụ</a>
-                        {' '}(học phí, trả góp, hoàn học phí).
+                        {' '}(học phí, hoàn học phí).
                       </span>
                     </label>
                   )}
@@ -523,22 +467,6 @@ export const CourseraCheckoutModal: React.FC<CourseraCheckoutModalProps> = ({
                 </form>
               ) : (
               <>
-              {(checkout.installments?.length ?? 0) > 1 && (
-                <div className="p-3 bg-blue-50 text-slate-700 text-xs rounded-xl border border-blue-200 space-y-1">
-                  <div className="font-bold text-[#0073C1]">
-                    Trả góp {checkout.installments!.length} kỳ – tổng {formatVND(checkout.totalAmount ?? checkout.amount)}
-                  </div>
-                  {checkout.installments!.map((i) => (
-                    <div key={i.sequence} className="flex justify-between font-mono">
-                      <span>Kỳ {i.sequence} · {new Date(`${i.dueDate}T00:00:00`).toLocaleDateString('vi-VN')}</span>
-                      <span className={i.sequence === 1 ? 'font-bold text-slate-900' : ''}>{formatVND(i.amount)}</span>
-                    </div>
-                  ))}
-                  <div className="text-[11px] text-slate-500">
-                    Chuyển khoản kỳ 1 bên dưới để vào học ngay; hệ thống nhắc các kỳ sau qua email.
-                  </div>
-                </div>
-              )}
               {checkout.discountAmount > 0 && (
                 <div className="p-2.5 bg-emerald-50 text-emerald-700 text-xs rounded-xl border border-emerald-200 flex items-center justify-between">
                   <span className="font-semibold">Ưu đãi đã áp dụng</span>

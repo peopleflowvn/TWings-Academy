@@ -13,6 +13,23 @@ from .models import BankTransaction, Payment, Refund
 ORDER_CODE_RE = re.compile(rf"TW[{ORDER_CODE_ALPHABET}]{{8}}")
 
 
+def _extract_order_code(content: str) -> str | None:
+    """
+    Find a TWings order code in a bank transfer description.
+    Checks space-preserved word boundaries first (so bank noise around the memo cannot glue onto 'TW'
+    and shift the 8-char match), then falls back to space-stripped matching when a bank splits the code.
+    """
+    upper = (content or "").upper()
+    boundary_match = re.search(rf"\bTW[{ORDER_CODE_ALPHABET}]{{8}}\b", upper)
+    if boundary_match:
+        return boundary_match.group(0)
+    direct_match = ORDER_CODE_RE.search(upper)
+    if direct_match:
+        return direct_match.group(0)
+    compact_match = ORDER_CODE_RE.search(re.sub(r"[^0-9A-Z]", "", upper))
+    return compact_match.group(0) if compact_match else None
+
+
 def vietqr_payload(order: Order) -> dict:
     """
     Payment instructions (checkout screen, learner account, reminders). Amount and memo always come
@@ -104,8 +121,8 @@ def ingest_bank_transaction(payload: dict, provider: str = "sepay") -> tuple[Ban
     ):
         txn.match_status, txn.match_note = "ignored", "Sai tài khoản nhận"
     else:
-        match = ORDER_CODE_RE.search((txn.content or "").upper().replace(" ", ""))
-        order = Order.objects.select_for_update().filter(order_code=match.group(0)).first() if match else None
+        code = _extract_order_code(txn.content)
+        order = Order.objects.select_for_update().filter(order_code=code).first() if code else None
         if order is None:
             txn.match_status, txn.match_note = (
                 "unmatched",

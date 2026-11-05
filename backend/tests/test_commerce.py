@@ -126,6 +126,25 @@ def test_public_status_reports_learning_access(api, registration_payload, course
     assert status["status"] == "pending" and status["learningAccess"] is True
 
 
+def test_bank_memo_with_ftw_prefix_still_matches_order_code(api, registration_payload):
+    _, order = _checkout(api, registration_payload)
+    res = api.post(
+        "/api/v1/webhooks/bank/",
+        {
+            "id": 999,
+            "accountNumber": "0123456789",
+            "transferType": "in",
+            "transferAmount": order.amount,
+            "content": f"FTW {order.order_code} CHUYEN KHOAN HOC PHI",
+        },
+        format="json",
+        **BANK,
+    )
+    assert res.status_code == 200 and res.json()["matchStatus"] == "matched"
+    order.refresh_from_db()
+    assert order.status == "paid"
+
+
 # ------------------------------------------------------------------ programs
 def test_program_is_listed_publicly_with_its_courses(api, program):
     Program.objects.create(slug="draft", title="Nháp", price=1)  # unpublished
