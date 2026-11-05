@@ -1,6 +1,7 @@
 """
 Template rendering: the stored EmailTemplate, else the standard template (defaults.py).
-Supports both {{variable}} and {variable} placeholder syntax safely.
+Supports both {{variable}} and {variable} placeholder syntax safely, and conditional sections:
+{{#if name}}shown when name has a value{{else}}shown otherwise{{/if}} (may be nested).
 """
 
 import re
@@ -15,6 +16,11 @@ from .models import EmailTemplate
 LOCKED_TEMPLATES = frozenset({"staff_password_reset", "auth_otp"})
 
 VARIABLE_PATTERN = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}|\{([a-zA-Z0-9_]+)\}")
+# The innermost {{#if name}}...{{/if}} (no other {{#if inside), so nested sections resolve inside out.
+CONDITION_PATTERN = re.compile(
+    r"\{\{\s*#if\s+([a-zA-Z0-9_]+)\s*\}\}((?:(?!\{\{\s*#if\s).)*?)\{\{\s*/if\s*\}\}", re.S
+)
+ELSE_PATTERN = re.compile(r"\{\{\s*else\s*\}\}")
 
 
 def to_snake(s: str) -> str:
@@ -33,6 +39,22 @@ def interpolate(template_str: str, context: dict[str, Any]) -> str:
     """
     if not template_str:
         return ""
+
+    def _lookup(key: str):
+        for k in (key, to_snake(key), to_camel(key)):
+            if k in context:
+                return True, context[k]
+        return False, None
+
+    def _condition(match: re.Match) -> str:
+        found, val = _lookup(match.group(1))
+        parts = ELSE_PATTERN.split(match.group(2), maxsplit=1)
+        shown = found and val not in (None, "", 0, False, "0")
+        return parts[0] if shown else (parts[1] if len(parts) > 1 else "")
+
+    previous = None
+    while previous != template_str:
+        previous, template_str = template_str, CONDITION_PATTERN.sub(_condition, template_str)
 
     def _replace(match: re.Match) -> str:
         key = match.group(1) or match.group(2)

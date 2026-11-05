@@ -236,8 +236,14 @@ def _completed_next(order: Order) -> tuple[str, str]:
         context={
             "customer_name": escape(order.customer_name),
             "course_title": escape(order.course_title),
-            "certificate_block": cert,
+            "certificate_code": escape(certificate.code) if certificate and not certificate.revoked else "",
+            "certificate_url": f"{_site()}/xac-minh/{certificate.code}/" if certificate else "",
             "account_url": _account(),
+            "suggestions": f'<ul style="margin:0 0 14px 0;padding-left:20px;">{suggestions}</ul>'
+            if suggestions
+            else "",
+            # Old variables, for templates edited before {{#if}} existed.
+            "certificate_block": cert,
             "next_steps_block": next_steps,
         },
     )

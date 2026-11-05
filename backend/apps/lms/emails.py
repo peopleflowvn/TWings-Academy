@@ -115,6 +115,7 @@ def send_certificate_email(enrollment, certificate):
             "learner_name": escape(enrollment.learner_name),
             "course_title": escape(certificate.course_title),
             "cohort_name": escape(certificate.cohort_name or ""),
+            # Old variable, for templates edited before {{#if}} existed.
             "cohort_suffix": f" – {escape(certificate.cohort_name)}" if certificate.cohort_name else "",
             "certificate_code": escape(certificate.code),
             "url": certificate_url(certificate.code),

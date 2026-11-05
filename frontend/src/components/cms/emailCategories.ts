@@ -7,7 +7,8 @@ export const EMAIL_CATEGORY_LABELS: Record<string, string> = {
   scheduling: '📅 Lịch học',
   security: '🔐 Bảo mật',
   corporate: '🏢 Doanh nghiệp (B2B)',
-  marketing: '📣 Marketing'
+  marketing: '📣 Marketing',
+  internal: '🛠️ Nội bộ (gửi nhân viên)'
 };
 
 export const EMAIL_CATEGORIES = Object.keys(EMAIL_CATEGORY_LABELS);

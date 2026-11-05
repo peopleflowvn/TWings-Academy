@@ -33,7 +33,9 @@ import {
   loadEmailSettings,
   previewEmail,
   testSendEmailWithBackend,
-  withPlaceholders
+  withPlaceholders,
+  EMAIL_PREVIEW_SWITCHES,
+  EMAIL_TEMPLATE_VARIABLE_LABELS
 } from '../../utils/resendEmail';
 import { CMSEmailDetailModal } from './CMSEmailDetailModal';
 import { CMSEmailSettingsPanel } from './CMSEmailSettingsPanel';
@@ -120,7 +122,12 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
     const fromOrder = previewOrder
       ? withPlaceholders(extractOrderEmailVariables(previewOrder))
       : withPlaceholders(Object.fromEntries(Object.keys(EMAIL_VARIABLE_LABELS).map((k) => [k, ''])));
-    const own = Object.fromEntries((selected?.variables || []).map((v) => [v, `[${EMAIL_VARIABLE_LABELS[v] || v}]`]));
+    const own = Object.fromEntries(
+      (selected?.variables || []).map((v) => [
+        v,
+        v in EMAIL_PREVIEW_SWITCHES ? EMAIL_PREVIEW_SWITCHES[v] : `[${EMAIL_VARIABLE_LABELS[v] || EMAIL_TEMPLATE_VARIABLE_LABELS[v] || v}]`
+      ])
+    );
     return { ...own, ...fromOrder };
   }, [previewOrder, selected?.variables]);
 
@@ -261,7 +268,7 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
     );
   });
   const variableChips = [
-    ...(selected?.variables || []).map((v) => ({ name: v, label: EMAIL_VARIABLE_LABELS[v] || 'Biến của mẫu này' })),
+    ...(selected?.variables || []).map((v) => ({ name: v, label: EMAIL_VARIABLE_LABELS[v] || EMAIL_TEMPLATE_VARIABLE_LABELS[v] || 'Biến của mẫu này' })),
     ...(settings?.globalVariables || [])
   ];
 
@@ -510,6 +517,7 @@ export const CMSEmailTemplatesTab: React.FC<CMSEmailTemplatesTabProps> = ({ orde
                     </div>
                     <p className="text-[11px] text-slate-500">
                       Không cần viết chữ ký, logo hay chân thư: hệ thống tự thêm theo Cấu hình gửi thư. Không ghi cứng số hotline, dùng <code>{'{{hotline}}'}</code>.
+                      Đoạn chỉ hiện khi biến có giá trị: <code>{'{{#if tên_biến}}…{{else}}…{{/if}}'}</code> (phần <code>{'{{else}}'}</code> không bắt buộc).
                     </p>
                   </div>
                 )}

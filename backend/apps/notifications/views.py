@@ -87,13 +87,17 @@ class SendEmailView(APIView):
         ser.is_valid(raise_exception=True)
         data = ser.validated_data
         order = Order.objects.filter(pk=data.get("order_id") or "").first()
+        from .engine import interpolate
         from .outbox import send_logged
 
+        # The screen filled the registration's variables; the brand ones ({{site_name}}, {{hotline}}...)
+        # and the {{#if}} sections left are filled here, subject included.
+        context = global_context(_brand_of(data.get("template_code", ""), "twings"))
         try:
             log = send_logged(
                 to=data["to"],
-                subject=data["subject"],
-                html=data["html"],
+                subject=interpolate(data["subject"], context)[:300],
+                html=interpolate(data["html"], context),
                 order=order,
                 sent_by=request.user,
                 template_code=data.get("template_code", ""),
@@ -163,6 +167,7 @@ class TestSendEmailView(APIView):
                 sent_by=request.user,
                 brand=brand,
                 sync=True,
+                kind="internal" if _is_internal(template_code) else "learner",
             )
         except ResendError as exc:
             return Response({"detail": f"Gửi email thử nghiệm thất bại: {exc}"}, status=502)
@@ -199,8 +204,20 @@ class PreviewEmailView(APIView):
             context = {**global_context(brand), **variables}
             subj, body = interpolate(raw_subject, context), interpolate(raw_html, context)
 
-        wrapped = wrap(body, brand)
+        wrapped = wrap(body, brand, signature=not _is_internal(template_code))
         return Response({"subject": subj, "html": wrapped})
+
+
+def _is_internal(template_code: str) -> bool:
+    """A notice to staff (category "internal"): framed without the signature, never archived."""
+    from .defaults import INTERNAL
+
+    if not template_code:
+        return False
+    return (
+        template_code in INTERNAL
+        or EmailTemplate.objects.filter(code=template_code, category="internal").exists()
+    )
 
 
 def _brand_of(template_code: str, requested) -> str:

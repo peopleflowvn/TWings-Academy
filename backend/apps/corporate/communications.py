@@ -12,6 +12,8 @@ from django.utils import timezone
 from django.utils.html import escape
 
 from apps.lms.emails import learn_url
+from apps.notifications.components import CORPORATE, info_table
+from apps.notifications.engine import render_template
 from apps.notifications.outbox import send_logged
 from apps.notifications.resend import ResendError
 
@@ -213,10 +215,7 @@ def create_results_batch(
     if corrects is not None and (corrects.corporate_class_id != corporate_class.pk or corrects.kind != kind):
         raise CorporateError("Lô cần đính chính thuộc lớp khác hoặc loại thư khác.")
     cohort = corporate_class.cohort
-    if kind == "manager_digest":
-        default = f"Kết quả học tập của nhân viên – {cohort.course.title} – {cohort.name}"
-    else:
-        default = f"Kết quả khóa học {cohort.course.title} – {cohort.name}"
+    default = default_batch_subject(cohort, kind)
     listings = {
         listing.pk: listing
         for listing in corporate_class.enrollments.select_related(
@@ -271,8 +270,20 @@ def _managers(corporate_class, snapshot, listings) -> dict[str, tuple[str, list[
     return out
 
 
-def digest_html(batch, staff: list[dict], name: str) -> str:
+def _batch_context(batch) -> dict:
     cohort = batch.corporate_class.cohort
+    message = "".join(f"<p>{escape(p)}</p>" for p in batch.message.split("\n\n") if p.strip())
+    return {
+        "course_title": escape(cohort.course.title),
+        "cohort_name": escape(cohort.name),
+        "message": message,
+        "is_correction": bool(batch.corrects_id),
+        "learn_url": learn_url(),
+    }
+
+
+def digest_html(batch, staff: list[dict], name: str) -> str:
+    """The manager's e-mail (template corporate_manager_digest): the results of their own staff."""
     rows = "".join(
         '<tr style="border-top:1px solid #E2E8F0;">'
         f"<td>{escape(r['name'])}</td><td>{escape(r.get('employee_code') or '')}</td>"
@@ -282,48 +293,45 @@ def digest_html(batch, staff: list[dict], name: str) -> str:
         "</tr>"
         for r in staff
     )
-    message = "".join(f"<p>{escape(p)}</p>" for p in batch.message.split("\n\n") if p.strip())
-    return f"""
-<p>Kính gửi {escape(name or "Anh/Chị")},</p>
-<p>Lớp <strong>{escape(cohort.course.title)} – {escape(cohort.name)}</strong> đã kết thúc. Kết quả của
-{len(staff)} nhân viên thuộc quyền quản lý của Anh/Chị:</p>
+    table = f"""
 <table role="presentation" width="100%" cellpadding="8" cellspacing="0" border="0"
  style="border-collapse:collapse;font-size:13px;margin:16px 0 20px 0;border:1px solid #E2E8F0;">
 <tr style="background:#F8FAFC;color:#475569;"><th align="left">Họ tên</th><th align="left">Mã NV</th>
 <th align="left">Buổi có mặt</th><th align="left">Điểm</th><th align="left">Kết quả</th></tr>
 {rows}
-</table>
-{message}
-<p>Cần trao đổi thêm, vui lòng trả lời email này.</p>
-"""
+</table>"""
+    context = {
+        **_batch_context(batch),
+        "manager_name": escape(name or ""),
+        "staff_count": len(staff),
+        "results_table": table,
+    }
+    return render_template("corporate_manager_digest", context, brand="corporate")[1]
 
 
 def result_html(batch, row: dict, name: str) -> str:
-    cohort = batch.corporate_class.cohort
-    lines = [f"Kết quả: <strong>{RESULT_LABEL.get(row['result'], row['result'])}</strong>"]
+    """The learner's e-mail (template corporate_results)."""
+    details = [("Kết quả", f"<strong>{RESULT_LABEL.get(row['result'], row['result'])}</strong>")]
     if row.get("sessions_taken"):
         rate = f" ({row['attendance_rate']}%)" if row.get("attendance_rate") is not None else ""
-        lines.append(f"Chuyên cần: {row['sessions_attended']}/{row['sessions_taken']} buổi{rate}")
+        details.append(("Chuyên cần", f"{row['sessions_attended']}/{row['sessions_taken']} buổi{rate}"))
     if row.get("grade_percent") is not None:
-        lines.append(f"Điểm tổng kết: {row['grade_percent']}%")
+        details.append(("Điểm tổng kết", f"{row['grade_percent']}%"))
     if row.get("reasons"):
-        lines.append("Ghi chú: " + escape("; ".join(row["reasons"])))
-    message = "".join(f"<p>{escape(p)}</p>" for p in batch.message.split("\n\n") if p.strip())
-    correction = (
-        "<p><em>Thư này đính chính thư kết quả gửi trước đó; vui lòng dùng thông tin trong thư này.</em></p>"
-        if batch.corrects_id
-        else ""
-    )
-    return f"""
-<p>Chào {escape(name)},</p>
-{correction}
-<p>Lớp <strong>{escape(cohort.course.title)} – {escape(cohort.name)}</strong> đã kết thúc.
-Kết quả của bạn:</p>
-<p>{"<br>".join(line for line in lines if line)}</p>
-{message}
-<p>Tài liệu và nội dung khóa học vẫn xem được tại <a href="{learn_url()}">{learn_url()}</a>.</p>
-<p>Cần hỗ trợ, vui lòng trả lời email này.</p>
-"""
+        details.append(("Ghi chú", escape("; ".join(row["reasons"]))))
+    context = {
+        **_batch_context(batch),
+        "learner_name": escape(name),
+        "result_details": info_table(details, CORPORATE),
+    }
+    return render_template("corporate_results", context, brand="corporate")[1]
+
+
+def default_batch_subject(cohort, kind: str) -> str:
+    """The batch's subject when staff leave it empty: the template's subject (/app/content/email)."""
+    code = "corporate_manager_digest" if kind == "manager_digest" else "corporate_results"
+    context = {"course_title": cohort.course.title, "cohort_name": cohort.name}
+    return render_template(code, context, brand="corporate")[0]
 
 
 def send_batch(batch, *, user) -> dict:

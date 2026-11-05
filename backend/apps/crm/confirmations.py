@@ -32,6 +32,9 @@ def send_order_received(order_id) -> None:
     if order.hold_expires_at and payment_instructions(order):
         code = "checkout_received"
         context.update(
+            cohort_name=escape(order.cohort.name) if order.cohort_id else "",
+            installment_count=order.installment_count if order.installment_count > 1 else "",
+            # Old variables ({{cohort}}, {{plan}}), for templates edited before {{#if}} existed.
             cohort=f" – lớp <strong>{escape(order.cohort.name)}</strong>" if order.cohort_id else "",
             hold_until=hold_until(order),
             plan=(

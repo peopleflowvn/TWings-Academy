@@ -141,7 +141,8 @@ def test_results_batch_is_approved_then_sent_one_email_per_learner(cls, staff_cl
     assert (sent["sent"], sent["failed"]) == (2, 0) and sent["batch"]["status"] == "sent"
     assert all(len(c["to"]) == 1 for c in resend_calls)
     to_binh = next(c for c in resend_calls if c["to"] == ["binh@nhm.test"])
-    assert "Kết quả: <strong>Đạt</strong>" in to_binh["html"] and "Cảm ơn anh chị" in to_binh["html"]
+    html = to_binh["html"]
+    assert ">Kết quả</td>" in html and "<strong>Đạt</strong>" in html and "Cảm ơn anh chị" in html
     assert "cuong@nhm.test" not in to_binh["html"]  # nobody else's details
     assert corp.post(f"{url}{batch['id']}/send/").json()["skipped"] == 2  # never twice
     assert corp.post(f"{url}{batch['id']}/cancel/").status_code == 400

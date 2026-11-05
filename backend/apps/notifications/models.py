@@ -15,6 +15,7 @@ class EmailTemplate(BaseModel):
         ("corporate", "Doanh nghiệp (B2B)"),
         ("scheduling", "Lịch học"),
         ("marketing", "Marketing"),
+        ("internal", "Thông báo nội bộ"),
     ]
 
     code = models.SlugField(max_length=100, unique=True)

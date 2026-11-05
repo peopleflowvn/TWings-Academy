@@ -118,7 +118,10 @@ def remind_owners(now: datetime | None = None) -> int:
 
     from django.utils.html import escape
 
-    from apps.notifications.resend import ResendError, send_email
+    from apps.cms.seo import base_url
+    from apps.notifications.engine import render_template
+    from apps.notifications.outbox import send_logged
+    from apps.notifications.resend import ResendError
 
     now = now or timezone.now()
     if now.astimezone(VN).weekday() >= 5:
@@ -139,20 +142,30 @@ def remind_owners(now: datetime | None = None) -> int:
     sent = 0
     for to, reqs in groups.items():
         rows = "".join(
-            f"<li><strong>{'QUÁ HẠN' if r.due_at < now else 'Sắp đến hạn'}</strong> "
+            '<li style="margin-bottom:6px;">'
+            f"<strong>{'QUÁ HẠN' if r.due_at < now else 'Sắp đến hạn'}</strong> "
             f"{timezone.localtime(r.due_at):%H:%M %d/%m} – {escape(r.client.code)}: {escape(r.title)}"
             f" ({r.get_priority_display()})</li>"
             for r in reqs
         )
+        subject, html = render_template(
+            "corporate_request_sla",
+            {
+                "request_count": len(reqs),
+                "request_list": f'<ul style="margin:0 0 16px 0;padding-left:20px;">{rows}</ul>',
+                "requests_url": f"{base_url()}/app/corporate/requests",
+            },
+        )
         try:
-            send_email(
+            send_logged(
                 to=to,
-                subject=f"[{settings.CORPORATE_BRAND_NAME}] {len(reqs)} yêu cầu khách hàng cần xử lý (SLA)",
-                html=f"<p>Các yêu cầu đào tạo quá hạn hoặc sắp đến hạn SLA:</p><ul>{rows}</ul>"
-                "<p>Cập nhật trạng thái trong mục Đào tạo doanh nghiệp → Yêu cầu.</p>",
-                idempotency_key=f"corp-request-remind-{to}-{now.astimezone(VN):%Y%m%d}",
+                subject=subject,
+                html=html,
+                template_code="corporate_request_sla",
                 brand="corporate",
                 kind="internal",
+                sync=True,
+                idempotency_key=f"corp-request-remind-{to}-{now.astimezone(VN):%Y%m%d}",
             )
         except ResendError:
             logging.getLogger(__name__).warning("Request reminder to %s not sent", to)

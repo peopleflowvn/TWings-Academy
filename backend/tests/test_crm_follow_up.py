@@ -20,7 +20,8 @@ def sent(monkeypatch):
     def fake(*, to, subject, html, idempotency_key, **kwargs):
         box.append((to, subject))
 
-    monkeypatch.setattr("apps.notifications.resend.send_email", fake)
+    monkeypatch.setattr("apps.notifications.resend.send_email", fake)  # sign-in codes
+    monkeypatch.setattr("apps.notifications.outbox.send_email", fake)  # templated e-mails, logged
     return box
 
 

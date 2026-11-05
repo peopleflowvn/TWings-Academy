@@ -23,7 +23,14 @@ def send_logged(
     corporate_enrollment=None,
     brand: str = "twings",
     sync: bool | None = None,
+    kind: str = "learner",
+    idempotency_key: str = "",
 ) -> EmailLog:
+    """
+    `kind`: see resend.send_email ("internal" = staff notice: no signature, no archive copy); such
+    e-mails are sent at once (the worker frames every queued e-mail as a learner e-mail).
+    `idempotency_key`: for scheduled jobs that may run twice; default the log id.
+    """
     log = EmailLog.objects.create(
         template_code=template_code,
         order=order,
@@ -41,7 +48,12 @@ def send_logged(
     )
 
     # Use background queue if configured and not requested sync (and no binary attachments)
-    use_queue = getattr(settings, "TASKS_QUEUE", "immediate") == "database" and not sync and not attachments
+    use_queue = (
+        getattr(settings, "TASKS_QUEUE", "immediate") == "database"
+        and not sync
+        and not attachments
+        and kind == "learner"
+    )
     if use_queue:
         from .tasks import deliver_email_task
 
@@ -53,12 +65,13 @@ def send_logged(
             to=to,
             subject=subject,
             html=html,
-            idempotency_key=log.pk,
+            idempotency_key=idempotency_key or log.pk,
             cc=cc,
             bcc=bcc,
             reply_to=reply_to,
             attachments=attachments,
             brand=brand,
+            kind=kind,
         )
     except ResendError as exc:
         log.status, log.error_message = "failed", str(exc)[:500]

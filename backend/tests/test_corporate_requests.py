@@ -110,7 +110,7 @@ def test_summary_and_dashboard_alerts(client_co, staff_client):
 
 def test_remind_owners(client_co, monkeypatch, settings):
     sent = []
-    monkeypatch.setattr("apps.notifications.resend.send_email", lambda **kw: sent.append(kw))
+    monkeypatch.setattr("apps.notifications.outbox.send_email", lambda **kw: sent.append(kw))
     settings.CORPORATE_CONTACT_EMAIL = "daotao@tntalent.test"
     monday = vn(2026, 10, 26, 8, 15)
     owner = make_staff(Role.CORPORATE_TRAINING)

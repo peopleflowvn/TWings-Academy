@@ -87,14 +87,32 @@ export const loadEmailStats = (days = 30) => api.get<EmailStats>(`/staff/emails/
 // ------------------------------------------------------------------ variables
 const toSnake = (s: string) => s.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
 
-/** Fill {{variable}} (camelCase or snake_case, same meaning); unknown variables are left for the server. */
+// The innermost {{#if name}}…{{else}}…{{/if}} (no other {{#if inside): nested sections resolve inside out.
+const CONDITION = /{{\s*#if\s+(\w+)\s*}}((?:(?!{{\s*#if\s)[\s\S])*?){{\s*\/if\s*}}/g;
+
+/**
+ * Fill {{variable}} (camelCase or snake_case, same meaning) and the {{#if variable}} sections of known
+ * variables; unknown ones are left for the server (brand variables: {{site_name}}, {{hotline}}...).
+ */
 export function renderEmailTemplate(
   templateString: string,
   variables: Record<string, string | number | undefined>
 ): string {
   const values: Record<string, string | number | undefined> = {};
   Object.entries(variables).forEach(([k, v]) => (values[toSnake(k)] = v));
-  return templateString.replace(/{{\s*(\w+)\s*}}/g, (tag, name: string) => {
+  let out = templateString;
+  let previous = '';
+  while (previous !== out) {
+    previous = out;
+    out = out.replace(CONDITION, (block, name: string, inner: string) => {
+      const key = toSnake(name);
+      if (!(key in values)) return block; // a brand variable: the server decides
+      const [yes, no = ''] = inner.split(/{{\s*else\s*}}/);
+      const v = values[key];
+      return v !== undefined && v !== '' && v !== 0 && v !== '0' ? yes : no;
+    });
+  }
+  return out.replace(/{{\s*(\w+)\s*}}/g, (tag, name: string) => {
     const v = values[toSnake(name)];
     return v === undefined ? tag : String(v);
   });
@@ -124,6 +142,50 @@ export const EMAIL_VARIABLE_LABELS: Record<string, string> = {
   pic: 'Tư vấn viên phụ trách',
   customer_phone: 'SĐT học viên',
   customer_email: 'Email học viên'
+};
+
+/** Meaning of the variables of the automatic e-mails (chips of the template editor). */
+export const EMAIL_TEMPLATE_VARIABLE_LABELS: Record<string, string> = {
+  cohort_name: 'Tên lớp (trống nếu chưa xếp lớp)',
+  installment_count: 'Số kỳ trả góp (trống nếu đóng một lần)',
+  overdue: 'Có giá trị khi kỳ học phí đã quá hạn',
+  remaining: 'Số tiền còn lại (trống khi đã đóng đủ)',
+  certificate_code: 'Mã chứng chỉ (trống nếu chưa cấp)',
+  certificate_url: 'Trang xác minh chứng chỉ',
+  suggestions: 'Danh sách khóa gợi ý học tiếp (HTML)',
+  location: 'Địa điểm / link họp nhân viên nhập',
+  is_call: 'Có giá trị khi hẹn qua điện thoại',
+  is_zalo: 'Có giá trị khi hẹn qua Zalo',
+  is_online: 'Có giá trị khi họp trực tuyến',
+  is_office: 'Có giá trị khi gặp tại văn phòng',
+  is_correction: 'Có giá trị khi thư đính chính thư trước',
+  lead_list: 'Danh sách lead (HTML)',
+  late_list: 'Lead quá hạn lâu (HTML, trống nếu không có)',
+  unassigned_list: 'Lead chưa có tư vấn viên (HTML, trống nếu không có)',
+  lead_count: 'Số lead',
+  response_hours: 'Số giờ cam kết liên hệ',
+  crm_url: 'Đường dẫn mở CRM',
+  request_list: 'Danh sách yêu cầu (HTML)',
+  request_count: 'Số yêu cầu',
+  requests_url: 'Đường dẫn danh sách yêu cầu',
+  result_details: 'Bảng kết quả của học viên (HTML)',
+  results_table: 'Bảng kết quả nhân viên (HTML)',
+  staff_count: 'Số nhân viên',
+  manager_name: 'Tên quản lý (trống: “Anh/Chị”)',
+  message: 'Lời nhắn của cán bộ đào tạo (HTML)'
+};
+
+/**
+ * Preview values of the {{#if}} switches (an example of each case would show every branch at once):
+ * an appointment by phone, a reminder not yet overdue, not a correction.
+ */
+export const EMAIL_PREVIEW_SWITCHES: Record<string, string> = {
+  is_call: '1',
+  is_zalo: '',
+  is_online: '',
+  is_office: '',
+  overdue: '',
+  is_correction: ''
 };
 
 /** Facts about a registration that are not on the order itself (loaded by the screen that sends). */
@@ -182,7 +244,8 @@ export function withPlaceholders(variables: Record<string, string | number>): Re
 }
 
 /** Templates a consultant may send by hand (not sign-in codes, not B2B mail). */
-export const isManualTemplate = (t: EmailTemplate) => t.category !== 'security' && t.category !== 'corporate';
+export const isManualTemplate = (t: EmailTemplate) =>
+  t.category !== 'security' && t.category !== 'corporate' && t.category !== 'internal';
 
 // ------------------------------------------------------------------ preview / send
 /** The e-mail exactly as it will be sent (server frame: logo, signature, footer, brand variables). */

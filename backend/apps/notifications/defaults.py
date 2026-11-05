@@ -18,6 +18,16 @@ from .components import CORPORATE, button, code_box, heading, info_table, note
 HELP = '<p>Cần hỗ trợ? Gọi hotline <a href="tel:{{hotline_tel}}" style="font-weight:700;text-decoration:none;">{{hotline}}</a> hoặc trả lời email này.</p>'
 
 AUTO = "Tự động"
+
+CORRECTION = note("Thư này đính chính thư gửi trước đó; vui lòng dùng thông tin trong thư này.", "warning")
+
+# Where an appointment takes place, by channel ({{location}}: meeting link or address entered by staff).
+WHERE = (
+    "{{#if is_call}}TWings sẽ gọi cho bạn qua số điện thoại đã đăng ký.{{/if}}"
+    "{{#if is_zalo}}TWings sẽ liên hệ qua Zalo theo số điện thoại đã đăng ký.{{/if}}"
+    "{{#if is_online}}{{#if location}}Họp trực tuyến: {{location}}{{else}}Đường dẫn họp trực tuyến sẽ được gửi trước giờ hẹn.{{/if}}{{/if}}"
+    "{{#if is_office}}Địa điểm: {{#if location}}{{location}}{{else}}Văn phòng {{site_name}}{{/if}}{{/if}}"
+)
 MANUAL = "Gửi thủ công từ hồ sơ học viên (CRM)"
 
 
@@ -102,13 +112,21 @@ TEMPLATES = [
         heading("Đăng ký của bạn đã được ghi nhận", "Hoàn tất chuyển khoản để giữ chỗ và bắt đầu học.")
         + """
 <p>Chào {{customer_name}},</p>
-<p>TWings Academy đã nhận đăng ký khóa học <strong>{{course_title}}</strong>{{cohort}}. Chỗ học và mức học phí hiện tại được giữ cho bạn đến <strong>{{hold_until}}</strong>.</p>
-{{plan}}
+<p>TWings Academy đã nhận đăng ký khóa học <strong>{{course_title}}</strong>{{#if cohort_name}} – lớp <strong>{{cohort_name}}</strong>{{/if}}. Chỗ học và mức học phí hiện tại được giữ cho bạn đến <strong>{{hold_until}}</strong>.</p>
+{{#if installment_count}}<p>Bạn chọn trả góp <strong>{{installment_count}} kỳ</strong>: chuyển khoản kỳ đầu theo thông tin dưới đây để vào học ngay.</p>{{/if}}
 {{payment_details}}
 <p>Hệ thống tự động xác nhận khi nhận được tiền và gửi email mở khóa học cho bạn. Theo dõi đơn tại <a href="{{account_url}}">Học phí &amp; hồ sơ</a>.</p>
 """
         + HELP,
-        ["customer_name", "course_title", "order_code", "cohort", "hold_until", "plan", "payment_details"],
+        [
+            "customer_name",
+            "course_title",
+            "order_code",
+            "cohort_name",
+            "hold_until",
+            "installment_count",
+            "payment_details",
+        ],
         f"{AUTO}: ngay khi khách đặt mua khóa học có phí trên website.",
     ),
     _t(
@@ -131,11 +149,11 @@ TEMPLATES = [
         "installment_reminder",
         "Nhắc học phí kỳ trả góp",
         "payment",
-        "{{reminder_label}} học phí kỳ {{sequence}}/{{total_installments}} – đơn {{order_code}} | {{site_name}}",
+        "{{#if overdue}}Quá hạn{{else}}Nhắc{{/if}} học phí kỳ {{sequence}}/{{total_installments}} – đơn {{order_code}} | {{site_name}}",
         heading("Nhắc học phí kỳ {{sequence}}/{{total_installments}}", "Khóa {{course_title}}")
         + """
 <p>Chào {{customer_name}},</p>
-<p>Kỳ học phí {{sequence}}/{{total_installments}} của khóa <strong>{{course_title}}</strong> {{due_phrase}} ngày <strong>{{due_date}}</strong>. Thông tin chuyển khoản:</p>
+<p>Kỳ học phí {{sequence}}/{{total_installments}} của khóa <strong>{{course_title}}</strong> {{#if overdue}}đã quá hạn từ{{else}}đến hạn vào{{/if}} ngày <strong>{{due_date}}</strong>. Thông tin chuyển khoản:</p>
 {{payment_details}}
 <p>Hệ thống tự động xác nhận khi nhận được tiền. Xem lịch trả góp và các kỳ đã đóng tại <a href="{{account_url}}">Học phí &amp; hồ sơ</a>.</p>
 """
@@ -147,8 +165,7 @@ TEMPLATES = [
             "course_title",
             "order_code",
             "due_date",
-            "due_phrase",
-            "reminder_label",
+            "overdue",
             "amount",
             "payment_details",
         ],
@@ -170,7 +187,10 @@ TEMPLATES = [
                 ("Mã đơn", "{{order_code}}"),
                 ("Số tiền đã nhận", "{{amount}}"),
                 ("Tổng đã đóng", "{{total_paid}} / {{receivable}}"),
-                ("Tình trạng học phí", "{{balance_status}}"),
+                (
+                    "Tình trạng học phí",
+                    "{{#if remaining}}Còn lại {{remaining}}{{else}}Đã hoàn tất học phí{{/if}}",
+                ),
             ]
         )
         + button("{{receipt_url}}", "Xem và tải biên nhận")
@@ -185,7 +205,6 @@ TEMPLATES = [
             "total_paid",
             "receivable",
             "remaining",
-            "balance_status",
             "receipt_number",
             "receipt_url",
         ],
@@ -278,7 +297,7 @@ TEMPLATES = [
 """
         + info_table(
             [
-                ("Khóa học", "{{course_title}}{{cohort_suffix}}"),
+                ("Khóa học", "{{course_title}}{{#if cohort_name}} – {{cohort_name}}{{/if}}"),
                 ("Mã chứng chỉ", "{{certificate_code}}"),
             ]
         )
@@ -286,7 +305,7 @@ TEMPLATES = [
         + """
 <p>Trang xác minh công khai ở trên có thể gửi cho nhà tuyển dụng. Bản để in hoặc lưu PDF: <a href="{{url}}in/">{{url}}in/</a>.</p>
 """,
-        ["learner_name", "course_title", "cohort_suffix", "certificate_code", "url"],
+        ["learner_name", "course_title", "cohort_name", "certificate_code", "url"],
         f"{AUTO}: khi học viên đủ điều kiện hoàn thành và được cấp chứng chỉ.",
     ),
     # ------------------------------------------------------------------ CRM journeys
@@ -356,11 +375,22 @@ TEMPLATES = [
         + """
 <p>Chào {{customer_name}},</p>
 <p>Cảm ơn bạn đã đồng hành cùng TWings Academy trong khóa <strong>{{course_title}}</strong>.</p>
-{{certificate_block}}
+{{#if certificate_code}}<p>Chứng chỉ của bạn (mã <strong>{{certificate_code}}</strong>) đã được cấp:</p>
+"""
+        + button("{{certificate_url}}", "Xem chứng chỉ")
+        + """{{/if}}
 <p>Cảm nhận của bạn giúp TWings nâng cao chất lượng đào tạo và giúp các học viên sau chọn đúng khóa học. Bạn có thể <a href="{{account_url}}">viết đánh giá trong cổng học viên</a> (chỉ mất vài phút, chỉ đăng lên website khi bạn đồng ý).</p>
-{{next_steps_block}}
+{{#if suggestions}}<p><strong>Gợi ý học tiếp:</strong></p>
+{{suggestions}}{{/if}}
 """,
-        ["customer_name", "course_title", "certificate_block", "account_url", "next_steps_block"],
+        [
+            "customer_name",
+            "course_title",
+            "certificate_code",
+            "certificate_url",
+            "account_url",
+            "suggestions",
+        ],
         f"{AUTO} (hành trình CRM): sau khi học viên hoàn thành khóa học.",
     ),
     _t(
@@ -378,12 +408,12 @@ TEMPLATES = [
                 ("Thời gian", "{{starts_at}}"),
                 ("Thời lượng", "{{duration}} phút"),
                 ("Hình thức", "{{channel}}"),
-                ("Chi tiết", "{{where}}"),
+                ("Chi tiết", WHERE),
                 ("Nội dung", "Tư vấn khóa học {{course}}"),
             ]
         )
         + '<p>Nếu cần đổi thời gian, vui lòng trả lời email này hoặc gọi hotline <a href="tel:{{hotline_tel}}" style="font-weight:700;text-decoration:none;">{{hotline}}</a>.</p>',
-        ["customer_name", "starts_at", "duration", "channel", "where", "course"],
+        ["customer_name", "starts_at", "duration", "channel", "location", "course"],
         f"{AUTO}: khi chuyên viên đặt lịch hẹn tư vấn với khách.",
     ),
     _t(
@@ -401,12 +431,12 @@ TEMPLATES = [
                 ("Thời gian", "{{starts_at}}"),
                 ("Thời lượng", "{{duration}} phút"),
                 ("Hình thức", "{{channel}}"),
-                ("Chi tiết", "{{where}}"),
+                ("Chi tiết", WHERE),
                 ("Nội dung", "Tư vấn khóa học {{course}}"),
             ]
         )
         + "<p>Chuyên viên TWings sẽ liên hệ với bạn đúng giờ hẹn. Nếu cần đổi lịch, vui lòng trả lời email này.</p>",
-        ["customer_name", "starts_at", "duration", "channel", "where", "course"],
+        ["customer_name", "starts_at", "duration", "channel", "location", "course"],
         f"{AUTO}: khoảng 2 giờ trước giờ hẹn.",
     ),
     # ------------------------------------------------------------------ scheduling (manual)
@@ -589,6 +619,190 @@ TEMPLATES = [
         f"{AUTO}: khi học viên doanh nghiệp được ghi danh vào lớp trên LMS.",
         brand="corporate",
     ),
+    # ------------------------------------------------------------------ corporate results (batches, approved by staff)
+    _t(
+        "corporate_results",
+        "Doanh nghiệp: kết quả khóa học gửi học viên",
+        "corporate",
+        "Kết quả khóa học {{course_title}} – {{cohort_name}} | {{site_name}}",
+        heading("Kết quả khóa học", "{{course_title}} – {{cohort_name}}")
+        + """
+<p>Chào {{learner_name}},</p>
+{{#if is_correction}}"""
+        + CORRECTION
+        + """{{/if}}
+<p>Lớp <strong>{{course_title}} – {{cohort_name}}</strong> đã kết thúc. Kết quả của bạn:</p>
+{{result_details}}
+{{message}}
+<p>Tài liệu và nội dung khóa học vẫn xem được trên hệ thống học trực tuyến.</p>
+"""
+        + button("{{learn_url}}", "Xem lại khóa học", CORPORATE)
+        + """
+<p>Cần hỗ trợ, vui lòng trả lời email này.</p>
+""",
+        [
+            "learner_name",
+            "course_title",
+            "cohort_name",
+            "result_details",
+            "is_correction",
+            "message",
+            "learn_url",
+        ],
+        f"{AUTO}: khi lô thư kết quả của lớp doanh nghiệp được duyệt và gửi (CC quản lý trực tiếp). Tiêu đề mặc định của lô lấy từ mẫu này.",
+        brand="corporate",
+    ),
+    _t(
+        "corporate_manager_digest",
+        "Doanh nghiệp: kết quả nhân viên gửi quản lý",
+        "corporate",
+        "Kết quả học tập của nhân viên – {{course_title}} – {{cohort_name}} | {{site_name}}",
+        heading("Kết quả học tập của nhân viên", "{{course_title}} – {{cohort_name}}")
+        + """
+<p>Kính gửi {{#if manager_name}}{{manager_name}}{{else}}Anh/Chị{{/if}},</p>
+{{#if is_correction}}"""
+        + CORRECTION
+        + """{{/if}}
+<p>Lớp <strong>{{course_title}} – {{cohort_name}}</strong> đã kết thúc. Kết quả của {{staff_count}} nhân viên thuộc quyền quản lý của Anh/Chị:</p>
+{{results_table}}
+{{message}}
+<p>Cần trao đổi thêm, vui lòng trả lời email này.</p>
+""",
+        [
+            "manager_name",
+            "course_title",
+            "cohort_name",
+            "staff_count",
+            "results_table",
+            "is_correction",
+            "message",
+        ],
+        f"{AUTO}: khi lô thư tổng hợp kết quả cho quản lý trực tiếp được duyệt và gửi. Tiêu đề mặc định của lô lấy từ mẫu này.",
+        brand="corporate",
+    ),
+    # ------------------------------------------------------------------ internal notices (to staff; no signature, not archived)
+    _t(
+        "crm_lead_assigned",
+        "Nội bộ: lead được giao cho tư vấn viên",
+        "internal",
+        "[TWings CRM] {{assignment_label}}: {{customer_name}} – {{course_title}}",
+        heading("{{assignment_title}}", "Mã đơn {{order_code}}")
+        + info_table(
+            [
+                ("Khách hàng", "{{customer_name}}"),
+                ("Điện thoại", "{{customer_phone}}"),
+                ("Email", "{{customer_email}}"),
+                ("Quan tâm", "{{course_title}}"),
+                ("Nguồn", "{{source}}"),
+                ("Hạn liên hệ lần đầu", "{{response_due}}"),
+            ]
+        )
+        + button("{{crm_url}}", "Mở CRM"),
+        [
+            "assignment_label",
+            "assignment_title",
+            "customer_name",
+            "customer_phone",
+            "customer_email",
+            "course_title",
+            "source",
+            "response_due",
+            "order_code",
+            "crm_url",
+        ],
+        f"{AUTO}: gửi tư vấn viên khi được giao lead mới hoặc được chuyển lead.",
+    ),
+    _t(
+        "crm_lead_unassigned",
+        "Nội bộ: lead mới chưa có người nhận",
+        "internal",
+        "[TWings CRM] Lead chưa có người nhận: {{customer_name}}",
+        heading("Lead mới chưa có người nhận", "Mọi tư vấn viên đang tắt nhận lead")
+        + """
+<p>Lead dưới đây chưa được giao cho tư vấn viên nào:</p>
+{{lead_list}}
+"""
+        + button("{{crm_url}}", "Phân công trong CRM"),
+        ["customer_name", "lead_list", "crm_url"],
+        f"{AUTO}: gửi quản lý tuyển sinh khi có lead mới mà không tư vấn viên nào đang nhận lead.",
+    ),
+    _t(
+        "crm_leads_overdue",
+        "Nội bộ: nhắc tư vấn viên lead quá hạn liên hệ",
+        "internal",
+        "[TWings CRM] {{lead_count}} lead quá hạn liên hệ",
+        heading("Lead quá hạn liên hệ lần đầu", "Cam kết liên hệ trong {{response_hours}} giờ làm việc")
+        + """
+<p>Các lead dưới đây đã quá hạn liên hệ lần đầu:</p>
+{{lead_list}}
+"""
+        + button("{{crm_url}}", "Mở danh sách hôm nay"),
+        ["lead_count", "response_hours", "lead_list", "crm_url"],
+        f"{AUTO}: mỗi 30 phút trong giờ làm việc, gửi tư vấn viên một lần cho mỗi lead quá hạn.",
+    ),
+    _t(
+        "crm_leads_escalation",
+        "Nội bộ: báo quản lý lead chưa được xử lý",
+        "internal",
+        "[TWings CRM] {{lead_count}} lead cần quản lý xử lý",
+        heading("Lead cần quản lý xử lý", "{{lead_count}} lead")
+        + """
+{{#if late_list}}<p><strong>Quá hạn liên hệ lâu</strong> (gấp đôi cam kết {{response_hours}} giờ):</p>
+{{late_list}}{{/if}}
+{{#if unassigned_list}}<p><strong>Chưa có tư vấn viên</strong>:</p>
+{{unassigned_list}}{{/if}}
+"""
+        + button("{{crm_url}}", "Mở CRM để phân công / nhắc tư vấn viên"),
+        ["lead_count", "late_list", "unassigned_list", "response_hours", "crm_url"],
+        f"{AUTO}: mỗi 30 phút trong giờ làm việc, gửi quản lý tuyển sinh các lead quá gấp đôi hạn liên hệ hoặc chưa có tư vấn viên.",
+    ),
+    _t(
+        "crm_appointment_staff_reminder",
+        "Nội bộ: nhắc tư vấn viên lịch hẹn",
+        "internal",
+        "[TWings CRM] {{appointment_time}} hẹn tư vấn {{customer_name}}",
+        heading("Nhắc lịch hẹn tư vấn", "{{starts_at}}")
+        + info_table(
+            [
+                ("Khách hàng", "{{customer_name}}"),
+                ("Điện thoại", "{{customer_phone}}"),
+                ("Khóa quan tâm", "{{course}}"),
+                ("Hình thức", "{{channel}}"),
+                ("Thời lượng", "{{duration}} phút"),
+            ]
+        )
+        + button("{{crm_url}}", "Mở CRM"),
+        [
+            "appointment_time",
+            "starts_at",
+            "customer_name",
+            "customer_phone",
+            "course",
+            "channel",
+            "duration",
+            "crm_url",
+        ],
+        f"{AUTO}: khoảng 2 giờ trước lịch hẹn tư vấn, gửi tư vấn viên phụ trách (học viên nhận mẫu “Nhắc lịch hẹn”).",
+    ),
+    _t(
+        "corporate_request_sla",
+        "Nội bộ: yêu cầu doanh nghiệp sắp đến hạn SLA",
+        "internal",
+        "[{{site_name}}] {{request_count}} yêu cầu khách hàng cần xử lý (SLA)",
+        heading("Yêu cầu khách hàng cần xử lý", "Quá hạn hoặc sắp đến hạn SLA")
+        + """
+<p>Các yêu cầu đào tạo dưới đây quá hạn hoặc sắp đến hạn SLA:</p>
+{{request_list}}
+<p>Cập nhật trạng thái trong mục Đào tạo doanh nghiệp → Yêu cầu &amp; SLA.</p>
+"""
+        + button("{{requests_url}}", "Mở danh sách yêu cầu", CORPORATE),
+        ["request_count", "request_list", "requests_url"],
+        f"{AUTO}: sáng các ngày làm việc, gửi người phụ trách (yêu cầu chưa giao: hộp thư đào tạo doanh nghiệp).",
+        brand="corporate",
+    ),
 ]
 
 BY_CODE = {t["code"]: t for t in TEMPLATES}
+
+# Notices to staff: sent without the signature, never archived (BCC) and always at once.
+INTERNAL = frozenset(t["code"] for t in TEMPLATES if t["category"] == "internal")

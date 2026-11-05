@@ -94,7 +94,8 @@ def send_receipt(payment_id: str) -> None:
             "course_title": escape(order.course_title),
             "total_paid": vnd(ctx["total_paid"]),
             "receivable": vnd(ctx["receivable"]),
-            "remaining": vnd(remaining),
+            "remaining": vnd(remaining) if remaining else "",
+            # Old variable, for templates edited before {{#if}} existed.
             "balance_status": f"Còn lại {vnd(remaining)}" if remaining else "Đã hoàn tất học phí",
             "receipt_number": ctx["number"],
             "receipt_url": receipt_url(payment),

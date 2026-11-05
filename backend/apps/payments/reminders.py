@@ -39,6 +39,8 @@ def send_installment_email(installment: Installment) -> None:
             "course_title": escape(order.course_title),
             "order_code": escape(order.order_code),
             "due_date": installment.due_date.strftime("%d/%m/%Y"),
+            "overdue": "1" if overdue else "",
+            # Old variables, for templates edited before {{#if}} existed.
             "due_phrase": "đã quá hạn từ" if overdue else "đến hạn vào",
             "reminder_label": "Quá hạn" if overdue else "Nhắc",
             "amount": _vnd(qr["amount"]),

@@ -71,8 +71,11 @@ def test_no_standard_template_hard_codes_a_hotline_and_all_render_completely(seo
         assert "twings.edu.vn" not in t["body"], t["code"]  # links come from variables
         context = {name: f"<{name}>" for name in t["variables"]}
         subject, body = render_template(t["code"], context)
-        left = re.findall(r"\{\{\s*\w+\s*\}\}", subject + body)
+        left = re.findall(r"\{\{.*?\}\}", subject + body)  # variables and {{#if}} sections
         assert not left, (t["code"], left)
+        if t["category"] == "internal":  # staff notices: "[TWings CRM] ...", "[TNTalent] ..."
+            assert subject.startswith("["), (t["code"], subject)
+            continue
         assert subject.endswith(" | TNTalent" if t["brand"] == "corporate" else " | TWings Academy") or (
             t["code"] == "auth_otp"
         ), (t["code"], subject)
@@ -194,3 +197,61 @@ def test_render_template_fallback_and_db():
     EmailTemplate.objects.filter(code="consultation_received").delete()
     subj3, _ = render_template("consultation_received", {"course_title": "RM"})
     assert subj3 == "Đã nhận đăng ký tư vấn khóa RM | TWings Academy"
+
+
+def test_conditional_sections():
+    from apps.notifications.engine import interpolate
+
+    text = "{{#if a}}A={{a}}{{else}}không A{{/if}} {{#if b}}{{#if c}}BC{{else}}B{{/if}}{{/if}}"
+    assert interpolate(text, {"a": "1", "b": "x", "c": ""}) == "A=1 B"
+    assert interpolate(text, {"a": "", "b": False, "c": "y"}) == "không A "
+    assert interpolate(text, {}) == "không A "  # a variable nobody gave is empty
+
+
+def test_sentences_built_from_data_are_in_the_templates(seo):
+    from apps.notifications.engine import render_template
+
+    base = {"customer_name": "An", "starts_at": "09:00", "duration": "30", "channel": "Văn phòng"}
+    _, office = render_template("appointment_confirmation", {**base, "is_office": True, "location": ""})
+    assert "Địa điểm: Văn phòng TWings Academy" in office and "Zalo" not in office
+    online_ctx = {**base, "is_online": True, "location": "meet.x/1"}
+    _, online = render_template("appointment_confirmation", online_ctx)
+    assert "Họp trực tuyến: meet.x/1" in online and "Địa điểm" not in online
+    subject, body = render_template("installment_reminder", {"overdue": "1", "sequence": "2"})
+    assert subject.startswith("Quá hạn học phí kỳ 2") and "đã quá hạn từ" in body
+    subject, body = render_template("installment_reminder", {"overdue": "", "sequence": "2"})
+    assert subject.startswith("Nhắc học phí kỳ 2") and "đến hạn vào" in body
+    _, paid = render_template("payment_receipt", {"remaining": ""})
+    assert "Đã hoàn tất học phí" in paid
+    _, fix = render_template("corporate_results", {"is_correction": True})
+    _, first = render_template("corporate_results", {"is_correction": False})
+    assert "đính chính" in fix and "đính chính" not in first
+    _, digest = render_template("corporate_manager_digest", {"manager_name": ""})
+    assert "Kính gửi Anh/Chị," in digest
+
+
+def test_staff_notices_use_their_editable_template_and_are_logged(seo, resend_ok):
+    from apps.crm.assignment import _send
+    from apps.notifications.models import EmailLog, EmailTemplate
+
+    EmailTemplate.objects.filter(code="crm_lead_unassigned").update(
+        subject="[CRM] Cần phân công {{customer_name}}", body="<p>Lead: {{lead_list}}</p>"
+    )
+    _send(["boss@twings.test"], "crm_lead_unassigned", {"customer_name": "An", "lead_list": "X"}, "k1")
+    (sent,) = resend_ok
+    assert sent["subject"] == "[CRM] Cần phân công An" and "<p>Lead: X</p>" in sent["html"]
+    assert "Đội ngũ TWings Academy" not in sent["html"]  # a notice to staff is not signed
+    log = EmailLog.objects.get(template_code="crm_lead_unassigned")
+    assert log.recipient_email == "boss@twings.test" and log.status == "sent"
+
+
+def test_manual_email_gets_the_brand_variables_in_its_subject(seo, staff_client, monkeypatch):
+    sent = []
+    monkeypatch.setattr("apps.notifications.outbox.send_email", lambda **kw: sent.append(kw) or "m1")
+    res = staff_client(Role.SALES_CRM).post(
+        "/api/v1/staff/emails/send/",
+        {"to": "hv@example.com", "subject": "Lịch học | {{site_name}}", "html": "<p>Gọi {{hotline}}</p>"},
+        format="json",
+    )
+    assert res.status_code == 201, res.content
+    assert sent[0]["subject"] == "Lịch học | TWings Academy" and "0843 314 382" in sent[0]["html"]
