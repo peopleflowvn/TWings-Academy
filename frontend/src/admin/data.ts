@@ -153,6 +153,12 @@ const CLEAN_DEFAULT_CMS_SECTIONS: CMSSectionsConfig = {
   partners: { ...DEFAULT_CMS_SECTIONS.partners, items: [] },
   instructors: { ...DEFAULT_CMS_SECTIONS.instructors, items: [] },
   gallery: { ...DEFAULT_CMS_SECTIONS.gallery, photos: [] },
+  testimonials: {
+    enabled: DEFAULT_CMS_SECTIONS.testimonials?.enabled ?? true,
+    title: DEFAULT_CMS_SECTIONS.testimonials?.title || 'Cảm nhận của học viên TWings Academy',
+    subtitle: DEFAULT_CMS_SECTIONS.testimonials?.subtitle,
+    items: [],
+  },
 };
 
 function mergeCmsSections(raw?: Partial<CMSSectionsConfig>): CMSSectionsConfig {
@@ -174,6 +180,15 @@ function mergeCmsSections(raw?: Partial<CMSSectionsConfig>): CMSSectionsConfig {
       ...CLEAN_DEFAULT_CMS_SECTIONS.gallery,
       ...raw.gallery,
       photos: Array.isArray(raw.gallery?.photos) ? raw.gallery.photos : [],
+    },
+    testimonials: {
+      ...CLEAN_DEFAULT_CMS_SECTIONS.testimonials,
+      ...raw.testimonials,
+      enabled: raw.testimonials?.enabled ?? CLEAN_DEFAULT_CMS_SECTIONS.testimonials?.enabled ?? true,
+      title: raw.testimonials?.title || CLEAN_DEFAULT_CMS_SECTIONS.testimonials?.title || 'Cảm nhận của học viên TWings Academy',
+      items: Array.isArray(raw.testimonials?.items) && raw.testimonials.items.length > 0
+        ? raw.testimonials.items
+        : (DEFAULT_CMS_SECTIONS.testimonials?.items || []),
     },
   };
 }
