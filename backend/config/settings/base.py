@@ -153,7 +153,8 @@ AXES_LOCKOUT_CALLABLE = "apps.accounts.axes.lockout_response"
 
 # Staff sessions: short-lived, HttpOnly, never readable from JavaScript.
 SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=60 * 60 * 8)
-SESSION_SAVE_EVERY_REQUEST = True  # slide session expiration on active requests so active staff are not kicked mid-day
+# Slide session expiration on active requests so staff aren't logged out mid-day
+SESSION_SAVE_EVERY_REQUEST = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_NAME = "twings_sid"
