@@ -16,18 +16,18 @@
   "dependencies": {
     "canvas-confetti": "^1.9.4",
     "lucide-react": "^0.577.0",
-    "react": "^19.0.1",
-    "react-dom": "^19.0.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "three": "^0.187.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.4",
     "@types/canvas-confetti": "^1.9.0",
-    "@types/node": "^26.6.4",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/three": "^0.187.0",
-    "@vitejs/plugin-react": "^6.1.1",
+    "@vitejs/plugin-react": "^6.2.1",
     "tailwindcss": "^4.3.4",
     "typescript": "^7.0.2",
     "vite": "^8.3.5"
