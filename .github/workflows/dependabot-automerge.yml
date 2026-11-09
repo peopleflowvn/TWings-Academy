@@ -27,18 +27,20 @@ jobs:
             echo "No PR found in event payload."
             exit 0
           fi
-          AUTHOR=$(gh pr view "$PR_NUMBER" --json author -q .author.login)
+          AUTHOR=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json author -q .author.login)
           echo "PR #$PR_NUMBER author: $AUTHOR"
           if [ "$AUTHOR" = "app/dependabot" ] || [ "$AUTHOR" = "dependabot" ]; then
             echo "should_merge=true" >> "$GITHUB_OUTPUT"
             echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           fi
         env:
+          GH_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Squash and merge Dependabot PR
         if: steps.check.outputs.should_merge == 'true'
         run: |
-          gh pr merge "${{ steps.check.outputs.pr_number }}" --squash
+          gh pr merge "${{ steps.check.outputs.pr_number }}" --repo "$GITHUB_REPOSITORY" --squash
         env:
+          GH_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
