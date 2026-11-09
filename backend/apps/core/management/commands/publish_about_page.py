@@ -70,7 +70,9 @@ class Command(BaseCommand):
         data = dict(config.data or {})
         data["about"] = ABOUT
         data.setdefault("instructors", {}).setdefault("title", "Đội ngũ giảng viên và chuyên gia")
-        data.setdefault("gallery", {}).setdefault("title", "Hình ảnh học tập thực tế")
+        gallery = data.setdefault("gallery", {})
+        gallery.setdefault("title", "Hình ảnh học tập thực tế")
+        gallery.setdefault("photos", [])
         config.data = data
         config.save(update_fields=["data", "updated_at"])
         self.stdout.write(self.style.SUCCESS("Published reviewed About page content to homepage_sections."))

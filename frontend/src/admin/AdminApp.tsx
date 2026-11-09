@@ -355,7 +355,12 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
   const toggleSection = (key: keyof CMSSectionsConfig) => {
     const section = homepage.sections[key] as unknown as { enabled?: boolean } | undefined;
     if (!section) return;
-    updateSections({ ...homepage.sections, [key]: { ...section, enabled: !section.enabled } });
+    const enabled = !(section.enabled !== false);
+    const patch: Partial<CMSSectionsConfig> = { [key]: { ...section, enabled } as never };
+    if (key === 'recommended') patch.trendingAI = { ...homepage.sections.trendingAI, title: homepage.sections.trendingAI?.title || section['title' as never] || '', enabled };
+    if (key === 'newReleases') patch.certificates = { ...homepage.sections.certificates, title: homepage.sections.certificates?.title || section['title' as never] || '', enabled };
+    if (key === 'mostUseful') patch.degrees = { ...homepage.sections.degrees, title: homepage.sections.degrees?.title || section['title' as never] || '', enabled };
+    void updateSections({ ...homepage.sections, ...patch });
   };
   const updatePartners = (items: PartnerItem[]) =>
     updateSections({ ...homepage.sections, partners: { ...homepage.sections.partners, items } });

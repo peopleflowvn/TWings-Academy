@@ -2,7 +2,7 @@
  * Shared data for the staff app: orders (CRM), courses and the homepage document, always from the API.
  * Logic moved from the public App so the CMS no longer depends on the public site's state.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, Paginated } from '../lib/api';
 import { CMSSectionsConfig, Course, Order } from '../types';
 import { DEFAULT_CMS_SECTIONS } from '../data/coursesData';
@@ -148,32 +148,61 @@ export function useCourses(enabled: boolean) {
   return { courses, reload, add, update, remove };
 }
 
+const CLEAN_DEFAULT_CMS_SECTIONS: CMSSectionsConfig = {
+  ...DEFAULT_CMS_SECTIONS,
+  partners: { ...DEFAULT_CMS_SECTIONS.partners, items: [] },
+  instructors: { ...DEFAULT_CMS_SECTIONS.instructors, items: [] },
+  gallery: { ...DEFAULT_CMS_SECTIONS.gallery, photos: [] },
+};
+
+function mergeCmsSections(raw?: Partial<CMSSectionsConfig>): CMSSectionsConfig {
+  if (!raw) return CLEAN_DEFAULT_CMS_SECTIONS;
+  return {
+    ...CLEAN_DEFAULT_CMS_SECTIONS,
+    ...raw,
+    partners: {
+      ...CLEAN_DEFAULT_CMS_SECTIONS.partners,
+      ...raw.partners,
+      items: Array.isArray(raw.partners?.items) ? raw.partners.items : [],
+    },
+    instructors: {
+      ...CLEAN_DEFAULT_CMS_SECTIONS.instructors,
+      ...raw.instructors,
+      items: Array.isArray(raw.instructors?.items) ? raw.instructors.items : [],
+    },
+    gallery: {
+      ...CLEAN_DEFAULT_CMS_SECTIONS.gallery,
+      ...raw.gallery,
+      photos: Array.isArray(raw.gallery?.photos) ? raw.gallery.photos : [],
+    },
+  };
+}
+
 /** Homepage content, section toggles and homepage partners: the 'homepage_sections' document. */
 export function useHomepageSections(enabled: boolean) {
-  const [sections, setSections] = useState<CMSSectionsConfig>(DEFAULT_CMS_SECTIONS);
+  const [sections, setSections] = useState<CMSSectionsConfig>(CLEAN_DEFAULT_CMS_SECTIONS);
   const [loaded, setLoaded] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
     api
       .get<{ data: Partial<CMSSectionsConfig> }>('/staff/site-config/homepage_sections/')
       .then((res) => {
-        if (res.data && Object.keys(res.data).length) setSections({ ...DEFAULT_CMS_SECTIONS, ...res.data });
+        if (res.data && Object.keys(res.data).length) setSections(mergeCmsSections(res.data));
       })
       .catch(() => undefined)
       .finally(() => setLoaded(true));
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
   }, [enabled]);
 
-  const update = (next: CMSSectionsConfig) => {
+  const update = async (next: CMSSectionsConfig): Promise<boolean> => {
     setSections(next);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      api.patch('/staff/site-config/homepage_sections/', { data: next }).catch(reportError);
-    }, 800);
+    try {
+      await api.patch('/staff/site-config/homepage_sections/', { data: next });
+      return true;
+    } catch (err) {
+      reportError(err);
+      return false;
+    }
   };
   return { sections, update, loaded };
 }

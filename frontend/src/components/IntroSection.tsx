@@ -138,10 +138,16 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
           </div>
 
           <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-[#1e293b] tracking-tight leading-tight">
-            NÂNG TẦM NĂNG LỰC,{' '}
-            <span className="whitespace-nowrap bg-gradient-to-r from-[#0073C1] via-[#0E6BBB] to-[#2C93E8] bg-clip-text text-transparent">
-              KIẾN TẠO TƯƠNG LAI
-            </span>
+            {headline.includes(',') ? (
+              <>
+                {headline.slice(0, headline.indexOf(',') + 1)}{' '}
+                <span className="whitespace-nowrap bg-gradient-to-r from-[#0073C1] via-[#0E6BBB] to-[#2C93E8] bg-clip-text text-transparent">
+                  {headline.slice(headline.indexOf(',') + 1).trim()}
+                </span>
+              </>
+            ) : (
+              headline
+            )}
           </h2>
 
           <p className="text-xs sm:text-base text-slate-600 leading-relaxed max-w-2xl mx-auto">

@@ -1,16 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Edit3, 
   Save, 
   CheckCircle2, 
-  Sparkles, 
-  Layers, 
-  BookOpen, 
-  HelpCircle, 
-  Award, 
-  GraduationCap, 
-  Building2,
-  Users,
+  Loader2,
   Plus,
   Trash2
 } from 'lucide-react';
@@ -20,7 +13,7 @@ import { FAQ_ITEMS } from '../../data/courseraData';
 
 interface CMSHomepageContentTabProps {
   cmsSections: CMSSectionsConfig;
-  onUpdateCMSSections: (sections: CMSSectionsConfig) => void;
+  onUpdateCMSSections: (sections: CMSSectionsConfig) => Promise<boolean> | void;
 }
 
 export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
@@ -28,8 +21,44 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
   onUpdateCMSSections,
 }) => {
   const [sections, setSections] = useState<CMSSectionsConfig>(cmsSections);
+  const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [activeSubSection, setActiveSubSection] = useState<'intro' | 'shelves' | 'plus' | 'about' | 'gallery' | 'faq' | 'testimonials'>('intro');
+
+  // Local text drafts for multiline array fields so pressing Enter at the end of a line works smoothly.
+  const [statsText, setStatsText] = useState(() => (cmsSections.about?.stats || []).join('\n'));
+  const [pillarsText, setPillarsText] = useState(() => (cmsSections.about?.pillars || []).join('\n'));
+  const [missionText, setMissionText] = useState(() =>
+    cmsSections.about?.mission?.length
+      ? cmsSections.about.mission.join('\n')
+      : '• Cung cấp các chương trình đào tạo thực chiến và khóa học Short course ngắn hạn, tập trung vào kiến thức cốt lõi.\n• Xây dựng môi trường học tập năng động, linh hoạt, phù hợp với học viên và người đi làm.\n• Đồng hành cùng học viên trong quá trình định hướng nghề nghiệp và gia tăng lợi thế cạnh tranh.'
+  );
+  const [coreValuesText, setCoreValuesText] = useState(() =>
+    cmsSections.about?.coreValues?.length
+      ? cmsSections.about.coreValues.join('\n')
+      : '• Thấu hiểu: Lắng nghe nhu cầu học tập và định hướng nghề nghiệp.\n• Thực tiễn: Tập trung vào kiến thức và kỹ năng có thể áp dụng ngay.\n• Tinh gọn: Thiết kế nội dung ngắn hạn, cô đọng, đúng trọng tâm.\n• Sáng tạo: Không ngừng đổi mới nội dung và phương pháp đào tạo.\n• Nâng tầm: Đồng hành cùng học viên mở rộng cơ hội nghề nghiệp.'
+  );
+
+  useEffect(() => {
+    setSections(cmsSections);
+    setStatsText((cmsSections.about?.stats || []).join('\n'));
+    setPillarsText((cmsSections.about?.pillars || []).join('\n'));
+    if (cmsSections.about?.mission?.length) setMissionText(cmsSections.about.mission.join('\n'));
+    if (cmsSections.about?.coreValues?.length) setCoreValuesText(cmsSections.about.coreValues.join('\n'));
+  }, [cmsSections]);
+
+  const persistSections = async (next: CMSSectionsConfig) => {
+    setSaving(true);
+    try {
+      const ok = await onUpdateCMSSections(next);
+      if (ok !== false) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2500);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // FAQ questions are edited here; until saved once, the editor starts from the website's default list.
   const faqItems: FAQItem[] = sections.faq?.items?.length ? sections.faq.items : FAQ_ITEMS;
@@ -44,37 +73,43 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
       },
     });
   const testimonials: Testimonial[] = sections.testimonials?.items || [];
+  const buildTestimonialSection = (patch: Partial<NonNullable<CMSSectionsConfig['testimonials']>>): CMSSectionsConfig => ({
+    ...sections,
+    testimonials: {
+      enabled: sections.testimonials?.enabled ?? true,
+      title: sections.testimonials?.title || '',
+      subtitle: sections.testimonials?.subtitle,
+      items: testimonials,
+      ...patch,
+    },
+  });
   const setTestimonialSection = (patch: Partial<NonNullable<CMSSectionsConfig['testimonials']>>) =>
-    setSections({
-      ...sections,
-      testimonials: {
-        enabled: sections.testimonials?.enabled ?? true,
-        title: sections.testimonials?.title || '',
-        subtitle: sections.testimonials?.subtitle,
-        items: testimonials,
-        ...patch,
-      },
-    });
-  const updateTestimonial = (id: string, patch: Partial<Testimonial>) =>
-    setTestimonialSection({ items: testimonials.map((t) => (t.id === id ? { ...t, ...patch } : t)) });
+    setSections(buildTestimonialSection(patch));
+  const updateTestimonial = (id: string, patch: Partial<Testimonial>, autoSave = false) => {
+    const next = buildTestimonialSection({ items: testimonials.map((t) => (t.id === id ? { ...t, ...patch } : t)) });
+    setSections(next);
+    if (autoSave) void persistSections(next);
+  };
   const updateFaq = (id: string, patch: Partial<FAQItem>) =>
     setFaqItems(faqItems.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   const galleryPhotos = sections.gallery?.photos || [];
-  const setGalleryPhotos = (photos: CMSSectionsConfig['gallery']['photos']) =>
-    setSections({
-      ...sections,
-      gallery: {
-        enabled: sections.gallery?.enabled ?? true,
-        title: sections.gallery?.title || 'Hình ảnh học viện TWings',
-        photos,
-      },
-    });
+  const buildGallerySection = (photos: CMSSectionsConfig['gallery']['photos']): CMSSectionsConfig => ({
+    ...sections,
+    gallery: {
+      enabled: sections.gallery?.enabled ?? true,
+      title: sections.gallery?.title || 'Hình ảnh học viện TWings',
+      photos,
+    },
+  });
+  const setGalleryPhotos = (photos: CMSSectionsConfig['gallery']['photos'], autoSave = false) => {
+    const next = buildGallerySection(photos);
+    setSections(next);
+    if (autoSave) void persistSections(next);
+  };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdateCMSSections(sections);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2000);
+    await persistSections(sections);
   };
 
   return (
@@ -95,10 +130,11 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
 
         <button
           type="submit"
-          className="px-5 py-2.5 bg-[#0073C1] hover:bg-[#005FA0] text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
+          disabled={saving}
+          className="px-5 py-2.5 bg-[#0073C1] hover:bg-[#005FA0] disabled:opacity-60 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
         >
-          <Save className="w-4 h-4" />
-          <span>Lưu Nội Dung Trang Chủ</span>
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          <span>{saving ? 'Đang lưu...' : 'Lưu Nội Dung Trang Chủ'}</span>
         </button>
       </div>
 
@@ -202,7 +238,12 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
               value={sections.gallery?.title || ''}
               onChange={(e) => setSections({
                 ...sections,
-                gallery: { ...sections.gallery, title: e.target.value }
+                gallery: {
+                  ...sections.gallery,
+                  enabled: sections.gallery?.enabled ?? true,
+                  photos: galleryPhotos,
+                  title: e.target.value,
+                }
               })}
               className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
             />
@@ -218,11 +259,18 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
             {galleryPhotos.map((photo, index) => (
               <div key={photo.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-700">Ảnh {index + 1}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-700">Ảnh {index + 1}</span>
+                    {index >= 6 && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
+                        Ngoài 6 ảnh đầu (ẩn trên trang công khai)
+                      </span>
+                    )}
+                  </div>
                   <button
                     type="button"
                     title="Xóa ảnh"
-                    onClick={() => setGalleryPhotos(galleryPhotos.filter((item) => item.id !== photo.id))}
+                    onClick={() => setGalleryPhotos(galleryPhotos.filter((item) => item.id !== photo.id), true)}
                     className="p-2 rounded-lg text-red-600 hover:bg-red-50"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -234,6 +282,9 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
                   onChange={(url) => setGalleryPhotos(galleryPhotos.map((item) =>
                     item.id === photo.id ? { ...item, url, imageUrl: url } : item
                   ))}
+                  onUploaded={(url) => setGalleryPhotos(galleryPhotos.map((item) =>
+                    item.id === photo.id ? { ...item, url, imageUrl: url } : item
+                  ), true)}
                   previewClassName="w-full h-36 rounded-xl object-cover"
                 />
                 <textarea
@@ -340,6 +391,7 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
                 label="Ảnh (tùy chọn)"
                 value={t.avatar}
                 onChange={(url) => updateTestimonial(t.id, { avatar: url })}
+                onUploaded={(url) => updateTestimonial(t.id, { avatar: url }, true)}
                 previewClassName="w-10 h-10 rounded-full object-cover"
               />
             </div>
@@ -435,17 +487,21 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
 
           {/* Shelf 2 */}
           <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
-            <span className="font-bold text-[#0073C1] uppercase text-[11px]">Khay 2 (PDF Trang 4)</span>
+            <span className="font-bold text-[#0073C1] uppercase text-[11px]">Khay 2 (AI & Đề xuất - PDF Trang 4)</span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Tiêu đề khay 2</label>
                 <input
                   type="text"
-                  value={sections.recommended?.title || 'ĐƯỢC ĐỀ XUẤT CHO BẠN'}
-                  onChange={(e) => setSections({
-                    ...sections,
-                    recommended: { ...sections.recommended, title: e.target.value }
-                  })}
+                  value={sections.recommended?.title || sections.trendingAI?.title || 'ĐƯỢC ĐỀ XUẤT CHO BẠN'}
+                  onChange={(e) => {
+                    const title = e.target.value;
+                    setSections({
+                      ...sections,
+                      recommended: { ...sections.recommended, enabled: sections.recommended?.enabled ?? true, title },
+                      trendingAI: { ...sections.trendingAI, enabled: sections.trendingAI?.enabled ?? true, title },
+                    });
+                  }}
                   className="w-full p-2 border border-slate-300 rounded-lg font-bold"
                 />
               </div>
@@ -453,11 +509,15 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
                 <label className="font-bold text-slate-700 block mb-1">Mô tả phụ</label>
                 <input
                   type="text"
-                  value={sections.recommended?.subtitle || 'Lộ trình tối ưu hóa theo định hướng năng lực và phỏng vấn tuyển dụng.'}
-                  onChange={(e) => setSections({
-                    ...sections,
-                    recommended: { ...sections.recommended, subtitle: e.target.value }
-                  })}
+                  value={sections.recommended?.subtitle || sections.trendingAI?.subtitle || 'Lộ trình tối ưu hóa theo định hướng năng lực và phỏng vấn tuyển dụng.'}
+                  onChange={(e) => {
+                    const subtitle = e.target.value;
+                    setSections({
+                      ...sections,
+                      recommended: { ...sections.recommended, enabled: sections.recommended?.enabled ?? true, title: sections.recommended?.title || 'ĐƯỢC ĐỀ XUẤT CHO BẠN', subtitle },
+                      trendingAI: { ...sections.trendingAI, enabled: sections.trendingAI?.enabled ?? true, title: sections.trendingAI?.title || 'ĐƯỢC ĐỀ XUẤT CHO BẠN', subtitle },
+                    });
+                  }}
                   className="w-full p-2 border border-slate-300 rounded-lg"
                 />
               </div>
@@ -466,17 +526,21 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
 
           {/* Shelf 3 */}
           <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
-            <span className="font-bold text-[#0073C1] uppercase text-[11px]">Khay 3 (PDF Trang 5)</span>
+            <span className="font-bold text-[#0073C1] uppercase text-[11px]">Khay 3 (Chứng chỉ & Mới ra mắt - PDF Trang 5)</span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Tiêu đề khay 3</label>
                 <input
                   type="text"
-                  value={sections.newReleases?.title || 'KHÓA HỌC MỚI RA MẮT'}
-                  onChange={(e) => setSections({
-                    ...sections,
-                    newReleases: { ...sections.newReleases, title: e.target.value }
-                  })}
+                  value={sections.newReleases?.title || sections.certificates?.title || 'KHÓA HỌC MỚI RA MẮT'}
+                  onChange={(e) => {
+                    const title = e.target.value;
+                    setSections({
+                      ...sections,
+                      newReleases: { ...sections.newReleases, enabled: sections.newReleases?.enabled ?? true, title },
+                      certificates: { ...sections.certificates, enabled: sections.certificates?.enabled ?? true, title },
+                    });
+                  }}
                   className="w-full p-2 border border-slate-300 rounded-lg font-bold"
                 />
               </div>
@@ -484,11 +548,15 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
                 <label className="font-bold text-slate-700 block mb-1">Mô tả phụ</label>
                 <input
                   type="text"
-                  value={sections.newReleases?.subtitle || 'Các chuyên đề mới nhất về AI ngân hàng, Design Thinking và Quản trị thực thi OKR.'}
-                  onChange={(e) => setSections({
-                    ...sections,
-                    newReleases: { ...sections.newReleases, subtitle: e.target.value }
-                  })}
+                  value={sections.newReleases?.subtitle || sections.certificates?.subtitle || 'Các chuyên đề mới nhất về AI ngân hàng, Design Thinking và Quản trị thực thi OKR.'}
+                  onChange={(e) => {
+                    const subtitle = e.target.value;
+                    setSections({
+                      ...sections,
+                      newReleases: { ...sections.newReleases, enabled: sections.newReleases?.enabled ?? true, title: sections.newReleases?.title || 'KHÓA HỌC MỚI RA MẮT', subtitle },
+                      certificates: { ...sections.certificates, enabled: sections.certificates?.enabled ?? true, title: sections.certificates?.title || 'KHÓA HỌC MỚI RA MẮT', subtitle },
+                    });
+                  }}
                   className="w-full p-2 border border-slate-300 rounded-lg"
                 />
               </div>
@@ -497,17 +565,21 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
 
           {/* Shelf 4 */}
           <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
-            <span className="font-bold text-[#0073C1] uppercase text-[11px]">Khay 4 (PDF Trang 6)</span>
+            <span className="font-bold text-[#0073C1] uppercase text-[11px]">Khay 4 (Chương trình dài hạn & Hữu ích nhất - PDF Trang 6)</span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Tiêu đề khay 4</label>
                 <input
                   type="text"
-                  value={sections.mostUseful?.title || 'KHÓA HỌC HỮU ÍCH NHẤT'}
-                  onChange={(e) => setSections({
-                    ...sections,
-                    mostUseful: { ...sections.mostUseful, title: e.target.value }
-                  })}
+                  value={sections.mostUseful?.title || sections.degrees?.title || 'KHÓA HỌC HỮU ÍCH NHẤT'}
+                  onChange={(e) => {
+                    const title = e.target.value;
+                    setSections({
+                      ...sections,
+                      mostUseful: { ...sections.mostUseful, enabled: sections.mostUseful?.enabled ?? true, title },
+                      degrees: { ...sections.degrees, enabled: sections.degrees?.enabled ?? true, title },
+                    });
+                  }}
                   className="w-full p-2 border border-slate-300 rounded-lg font-bold"
                 />
               </div>
@@ -515,11 +587,15 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
                 <label className="font-bold text-slate-700 block mb-1">Mô tả phụ</label>
                 <input
                   type="text"
-                  value={sections.mostUseful?.subtitle || 'Kỹ năng thiết yếu ứng dụng ngay trong công việc tại các định chế tài chính.'}
-                  onChange={(e) => setSections({
-                    ...sections,
-                    mostUseful: { ...sections.mostUseful, subtitle: e.target.value }
-                  })}
+                  value={sections.mostUseful?.subtitle || sections.degrees?.subtitle || 'Kỹ năng thiết yếu ứng dụng ngay trong công việc tại các định chế tài chính.'}
+                  onChange={(e) => {
+                    const subtitle = e.target.value;
+                    setSections({
+                      ...sections,
+                      mostUseful: { ...sections.mostUseful, enabled: sections.mostUseful?.enabled ?? true, title: sections.mostUseful?.title || 'KHÓA HỌC HỮU ÍCH NHẤT', subtitle },
+                      degrees: { ...sections.degrees, enabled: sections.degrees?.enabled ?? true, title: sections.degrees?.title || 'KHÓA HỌC HỮU ÍCH NHẤT', subtitle },
+                    });
+                  }}
                   className="w-full p-2 border border-slate-300 rounded-lg"
                 />
               </div>
@@ -542,7 +618,11 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
               value={sections.courseraPlus?.title || 'Đầu tư vào sự nghiệp của bạn với Gói Hội Viên & Đào Tạo Doanh Nghiệp'}
               onChange={(e) => setSections({
                 ...sections,
-                courseraPlus: { ...sections.courseraPlus, enabled: true, title: e.target.value }
+                courseraPlus: {
+                  ...sections.courseraPlus,
+                  enabled: sections.courseraPlus?.enabled ?? false,
+                  title: e.target.value,
+                }
               })}
               className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
             />
@@ -556,7 +636,7 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
               onChange={(e) => setSections({
                 ...sections,
                 courseraPlus: { 
-                  enabled: sections.courseraPlus?.enabled ?? true,
+                  enabled: sections.courseraPlus?.enabled ?? false,
                   title: sections.courseraPlus?.title || 'Đầu tư vào sự nghiệp của bạn với TWings Plus',
                   subtitle: e.target.value,
                   badgeText: sections.courseraPlus?.badgeText,
@@ -638,9 +718,19 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
           <div>
             <label className="font-bold text-slate-700 block mb-1">Số liệu nổi bật</label>
             <p className="text-[11px] text-slate-500 mb-1.5">Mỗi dòng: Số liệu | Tiêu đề | Mô tả</p>
-            <textarea rows={5} value={(sections.about?.stats || []).join('\n')}
-              onChange={(e) => setSections({ ...sections, about: { ...sections.about, stats: e.target.value.split('\n').filter(Boolean) } })}
-              className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs" />
+            <textarea
+              rows={5}
+              value={statsText}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setStatsText(raw);
+                setSections({
+                  ...sections,
+                  about: { ...sections.about, stats: raw.split('\n').map((s) => s.trim()).filter(Boolean) },
+                });
+              }}
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs"
+            />
           </div>
 
           <div className="border-t border-slate-200 pt-4 space-y-4">
@@ -654,9 +744,19 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
             <div>
               <label className="font-bold text-slate-700 block mb-1">Các trụ cột</label>
               <p className="text-[11px] text-slate-500 mb-1.5">Mỗi dòng: Tiêu đề | Mô tả</p>
-              <textarea rows={4} value={(sections.about?.pillars || []).join('\n')}
-                onChange={(e) => setSections({ ...sections, about: { ...sections.about, pillars: e.target.value.split('\n').filter(Boolean) } })}
-                className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs" />
+              <textarea
+                rows={4}
+                value={pillarsText}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setPillarsText(raw);
+                  setSections({
+                    ...sections,
+                    about: { ...sections.about, pillars: raw.split('\n').map((s) => s.trim()).filter(Boolean) },
+                  });
+                }}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs"
+              />
             </div>
           </div>
 
@@ -686,11 +786,15 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
               className="w-full p-2.5 mb-2 border border-slate-300 rounded-xl font-bold" />
             <textarea
               rows={4}
-              value={sections.about?.mission?.join('\n') || '• Cung cấp các chương trình đào tạo thực chiến và khóa học Short course ngắn hạn, tập trung vào kiến thức cốt lõi.\n• Xây dựng môi trường học tập năng động, linh hoạt, phù hợp với học viên và người đi làm.\n• Đồng hành cùng học viên trong quá trình định hướng nghề nghiệp và gia tăng lợi thế cạnh tranh.'}
-              onChange={(e) => setSections({
-                ...sections,
-                about: { ...sections.about, mission: e.target.value.split('\n').filter(Boolean) }
-              })}
+              value={missionText}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setMissionText(raw);
+                setSections({
+                  ...sections,
+                  about: { ...sections.about, mission: raw.split('\n').map((s) => s.trim()).filter(Boolean) }
+                });
+              }}
               className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs leading-relaxed"
             />
           </div>
@@ -705,11 +809,15 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
               className="w-full p-2.5 mb-2 border border-slate-300 rounded-xl" />
             <textarea
               rows={4}
-              value={sections.about?.coreValues?.join('\n') || '• Thấu hiểu: Lắng nghe nhu cầu học tập và định hướng nghề nghiệp.\n• Thực tiễn: Tập trung vào kiến thức và kỹ năng có thể áp dụng ngay.\n• Tinh gọn: Thiết kế nội dung ngắn hạn, cô đọng, đúng trọng tâm.\n• Sáng tạo: Không ngừng đổi mới nội dung và phương pháp đào tạo.\n• Nâng tầm: Đồng hành cùng học viên mở rộng cơ hội nghề nghiệp.'}
-              onChange={(e) => setSections({
-                ...sections,
-                about: { ...sections.about, coreValues: e.target.value.split('\n').filter(Boolean) }
-              })}
+              value={coreValuesText}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setCoreValuesText(raw);
+                setSections({
+                  ...sections,
+                  about: { ...sections.about, coreValues: raw.split('\n').map((s) => s.trim()).filter(Boolean) }
+                });
+              }}
               className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs leading-relaxed"
             />
           </div>
@@ -757,7 +865,7 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
               value={sections.faq?.title || 'Giải Đáp Thắc Mắc Thường Gặp (FAQ)'}
               onChange={(e) => setSections({
                 ...sections,
-                faq: { ...sections.faq, enabled: true, title: e.target.value }
+                faq: { ...sections.faq, enabled: sections.faq?.enabled ?? true, title: e.target.value }
               })}
               className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
             />

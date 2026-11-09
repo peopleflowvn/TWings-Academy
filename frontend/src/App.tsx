@@ -142,7 +142,26 @@ export default function App() {
         broadcastBannersUpdate(bannerRes.value);
       }
       if (sectionsRes.status === 'fulfilled' && sectionsRes.value.data?.hero) {
-        setCmsSections({ ...LIVE_SECTIONS, ...sectionsRes.value.data });
+        const raw = sectionsRes.value.data;
+        setCmsSections({
+          ...LIVE_SECTIONS,
+          ...raw,
+          partners: {
+            ...LIVE_SECTIONS.partners,
+            ...raw.partners,
+            items: Array.isArray(raw.partners?.items) ? raw.partners.items : [],
+          },
+          instructors: {
+            ...LIVE_SECTIONS.instructors,
+            ...raw.instructors,
+            items: Array.isArray(raw.instructors?.items) ? raw.instructors.items : [],
+          },
+          gallery: {
+            ...LIVE_SECTIONS.gallery,
+            ...raw.gallery,
+            photos: Array.isArray(raw.gallery?.photos) ? raw.gallery.photos : [],
+          },
+        });
       }
       if (instructorRes.status === 'fulfilled') {
         setInstructors(instructorRes.value);
@@ -172,10 +191,10 @@ export default function App() {
     const seen = new Set<string>();
     (
       [
-        ['popular-shelf', mostPopularCourses, cmsSections.bestsellers.enabled],
-        ['ai-shelf', trendingAICourses, cmsSections.trendingAI?.enabled !== false],
-        ['certificates-shelf', professionalCertificates, cmsSections.certificates?.enabled !== false],
-        ['degrees-shelf', degreePrograms, cmsSections.degrees?.enabled !== false]
+        ['popular-shelf', mostPopularCourses, cmsSections.bestsellers?.enabled !== false],
+        ['ai-shelf', trendingAICourses, (cmsSections.recommended?.enabled ?? cmsSections.trendingAI?.enabled) !== false],
+        ['certificates-shelf', professionalCertificates, (cmsSections.newReleases?.enabled ?? cmsSections.certificates?.enabled) !== false],
+        ['degrees-shelf', degreePrograms, (cmsSections.mostUseful?.enabled ?? cmsSections.degrees?.enabled) !== false]
       ] as [string, Course[], boolean][]
     ).forEach(([id, list, enabled]) => {
       const key = list.map((c) => c.id).sort().join(',');
@@ -543,8 +562,8 @@ export default function App() {
             <CourseraShelf
               id="popular-shelf"
               badgeTag="Khóa học & Chứng chỉ hàng đầu"
-              title={cmsSections.bestsellers.title || 'Các khóa học và Chứng chỉ phổ biến nhất'}
-              subtitle="Khóa học thực chiến nổi bật của TWings Academy, có lịch khai giảng và hỗ trợ trả góp."
+              title={cmsSections.bestsellers?.title || 'Các khóa học và Chứng chỉ phổ biến nhất'}
+              subtitle={cmsSections.bestsellers?.subtitle || 'Khóa học thực chiến nổi bật của TWings Academy, có lịch khai giảng và hỗ trợ trả góp.'}
               courses={mostPopularCourses}
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
@@ -559,8 +578,8 @@ export default function App() {
             <CourseraShelf
               id="ai-shelf"
               badgeTag="Đột phá công nghệ 2026"
-              title={cmsSections.trendingAI?.title || 'Khám phá các khóa học AI & Công nghệ đột phá'}
-              subtitle="Ứng dụng AI và công nghệ vào công việc tài chính – ngân hàng."
+              title={cmsSections.recommended?.title || cmsSections.trendingAI?.title || 'Khám phá các khóa học AI & Công nghệ đột phá'}
+              subtitle={cmsSections.recommended?.subtitle || cmsSections.trendingAI?.subtitle || 'Ứng dụng AI và công nghệ vào công việc tài chính – ngân hàng.'}
               courses={trendingAICourses}
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
@@ -578,8 +597,8 @@ export default function App() {
             <CourseraShelf
               id="certificates-shelf"
               badgeTag="Khởi đầu sự nghiệp mới"
-              title={cmsSections.certificates?.title || 'Chứng chỉ chuyên môn'}
-              subtitle="Trang bị các kỹ năng nghề nghiệp thực tế có chứng chỉ được doanh nghiệp săn đón."
+              title={cmsSections.newReleases?.title || cmsSections.certificates?.title || 'Chứng chỉ chuyên môn'}
+              subtitle={cmsSections.newReleases?.subtitle || cmsSections.certificates?.subtitle || 'Trang bị các kỹ năng nghề nghiệp thực tế có chứng chỉ được doanh nghiệp săn đón.'}
               courses={professionalCertificates}
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}
@@ -602,8 +621,8 @@ export default function App() {
             <CourseraShelf
               id="degrees-shelf"
               badgeTag="Bằng cấp trực tuyến 100%"
-              title={cmsSections.degrees?.title || 'Chương trình Cử nhân & Thạc sĩ từ các trường đại học uy tín'}
-              subtitle="Chương trình học dài hạn cùng các trường đối tác."
+              title={cmsSections.mostUseful?.title || cmsSections.degrees?.title || 'Chương trình Cử nhân & Thạc sĩ từ các trường đại học uy tín'}
+              subtitle={cmsSections.mostUseful?.subtitle || cmsSections.degrees?.subtitle || 'Chương trình học dài hạn cùng các trường đối tác.'}
               courses={degreePrograms}
               enrolledCourseIds={enrolledCourseIds}
               onSelectCourse={handleSelectCourse}

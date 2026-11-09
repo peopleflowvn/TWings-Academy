@@ -239,9 +239,9 @@ USE_TZ = True
 # ---------------------------------------------------------------------------
 # Static (served by WhiteNoise) & media (Cloudflare R2 in production)
 # ---------------------------------------------------------------------------
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 STORAGES = {

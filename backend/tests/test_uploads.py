@@ -22,8 +22,10 @@ def _image(fmt: str, name: str, size=(32, 32)) -> SimpleUploadedFile:
 def test_seo_editor_uploads_logo_and_favicon(staff_client, fmt, name, ext):
     res = staff_client(Role.CONTENT_SEO).post(URL, {"file": _image(fmt, name)}, format="multipart")
     assert res.status_code == 201, res.content
-    path = res.json()["path"]
+    body = res.json()
+    path = body["path"]
     assert path.startswith("uploads/") and path.endswith(f".{ext}") and name not in path  # random name
+    assert body["url"].startswith(("/", "https://", "http://"))
     assert default_storage.exists(path)
 
 
@@ -73,6 +75,34 @@ def test_public_site_config_exposes_only_public_documents(api):
     SiteConfig.objects.create(key=SiteConfig.KEY_JOURNEYS, data={"abandoned_checkout": {"enabled": False}})
     assert api.get("/api/v1/public/site-config/site_seo/").status_code == 200
     assert api.get("/api/v1/public/site-config/journeys/").status_code == 404
+
+
+def test_site_config_rejects_unsafe_image_urls_in_homepage_sections(staff_client):
+    client = staff_client(Role.CONTENT_SEO)
+    bad_gallery = {
+        "data": {
+            "gallery": {
+                "title": "Hình ảnh thực tế",
+                "photos": [{"id": "g1", "url": "javascript:alert(1)", "caption": "XSS"}],
+            }
+        }
+    }
+    assert (
+        client.patch("/api/v1/staff/site-config/homepage_sections/", bad_gallery, format="json").status_code
+        == 400
+    )
+    good_gallery = {
+        "data": {
+            "gallery": {
+                "title": "Hình ảnh thực tế",
+                "photos": [{"id": "g1", "url": "/media/uploads/2026/11/test.png", "caption": "OK"}],
+            }
+        }
+    }
+    assert (
+        client.patch("/api/v1/staff/site-config/homepage_sections/", good_gallery, format="json").status_code
+        == 200
+    )
 
 
 def test_demo_brand_images_are_cleared(db):

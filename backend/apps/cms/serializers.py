@@ -57,4 +57,15 @@ class SiteConfigSerializer(serializers.ModelSerializer):
     def validate_data(self, value):
         if not isinstance(value, dict):
             raise serializers.ValidationError("Must be a JSON object.")
+        gallery = value.get("gallery")
+        if isinstance(gallery, dict) and isinstance(gallery.get("photos"), list):
+            for photo in gallery["photos"]:
+                if isinstance(photo, dict):
+                    _safe_link(photo.get("url") or "")
+                    _safe_link(photo.get("image_url") or photo.get("imageUrl") or "")
+        testimonials = value.get("testimonials")
+        if isinstance(testimonials, dict) and isinstance(testimonials.get("items"), list):
+            for item in testimonials["items"]:
+                if isinstance(item, dict):
+                    _safe_link(item.get("avatar") or "")
         return value

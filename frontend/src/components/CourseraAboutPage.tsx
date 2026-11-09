@@ -408,7 +408,10 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
         )}
 
         {/* 7. Hình ảnh Học viên & Hoạt động Đào tạo (Gallery Showcase) */}
-        {photos.length > 0 && (
+        {(() => {
+          const validPhotos = photos.filter((p) => (p.url || p.imageUrl || '').trim().length > 0);
+          if (validPhotos.length === 0) return null;
+          return (
         <div className="space-y-8">
           <div className="text-center max-w-2xl mx-auto space-y-2.5">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D7F5FF] text-[#0073C1] text-xs font-bold uppercase tracking-wider">
@@ -423,14 +426,14 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {photos.slice(0, 6).map((photo) => (
+            {validPhotos.slice(0, 6).map((photo) => (
               <div 
                 key={photo.id}
                 className="bg-white rounded-2xl sm:rounded-3xl border border-[#E1E6EA] overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 group"
               >
                 <div className="relative aspect-4/3 w-full overflow-hidden bg-slate-900">
                   <img
-                    src={photo.url}
+                    src={photo.url || photo.imageUrl}
                     alt={photo.caption}
                     className="w-full h-full object-cover group-hover:scale-106 transition-transform duration-700"
                     loading="lazy"
@@ -446,7 +449,8 @@ export const CourseraAboutPage: React.FC<CourseraAboutPageProps> = ({
             ))}
           </div>
         </div>
-        )}
+          );
+        })()}
 
         {/* 8. Đối tác đồng hành chiến lược */}
         {partners.length > 0 && (
