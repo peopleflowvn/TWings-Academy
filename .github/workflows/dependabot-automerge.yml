@@ -1,0 +1,44 @@
+name: Dependabot Auto-Merge
+
+# Automatically merges Dependabot PRs when CI passes completely.
+# Runs on workflow_run after CI succeeds so it does not require repo-level auto-merge settings.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    name: Merge Dependabot PR
+    runs-on: ubuntu-24.04
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Verify author is dependabot
+        id: check
+        run: |
+          PR_NUMBER="${{ github.event.workflow_run.pull_requests[0].number }}"
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+            echo "No PR found in event payload."
+            exit 0
+          fi
+          AUTHOR=$(gh pr view "$PR_NUMBER" --json author -q .author.login)
+          echo "PR #$PR_NUMBER author: $AUTHOR"
+          if [ "$AUTHOR" = "app/dependabot" ] || [ "$AUTHOR" = "dependabot" ]; then
+            echo "should_merge=true" >> "$GITHUB_OUTPUT"
+            echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Squash and merge Dependabot PR
+        if: steps.check.outputs.should_merge == 'true'
+        run: |
+          gh pr merge "${{ steps.check.outputs.pr_number }}" --squash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -28,7 +28,25 @@ export const SessionLockscreen: React.FC<SessionLockscreenProps> = ({
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(false);
   const [error, setError] = useState('');
+
+  const handleCheckSession = async () => {
+    setError('');
+    setCheckingSession(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const me = await api.get<any>('/auth/me/');
+      if (me) {
+        onUnlock(toAdminUser(me));
+        return;
+      }
+    } catch {
+      setError('Phiên làm việc thực sự đã kết thúc. Vui lòng nhập mật khẩu để mở khóa.');
+    } finally {
+      setCheckingSession(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +113,7 @@ export const SessionLockscreen: React.FC<SessionLockscreenProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          <input type="hidden" name="username" value={user.email} autoComplete="username" />
           <div className="space-y-1.5">
             <label htmlFor="lock-password" className="block text-xs font-bold text-slate-300">
               Mật khẩu xác nhận
@@ -105,6 +124,7 @@ export const SessionLockscreen: React.FC<SessionLockscreenProps> = ({
               </div>
               <input
                 id="lock-password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 autoFocus
@@ -122,25 +142,46 @@ export const SessionLockscreen: React.FC<SessionLockscreenProps> = ({
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            <p className="text-[11px] text-slate-500">
+              Lưu ý: Tắt bộ gõ tiếng Việt (Telex/VNI) nếu mật khẩu có ký tự đặc biệt.
+            </p>
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full py-3 bg-[#0073C1] hover:bg-[#005fa3] text-white font-bold text-sm rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg shadow-blue-500/20"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Đang mở khóa…</span>
-              </>
-            ) : (
-              <>
-                <span>Mở khóa phiên làm việc</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+          <div className="space-y-2">
+            <button
+              type="submit"
+              disabled={submitting || checkingSession}
+              className="w-full py-3 bg-[#0073C1] hover:bg-[#005fa3] text-white font-bold text-sm rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg shadow-blue-500/20"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Đang mở khóa…</span>
+                </>
+              ) : (
+                <>
+                  <span>Mở khóa phiên làm việc</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCheckSession}
+              disabled={submitting || checkingSession}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            >
+              {checkingSession ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#0073C1]" />
+                  <span>Đang kiểm tra kết nối phiên…</span>
+                </>
+              ) : (
+                <span>Kiểm tra lại phiên làm việc (hoặc Tải lại trang)</span>
+              )}
+            </button>
+          </div>
         </form>
 
         <div className="pt-2 border-t border-slate-800 text-center">

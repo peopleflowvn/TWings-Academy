@@ -83,7 +83,25 @@ export const StaffLoginGate: React.FC<StaffLoginGateProps> = ({
 
   // Handle session expired event (401 from any API call while using the app)
   useEffect(() => {
-    const onExpired = () => {
+    let verifying = false;
+    const onExpired = async () => {
+      if (verifying) return;
+      verifying = true;
+      try {
+        // Quick verification: was it just a temporary transient 401 on an unauthenticated background call?
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const me = await api.get<any>('/auth/me/');
+        if (me) {
+          // Session is actually still active! Restore user and avoid kicking to lockscreen.
+          setUser(toAdminUser(me));
+          return;
+        }
+      } catch {
+        // Session is really expired or unauthenticated
+      } finally {
+        verifying = false;
+      }
+
       resetCsrfToken();
       setUser((current) => {
         if (current) {
