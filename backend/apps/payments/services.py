@@ -239,6 +239,10 @@ def refund_order(
         order.crm_status = stages.REFUSED_3
         order.lost_reason = order.lost_reason or "Hoàn tiền / dừng học"
     order.save()
+    if order.status == "refunded":
+        from apps.crm.learners import refresh_duplicate_flags
+
+        refresh_duplicate_flags(order.learner_id)
     Activity.objects.create(
         order=order,
         type="payment",

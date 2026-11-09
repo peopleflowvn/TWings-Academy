@@ -45,7 +45,9 @@ PERSON_FIELDS = [
 ]
 # What the learner must provide before studying (enrolment file).
 DOSSIER_REQUIRED = ["birth_date", "citizen_id", "permanent_address", "education_level"]
-ACTIVE = ~Q(status__in=("cancelled", "refunded")) & ~Q(crm_status__in=stages.in_groups(stages.G_CLOSED))
+# Still being worked on: not refunded, not in a closed stage. A cancelled order in an open stage is a
+# checkout whose hold passed (expire_checkouts): the consultant still follows it up, so it counts.
+ACTIVE = ~Q(status="refunded") & ~Q(crm_status__in=stages.in_groups(stages.G_CLOSED))
 
 
 def phone_key(phone: str) -> str:
@@ -137,6 +139,8 @@ def portal_learner(order: Order) -> Learner:
         own.save()
     Order.objects.filter(Q(pk=order.pk) | Q(parent_id=order.pk)).update(learner=own)
     order.learner = own
+    refresh_duplicate_flags(learner.pk)
+    refresh_duplicate_flags(own.pk)
     Activity.objects.create(
         order=order,
         type="note",
@@ -171,21 +175,161 @@ def dossier_missing(learner: Learner | None) -> list[str]:
     )
 
 
+def _same_item(course_id, program_id) -> Q:
+    if program_id and not course_id:
+        return Q(program_id=program_id, course__isnull=True)
+    return Q(course_id=course_id)
+
+
+def _overlapping(course_id, program_id) -> Q:
+    """The same course / program, or a program containing the course (a course of the program)."""
+    from apps.catalog.models import ProgramCourse
+
+    if program_id and not course_id:
+        courses = ProgramCourse.objects.filter(program_id=program_id).values("course_id")
+        return _same_item(None, program_id) | Q(course_id__in=courses)
+    programs = ProgramCourse.objects.filter(course_id=course_id).values("program_id")
+    return _same_item(course_id, None) | Q(course__isnull=True, program_id__in=programs)
+
+
 def active_duplicates(order: Order):
-    """Other active registrations of the same learner for the same course / program."""
+    """
+    Other active registrations of the same learner for the same course / program, or overlapping it
+    (a program and one of its courses bought on its own).
+    """
     if not order.learner_id or not (order.course_id or order.program_id):
         return Order.objects.none()
-    same = (
-        Q(program_id=order.program_id)
-        if order.program_id and not order.course_id
-        else Q(course_id=order.course_id)
-    )
     return (
         Order.objects.filter(learner_id=order.learner_id, parent__isnull=True)
-        .filter(same)
+        .filter(_overlapping(order.course_id, order.program_id))
         .filter(ACTIVE)
         .exclude(pk=order.pk)
     )
+
+
+def _lock_email(email: str) -> None:
+    """
+    Two forms of one person sent at the same moment (double click, two tabs) wait for each other, so
+    the second finds the registration the first created (PostgreSQL; until the transaction ends).
+    """
+    import hashlib
+
+    from django.db import connection
+
+    if connection.vendor != "postgresql":
+        return
+    key = int.from_bytes(hashlib.sha256(email.lower().encode()).digest()[:8], "big", signed=True)
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_advisory_xact_lock(%s)", [key])
+
+
+def reusable_registration(email: str, course, program) -> Order | None:
+    """
+    The open registration a new website form should continue instead of creating a second one: same
+    e-mail (the public form requires it; a phone or CCCD match alone could be someone else's), same
+    course / program, nothing paid yet and not closed (an expired checkout still followed up counts).
+    Locked until the request ends.
+    """
+    email = (email or "").strip()
+    if not email or not (course or program):
+        return None
+    _lock_email(email)
+    return (
+        Order.objects.select_for_update()
+        .filter(_same_item(getattr(course, "pk", None), getattr(program, "pk", None)))
+        .filter(
+            parent__isnull=True,
+            customer_email__iexact=email,
+            status__in=("pending", "cancelled"),
+            total_paid_amount=0,
+            learning_access=False,
+        )
+        .filter(ACTIVE)
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def refresh_duplicate_flags(learner_id) -> None:
+    """Flags of the learner's registrations follow what is still open (a duplicate closed: flag gone)."""
+    if not learner_id:
+        return
+    mine = Order.objects.filter(learner_id=learner_id, parent__isnull=True)
+    active = set(mine.filter(ACTIVE).values_list("pk", flat=True))
+    for order in mine:
+        others = list(active_duplicates(order).values_list("order_code", flat=True)[:5])
+        flag = bool(others) and order.pk in active
+        note = f"Học viên còn đăng ký đang mở cho khóa này: {', '.join(others)}"[:300] if flag else ""
+        if (order.is_duplicate, order.duplicate_note) != (flag, note):
+            Order.objects.filter(pk=order.pk).update(is_duplicate=flag, duplicate_note=note)
+
+
+# Details of a closed duplicate the registration kept takes when it has none.
+MERGED_FIELDS = [
+    "customer_phone",
+    "consult_need",
+    "consult_detail",
+    "campaign_code",
+    "referrer_name",
+    "referrer_phone",
+    "referrer_staff_code",
+    "interest_level",
+]
+
+
+@transaction.atomic
+def merge_registrations(keep: Order, user) -> list[str]:
+    """
+    One person, one course, several open registrations: `keep` stays, the others (nothing paid) close as
+    "Đăng ký nhầm" and bring their history, open tasks and planned appointments to it. Returns their codes.
+    """
+    from .assignment import NEW_LEAD_TASK
+
+    actor = (user.name or user.email) if user else "Hệ thống"
+    others = list(
+        active_duplicates(keep).select_for_update().filter(total_paid_amount=0, learning_access=False)
+    )
+    keep_fields = set()
+    for other in others:
+        for field in MERGED_FIELDS:
+            if getattr(other, field) and not getattr(keep, field):
+                setattr(keep, field, getattr(other, field))
+                keep_fields.add(field)
+        if other.first_response_at and not keep.first_response_at:
+            keep.first_response_at = other.first_response_at
+            keep_fields.add("first_response_at")
+        other.timeline_activities.update(order=keep)
+        tasks = other.followup_tasks.filter(is_completed=False)
+        if keep.followup_tasks.filter(is_completed=False, title__startswith=NEW_LEAD_TASK).exists():
+            tasks.filter(title__startswith=NEW_LEAD_TASK).update(is_completed=True)
+        tasks.filter(is_completed=False).update(order=keep)
+        other.appointments.filter(status="planned").update(order=keep)
+        was = stages.name(other.crm_status)
+        other.crm_status = stages.MISTAKEN
+        other.lost_reason = stages.CLOSED_REASON[stages.MISTAKEN]
+        other.status = "cancelled"
+        other.hold_expires_at = None
+        other.save(update_fields=["crm_status", "lost_reason", "status", "hold_expires_at", "updated_at"])
+        Activity.objects.create(
+            order=other,
+            type="note",
+            title=f"Đăng ký trùng: đã gộp vào {keep.order_code}",
+            content="Lịch sử, công việc và lịch hẹn đang mở đã chuyển sang đăng ký được giữ lại.",
+            actor=actor,
+            actor_user=user,
+        )
+        Activity.objects.create(
+            order=keep,
+            type="note",
+            title=f"Gộp đăng ký trùng {other.order_code} vào đăng ký này",
+            content=f"{other.order_code}: {was}, tạo {other.created_at:%d/%m/%Y %H:%M}.",
+            actor=actor,
+            actor_user=user,
+        )
+    if keep_fields:
+        keep.save(update_fields=[*keep_fields, "updated_at"])
+    refresh_duplicate_flags(keep.learner_id)
+    return [o.order_code for o in others]
 
 
 @transaction.atomic
@@ -211,4 +355,5 @@ def merge_learners(keep: Learner, other: Learner, request=None) -> Learner:
     if request is not None:
         audit(request, "learner.merge", keep, merged=other.code, orders=len(moved))
     other.delete()
+    refresh_duplicate_flags(keep.pk)  # one person now: their registrations of one course are duplicates
     return keep

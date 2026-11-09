@@ -100,6 +100,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         "followup_detail": ["crm.edit_status"],
         "export": ["crm.export_excel"],
         "assign": ["crm.assign_pic"],
+        "merge_duplicates": ["crm.edit_status"],
         "pipeline": ["crm.view_leads"],
         "appointments": ["crm.view_leads"],  # booking also checks crm.edit_status
     }
@@ -252,6 +253,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         next_contact_on = serializer.validated_data.pop("next_contact_on", None)
         new_owner = serializer.validated_data.pop("assigned_to", serializer.instance.assigned_to)
         was_new = serializer.instance.crm_status == stages.POTENTIAL
+        learner_before = serializer.instance.learner_id
         was_cancelled = stages.group_of(serializer.instance.crm_status) == stages.G_CLOSED
         data = serializer.validated_data
         item_changed = ("course" in data or "program" in data) and (
@@ -303,6 +305,13 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         if "crm_status" in serializer.validated_data:
             self._follow_cancel_stage(order, was_cancelled)
+        if "crm_status" in serializer.validated_data or item_changed or order.learner_id != learner_before:
+            from .learners import refresh_duplicate_flags
+
+            # A duplicate closed / reopened, moved to another course or to another learner.
+            refresh_duplicate_flags(order.learner_id)
+            if order.learner_id != learner_before:
+                refresh_duplicate_flags(learner_before)
         if was_new and order.crm_status != stages.POTENTIAL:
             mark_first_response(order)
 
@@ -347,6 +356,28 @@ class OrderViewSet(viewsets.ModelViewSet):
         audit(request, "crm.bulk_assign", None, count=len(orders), assigned_to=str(user.pk) if user else "")
         return Response({"updated": len(orders)})
 
+    @action(detail=True, methods=["post"])
+    def merge_duplicates(self, request, pk=None):
+        """Keep this registration; the same person's other open, unpaid ones for the course merge into it."""
+        from .learners import merge_registrations
+
+        order = self.get_object()
+        closed = stages.group_of(order.crm_status) == stages.G_CLOSED or order.status == "refunded"
+        if order.parent_id or closed:
+            raise serializers.ValidationError({"non_field_errors": ["Chọn một đăng ký đang mở để giữ lại."]})
+        merged = merge_registrations(order, request.user)
+        if not merged:
+            raise serializers.ValidationError(
+                {
+                    "non_field_errors": [
+                        "Không có đăng ký trùng chưa thu học phí để gộp "
+                        "(đăng ký đã thu tiền: hoàn tiền / kế toán xử lý)."
+                    ]
+                }
+            )
+        audit(request, "order.merge_duplicates", order, merged=merged)
+        return Response({"merged": merged})
+
     @action(detail=False, methods=["get"])
     def pipeline(self, request):
         """Number of leads and amount per stage over every filtered lead (the kanban column headers)."""
@@ -369,6 +400,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             delete_orders(Order.objects.filter(pk=instance.pk))  # with its payments (apps.crm.deletion)
         else:
             instance.delete()  # a lead with payments stays (ProtectedError: a clear 400)
+        from .learners import refresh_duplicate_flags
+
+        refresh_duplicate_flags(instance.learner_id)  # the remaining registration is no duplicate any more
 
     @action(detail=True, methods=["get", "post"])
     def activities(self, request, pk=None):

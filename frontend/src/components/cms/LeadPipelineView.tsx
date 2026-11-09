@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, BarChart3, ChevronLeft, ChevronRight, Download, Edit, LayoutGrid, Loader2, Plus, Search, Table as TableIcon, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, BarChart3, ChevronLeft, ChevronRight, Copy, Download, Edit, LayoutGrid, Loader2, Plus, Search, Table as TableIcon, X } from 'lucide-react';
 import { CRMStatus, Course, Order } from '../../types';
 import { blockedMove, FROM_PAYMENTS, stageOf } from '../../lib/stages';
 import type { IntakeRow } from '../../admin/pages/IntakesPage';
-import { api, API_ROOT, Paginated } from '../../lib/api';
+import { api, ApiError, API_ROOT, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
 import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../../admin/catalog';
@@ -23,7 +23,7 @@ interface LeadPipelineViewProps {
   refreshKey: number;
   onChangeScope: (scope: PipelineScope) => void;
   onBack: () => void;
-  onOpenLeadDetail: (order: Order) => void;
+  onOpenLeadDetail: (order: Pick<Order, 'id'>) => void;
   onOpenEditClass: () => void;
 }
 
@@ -87,6 +87,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   const [interest, setInterest] = useState('');
   const [assignee, setAssignee] = useState(''); // '' | 'mine' | 'none' | <user id>
   const [overdue, setOverdue] = useState(false);
+  const [duplicates, setDuplicates] = useState(false); // same person, same course, still open
   // Order of the table and of each kanban column; "Hạn phản hồi" puts the leads to answer first.
   const [sortBy, setSortBy] = useState('-created_at');
   // Phones: the filters fold under one button so the leads are on the first screen.
@@ -135,8 +136,9 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     else if (assignee === 'none') params.set('unassigned', '1');
     else if (assignee) params.set('assigned_to', assignee);
     if (overdue) params.set('overdue', '1');
+    if (duplicates) params.set('is_duplicate', 'true');
     return params.toString();
-  }, [scope, query, course, cohort, stage, payment, interest, assignee, overdue]);
+  }, [scope, query, course, cohort, stage, payment, interest, assignee, overdue, duplicates]);
 
   useEffect(() => setPage(1), [filters, layout]);
 
@@ -200,11 +202,12 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     load();
   }, [load, refreshKey]);
 
-  const anyFilter = [course, cohort, stage, payment, interest, assignee].some((v) => v !== '') || overdue || search.trim() !== '';
+  const anyFilter = [course, cohort, stage, payment, interest, assignee].some((v) => v !== '') || overdue || duplicates || search.trim() !== '';
   const resetFilters = () => {
     setSearch('');
     [setCourse, setCohort, setStage, setPayment, setInterest, setAssignee].forEach((set) => set(''));
     setOverdue(false);
+    setDuplicates(false);
   };
 
   const switchLayout = (next: 'kanban' | 'table') => {
@@ -235,6 +238,37 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     }
     load();
   };
+
+  // One person, one course, several open registrations: keep this one, the others merge into it.
+  const keepRegistration = async (o: Order) => {
+    setNotice('');
+    const ok = window.confirm(
+      `Giữ đăng ký ${o.orderCode} (${stages.name(stageOf(o))}) của ${o.customerName}?\n\n` +
+        'Các đăng ký trùng chưa thu tiền của người này cho cùng khóa sẽ chuyển "Đăng ký nhầm"; lịch sử, công việc và lịch hẹn ' +
+        'chuyển về đăng ký được giữ. Nếu học viên đã nhận mã QR của đăng ký bị đóng, hãy gửi lại mã của đăng ký được giữ.'
+    );
+    if (!ok) return;
+    try {
+      const res = await api.post<{ merged: string[] }>(`/staff/orders/${o.id}/merge_duplicates/`);
+      setNotice(`${o.customerName}: đã gộp ${res.merged.join(', ')} vào ${o.orderCode}.`);
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Không gộp được.');
+    }
+    load();
+  };
+  const duplicateBadge = (o: Order) =>
+    o.isDuplicate && !stages.isClosed(stageOf(o)) ? (
+      <div className="flex items-center gap-1 flex-wrap">
+        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-violet-50 text-violet-700 border border-violet-200 inline-flex items-center gap-1" title={o.duplicateNote || 'Cùng học viên, cùng khóa, còn đăng ký khác đang mở'}>
+          <Copy className="w-3 h-3" /> Trùng
+        </span>
+        {canEdit && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); keepRegistration(o); }} className="text-[10px] px-1.5 py-0.5 rounded font-bold border border-violet-300 text-violet-700 hover:bg-violet-50 cursor-pointer" title="Giữ đăng ký này, gộp các đăng ký trùng vào đây">
+            Giữ cái này
+          </button>
+        )}
+      </div>
+    ) : null;
 
   const exportUrl = `${API_ROOT}/staff/orders/export/?${filters}`;
   const stageCount = (id: CRMStatus) => summary?.stages.find((s) => s.stage === id) || { count: 0, amount: 0 };
@@ -386,6 +420,9 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
           <label className={`${select} flex items-center gap-1.5 cursor-pointer ${overdue ? 'border-red-300 text-red-700' : ''}`}>
             <input type="checkbox" checked={overdue} onChange={(e) => setOverdue(e.target.checked)} /> Quá hạn phản hồi
           </label>
+          <label className={`${select} flex items-center gap-1.5 cursor-pointer ${duplicates ? 'border-violet-300 text-violet-700' : ''}`} title="Cùng học viên, cùng khóa, còn nhiều đăng ký đang mở">
+            <input type="checkbox" checked={duplicates} onChange={(e) => setDuplicates(e.target.checked)} /> Lead trùng
+          </label>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={`${select} hidden sm:block`} aria-label="Sắp xếp">
             {SORTS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
           </select>
@@ -452,6 +489,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
                         <div className="text-[10px] text-slate-500 truncate" title={o.courseTitle}>{o.courseTitle}</div>
                         {o.batchCohort && <div className="text-[10px] text-slate-500 truncate">Lớp: {o.batchCohort}</div>}
                         {slaBadge(o)}
+                        {duplicateBadge(o)}
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-[10px] font-mono font-bold text-slate-700">{vnd(o.amount)}</span>
                           {payBadge(o)}
@@ -499,6 +537,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
                     <div className="font-bold text-slate-900">{o.customerName}</div>
                     <div className="font-mono text-[10px] text-slate-400">{o.orderCode}</div>
                     {slaBadge(o)}
+                    {duplicateBadge(o)}
                   </td>
                   <td className="px-3 py-2 text-slate-600">
                     <div>{o.customerPhone}</div>
@@ -553,6 +592,10 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
             load();
             onOpenLeadDetail(order);
           }}
+          onOpenExisting={(id) => {
+            setCreating(false);
+            onOpenLeadDetail({ id });
+          }}
         />
       )}
     </div>
@@ -567,30 +610,37 @@ const NewLeadDialog: React.FC<{
   klass: IntakeRow | null;
   onClose: () => void;
   onCreated: (order: Order) => void;
-}> = ({ courses, programs, klass, onClose, onCreated }) => {
+  /** The person already has an open registration for this course: open it instead. */
+  onOpenExisting: (id: string) => void;
+}> = ({ courses, programs, klass, onClose, onCreated, onOpenExisting }) => {
   const lists = useCrmLists();
   const [form, setForm] = useState({ customerName: '', customerPhone: '', customerEmail: '', courseId: klass?.courseId || '', source: 'Nhập tay', consultNeed: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [existing, setExisting] = useState<Array<{ id: string; orderCode: string }>>([]);
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = async (e: React.FormEvent | null, allowDuplicate = false) => {
+    e?.preventDefault();
     if (!form.customerName.trim() || (!form.customerPhone.trim() && !form.customerEmail.trim())) {
       setError('Cần họ tên và số điện thoại hoặc email.');
       return;
     }
     setSaving(true);
     setError('');
+    setExisting([]);
     try {
       const created = await api.post<Order>('/staff/orders/', {
         ...form,
         ...itemFields(form.courseId),
-        cohortId: klass && form.courseId === klass.courseId ? klass.id : null
+        cohortId: klass && form.courseId === klass.courseId ? klass.id : null,
+        allowDuplicate
       });
       onCreated(created);
     } catch (err) {
+      const body = err instanceof ApiError ? (err.body as { duplicateOrders?: Array<{ id: string; orderCode: string }> }) : undefined;
+      setExisting(body?.duplicateOrders || []);
       setError(err instanceof Error ? err.message : 'Không tạo được lead.');
     } finally {
       setSaving(false);
@@ -638,8 +688,20 @@ const NewLeadDialog: React.FC<{
           <span className="font-bold text-slate-700 block mb-1">Nhu cầu tư vấn</span>
           <textarea rows={2} value={form.consultNeed} onChange={set('consultNeed')} className={input} />
         </label>
-        <p className="text-slate-500">Học phí lấy theo khóa học / đợt đang mở. Lead được giao tư vấn viên và hạn phản hồi như lead từ website; trùng SĐT/email sẽ được đánh dấu.</p>
+        <p className="text-slate-500">Học phí lấy theo khóa học / đợt đang mở. Lead được giao tư vấn viên và hạn phản hồi như lead từ website; nếu người này đã có đăng ký đang mở cho khóa này, hệ thống báo để mở đăng ký đó thay vì tạo trùng.</p>
         {error && <p className="text-red-600">{error}</p>}
+        {existing.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {existing.map((o) => (
+              <button key={o.id} type="button" onClick={() => onOpenExisting(o.id)} className="px-2.5 py-1.5 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 font-bold cursor-pointer">
+                Mở {o.orderCode}
+              </button>
+            ))}
+            <button type="button" disabled={saving} onClick={() => submit(null, true)} className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 cursor-pointer" title="Ví dụ: học lại, đăng ký thêm suất cho lớp khác">
+              Vẫn tạo đăng ký mới
+            </button>
+          </div>
+        )}
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="px-3 py-2 rounded-xl border border-slate-200 font-bold cursor-pointer">Hủy</button>
           <button type="submit" disabled={saving} className="px-3 py-2 rounded-xl bg-[#0073C1] text-white font-bold cursor-pointer disabled:opacity-60">

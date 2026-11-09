@@ -79,7 +79,12 @@ def test_staff_creates_a_lead_priced_assigned_and_deduplicated(staff_client, cou
     consultant.save()
     res = staff_client(Role.SUPER_ADMIN).post(  # the creator is not a consultant receiving leads
         "/api/v1/staff/orders/",
-        {"customerName": "Walk-in", "customerPhone": "0911222333", "courseId": course.pk},
+        {
+            "customerName": "Walk-in",
+            "customerPhone": "0911222333",
+            "courseId": course.pk,
+            "allowDuplicate": True,
+        },
         format="json",
     )
     assert res.status_code == 201, res.content

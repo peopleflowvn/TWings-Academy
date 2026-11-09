@@ -76,11 +76,12 @@ def checkout_open(course: Course) -> bool:
 
 @transaction.atomic
 def price_with_coupon(
-    item: Course | Program, coupon_code: str, base: int | None = None
+    item: Course | Program, coupon_code: str, base: int | None = None, exclude_pk=None
 ) -> tuple[int, int, str]:
     """
     Server-side pricing of a course or program. `base` overrides the list price (an intake's
-    early-bird price). Returns (final_amount, discount, applied_code).
+    early-bird price); `exclude_pk`: the registration being repriced (its own hold is not counted).
+    Returns (final_amount, discount, applied_code).
     """
     amount = item.price if base is None else base
     code = (coupon_code or "").strip().upper()
@@ -92,6 +93,7 @@ def price_with_coupon(
     held = (
         Order.objects.filter(discount_code=coupon.code, status="pending", hold_expires_at__gt=timezone.now())
         .exclude(learning_access=True)
+        .exclude(pk=exclude_pk)
         .count()
         if coupon is not None
         else 0
@@ -144,7 +146,7 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     attribution = data.pop("attribution", None) or {}
     terms_accepted = data.pop("terms_accepted", False)
     invoice = data.pop("invoice", None)
-    from .learners import PERSON_FIELDS
+    from .learners import PERSON_FIELDS, reusable_registration
     from .lists import values
 
     # A visitor's form names its source only among the list's (anything else: "Website").
@@ -162,6 +164,8 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     if course and code and not preferred_cohort:
         tagged = Cohort.objects.public().filter(course=course, code__iexact=code).first()
         preferred_cohort = tagged.name if tagged else ""
+    # The same person (e-mail) with an open registration for this course: continue it, no second lead.
+    existing = reusable_registration(data.get("customer_email", ""), course, program)
     cohort, rerouted = resolve_cohort(course, preferred_cohort) if course else (None, False)
     if with_payment and course is not None and cohort is None and not checkout_open(course):
         raise CheckoutError(
@@ -170,7 +174,9 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     # The intake decides the price (early bird until its deadline), then the coupon applies.
     list_price = cohort.price() if cohort else item.price
     amount, discount, applied = (
-        price_with_coupon(item, coupon_code, base=list_price) if with_payment else (list_price, 0, "")
+        price_with_coupon(item, coupon_code, base=list_price, exclude_pk=getattr(existing, "pk", None))
+        if with_payment
+        else (list_price, 0, "")
     )
     installments = item.installment_count if with_payment and pay_in_installments and amount > 0 else 1
 
@@ -182,9 +188,7 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     chosen = cohort is not None and cohort.code and cohort.name == preferred_cohort
     if chosen and not data.get("campaign_code"):
         data["campaign_code"] = cohort.code
-    order = Order(
-        **data,
-        **consent,
+    priced = dict(
         course=course,
         program=program,
         course_title=item.title,
@@ -199,17 +203,30 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
         total_receivable=amount,
         installment_count=installments,
         payment_method="free" if amount == 0 else "vietqr",
-        source=source,
-        # An online checkout asks for the payment; a consultation request is a new lead.
-        crm_status=stages.TO_PAY if with_payment and amount > 0 else stages.POTENTIAL,
     )
+    if existing is not None:
+        order = existing
+        changes = _continue_registration(existing, data, consent, priced if with_payment else None)
+    else:
+        changes = []
+        order = Order(
+            **data,
+            **consent,
+            **priced,
+            source=source,
+            # An online checkout asks for the payment; a consultation request is a new lead.
+            crm_status=stages.TO_PAY if with_payment and amount > 0 else stages.POTENTIAL,
+        )
     if with_payment and amount > 0:
+        order.crm_status = stages.TO_PAY
         order.hold_expires_at = timezone.now() + timedelta(hours=settings.CHECKOUT_HOLD_HOURS)
     if amount == 0 and with_payment:
         order.status = "paid"
         order.crm_status = stages.PAID
         order.paid_at = timezone.now()
     order.save()
+    if existing is not None and with_payment:
+        order.installments.all().delete()  # the plan follows the new checkout
     if installments > 1:
         create_installments(order, item.installment_interval_days)
     if with_payment and terms_accepted:
@@ -220,7 +237,35 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     if invoice:
         from .models import InvoiceRequest
 
-        InvoiceRequest.objects.create(order=order, **invoice)
+        InvoiceRequest.objects.update_or_create(order=order, defaults=invoice)
+
+    if existing is not None:
+        from .learners import attach_learner
+
+        attach_learner(order, details)  # what the form brought fills what the learner lacks
+        moved = [f"Lớp mong muốn đã đủ/đóng, tự chuyển sang {cohort.name}."] if rerouted and cohort else []
+        Activity.objects.create(
+            order=order,
+            type="note",
+            title=(
+                "Thanh toán online (VietQR) trên đăng ký đang mở"
+                if with_payment
+                else "Gửi lại form đăng ký trên website"
+            ),
+            content="\n".join(
+                [
+                    "Cùng email, cùng khóa với đăng ký đang mở: cập nhật đăng ký này, không tạo lead mới.",
+                    *changes,
+                    *(moved if with_payment else []),
+                ]
+            ),
+            actor="Website",
+        )
+        if with_payment:
+            from .confirmations import send_order_received
+
+            transaction.on_commit(lambda: send_order_received(order.pk))
+        return order
 
     flag_duplicates(order, details)
 
@@ -244,17 +289,50 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
 
 def flag_duplicates(order: Order, details: dict | None = None) -> None:
     """
-    Link a new registration to its learner, then flag it when the learner already has an active
-    registration for the same course / program (a returning learner on another course is not one).
+    Link a new registration to its learner, then flag it (and the earlier ones) when the learner has
+    another active registration for the same course / program (another course is not a duplicate).
     """
-    from .learners import active_duplicates, attach_learner
+    from .learners import attach_learner, refresh_duplicate_flags
 
     attach_learner(order, details)
-    duplicates = list(active_duplicates(order).values_list("order_code", flat=True)[:5])
-    if duplicates:
-        order.is_duplicate = True
-        order.duplicate_note = f"Học viên đã có đăng ký đang mở cho khóa này: {', '.join(duplicates)}"[:300]
-        order.save(update_fields=["is_duplicate", "duplicate_note", "updated_at"])
+    refresh_duplicate_flags(order.learner_id)
+    order.refresh_from_db(fields=["is_duplicate", "duplicate_note"])
+
+
+# What a visitor's new form adds to an open registration (contact and source stay as first recorded).
+FORM_FILLS = ["customer_phone", "campaign_code", "referrer_name", "referrer_phone", "referrer_staff_code"]
+
+
+def _continue_registration(order: Order, data: dict, consent: dict, priced: dict | None) -> list[str]:
+    """
+    A form sent again for an open registration: the visitor's new need is added, empty details filled,
+    consent renewed; a checkout (`priced`) reprices it to what the visitor was shown. Returns the changes.
+    """
+    changes = []
+    need = (data.get("consult_need") or "").strip()
+    if need and need not in order.consult_need:
+        order.consult_need = f"{order.consult_need}\n{need}".strip()
+        changes.append(f"Nhu cầu: {need}")
+    for field in FORM_FILLS:
+        if data.get(field) and not getattr(order, field):
+            setattr(order, field, data[field])
+    if not order.attribution and data.get("attribution"):
+        order.attribution = data["attribution"]
+    for field, value in consent.items():
+        setattr(order, field, value)
+    if priced is not None:
+        if order.status == "cancelled":  # a checkout whose hold passed: paying again reopens it
+            order.status = "pending"
+            changes.append("Mở lại đăng ký (lần thanh toán trước đã hết hạn giữ chỗ).")
+        before_amount, before_cohort = order.amount, order.batch_cohort
+        for field, value in priced.items():
+            setattr(order, field, value)
+        if order.batch_cohort != before_cohort:
+            changes.append(f"Lớp: {before_cohort or '–'} → {order.batch_cohort or '–'}")
+        if order.amount != before_amount:
+            change = f"Học phí: {before_amount:,} → {order.amount:,} ₫ (giá trên website)"
+            changes.append(change.replace(",", "."))
+    return changes
 
 
 def check_sellable(course: Course | None, program: Program | None) -> None:
@@ -379,6 +457,26 @@ def create_staff_lead(request, serializer) -> Order:
         extra["campaign_code"] = cohort.code
     order = serializer.save(**extra)
     flag_duplicates(order)
+    if order.is_duplicate and not request.data.get("allow_duplicate"):
+        # Usually the same person already in the pipeline: staff open that lead instead (the new one is
+        # rolled back), or confirm a second registration on purpose.
+        from rest_framework.exceptions import ValidationError
+
+        from .learners import active_duplicates
+
+        others = active_duplicates(order).order_by("-created_at")[:5]
+        raise ValidationError(
+            {
+                "non_field_errors": [
+                    "Học viên này đã có đăng ký đang mở cho khóa này: "
+                    + ", ".join(f"{o.order_code} ({stages.name(o.crm_status)})" for o in others)
+                    + ". Mở đăng ký đó thay vì tạo lead mới."
+                ],
+                "duplicate_orders": [
+                    {"id": str(o.pk), "order_code": o.order_code, "crm_status": o.crm_status} for o in others
+                ],
+            }
+        )
     user = request.user
     Activity.objects.create(
         order=order,
