@@ -392,7 +392,16 @@ def test_someone_elses_phone_never_opens_their_enrolment_file(api, registration_
     )
     victim.save()
 
-    attacker_payload = {**registration_payload, "customerEmail": "attacker@example.com", "customerName": "X"}
+    # Another name with the victim's phone: a record of its own from the start, the pair for staff review.
+    other = {**registration_payload, "customerEmail": "other@example.com", "customerName": "Trần Thị X"}
+    res = api.post("/api/v1/public/registrations/", other, format="json")
+    assert Order.objects.get(order_code=res.json()["registrationCode"]).learner_id != victim.pk
+    from apps.crm.models import LearnerMatch
+
+    assert LearnerMatch.objects.filter(status="open").count() == 1
+
+    # The victim's own name too: matched to the victim's record (phone + name)...
+    attacker_payload = {**registration_payload, "customerEmail": "attacker@example.com"}
     res = api.post("/api/v1/public/registrations/", attacker_payload, format="json")
     order = Order.objects.get(order_code=res.json()["registrationCode"])
     assert order.learner_id == victim.pk  # staff still see the phone match (duplicate detection)

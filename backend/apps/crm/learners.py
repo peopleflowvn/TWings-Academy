@@ -6,8 +6,10 @@ can study any number of courses). Personal details (identity, addresses, educati
 contact, CV) exist on the Learner only. A registration keeps the contact typed for it (name, phone,
 e-mail): SSO, journeys and payment e-mails use it, and the learner page shows both.
 
-- A new registration (website, checkout, staff) is matched to a learner by e-mail, then phone, then
-  CCCD; a new learner is created otherwise. What the form brings fills what the learner lacks.
+- A new registration (website, checkout, staff) is matched to a learner (apps.crm.matching): CCCD, or
+  e-mail / phone with a compatible name; a new learner is created otherwise, and a record that may be the
+  same person (shared phone with another name, a typo in the phone / e-mail…) goes to staff review
+  (LearnerMatch). What the form brings fills what the learner lacks.
 - Staff editing the learner's name / phone / e-mail updates every registration of the person.
 - A registration is a duplicate only when the same learner already has an active registration for the
   same course / program; a returning learner on another course is not one.
@@ -17,8 +19,6 @@ import re
 
 from django.db import transaction
 from django.db.models import Q
-
-from apps.core.crypto import blind_index
 
 from . import stages
 from .models import Activity, Learner, Order
@@ -58,21 +58,16 @@ def phone_key(phone: str) -> str:
     return digits
 
 
-def find_learner(*, email: str = "", phone: str = "", citizen_id: str = "") -> Learner | None:
-    """The person with this e-mail, else this phone, else this CCCD (most recent first)."""
-    if email:
-        found = Learner.objects.filter(email__iexact=email.strip()).order_by("-created_at").first()
-        if found:
-            return found
-    key = phone_key(phone)
-    if key:
-        found = Learner.objects.filter(phone_index=key).order_by("-created_at").first()
-        if found:
-            return found
-    index = blind_index(citizen_id or "")
-    if index:
-        return Learner.objects.filter(citizen_id_index=index).order_by("-created_at").first()
-    return None
+def find_learner(
+    *, email: str = "", phone: str = "", citizen_id: str = "", full_name: str = "", birth_date=None
+) -> Learner | None:
+    """The learner surely this person (CCCD, or e-mail / phone with a compatible name), else None."""
+    from .matching import candidates
+
+    found = candidates(
+        full_name=full_name, email=email, phone=phone, citizen_id=citizen_id, birth_date=birth_date
+    )
+    return found[0].learner if found and found[0].sure else None
 
 
 def fill_missing(learner: Learner, values: dict) -> None:
@@ -94,16 +89,28 @@ def attach_learner(order: Order, details: dict | None = None) -> Learner:
     contact = {lf: getattr(order, of) for lf, of in CONTACT_FIELDS.items()}
     if order.parent_id:
         learner = order.parent.learner or attach_learner(order.parent)
+    elif order.learner_id:
+        learner = order.learner
+        fill_missing(learner, {**contact, **details})
     else:
-        learner = order.learner or find_learner(
-            email=order.customer_email, phone=order.customer_phone, citizen_id=details.get("citizen_id", "")
+        from .matching import candidates, record_possible
+
+        found = candidates(
+            full_name=order.customer_name,
+            email=order.customer_email,
+            phone=order.customer_phone,
+            citizen_id=details.get("citizen_id", ""),
+            birth_date=details.get("birth_date"),
         )
-        if learner is None:
+        if found and found[0].sure:
+            learner = found[0].learner
+            fill_missing(learner, {**contact, **details})
+        else:
             learner = Learner(**contact, **details, owner=order.assigned_to)
             learner.full_name = learner.full_name or order.order_code
             learner.save()
-        else:
-            fill_missing(learner, {**contact, **details})
+        # Anyone else who may be this person (another sure match: e-mail of one record, phone of another).
+        record_possible(learner, [m for m in found if m.learner.pk != learner.pk])
     if order.learner_id != learner.pk:
         order.learner = learner
         order.save(update_fields=["learner", "updated_at"])
@@ -165,6 +172,11 @@ def update_learner(learner: Learner, values: dict) -> None:
     contact = {CONTACT_FIELDS[f]: getattr(learner, f) for f in fields if f in CONTACT_FIELDS}
     if contact:
         learner.orders.update(**contact)
+    if contact or {"citizen_id", "birth_date"} & set(fields):
+        from .matching import scan
+
+        scan(learner)  # new details may show another record of the person
+        refresh_duplicate_flags(learner.pk)
 
 
 def dossier_missing(learner: Learner | None) -> list[str]:
@@ -250,18 +262,71 @@ def reusable_registration(email: str, course, program) -> Order | None:
     )
 
 
-def refresh_duplicate_flags(learner_id) -> None:
-    """Flags of the learner's registrations follow what is still open (a duplicate closed: flag gone)."""
+def open_matches(learner_id) -> dict:
+    """{other learner id: LearnerMatch} of the pairs with this learner still waiting for staff."""
+    from .models import LearnerMatch
+
+    rows = LearnerMatch.objects.filter(status="open").filter(
+        Q(learner_a_id=learner_id) | Q(learner_b_id=learner_id)
+    )
+    return {(m.learner_b_id if str(m.learner_a_id) == str(learner_id) else m.learner_a_id): m for m in rows}
+
+
+def refresh_duplicate_flags(learner_id, _partners: bool = True) -> None:
+    """
+    Flags of the learner's registrations follow what is still open: "same" (the learner has another
+    open registration for the course), else "possible" (a record that may be the same person has one);
+    a duplicate closed, merged or dismissed: flag gone. Also refreshes the possible partners.
+    """
     if not learner_id:
         return
     mine = Order.objects.filter(learner_id=learner_id, parent__isnull=True)
     active = set(mine.filter(ACTIVE).values_list("pk", flat=True))
+    partners = open_matches(learner_id)
     for order in mine:
-        others = list(active_duplicates(order).values_list("order_code", flat=True)[:5])
-        flag = bool(others) and order.pk in active
-        note = f"Học viên còn đăng ký đang mở cho khóa này: {', '.join(others)}"[:300] if flag else ""
-        if (order.is_duplicate, order.duplicate_note) != (flag, note):
-            Order.objects.filter(pk=order.pk).update(is_duplicate=flag, duplicate_note=note)
+        kind, note, match = "", "", None
+        if order.pk in active:
+            others = list(active_duplicates(order).values_list("order_code", flat=True)[:5])
+            if others:
+                kind, note = "same", f"Học viên còn đăng ký đang mở cho khóa này: {', '.join(others)}"
+            elif order.course_id or order.program_id:
+                for partner, pair in partners.items():
+                    theirs = list(
+                        Order.objects.filter(learner_id=partner, parent__isnull=True)
+                        .filter(_overlapping(order.course_id, order.program_id))
+                        .filter(ACTIVE)
+                        .values_list("order_code", flat=True)[:5]
+                    )
+                    if theirs:
+                        kind, match = "possible", pair
+                        note = f"Nghi cùng một người với {', '.join(theirs)}: {pair.reason}"
+                        break
+        state = (bool(kind), kind, note[:300], getattr(match, "pk", None))
+        current = (order.is_duplicate, order.duplicate_kind, order.duplicate_note, order.duplicate_match_id)
+        if current != state:
+            Order.objects.filter(pk=order.pk).update(
+                is_duplicate=state[0], duplicate_kind=kind, duplicate_note=state[2], duplicate_match=match
+            )
+    if _partners:
+        for partner in partners:
+            refresh_duplicate_flags(partner, _partners=False)
+
+
+@transaction.atomic
+def decide_match(match, *, same: bool, user=None, request=None) -> Learner | None:
+    """
+    Staff decide a pair: same person -> the newer record merges into the older one (returned); other
+    people -> dismissed for good. The registrations' flags follow.
+    """
+    a, b = match.learner_a, match.learner_b
+    if not same:
+        match.status, match.decided_by = "dismissed", user
+        match.save(update_fields=["status", "decided_by", "updated_at"])
+        refresh_duplicate_flags(a.pk)
+        refresh_duplicate_flags(b.pk)
+        return None
+    keep, other = sorted([a, b], key=lambda x: x.created_at)
+    return merge_learners(keep, other, request)
 
 
 # Details of a closed duplicate the registration kept takes when it has none.
@@ -354,6 +419,12 @@ def merge_learners(keep: Learner, other: Learner, request=None) -> Learner:
         )
     if request is not None:
         audit(request, "learner.merge", keep, merged=other.code, orders=len(moved))
-    other.delete()
+    partners = list(open_matches(other.pk))
+    other.delete()  # its pairs go with it
+    from .matching import scan
+
+    scan(keep)  # the merged details may show another record of the person
     refresh_duplicate_flags(keep.pk)  # one person now: their registrations of one course are duplicates
+    for partner in partners:
+        refresh_duplicate_flags(partner, _partners=False)
     return keep

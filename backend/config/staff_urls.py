@@ -20,7 +20,7 @@ from apps.core.dashboard import BackgroundTasksView, DashboardView, RetryBackgro
 from apps.core.reports import ReportsView
 from apps.core.uploads import FontUploadView, ImageUploadView
 from apps.core.views import AuditLogViewSet
-from apps.crm.learner_views import LearnerViewSet
+from apps.crm.learner_views import LearnerMatchViewSet, LearnerViewSet
 from apps.crm.list_views import (
     CrmListsView,
     ListItemView,
@@ -80,6 +80,7 @@ router.register("articles", ArticleViewSet, basename="staff-article")
 router.register("banners", HeroBannerViewSet, basename="staff-banner")
 router.register("site-config", SiteConfigViewSet, basename="staff-site-config")
 router.register("orders", OrderViewSet, basename="staff-order")
+router.register("learner-matches", LearnerMatchViewSet, basename="staff-learner-match")
 router.register("learners", LearnerViewSet, basename="staff-learner")
 router.register("appointments", AppointmentViewSet, basename="staff-appointment")
 router.register("invoices", InvoiceRequestViewSet, basename="staff-invoice")

@@ -296,7 +296,7 @@ def flag_duplicates(order: Order, details: dict | None = None) -> None:
 
     attach_learner(order, details)
     refresh_duplicate_flags(order.learner_id)
-    order.refresh_from_db(fields=["is_duplicate", "duplicate_note"])
+    order.refresh_from_db(fields=["is_duplicate", "duplicate_kind", "duplicate_note", "duplicate_match"])
 
 
 # What a visitor's new form adds to an open registration (contact and source stay as first recorded).
@@ -457,7 +457,7 @@ def create_staff_lead(request, serializer) -> Order:
         extra["campaign_code"] = cohort.code
     order = serializer.save(**extra)
     flag_duplicates(order)
-    if order.is_duplicate and not request.data.get("allow_duplicate"):
+    if order.duplicate_kind == "same" and not request.data.get("allow_duplicate"):
         # Usually the same person already in the pipeline: staff open that lead instead (the new one is
         # rolled back), or confirm a second registration on purpose.
         from rest_framework.exceptions import ValidationError

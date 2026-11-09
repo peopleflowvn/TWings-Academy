@@ -438,6 +438,10 @@ export interface Order {
 
   /** Same learner, same course, still open. */
   isDuplicate?: boolean;
+  /** 'same': this learner has another open registration for the course; 'possible': a learner record
+   *  that may be the same person has one (smart matching, staff to confirm: duplicateMatch). */
+  duplicateKind?: '' | 'same' | 'possible';
+  duplicateMatch?: string | null;
   duplicateCount?: number;
   duplicateNote?: string;
 

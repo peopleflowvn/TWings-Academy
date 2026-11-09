@@ -36,6 +36,9 @@ class Learner(BaseModel):
     phone = models.CharField(max_length=32, blank=True)
     phone_index = models.CharField(max_length=20, blank=True, db_index=True, editable=False)
     email = models.EmailField(blank=True, db_index=True)
+    # Matching keys (apps.crm.matching): one spelling per mailbox, the name without accents.
+    email_index = models.CharField(max_length=254, blank=True, db_index=True, editable=False)
+    name_index = models.CharField(max_length=200, blank=True, db_index=True, editable=False)
     birth_date = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=10, blank=True)
     area = models.CharField(max_length=100, blank=True)
@@ -66,11 +69,20 @@ class Learner(BaseModel):
 
     def save(self, *args, **kwargs):
         from .learners import phone_key
+        from .matching import email_key, name_key
 
         self.citizen_id_index = blind_index(self.citizen_id or "")
         self.phone_index = phone_key(self.phone)
+        self.email_index = email_key(self.email)
+        self.name_index = name_key(self.full_name)[:200]
         if "update_fields" in kwargs and kwargs["update_fields"] is not None:
-            kwargs["update_fields"] = {*kwargs["update_fields"], "citizen_id_index", "phone_index"}
+            kwargs["update_fields"] = {
+                *kwargs["update_fields"],
+                "citizen_id_index",
+                "phone_index",
+                "email_index",
+                "name_index",
+            }
         super().save(*args, **kwargs)
 
 
@@ -193,9 +205,14 @@ class Order(BaseModel):
     privacy_consent_at = models.DateTimeField(null=True, blank=True)
     privacy_consent_version = models.CharField(max_length=20, blank=True)
 
-    # Same learner, same course, still open (apps.crm.learners.active_duplicates)
+    # Same learner, same course, still open (apps.crm.learners.active_duplicates): kind "same"; or a
+    # learner that may be the same person (LearnerMatch, staff to decide) on the course: kind "possible".
     is_duplicate = models.BooleanField(default=False)
+    duplicate_kind = models.CharField(max_length=10, blank=True)
     duplicate_note = models.CharField(max_length=300, blank=True)
+    duplicate_match = models.ForeignKey(
+        "LearnerMatch", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -460,3 +477,27 @@ class ListItem(BaseModel):
 
     def __str__(self):
         return f"{self.kind}: {self.value}"
+
+
+class LearnerMatch(BaseModel):
+    """
+    Two learner records that may be one person (apps.crm.matching), for staff to decide: same person ->
+    merged (the pair goes with the merged record), other people -> dismissed and never asked again.
+    """
+
+    STATUS_CHOICES = [("open", "Chờ xác nhận"), ("dismissed", "Khác người")]
+
+    learner_a = models.ForeignKey(Learner, on_delete=models.CASCADE, related_name="+")
+    learner_b = models.ForeignKey(Learner, on_delete=models.CASCADE, related_name="+")
+    reason = models.CharField(max_length=200)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="open", db_index=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["learner_a", "learner_b"], name="uniq_learner_match")]
+
+    def other(self, learner_id):
+        return self.learner_b if str(self.learner_a_id) == str(learner_id) else self.learner_a

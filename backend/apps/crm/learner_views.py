@@ -28,7 +28,7 @@ class LearnerSerializer(NormalizeListFields, serializers.ModelSerializer):
 
     class Meta:
         model = Learner
-        exclude = ["citizen_id_index", "phone_index"]
+        exclude = ["citizen_id_index", "phone_index", "email_index", "name_index"]
         read_only_fields = ["code", "owner", "created_at", "updated_at"]
 
     def to_representation(self, instance):
@@ -263,3 +263,80 @@ def _email_history(learner, order_ids: list, codes: dict) -> list[dict]:
             }
         )
     return out
+
+
+def _match_side(learner) -> dict:
+    orders = learner.orders.filter(parent__isnull=True).order_by("-created_at")[:5]
+    return {
+        "id": learner.pk,
+        "code": learner.code,
+        "full_name": learner.full_name,
+        "phone": learner.phone,
+        "email": learner.email,
+        "birth_date": learner.birth_date,
+        "created_at": learner.created_at,
+        "registrations": [
+            {
+                "id": o.pk,
+                "order_code": o.order_code,
+                "course_title": o.course_title,
+                "crm_status": o.crm_status,
+            }
+            for o in orders
+        ],
+    }
+
+
+class LearnerMatchViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    Learner records that may be one person (apps.crm.matching), for staff to decide: "same" merges the
+    newer record into the older one, "different" dismisses the pair for good.
+    """
+
+    permission_classes = [ActionPermission]
+    permission_map = {
+        "list": ["crm.view_leads"],
+        "same": ["crm.assign_pic"],
+        "different": ["crm.edit_status"],
+    }
+
+    def get_queryset(self):
+        from .models import LearnerMatch
+
+        return LearnerMatch.objects.filter(status="open").select_related("learner_a", "learner_b")
+
+    def list(self, request):
+        rows = self.get_queryset()[:200]
+        return Response(
+            [
+                {
+                    "id": m.pk,
+                    "reason": m.reason,
+                    "created_at": m.created_at,
+                    "a": _match_side(m.learner_a),
+                    "b": _match_side(m.learner_b),
+                }
+                for m in rows
+            ]
+        )
+
+    def _decide(self, request, pk, same: bool):
+        from .learners import decide_match
+
+        match = get_object_or_404(self.get_queryset(), pk=pk)
+        audit(
+            request,
+            "learner.match_same" if same else "learner.match_different",
+            match.learner_a,
+            other=match.learner_b.code,
+        )
+        keep = decide_match(match, same=same, user=request.user, request=request)
+        return Response({"kept": keep.code if keep else None})
+
+    @action(detail=True, methods=["post"])
+    def same(self, request, pk=None):
+        return self._decide(request, pk, True)
+
+    @action(detail=True, methods=["post"])
+    def different(self, request, pk=None):
+        return self._decide(request, pk, False)

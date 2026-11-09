@@ -12,7 +12,7 @@ const reportError = (err: unknown) =>
 
 // Fields the server owns or that have their own endpoints: never sent in a PATCH.
 const ORDER_READ_ONLY = new Set([
-  'id', 'orderCode', 'totalPaidAmount', 'paidAt', 'isDuplicate', 'duplicateCount', 'createdAt', 'updatedAt',
+  'id', 'orderCode', 'totalPaidAmount', 'paidAt', 'isDuplicate', 'duplicateKind', 'duplicateMatch', 'duplicateNote', 'duplicateCount', 'createdAt', 'updatedAt',
   'privacyConsentAt', 'privacyConsentVersion', 'timelineActivities', 'followupTasks', 'learnerProfile',
   'responseDueAt', 'firstResponseAt', 'learnerId', 'learnerCode', 'relatedOrders', 'overdueAlertedAt', 'escalatedAt'
 ]);

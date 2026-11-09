@@ -115,6 +115,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         "interest_level",
         "source",
         "is_duplicate",
+        "duplicate_kind",
     ]
     search_fields = [
         "order_code",

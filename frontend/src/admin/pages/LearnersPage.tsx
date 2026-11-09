@@ -21,6 +21,7 @@ import { CMSEmailDetailModal } from '../../components/cms/CMSEmailDetailModal';
 import { emailLogFromServer } from '../../lib/cmsCollections';
 import { EMAIL_STATUS_LABELS } from '../../components/cms/emailCategories';
 import { EmailSendLog } from '../../types';
+import { LearnerMatchReview } from '../../components/cms/LearnerMatchReview';
 
 interface LearnerRow {
   id: string;
@@ -180,6 +181,8 @@ const LearnerList: React.FC = () => {
         </div>
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
+
+      <LearnerMatchReview />
 
       <div className={`bg-white rounded-2xl border border-slate-200 overflow-x-auto ${loading ? 'opacity-60' : ''}`}>
         <table className="w-full text-xs">

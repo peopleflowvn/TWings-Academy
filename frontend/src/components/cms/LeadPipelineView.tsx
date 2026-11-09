@@ -9,6 +9,7 @@ import { navigate } from '../../admin/router';
 import { CatalogOptions, catalogItems, itemFields, ProgramOption } from '../../admin/catalog';
 import { useStageGate } from './StageGate';
 import { useCrmLists, useStages } from '../../lib/crmLists';
+import { decideMatch } from './LearnerMatchReview';
 
 /** Every lead ('all'), the leads not in a class yet ('none'), or the leads of one class (its id). */
 export type PipelineScope = 'all' | 'none' | string;
@@ -74,6 +75,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
   const stageIds = stages.all.map((s) => s.id).join(',');
   const canEdit = useStaffCan('crm.edit_status');
   const canExport = useStaffCan('crm.export_excel');
+  const canMergeLearners = useStaffCan('crm.assign_pic');
   const klass = classes.find((c) => c.id === scope) || null;
   const [layout, setLayout] = useState<'kanban' | 'table'>(() =>
     new URLSearchParams(window.location.search).get('layout') === 'table' ? 'table' : 'kanban'
@@ -256,8 +258,46 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     }
     load();
   };
+  // Smart matching found a record that may be this person: staff say whether it is.
+  const decidePossible = async (o: Order, same: boolean) => {
+    if (!o.duplicateMatch) return;
+    const question = same
+      ? `${o.customerName}: cùng một người với hồ sơ nghi trùng?
+
+${o.duplicateNote || ''}
+
+Hai hồ sơ học viên sẽ gộp làm một; sau đó dùng "Giữ cái này" để gộp đăng ký trùng.`
+      : `${o.customerName}: là người khác (cặp này sẽ không được hỏi lại)?
+
+${o.duplicateNote || ''}`;
+    if (!window.confirm(question)) return;
+    setNotice('');
+    try {
+      await decideMatch(o.duplicateMatch, same);
+      setNotice(same ? `${o.customerName}: đã gộp hai hồ sơ học viên.` : `${o.customerName}: đã đánh dấu là người khác.`);
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Không xử lý được.');
+    }
+    load();
+  };
   const duplicateBadge = (o: Order) =>
-    o.isDuplicate && !stages.isClosed(stageOf(o)) ? (
+    o.isDuplicate && o.duplicateKind === 'possible' && !stages.isClosed(stageOf(o)) ? (
+      <div className="flex items-center gap-1 flex-wrap">
+        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1" title={o.duplicateNote || 'Có hồ sơ khác có thể là cùng một người'}>
+          <Copy className="w-3 h-3" /> Nghi trùng
+        </span>
+        {canMergeLearners && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); decidePossible(o, true); }} className="text-[10px] px-1.5 py-0.5 rounded font-bold border border-amber-300 text-amber-800 hover:bg-amber-50 cursor-pointer" title={o.duplicateNote}>
+            Cùng người
+          </button>
+        )}
+        {canEdit && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); decidePossible(o, false); }} className="text-[10px] px-1.5 py-0.5 rounded font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer" title={o.duplicateNote}>
+            Khác người
+          </button>
+        )}
+      </div>
+    ) : o.isDuplicate && !stages.isClosed(stageOf(o)) ? (
       <div className="flex items-center gap-1 flex-wrap">
         <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-violet-50 text-violet-700 border border-violet-200 inline-flex items-center gap-1" title={o.duplicateNote || 'Cùng học viên, cùng khóa, còn đăng ký khác đang mở'}>
           <Copy className="w-3 h-3" /> Trùng
@@ -420,7 +460,7 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
           <label className={`${select} flex items-center gap-1.5 cursor-pointer ${overdue ? 'border-red-300 text-red-700' : ''}`}>
             <input type="checkbox" checked={overdue} onChange={(e) => setOverdue(e.target.checked)} /> Quá hạn phản hồi
           </label>
-          <label className={`${select} flex items-center gap-1.5 cursor-pointer ${duplicates ? 'border-violet-300 text-violet-700' : ''}`} title="Cùng học viên, cùng khóa, còn nhiều đăng ký đang mở">
+          <label className={`${select} flex items-center gap-1.5 cursor-pointer ${duplicates ? 'border-violet-300 text-violet-700' : ''}`} title="Trùng (cùng học viên, cùng khóa) hoặc nghi trùng (hồ sơ có thể là cùng một người)">
             <input type="checkbox" checked={duplicates} onChange={(e) => setDuplicates(e.target.checked)} /> Lead trùng
           </label>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={`${select} hidden sm:block`} aria-label="Sắp xếp">
