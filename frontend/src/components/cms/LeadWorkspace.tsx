@@ -34,19 +34,18 @@ import {
 import { Course, Order, CRMStatus } from '../../types';
 import { CatalogOptions, catalogItems, itemFields, itemValue, ProgramOption } from '../../admin/catalog';
 import { loadOrder, type ManualPayment } from '../../admin/data';
-import { LeadPaymentPanel } from './LeadPaymentPanel';
+import { LeadPaymentPanel, PAY_FIRST_STAGES } from './LeadPaymentPanel';
 import { SendResendEmailModal } from './SendResendEmailModal';
 import { LmsLearningPanel } from './LmsLearningPanel';
 import { OrderBillingPanel } from './OrderBillingPanel';
 import { LeadContactPanel } from './LeadContactPanel';
 import { useStageGate } from './StageGate';
-import { FAST_TRACK_STAGES, FastTrackDialog } from './FastTrackDialog';
 import { PlacementPanel } from '../../admin/pages/PlacementPages';
 import { api, Paginated } from '../../lib/api';
 import { useIsSuperAdmin, useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
 import { useCrmLists, useStages, withCurrent } from '../../lib/crmLists';
-import { blockedMove, FROM_PAYMENTS, ONBOARD, POTENTIAL } from '../../lib/stages';
+import { blockedMove, ONBOARD, POTENTIAL } from '../../lib/stages';
 
 interface LeadWorkspaceProps {
   order: Order;
@@ -60,6 +59,10 @@ interface LeadWorkspaceProps {
   onOpenOrder?: (orderId: string) => void;
   /** The lead was deleted (crm.delete_lead): close the workspace and refresh the pipeline. */
   onDeleted?: () => void;
+  /** Opened by a click on a stage that follows the money: start on the tuition box with its warning. */
+  payForStage?: CRMStatus | null;
+  /** Something the pipeline shows changed (super admin fast track). */
+  onChanged?: () => void;
   /** The catalogue (courses on sale and programs) for the course of this registration. */
   courses: Course[];
   programs: ProgramOption[];
@@ -129,6 +132,8 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   onConfirmPayment,
   onOpenOrder,
   onDeleted,
+  payForStage = null,
+  onChanged,
   courses,
   programs,
 }) => {
@@ -139,7 +144,9 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   const [saved, setSaved] = useState<Order>(initialOrder);
   const [isDirty, setIsDirty] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'contact' | 'timeline' | 'tasks' | 'payment' | 'training'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'contact' | 'timeline' | 'tasks' | 'payment' | 'training'>(payForStage ? 'payment' : 'profile');
+  // A stage that follows the money was clicked: the payments tab asks for the tuition first.
+  const [payTarget, setPayTarget] = useState<CRMStatus | null>(payForStage);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -284,13 +291,14 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
     // The paid stages follow a recorded payment (bank webhook or finance confirmation), never a click.
     if (nextStage === (saved.crmStatus || POTENTIAL)) return;
     const blocked = blockedMove(saved, nextStage, stages.name);
-    if (blocked && superAdmin && FAST_TRACK_STAGES.includes(nextStage) && !(nextStage === ONBOARD && saved.learningAccess)) {
-      setFastStage(nextStage); // several steps at once: the tuition received is the checkpoint
+    if (blocked && PAY_FIRST_STAGES.includes(nextStage) && !(nextStage === ONBOARD && saved.learningAccess)) {
+      // The tuition comes first: straight to the amount box, with the warning (super admin: then straight there).
+      setPayTarget(nextStage);
+      setActiveTab('payment');
       return;
     }
     if (blocked) {
-      if (FROM_PAYMENTS.includes(nextStage)) setActiveTab('payment');
-      else window.alert(blocked);
+      window.alert(blocked);
       return;
     }
     const extra = await gate.ask(nextStage); // call-back day / reason to cancel
@@ -299,9 +307,9 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   };
 
   // Finance confirmed the money (the payments tab asks first); the server records the payment.
-  const [fastStage, setFastStage] = useState<CRMStatus | null>(null);
   const afterFastTrack = async () => {
-    setFastStage(null);
+    setPayTarget(null);
+    onChanged?.();
     const fresh = await loadOrder(order.id).catch(() => null);
     if (!fresh) return;
     setSaved(fresh);
@@ -315,6 +323,11 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   const handleConfirmReceived = async (payment: ManualPayment) => {
     const fresh = await onConfirmPayment(payment);
     if (!fresh) return;
+    if (payTarget && fresh.crmStatus === payTarget) setPayTarget(null);
+    else if (payTarget === ONBOARD && fresh.learningAccess) {
+      setPayTarget(null);
+      window.alert(`Đã ghi nhận học phí, học viên đủ điều kiện vào học: bấm "${stages.name(ONBOARD)}" để chuyển.`);
+    }
     setSaved(fresh);
     setOrder((cur) => {
       const merged = { ...cur } as Record<string, unknown>;
@@ -382,16 +395,6 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 animate-fadeIn overflow-hidden">
       {gate.dialog}
-      {fastStage && (
-        <FastTrackDialog
-          orderId={order.id}
-          stage={fastStage}
-          stageName={stages.name}
-          currentStageName={stages.name(saved.crmStatus || POTENTIAL)}
-          onClose={() => setFastStage(null)}
-          onDone={afterFastTrack}
-        />
-      )}
       <div
         className={`bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col transition-all duration-200 ${
           isFullScreen ? 'w-full h-full rounded-none' : 'max-w-7xl w-full h-full sm:h-auto sm:max-h-[96vh] rounded-none sm:rounded-2xl'
@@ -1245,7 +1248,15 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
             {/* ============================================================= */}
             {activeTab === 'payment' && (
               <div className="space-y-4 animate-fadeIn">
-                <LeadPaymentPanel key={`pay-${order.totalPaidAmount}`} orderId={order.id} onConfirmReceived={handleConfirmReceived} />
+                <LeadPaymentPanel
+                  key={`pay-${order.totalPaidAmount}`}
+                  orderId={order.id}
+                  onConfirmReceived={handleConfirmReceived}
+                  targetStage={payTarget}
+                  targetName={payTarget ? stages.name(payTarget) : ''}
+                  onDismissTarget={() => setPayTarget(null)}
+                  onFastTracked={afterFastTrack}
+                />
                 <OrderBillingPanel key={`bill-${order.totalPaidAmount}`} orderId={order.id} />
               </div>
             )}

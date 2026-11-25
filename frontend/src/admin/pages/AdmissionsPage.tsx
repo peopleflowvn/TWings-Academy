@@ -8,7 +8,7 @@
  * Leads are filtered and counted on the server; learners (one per person) are in /app/sales/learners.
  */
 import React, { useEffect, useState } from 'react';
-import { Course, Order } from '../../types';
+import { Course, CRMStatus, Order } from '../../types';
 import { LeadWorkspace } from '../../components/cms/LeadWorkspace';
 import { LeadPipelineView, PipelineScope } from '../../components/cms/LeadPipelineView';
 import { confirmOrderPayment, loadOrder, saveOrderChanges, usePrograms } from '../data';
@@ -52,9 +52,13 @@ export const AdmissionsPage: React.FC<{ courses: Course[] }> = ({ courses }) => 
   }, [courses.length]);
 
   // A lead opens with its full record from the server (the pipeline holds a summary of each lead).
-  const openLead = (lead: Pick<Order, 'id'>) => {
+  const [payForStage, setPayForStage] = useState<CRMStatus | null>(null);
+  const openLead = (lead: Pick<Order, 'id'>, stage?: CRMStatus) => {
     loadOrder(lead.id)
-      .then(setSelectedLead)
+      .then((o) => {
+        setPayForStage(stage ?? null);
+        setSelectedLead(o);
+      })
       .catch((err: Error) => window.alert(`Không mở được hồ sơ: ${err.message}`));
   };
 
@@ -143,6 +147,8 @@ export const AdmissionsPage: React.FC<{ courses: Course[] }> = ({ courses }) => 
         <LeadWorkspace
           key={selectedLead.id}
           order={selectedLead}
+          payForStage={payForStage}
+          onChanged={() => setRefreshKey((k) => k + 1)}
           onClose={() => setSelectedLead(null)}
           onOpenOrder={(id) => openLead({ id })}
           onDeleted={() => setRefreshKey((k) => k + 1)}

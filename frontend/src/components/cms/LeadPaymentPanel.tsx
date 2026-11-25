@@ -1,13 +1,24 @@
-import React, { useEffect, useState } from 'react';
-import { CheckCircle2, Copy, Loader2, Wallet } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, CheckCircle2, Copy, Loader2, Wallet, X } from 'lucide-react';
+import { api } from '../../lib/api';
 import { commerceApi, formatVND, OrderBilling } from '../../lib/commerce';
-import { useStaffCan } from '../../lib/lms';
+import { useIsSuperAdmin, useStaffCan } from '../../lib/lms';
+import { ONBOARD, PAID, PART_PAID } from '../../lib/stages';
 import type { ManualPayment, ManualPaymentMethod } from '../../admin/data';
+
+/** The stages that follow the money: clicking one first asks for the tuition received. */
+export const PAY_FIRST_STAGES: string[] = [PAID, PART_PAID, ONBOARD];
 
 interface Props {
   orderId: string;
   /** Record money received by hand (the server checks the amount; throws its reason when refused). */
   onConfirmReceived: (payment: ManualPayment) => Promise<unknown>;
+  /** The stage the user clicked: the tuition must be recorded first (a warning, the amount box focused). */
+  targetStage?: string | null;
+  targetName?: string;
+  onDismissTarget?: () => void;
+  /** Super admin: the tuition was recorded and the registration taken straight to the target stage. */
+  onFastTracked?: () => void;
 }
 
 const METHODS: { value: ManualPaymentMethod; label: string }[] = [
@@ -25,9 +36,14 @@ const vnNumber = (n: number) => new Intl.NumberFormat('vi-VN').format(n);
  * (bank account, amount due now, memo = order code, QR), all from the server (settings + order), so a
  * transfer always lands on TWings' account and is matched automatically by the bank webhook.
  */
-export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }) => {
+export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived, targetStage, targetName = '', onDismissTarget, onFastTracked }) => {
   const canRecord = useStaffCan('crm.record_payment');
   const canConfirm = useStaffCan('finance.confirm_manual');
+  // Super admin skips the stages in between; the amount (typed twice) and a reason stay the checkpoint.
+  const fast = useIsSuperAdmin() && !!targetStage && PAY_FIRST_STAGES.includes(targetStage);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+  const [confirmText, setConfirmText] = useState('');
   const [amountText, setAmountText] = useState('');
   const [method, setMethod] = useState<ManualPaymentMethod>('cash');
   const [note, setNote] = useState('');
@@ -43,11 +59,19 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }
       .then((b) => {
         setBilling(b);
         // Default: what is due now (the next installment); any amount up to the balance is allowed.
-        const due = Math.min(Math.max(b.amountDueNow, 0), b.balance) || b.balance;
+        const due = targetStage === PAID ? b.balance : Math.min(Math.max(b.amountDueNow, 0), b.balance) || b.balance;
         setAmountText(due ? vnNumber(due) : '');
       })
       .catch((e: Error) => setError(e.message));
-  }, [orderId]);
+  }, [orderId, targetStage]);
+
+  // Taken here by a stage click: straight to the amount box.
+  useEffect(() => {
+    if (!targetStage || !billing) return;
+    boxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    amountRef.current?.focus();
+    amountRef.current?.select();
+  }, [targetStage, billing]);
 
   const copy = (value: string, key: string) => {
     navigator.clipboard?.writeText(value).then(() => {
@@ -63,8 +87,54 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }
   const amount = digits(amountText);
   const balance = Math.max(billing.balance ?? 0, 0);
   const open = billing.status === 'pending' || billing.status === 'paid';
-  const amountError = !amount ? 'Nhập số tiền đã nhận.' : amount > balance ? `Tối đa ${formatVND(balance)} (số còn phải đóng).` : '';
+  const first = billing.installmentCount > 1 ? billing.installments[0] : null;
+  // What must still be paid to study: the first installment, or (no installments) the whole balance.
+  const opening = billing.learningAccess ? 0 : first ? Math.max(first.amount - billing.totalPaid, 0) : balance;
+  const short = `${formatVND(opening)}${first ? ' (đợt 1)' : ' (đơn không trả góp: phải đóng đủ)'}`;
+  // How far this amount gets toward the clicked stage.
+  const stageGap =
+    !targetStage || !amount || amount > balance
+      ? ''
+      : targetStage === PAID && amount !== balance
+        ? `"${targetName}" là đóng đủ: số tiền phải đúng ${formatVND(balance)}.`
+        : targetStage === PART_PAID && amount >= balance
+          ? 'Số tiền bằng số còn phải đóng: giai đoạn sẽ là "Đã đóng phí".'
+          : amount < opening
+            ? `Chưa đủ để vào học: tối thiểu ${short}.`
+            : '';
+  const amountError = !amount
+    ? 'Nhập số tiền đã nhận.'
+    : amount > balance
+      ? `Tối đa ${formatVND(balance)} (số còn phải đóng).`
+      : fast && stageGap
+        ? stageGap
+        : fast && digits(confirmText) !== amount
+          ? 'Nhập lại số tiền cho khớp.'
+          : fast && !note.trim()
+            ? 'Ghi lý do / số phiếu thu (bắt buộc khi chuyển nhanh).'
+            : '';
+  const fastTrack = async () => {
+    if (amountError || recording || !targetStage) return;
+    if (!window.confirm(`Ghi nhận ${formatVND(amount)} học phí và chuyển thẳng sang "${targetName}"?\nHọc viên sẽ nhận email biên nhận.`)) return;
+    setRecording(true);
+    setRecordError('');
+    try {
+      await api.post(`/staff/orders/${orderId}/fast-track/`, {
+        stage: targetStage,
+        amount,
+        amountConfirm: digits(confirmText),
+        method,
+        note: note.trim()
+      });
+      onFastTracked?.();
+    } catch (e) {
+      setRecordError(e instanceof Error ? e.message : 'Không chuyển được.');
+    } finally {
+      setRecording(false);
+    }
+  };
   const record = async () => {
+    if (fast) return fastTrack();
     if (amountError || recording) return;
     const part = amount < balance ? ` (đóng một phần, còn lại ${formatVND(balance - amount)})` : ' (đóng đủ)';
     if (!window.confirm(`Ghi nhận đã nhận ${formatVND(amount)}${part} cho đơn ${billing.orderCode}?\nHọc viên sẽ nhận email biên nhận.`)) return;
@@ -121,17 +191,60 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }
         </p>
       )}
 
-      {(canRecord || canConfirm) && open && balance > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
-          <div className="font-bold text-amber-900 flex items-center gap-1.5"><Wallet className="w-4 h-4" /> Ghi nhận học phí đã nhận (thủ công)</div>
+      {targetStage && !((canRecord || canConfirm || fast) && open && balance > 0) && (
+        <div ref={boxRef} className="bg-red-50 border-2 border-red-300 rounded-2xl p-4 text-red-800 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            Chưa chuyển được sang <b>"{targetName}"</b>: phải ghi nhận học phí trước.{' '}
+            {balance <= 0
+              ? 'Đơn không còn khoản cần thu.'
+              : open
+                ? 'Bạn không có quyền ghi nhận học phí: nhờ kế toán hoặc tư vấn viên phụ trách ghi nhận khoản đã thu.'
+                : 'Đơn đã hủy / hoàn tiền: không ghi nhận thêm học phí.'}
+          </div>
+          {onDismissTarget && (
+            <button type="button" onClick={onDismissTarget} className="p-0.5 cursor-pointer" aria-label="Bỏ qua"><X className="w-4 h-4" /></button>
+          )}
+        </div>
+      )}
+
+      {(canRecord || canConfirm || fast) && open && balance > 0 && (
+        <div ref={boxRef} className={`bg-amber-50 rounded-2xl p-4 space-y-3 ${targetStage ? 'border-2 border-red-400 ring-4 ring-red-100' : 'border border-amber-200'}`}>
+          {targetStage && (
+            <div className="bg-red-50 border border-red-300 rounded-xl p-3 text-red-800 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-1">
+                <div className="font-bold">Phải ghi nhận học phí trước khi chuyển sang "{targetName}".</div>
+                {fast ? (
+                  <div>
+                    Quyền Quản trị tối cao được bỏ qua các bước trung gian, nhưng học phí là chốt chặn: nhập số tiền đã nhận <b>2 lần</b> và
+                    lý do / số phiếu thu. Hệ thống ghi khoản thu (nhật ký kiểm toán, email biên nhận) rồi chuyển thẳng sang "{targetName}" chỉ khi
+                    số tiền đúng với giai đoạn.
+                  </div>
+                ) : (
+                  <div>
+                    Giai đoạn tự chuyển khi khoản thu đủ điều kiện: đóng đủ → "Đã đóng phí"; trả góp đủ đợt 1 → "Đã đóng 1 phần".
+                    {targetStage === ONBOARD && ' Sau đó mới chuyển được "Onboard".'} Cần tối thiểu {short} để vào học.
+                  </div>
+                )}
+              </div>
+              {onDismissTarget && (
+                <button type="button" onClick={onDismissTarget} className="p-0.5 cursor-pointer" aria-label="Bỏ qua"><X className="w-4 h-4" /></button>
+              )}
+            </div>
+          )}
+          <div className="font-bold text-amber-900 flex items-center gap-1.5">
+            <Wallet className="w-4 h-4" /> {fast ? `Ghi nhận học phí & chuyển thẳng sang "${targetName}"` : 'Ghi nhận học phí đã nhận (thủ công)'}
+          </div>
           <p className="text-amber-900">
             Dùng khi học viên đóng tiền mặt, quẹt thẻ, hoặc chuyển khoản nhưng hệ thống không tự ghi nhận (sai nội dung). Được ghi một
             phần (ví dụ đặt cọc), tối đa {formatVND(balance)}. Khoản thu ghi tên người nhập, vào nhật ký kiểm toán và học viên nhận email biên nhận.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className={`grid grid-cols-1 gap-2 ${fast ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
             <label className="block">
               <span className="font-bold text-slate-700 block mb-1">Số tiền đã nhận (đ)</span>
               <input
+                ref={amountRef}
                 inputMode="numeric"
                 value={amountText}
                 onChange={(e) => {
@@ -141,6 +254,21 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }
                 className="w-full p-2.5 border border-slate-300 rounded-xl bg-white font-mono font-bold"
               />
             </label>
+            {fast && (
+              <label className="block">
+                <span className="font-bold text-slate-700 block mb-1">Nhập lại số tiền</span>
+                <input
+                  inputMode="numeric"
+                  value={confirmText}
+                  onPaste={(e) => e.preventDefault()}
+                  onChange={(e) => {
+                    const n = digits(e.target.value);
+                    setConfirmText(n ? vnNumber(n) : '');
+                  }}
+                  className={`w-full p-2.5 border rounded-xl bg-white font-mono font-bold ${confirmText && digits(confirmText) !== amount ? 'border-red-400' : 'border-slate-300'}`}
+                />
+              </label>
+            )}
             <label className="block">
               <span className="font-bold text-slate-700 block mb-1">Hình thức</span>
               <select value={method} onChange={(e) => setMethod(e.target.value as ManualPaymentMethod)} className="w-full p-2.5 border border-slate-300 rounded-xl bg-white">
@@ -150,7 +278,7 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }
               </select>
             </label>
             <label className="block">
-              <span className="font-bold text-slate-700 block mb-1">Ghi chú / số phiếu thu</span>
+              <span className="font-bold text-slate-700 block mb-1">{fast ? 'Lý do / số phiếu thu (bắt buộc)' : 'Ghi chú / số phiếu thu'}</span>
               <input value={note} maxLength={250} onChange={(e) => setNote(e.target.value)} placeholder="VD: phiếu thu PT-0123, cọc giữ chỗ" className="w-full p-2.5 border border-slate-300 rounded-xl bg-white" />
             </label>
           </div>
@@ -162,6 +290,9 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }
             ))}
           </div>
           {(recordError || (amountText && amountError)) && <p className="text-red-600 font-bold">{recordError || amountError}</p>}
+          {!fast && !amountError && stageGap && (
+            <p className="text-amber-800 font-bold">Lưu ý: {stageGap} Vẫn ghi nhận được, nhưng giai đoạn chưa chuyển sang "{targetName}".</p>
+          )}
           <button
             type="button"
             disabled={!!amountError || recording}
@@ -169,8 +300,8 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }
             className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
           >
             {recording && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            Ghi nhận đã nhận {amount ? formatVND(amount) : ''}
-            {amount > 0 && amount < balance ? ' (một phần)' : ''}
+            {fast ? `Ghi nhận ${amount ? formatVND(amount) : ''} & chuyển sang "${targetName}"` : `Ghi nhận đã nhận ${amount ? formatVND(amount) : ''}`}
+            {!fast && amount > 0 && amount < balance ? ' (một phần)' : ''}
           </button>
         </div>
       )}

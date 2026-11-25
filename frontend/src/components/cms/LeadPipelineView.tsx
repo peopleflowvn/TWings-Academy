@@ -24,7 +24,8 @@ interface LeadPipelineViewProps {
   refreshKey: number;
   onChangeScope: (scope: PipelineScope) => void;
   onBack: () => void;
-  onOpenLeadDetail: (order: Pick<Order, 'id'>) => void;
+  /** Open the lead; with a stage that follows the money, on its tuition box (record the payment first). */
+  onOpenLeadDetail: (order: Pick<Order, 'id'>, payForStage?: CRMStatus) => void;
   onOpenEditClass: () => void;
 }
 
@@ -226,8 +227,8 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     const blocked = blockedMove(o, next, stages.name);
     if (blocked) {
       setNotice(`${o.customerName}: ${blocked}`);
-      // The lead's detail: the payments tab, or (super admin) the fast track asking for the tuition.
-      if (FROM_PAYMENTS.includes(next) || next === ONBOARD) onOpenLeadDetail(o);
+      // The tuition comes first: the lead opens on its payment box, with the warning.
+      if (FROM_PAYMENTS.includes(next) || (next === ONBOARD && !o.learningAccess)) onOpenLeadDetail(o, next);
       return;
     }
     // A "call again" stage needs the call-back day, a "closed" one the reason.
