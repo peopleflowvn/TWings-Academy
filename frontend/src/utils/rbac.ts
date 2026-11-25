@@ -33,6 +33,15 @@ export const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
     riskLevel: 'low'
   },
   {
+    id: 'perm-crm-record-payment',
+    code: 'crm.record_payment',
+    name: 'Ghi nhận học phí thủ công trên hồ sơ',
+    description: 'Ghi khoản học viên đã đóng (tiền mặt, chuyển khoản chưa tự khớp), được đóng một phần; không vượt số còn nợ, có nhật ký kiểm toán',
+    category: 'crm',
+    categoryLabel: '1. CRM & Quản Lý Đơn Hàng',
+    riskLevel: 'high'
+  },
+  {
     id: 'perm-crm-4',
     code: 'crm.export_excel',
     name: 'Xuất dữ liệu báo cáo Excel / CSV',
@@ -494,6 +503,7 @@ export const DEFAULT_ROLE_CONFIGS: Record<UserRole, RolePermissionConfig> = {
       'crm.edit_status',
       'crm.assign_pic',
       'crm.export_excel',
+      'crm.record_payment',
       'courses.view',
       'lms.view',
       'placement.view'
@@ -528,6 +538,7 @@ export const DEFAULT_ROLE_CONFIGS: Record<UserRole, RolePermissionConfig> = {
       'crm.export_excel',
       'finance.transactions',
       'finance.confirm_manual',
+      'crm.record_payment',
       'finance.referral_bonus',
       'finance.refund',
       'courses.pricing',

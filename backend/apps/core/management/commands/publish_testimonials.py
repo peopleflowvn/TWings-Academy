@@ -116,9 +116,7 @@ class Command(BaseCommand):
             testimonials["items"] = TESTIMONIALS
         else:
             self.stdout.write(
-                self.style.WARNING(
-                    "Testimonials already exist in database. Use --force to overwrite."
-                )
+                self.style.WARNING("Testimonials already exist in database. Use --force to overwrite.")
             )
             return
 

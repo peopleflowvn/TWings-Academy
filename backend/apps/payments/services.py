@@ -145,11 +145,34 @@ def ingest_bank_transaction(payload: dict, provider: str = "sepay") -> tuple[Ban
     return txn, True
 
 
+class ManualPaymentError(Exception):
+    pass
+
+
+def balance(order: Order) -> int:
+    """What is still owed on the order in all (every installment left), not only what is due now."""
+    return max((order.total_receivable or order.amount) - order.total_paid_amount, 0)
+
+
 @transaction.atomic
 def confirm_manual_payment(request, order: Order, amount: int, note: str) -> Payment:
+    """
+    Money received outside the bank webhook (cash, a transfer with a wrong memo...), recorded by the
+    consultant or finance: any amount up to the balance, so a part payment is fine.
+    """
     from apps.core.models import audit
 
     order = Order.objects.select_for_update().get(pk=order.pk)
+    if order.parent_id:
+        raise ManualPaymentError("Đơn thành phần của chương trình: ghi nhận trên đơn chương trình gốc.")
+    if order.status in ("cancelled", "refunded"):
+        state = order.get_status_display()
+        raise ManualPaymentError(f"Đơn đang ở trạng thái “{state}”: không ghi nhận thêm học phí.")
+    left = balance(order)
+    if left <= 0:
+        raise ManualPaymentError("Đơn đã đóng đủ học phí.")
+    if amount > left:
+        raise ManualPaymentError(f"Số tiền vượt quá số còn phải đóng ({left:,}đ).".replace(",", "."))
     payment = _credit(order, amount, source="manual", user=request.user, note=note)
     audit(request, "payment.confirm_manual", order, amount=amount, note=note)
     return payment

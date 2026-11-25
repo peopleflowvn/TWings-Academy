@@ -35,13 +35,20 @@ export function useOrders(enabled: boolean) {
 /** One lead in full (the list leaves out identity documents and bank accounts). */
 export const loadOrder = (id: string) => api.get<Order>(`/staff/orders/${id}/`);
 
-/** Finance: record money received outside the bank webhook (audited on the server); the order as now stored. */
-export async function confirmOrderPayment(id: string, amount: number): Promise<Order | null> {
-  try {
-    await api.post(`/staff/orders/${id}/confirm-payment/`, { amount, note: 'Xác nhận thủ công từ CRM (đã đối soát)' });
-  } catch (err) {
-    reportError(err);
-  }
+export type ManualPaymentMethod = 'cash' | 'transfer' | 'card' | 'other';
+export interface ManualPayment {
+  amount: number;
+  method: ManualPaymentMethod;
+  note: string;
+}
+
+/**
+ * Consultant or finance: money received outside the bank webhook (cash, a transfer that was not matched),
+ * any amount up to the balance (audited on the server). Throws the server's reason when refused (more than
+ * the balance, cancelled order...); resolves to the order as now stored.
+ */
+export async function confirmOrderPayment(id: string, payment: ManualPayment): Promise<Order | null> {
+  await api.post(`/staff/orders/${id}/confirm-payment/`, payment);
   return loadOrder(id).catch(() => null);
 }
 

@@ -63,12 +63,15 @@ export interface OrderBilling {
   refunded: number;
   refundable: number;
   amountDueNow: number;
+  /** Total to collect, and what is still owed in all (every installment left). */
+  receivable: number;
+  balance: number;
   installmentCount: number;
   installments: InstallmentRow[];
   learningAccess: boolean;
   payment: PaymentInstructions | null;
   // staff only
-  payments?: { amount: number; source: string; note: string; at: string }[];
+  payments?: { amount: number; source: string; note: string; by: string; at: string }[];
   refunds?: { amount: number; reason: string; reference: string; by: string; at: string }[];
   parentCode?: string;
   components?: { id: string; orderCode: string; courseTitle: string; status: string; cohort: string }[];

@@ -131,21 +131,37 @@ class BankTransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, v
     queryset = BankTransaction.objects.select_related("order")
 
 
+PAYMENT_METHODS = {
+    "cash": "Tiền mặt",
+    "transfer": "Chuyển khoản (chưa tự khớp)",
+    "card": "Quẹt thẻ / POS",
+    "other": "Khác",
+}
+
+
 class ManualPaymentSerializer(serializers.Serializer):
     amount = serializers.IntegerField(min_value=1)
-    note = serializers.CharField(max_length=300)
+    method = serializers.ChoiceField(choices=list(PAYMENT_METHODS), default="other")
+    note = serializers.CharField(max_length=250, required=False, allow_blank=True, default="")
 
 
 class ConfirmManualPaymentView(APIView):
-    permission_classes = [require_perms("finance.confirm_manual")]
+    """Consultant or finance: money received outside the bank webhook, any amount up to the balance."""
+
+    permission_classes = [require_perms("crm.record_payment", "finance.confirm_manual")]
 
     def post(self, request, pk):
+        from .services import ManualPaymentError
+
         order = get_object_or_404(Order, pk=pk)
         ser = ManualPaymentSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        payment = confirm_manual_payment(
-            request, order, ser.validated_data["amount"], ser.validated_data["note"]
-        )
+        data = ser.validated_data
+        note = " – ".join(x for x in (PAYMENT_METHODS[data["method"]], data["note"].strip()) if x)
+        try:
+            payment = confirm_manual_payment(request, order, data["amount"], note)
+        except ManualPaymentError as exc:
+            return Response({"detail": str(exc)}, status=400)
         order.refresh_from_db()
         return Response(
             {

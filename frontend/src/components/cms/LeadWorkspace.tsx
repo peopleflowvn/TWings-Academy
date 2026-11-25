@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { Course, Order, CRMStatus } from '../../types';
 import { CatalogOptions, catalogItems, itemFields, itemValue, ProgramOption } from '../../admin/catalog';
+import type { ManualPayment } from '../../admin/data';
 import { LeadPaymentPanel } from './LeadPaymentPanel';
 import { SendResendEmailModal } from './SendResendEmailModal';
 import { LmsLearningPanel } from './LmsLearningPanel';
@@ -52,7 +53,8 @@ interface LeadWorkspaceProps {
   /** Save `updated` against `previous` (the version loaded); resolves to the order as now stored. */
   onSave: (previous: Order, updated: Order) => Promise<Order>;
   /** Finance: record a received amount; resolves to the order as now stored. */
-  onConfirmPayment: (amount: number) => Promise<Order | null>;
+  /** Record a payment received by hand (throws the server's reason when refused). */
+  onConfirmPayment: (payment: ManualPayment) => Promise<Order | null>;
   /** Open another lead (same person) in the workspace. */
   onOpenOrder?: (orderId: string) => void;
   /** The lead was deleted (crm.delete_lead): close the workspace and refresh the pipeline. */
@@ -291,8 +293,8 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   };
 
   // Finance confirmed the money (the payments tab asks first); the server records the payment.
-  const handleConfirmReceived = async (amount: number) => {
-    const fresh = await onConfirmPayment(amount);
+  const handleConfirmReceived = async (payment: ManualPayment) => {
+    const fresh = await onConfirmPayment(payment);
     if (!fresh) return;
     setSaved(fresh);
     setOrder((cur) => {

@@ -38,6 +38,8 @@ def order_billing(order: Order, *, staff: bool = False) -> dict:
         "refunded": order.refunded_amount,
         "refundable": max(order.total_paid_amount - order.refunded_amount, 0),
         "amount_due_now": order.amount_due_now(),
+        "receivable": order.total_receivable or order.amount,
+        "balance": max((order.total_receivable or order.amount) - order.total_paid_amount, 0),
         "installment_count": order.installment_count,
         "installments": installment_rows(order),
         "learning_access": order.learning_access,
@@ -49,9 +51,10 @@ def order_billing(order: Order, *, staff: bool = False) -> dict:
                 "amount": p.amount,
                 "source": p.get_source_display(),
                 "note": p.note,
+                "by": (p.confirmed_by.name or p.confirmed_by.email) if p.confirmed_by else "",
                 "at": p.created_at.isoformat(),
             }
-            for p in order.payments.all()
+            for p in order.payments.select_related("confirmed_by")
         ]
         data["refunds"] = [
             {

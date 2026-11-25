@@ -153,8 +153,8 @@ export const AdmissionsPage: React.FC<{ courses: Course[] }> = ({ courses }) => 
             setRefreshKey((k) => k + 1);
             return fresh;
           }}
-          onConfirmPayment={async (amount) => {
-            const fresh = await confirmOrderPayment(selectedLead.id, amount);
+          onConfirmPayment={async (payment) => {
+            const fresh = await confirmOrderPayment(selectedLead.id, payment);
             setRefreshKey((k) => k + 1);
             return fresh;
           }}

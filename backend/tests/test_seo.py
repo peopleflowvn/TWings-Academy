@@ -98,9 +98,10 @@ def test_unpublished_and_unknown_pages_are_404(client, course, article):
 
 
 def test_static_pages_render(client, course, article):
-    SiteConfig.objects.create(
+    # Migration core/0008 already seeds the homepage sections (testimonials).
+    SiteConfig.objects.update_or_create(
         key=SiteConfig.KEY_HOMEPAGE_SECTIONS,
-        data={"about": {"title": "TWINGS", "lead": "Học viện thực chiến."}},
+        defaults={"data": {"about": {"title": "TWINGS", "lead": "Học viện thực chiến."}}},
     )
     for path in ("", "khoa-hoc", "ve-chung-toi", "tin-tuc", "chuong-trinh"):
         res = client.get(f"/_seo/{path}")

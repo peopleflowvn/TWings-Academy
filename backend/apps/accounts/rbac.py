@@ -28,6 +28,9 @@ PERMISSIONS: dict[str, str] = {
     "email.settings": "Cấu hình gửi email (người gửi, khóa Resend, logo & chân thư)",
     "finance.transactions": "Xem giao dịch & đối soát",
     "finance.confirm_manual": "Xác nhận thanh toán thủ công",
+    "crm.record_payment": (
+        "Ghi nhận học phí thủ công trên hồ sơ (tiền mặt, chuyển khoản chưa tự khớp; được đóng một phần)"
+    ),
     "finance.referral_bonus": "Duyệt thưởng giới thiệu",
     "finance.refund": "Hoàn tiền & kết thúc ghi danh",
     "rbac.view_users": "Xem người dùng",
@@ -116,6 +119,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             "crm.edit_status",
             "crm.assign_pic",
             "crm.export_excel",
+            "crm.record_payment",
             "courses.view",
             "lms.view",
             "placement.view",
@@ -138,6 +142,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             "crm.export_excel",
             "finance.transactions",
             "finance.confirm_manual",
+            "crm.record_payment",
             "finance.referral_bonus",
             "finance.refund",
             "courses.pricing",

@@ -1,13 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, Copy, Loader2 } from 'lucide-react';
+import { CheckCircle2, Copy, Loader2, Wallet } from 'lucide-react';
 import { commerceApi, formatVND, OrderBilling } from '../../lib/commerce';
 import { useStaffCan } from '../../lib/lms';
+import type { ManualPayment, ManualPaymentMethod } from '../../admin/data';
 
 interface Props {
   orderId: string;
-  /** Record the outstanding amount as received (finance permission; the server records the payment). */
-  onConfirmReceived: (amount: number) => void;
+  /** Record money received by hand (the server checks the amount; throws its reason when refused). */
+  onConfirmReceived: (payment: ManualPayment) => Promise<unknown>;
 }
+
+const METHODS: { value: ManualPaymentMethod; label: string }[] = [
+  { value: 'cash', label: 'Tiền mặt' },
+  { value: 'transfer', label: 'Chuyển khoản (chưa tự khớp)' },
+  { value: 'card', label: 'Quẹt thẻ / POS' },
+  { value: 'other', label: 'Khác' }
+];
+
+const digits = (s: string) => Number(s.replace(/\D/g, '')) || 0;
+const vnNumber = (n: number) => new Intl.NumberFormat('vi-VN').format(n);
 
 /**
  * "Thanh toán & VietQR" tab of the lead workspace: the payment instructions the learner also sees
@@ -15,13 +26,27 @@ interface Props {
  * transfer always lands on TWings' account and is matched automatically by the bank webhook.
  */
 export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }) => {
+  const canRecord = useStaffCan('crm.record_payment');
   const canConfirm = useStaffCan('finance.confirm_manual');
+  const [amountText, setAmountText] = useState('');
+  const [method, setMethod] = useState<ManualPaymentMethod>('cash');
+  const [note, setNote] = useState('');
+  const [recording, setRecording] = useState(false);
+  const [recordError, setRecordError] = useState('');
   const [billing, setBilling] = useState<OrderBilling | null>(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState('');
 
   useEffect(() => {
-    commerceApi.billing(orderId).then(setBilling).catch((e: Error) => setError(e.message));
+    commerceApi
+      .billing(orderId)
+      .then((b) => {
+        setBilling(b);
+        // Default: what is due now (the next installment); any amount up to the balance is allowed.
+        const due = Math.min(Math.max(b.amountDueNow, 0), b.balance) || b.balance;
+        setAmountText(due ? vnNumber(due) : '');
+      })
+      .catch((e: Error) => setError(e.message));
   }, [orderId]);
 
   const copy = (value: string, key: string) => {
@@ -34,8 +59,26 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }
   if (error) return <p className="text-xs text-red-600">{error}</p>;
   if (!billing) return <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>;
 
-  const outstanding = Math.max(billing.amountDueNow, 0);
   const pay = billing.payment;
+  const amount = digits(amountText);
+  const balance = Math.max(billing.balance ?? 0, 0);
+  const open = billing.status === 'pending' || billing.status === 'paid';
+  const amountError = !amount ? 'Nhập số tiền đã nhận.' : amount > balance ? `Tối đa ${formatVND(balance)} (số còn phải đóng).` : '';
+  const record = async () => {
+    if (amountError || recording) return;
+    const part = amount < balance ? ` (đóng một phần, còn lại ${formatVND(balance - amount)})` : ' (đóng đủ)';
+    if (!window.confirm(`Ghi nhận đã nhận ${formatVND(amount)}${part} cho đơn ${billing.orderCode}?\nHọc viên sẽ nhận email biên nhận.`)) return;
+    setRecording(true);
+    setRecordError('');
+    try {
+      await onConfirmReceived({ amount, method, note: note.trim() });
+      setNote('');
+    } catch (e) {
+      setRecordError(e instanceof Error ? e.message : 'Không ghi nhận được khoản thu.');
+    } finally {
+      setRecording(false);
+    }
+  };
   const row = (label: string, value: string, key: string) => (
     <div className="flex items-center justify-between gap-2 py-1.5 border-b border-slate-100 last:border-0">
       <span className="text-slate-500">{label}</span>
@@ -53,6 +96,7 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }
       <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-1">
         <div className="flex justify-between"><span className="text-slate-500">Học phí</span><span className="font-mono font-bold">{formatVND(billing.amount)}</span></div>
         <div className="flex justify-between"><span className="text-slate-500">Đã đóng</span><span className="font-mono font-bold text-emerald-700">{formatVND(billing.totalPaid)}</span></div>
+        <div className="flex justify-between"><span className="text-slate-500">Còn phải đóng</span><span className="font-mono font-bold text-amber-700">{formatVND(balance)}</span></div>
         <div className="flex justify-between"><span className="text-slate-500">Trạng thái</span><span className="font-bold">{billing.statusLabel}</span></div>
       </div>
 
@@ -77,21 +121,56 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived }
         </p>
       )}
 
-      {canConfirm && outstanding > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
-          <div className="font-bold text-amber-900">Xác nhận thủ công (Kế toán)</div>
+      {(canRecord || canConfirm) && open && balance > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+          <div className="font-bold text-amber-900 flex items-center gap-1.5"><Wallet className="w-4 h-4" /> Ghi nhận học phí đã nhận (thủ công)</div>
           <p className="text-amber-900">
-            Chỉ dùng khi tiền đã về tài khoản nhưng không được ghi nhận tự động (sai nội dung, nộp tiền mặt…), sau khi đối
-            soát sao kê. Hệ thống ghi một khoản thu {formatVND(outstanding)} kèm nhật ký kiểm toán.
+            Dùng khi học viên đóng tiền mặt, quẹt thẻ, hoặc chuyển khoản nhưng hệ thống không tự ghi nhận (sai nội dung). Được ghi một
+            phần (ví dụ đặt cọc), tối đa {formatVND(balance)}. Khoản thu ghi tên người nhập, vào nhật ký kiểm toán và học viên nhận email biên nhận.
           </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <label className="block">
+              <span className="font-bold text-slate-700 block mb-1">Số tiền đã nhận (đ)</span>
+              <input
+                inputMode="numeric"
+                value={amountText}
+                onChange={(e) => {
+                  const n = digits(e.target.value);
+                  setAmountText(n ? vnNumber(n) : '');
+                }}
+                className="w-full p-2.5 border border-slate-300 rounded-xl bg-white font-mono font-bold"
+              />
+            </label>
+            <label className="block">
+              <span className="font-bold text-slate-700 block mb-1">Hình thức</span>
+              <select value={method} onChange={(e) => setMethod(e.target.value as ManualPaymentMethod)} className="w-full p-2.5 border border-slate-300 rounded-xl bg-white">
+                {METHODS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="font-bold text-slate-700 block mb-1">Ghi chú / số phiếu thu</span>
+              <input value={note} maxLength={250} onChange={(e) => setNote(e.target.value)} placeholder="VD: phiếu thu PT-0123, cọc giữ chỗ" className="w-full p-2.5 border border-slate-300 rounded-xl bg-white" />
+            </label>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from(new Set([Math.min(billing.amountDueNow, balance), balance].filter((v) => v > 0))).map((v) => (
+              <button key={v} type="button" onClick={() => setAmountText(vnNumber(v))} className="px-2 py-1 rounded-lg bg-white border border-amber-200 text-amber-900 hover:bg-amber-100 cursor-pointer">
+                {v === balance ? 'Đóng đủ' : 'Kỳ đến hạn'}: {formatVND(v)}
+              </button>
+            ))}
+          </div>
+          {(recordError || (amountText && amountError)) && <p className="text-red-600 font-bold">{recordError || amountError}</p>}
           <button
             type="button"
-            onClick={() => {
-              if (window.confirm(`Xác nhận đã nhận ${formatVND(outstanding)} cho đơn ${billing.orderCode}?`)) onConfirmReceived(outstanding);
-            }}
-            className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer"
+            disabled={!!amountError || recording}
+            onClick={record}
+            className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
           >
-            Xác nhận đã nhận {formatVND(outstanding)}
+            {recording && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Ghi nhận đã nhận {amount ? formatVND(amount) : ''}
+            {amount > 0 && amount < balance ? ' (một phần)' : ''}
           </button>
         </div>
       )}
