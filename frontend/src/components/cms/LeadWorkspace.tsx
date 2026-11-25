@@ -100,7 +100,11 @@ const SERVER_FIELDS: (keyof Order)[] = [
   'status',
   'totalPaidAmount',
   'paidAt',
-  'learningAccess'
+  'learningAccess',
+  // A registration without a price gets its tuition with the first payment.
+  'amount',
+  'tuitionFee',
+  'totalReceivable'
 ];
 const tomorrowIso = () => {
   const d = new Date();

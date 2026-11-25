@@ -110,3 +110,29 @@ def test_fast_track_an_installment_order_to_part_paid(course, staff_client):
     assert _fast(admin, order, stage="part_paid", amount=first).status_code == 201
     order.refresh_from_db()
     assert order.crm_status == stages.PART_PAID and order.learning_access
+
+
+def test_a_registration_without_a_price_gets_its_tuition_with_the_payment(course, staff_client):
+    order = Order.objects.create(customer_name="Đạt", course=course, customer_email="d@example.com", amount=0)
+    sales = staff_client(Role.SALES_CRM)
+    res = sales.post(_url(order), {"amount": 1_000_000, "method": "cash"}, format="json")
+    assert res.status_code == 400 and "học phí" in res.json()["detail"]
+    res = sales.post(
+        _url(order), {"amount": 1_000_000, "method": "cash", "tuition": 6_000_000}, format="json"
+    )
+    assert res.status_code == 201, res.content
+    order.refresh_from_db()
+    assert order.amount == order.total_receivable == 6_000_000 and order.total_paid_amount == 1_000_000
+    # A price already there is not changed by a payment.
+    sales.post(_url(order), {"amount": 1_000, "method": "cash", "tuition": 1}, format="json")
+    order.refresh_from_db()
+    assert order.total_receivable == 6_000_000
+
+    other = Order.objects.create(
+        customer_name="Đạt", course=course, customer_email="d2@example.com", amount=0
+    )
+    admin = staff_client(Role.SUPER_ADMIN)
+    res = _fast(admin, other, stage="paid", amount=5_000_000, tuition=5_000_000)
+    assert res.status_code == 201, res.content
+    other.refresh_from_db()
+    assert other.crm_status == stages.PAID and other.total_receivable == 5_000_000

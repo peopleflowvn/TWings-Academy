@@ -38,6 +38,8 @@ export const loadOrder = (id: string) => api.get<Order>(`/staff/orders/${id}/`);
 export type ManualPaymentMethod = 'cash' | 'transfer' | 'card' | 'other';
 export interface ManualPayment {
   amount: number;
+  /** Only for a registration without a price: the tuition to collect, entered with the payment. */
+  tuition?: number | null;
   method: ManualPaymentMethod;
   note: string;
 }

@@ -154,8 +154,39 @@ def balance(order: Order) -> int:
     return max((order.total_receivable or order.amount) - order.total_paid_amount, 0)
 
 
+def _vnd(n: int) -> str:
+    return f"{n:,}đ".replace(",", ".")
+
+
+def set_missing_tuition(request, order: Order, tuition: int | None) -> None:
+    """
+    A registration without a price (course without one, an imported lead): the tuition is entered with the
+    first payment. Only then: a price already there is changed in the profile (finance).
+    """
+    from apps.core.models import audit
+
+    if order.total_receivable or order.amount:
+        return
+    if not tuition or tuition <= 0:
+        raise ManualPaymentError("Đăng ký chưa có học phí: nhập học phí phải thu trước.")
+    order.amount = order.total_receivable = tuition
+    order.tuition_fee = order.tuition_fee or tuition
+    order.original_amount = order.original_amount or tuition
+    order.save(update_fields=["amount", "total_receivable", "tuition_fee", "original_amount", "updated_at"])
+    Activity.objects.create(
+        order=order,
+        type="note",
+        title=f"Nhập học phí phải thu {_vnd(tuition)}",
+        actor=request.user.name or request.user.email,
+        actor_user=request.user,
+    )
+    audit(request, "payment.set_tuition", order, tuition=tuition)
+
+
 @transaction.atomic
-def confirm_manual_payment(request, order: Order, amount: int, note: str) -> Payment:
+def confirm_manual_payment(
+    request, order: Order, amount: int, note: str, tuition: int | None = None
+) -> Payment:
     """
     Money received outside the bank webhook (cash, a transfer with a wrong memo...), recorded by the
     consultant or finance: any amount up to the balance, so a part payment is fine.
@@ -168,6 +199,7 @@ def confirm_manual_payment(request, order: Order, amount: int, note: str) -> Pay
     if order.status in ("cancelled", "refunded"):
         state = order.get_status_display()
         raise ManualPaymentError(f"Đơn đang ở trạng thái “{state}”: không ghi nhận thêm học phí.")
+    set_missing_tuition(request, order, tuition)
     left = balance(order)
     if left <= 0:
         raise ManualPaymentError("Đơn đã đóng đủ học phí.")
@@ -193,7 +225,9 @@ def _opening_amount(order: Order) -> int:
 
 
 @transaction.atomic
-def fast_track(request, order: Order, stage: str, amount: int, note: str) -> Order:
+def fast_track(
+    request, order: Order, stage: str, amount: int, note: str, tuition: int | None = None
+) -> Order:
     """
     Super admin: take a registration straight to "Đã đóng phí", "Đã đóng 1 phần" or "Onboard", whatever stage
     it is at (a cancelled one is reopened). The gate stays on the money: the tuition received is entered,
@@ -208,10 +242,9 @@ def fast_track(request, order: Order, stage: str, amount: int, note: str) -> Ord
         raise ManualPaymentError("Đơn thành phần của chương trình: chuyển trên đơn chương trình gốc.")
     if order.status == "refunded":
         raise ManualPaymentError("Đơn đã hoàn tiền: tạo đăng ký mới.")
-    if not (order.total_receivable or order.amount):
-        raise ManualPaymentError("Đăng ký chưa có học phí: nhập học phí trước.")
+    set_missing_tuition(request, order, tuition)
     left = balance(order)
-    vnd = lambda n: f"{n:,}đ".replace(",", ".")  # noqa: E731
+    vnd = _vnd
     if left <= 0:
         raise ManualPaymentError("Đơn đã đóng đủ học phí: chuyển giai đoạn bình thường.")
     if amount > left:

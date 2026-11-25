@@ -143,6 +143,8 @@ class ManualPaymentSerializer(serializers.Serializer):
     amount = serializers.IntegerField(min_value=1)
     method = serializers.ChoiceField(choices=list(PAYMENT_METHODS), default="other")
     note = serializers.CharField(max_length=250, required=False, allow_blank=True, default="")
+    # Only for a registration without a price: the tuition to collect, entered with the first payment.
+    tuition = serializers.IntegerField(min_value=1, required=False, allow_null=True, default=None)
 
 
 class ConfirmManualPaymentView(APIView):
@@ -159,7 +161,7 @@ class ConfirmManualPaymentView(APIView):
         data = ser.validated_data
         note = " – ".join(x for x in (PAYMENT_METHODS[data["method"]], data["note"].strip()) if x)
         try:
-            payment = confirm_manual_payment(request, order, data["amount"], note)
+            payment = confirm_manual_payment(request, order, data["amount"], note, data["tuition"])
         except ManualPaymentError as exc:
             return Response({"detail": str(exc)}, status=400)
         order.refresh_from_db()
@@ -215,7 +217,7 @@ class FastTrackView(APIView):
         data = ser.validated_data
         note = " – ".join(x for x in (PAYMENT_METHODS[data["method"]], data["note"]) if x)
         try:
-            order = fast_track(request, order, data["stage"], data["amount"], note)
+            order = fast_track(request, order, data["stage"], data["amount"], note, data["tuition"])
         except ManualPaymentError as exc:
             return Response({"detail": str(exc)}, status=400)
         return Response(

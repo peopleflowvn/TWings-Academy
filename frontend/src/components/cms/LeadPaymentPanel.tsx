@@ -44,6 +44,8 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived, 
   const boxRef = useRef<HTMLDivElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
   const [confirmText, setConfirmText] = useState('');
+  const [tuitionText, setTuitionText] = useState('');
+  const tuitionRef = useRef<HTMLInputElement>(null);
   const [amountText, setAmountText] = useState('');
   const [method, setMethod] = useState<ManualPaymentMethod>('cash');
   const [note, setNote] = useState('');
@@ -69,8 +71,9 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived, 
   useEffect(() => {
     if (!targetStage || !billing) return;
     boxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    amountRef.current?.focus();
-    amountRef.current?.select();
+    const input = tuitionRef.current ?? amountRef.current; // no price yet: the tuition first
+    input?.focus();
+    input?.select();
   }, [targetStage, billing]);
 
   const copy = (value: string, key: string) => {
@@ -85,8 +88,12 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived, 
 
   const pay = billing.payment;
   const amount = digits(amountText);
-  const balance = Math.max(billing.balance ?? 0, 0);
-  const open = billing.status === 'pending' || billing.status === 'paid';
+  // A registration without a price (course without one, imported lead): the tuition is entered here first.
+  const noPrice = !billing.receivable && !billing.amount && !billing.totalPaid;
+  const tuition = digits(tuitionText);
+  const balance = noPrice ? tuition : Math.max(billing.balance ?? 0, 0);
+  // The super admin's fast track also reopens a cancelled registration.
+  const open = billing.status === 'pending' || billing.status === 'paid' || (fast && billing.status === 'cancelled');
   const first = billing.installmentCount > 1 ? billing.installments[0] : null;
   // What must still be paid to study: the first installment, or (no installments) the whole balance.
   const opening = billing.learningAccess ? 0 : first ? Math.max(first.amount - billing.totalPaid, 0) : balance;
@@ -102,7 +109,9 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived, 
           : amount < opening
             ? `Chưa đủ để vào học: tối thiểu ${short}.`
             : '';
-  const amountError = !amount
+  const amountError = noPrice && !tuition
+    ? 'Nhập học phí phải thu (đăng ký chưa có học phí).'
+    : !amount
     ? 'Nhập số tiền đã nhận.'
     : amount > balance
       ? `Tối đa ${formatVND(balance)} (số còn phải đóng).`
@@ -115,7 +124,8 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived, 
             : '';
   const fastTrack = async () => {
     if (amountError || recording || !targetStage) return;
-    if (!window.confirm(`Ghi nhận ${formatVND(amount)} học phí và chuyển thẳng sang "${targetName}"?\nHọc viên sẽ nhận email biên nhận.`)) return;
+    const priced = noPrice ? `Học phí phải thu: ${formatVND(tuition)}.\n` : '';
+    if (!window.confirm(`${priced}Ghi nhận ${formatVND(amount)} học phí và chuyển thẳng sang "${targetName}"?\nHọc viên sẽ nhận email biên nhận.`)) return;
     setRecording(true);
     setRecordError('');
     try {
@@ -123,6 +133,7 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived, 
         stage: targetStage,
         amount,
         amountConfirm: digits(confirmText),
+        tuition: noPrice ? tuition : null,
         method,
         note: note.trim()
       });
@@ -137,11 +148,12 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived, 
     if (fast) return fastTrack();
     if (amountError || recording) return;
     const part = amount < balance ? ` (đóng một phần, còn lại ${formatVND(balance - amount)})` : ' (đóng đủ)';
-    if (!window.confirm(`Ghi nhận đã nhận ${formatVND(amount)}${part} cho đơn ${billing.orderCode}?\nHọc viên sẽ nhận email biên nhận.`)) return;
+    const priced = noPrice ? `Học phí phải thu: ${formatVND(tuition)}.\n` : '';
+    if (!window.confirm(`${priced}Ghi nhận đã nhận ${formatVND(amount)}${part} cho đơn ${billing.orderCode}?\nHọc viên sẽ nhận email biên nhận.`)) return;
     setRecording(true);
     setRecordError('');
     try {
-      await onConfirmReceived({ amount, method, note: note.trim() });
+      await onConfirmReceived({ amount, method, note: note.trim(), tuition: noPrice ? tuition : null });
       setNote('');
     } catch (e) {
       setRecordError(e instanceof Error ? e.message : 'Không ghi nhận được khoản thu.');
@@ -191,14 +203,18 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived, 
         </p>
       )}
 
-      {targetStage && !((canRecord || canConfirm || fast) && open && balance > 0) && (
+      {targetStage && !((canRecord || canConfirm || fast) && open && (balance > 0 || noPrice)) && (
         <div ref={boxRef} className="bg-red-50 border-2 border-red-300 rounded-2xl p-4 text-red-800 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <div className="flex-1">
             Chưa chuyển được sang <b>"{targetName}"</b>: phải ghi nhận học phí trước.{' '}
-            {balance <= 0
-              ? 'Đơn không còn khoản cần thu.'
-              : open
+            {!open
+              ? 'Đơn đã hủy / hoàn tiền: không ghi nhận thêm học phí.'
+              : noPrice
+                ? 'Đăng ký chưa có học phí, và bạn không có quyền ghi nhận: nhờ kế toán hoặc tư vấn viên phụ trách nhập học phí và khoản đã thu.'
+                : balance <= 0
+                  ? 'Đơn đã đóng đủ học phí.'
+                  : open
                 ? 'Bạn không có quyền ghi nhận học phí: nhờ kế toán hoặc tư vấn viên phụ trách ghi nhận khoản đã thu.'
                 : 'Đơn đã hủy / hoàn tiền: không ghi nhận thêm học phí.'}
           </div>
@@ -208,7 +224,7 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived, 
         </div>
       )}
 
-      {(canRecord || canConfirm || fast) && open && balance > 0 && (
+      {(canRecord || canConfirm || fast) && open && (balance > 0 || noPrice) && (
         <div ref={boxRef} className={`bg-amber-50 rounded-2xl p-4 space-y-3 ${targetStage ? 'border-2 border-red-400 ring-4 ring-red-100' : 'border border-amber-200'}`}>
           {targetStage && (
             <div className="bg-red-50 border border-red-300 rounded-xl p-3 text-red-800 flex items-start gap-2">
@@ -240,6 +256,24 @@ export const LeadPaymentPanel: React.FC<Props> = ({ orderId, onConfirmReceived, 
             Dùng khi học viên đóng tiền mặt, quẹt thẻ, hoặc chuyển khoản nhưng hệ thống không tự ghi nhận (sai nội dung). Được ghi một
             phần (ví dụ đặt cọc), tối đa {formatVND(balance)}. Khoản thu ghi tên người nhập, vào nhật ký kiểm toán và học viên nhận email biên nhận.
           </p>
+          {noPrice && (
+            <label className="block bg-white border-2 border-amber-300 rounded-xl p-3">
+              <span className="font-bold text-slate-800 block mb-1">Học phí phải thu (đ) – đăng ký này chưa có học phí</span>
+              <input
+                ref={tuitionRef}
+                inputMode="numeric"
+                value={tuitionText}
+                onChange={(e) => {
+                  const n = digits(e.target.value);
+                  setTuitionText(n ? vnNumber(n) : '');
+                  if (targetStage === PAID || !amountText) setAmountText(n ? vnNumber(n) : '');
+                }}
+                placeholder="VD: 8.000.000"
+                className="w-full p-2.5 border border-slate-300 rounded-xl bg-white font-mono font-bold"
+              />
+              <span className="text-slate-500 block mt-1">Lưu vào hồ sơ cùng khoản thu (nhật ký kiểm toán). Đã có học phí thì chỉ kế toán sửa trong hồ sơ.</span>
+            </label>
+          )}
           <div className={`grid grid-cols-1 gap-2 ${fast ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
             <label className="block">
               <span className="font-bold text-slate-700 block mb-1">Số tiền đã nhận (đ)</span>
