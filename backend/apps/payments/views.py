@@ -5,7 +5,7 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.parsers import JSONParser
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -166,6 +166,61 @@ class ConfirmManualPaymentView(APIView):
         return Response(
             {
                 "payment_id": payment.pk,
+                "order_status": order.status,
+                "total_paid_amount": order.total_paid_amount,
+            },
+            status=201,
+        )
+
+
+class FastTrackSerializer(ManualPaymentSerializer):
+    stage = serializers.ChoiceField(choices=["paid", "part_paid", "onboard"])
+    amount_confirm = serializers.IntegerField(min_value=1)
+    note = serializers.CharField(max_length=250, trim_whitespace=True)  # required: why / receipt number
+
+    def validate(self, attrs):
+        if attrs["amount_confirm"] != attrs["amount"]:
+            raise serializers.ValidationError({"amount_confirm": "Số tiền nhập lại không khớp."})
+        return attrs
+
+
+class IsSuperAdmin(BasePermission):
+    def has_permission(self, request, view):
+        from apps.accounts.rbac import Role
+
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and user.is_active
+            and user.is_staff
+            and (user.is_superuser or user.role == Role.SUPER_ADMIN)
+        )
+
+
+class FastTrackView(APIView):
+    """
+    Super admin: several stages at once ("Đã đóng phí" / "Đã đóng 1 phần" / "Onboard"). The checkpoint is the
+    tuition: the amount received is typed twice and recorded as a payment that must match the stage.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk):
+        from .services import ManualPaymentError, fast_track
+
+        order = get_object_or_404(Order, pk=pk)
+        ser = FastTrackSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        note = " – ".join(x for x in (PAYMENT_METHODS[data["method"]], data["note"]) if x)
+        try:
+            order = fast_track(request, order, data["stage"], data["amount"], note)
+        except ManualPaymentError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(
+            {
+                "crm_status": order.crm_status,
                 "order_status": order.status,
                 "total_paid_amount": order.total_paid_amount,
             },

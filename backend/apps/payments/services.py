@@ -178,6 +178,80 @@ def confirm_manual_payment(request, order: Order, amount: int, note: str) -> Pay
     return payment
 
 
+FAST_TRACK_STAGES = (stages.PAID, stages.PART_PAID, stages.ONBOARD)
+
+
+def _opening_amount(order: Order) -> int:
+    """What must still be paid for the learner to study: the first installment, or the whole balance."""
+    if order.learning_access:
+        return 0
+    if order.installment_count > 1:
+        first = order.installments.order_by("sequence").first()
+        if first is not None:
+            return max(first.amount - order.total_paid_amount, 0)
+    return balance(order)
+
+
+@transaction.atomic
+def fast_track(request, order: Order, stage: str, amount: int, note: str) -> Order:
+    """
+    Super admin: take a registration straight to "Đã đóng phí", "Đã đóng 1 phần" or "Onboard", whatever stage
+    it is at (a cancelled one is reopened). The gate stays on the money: the tuition received is entered,
+    recorded like any manual payment (receipt, audit), and must be what the chosen stage means.
+    """
+    from apps.core.models import audit
+
+    if stage not in FAST_TRACK_STAGES:
+        raise ManualPaymentError("Chỉ chuyển nhanh tới “Đã đóng phí”, “Đã đóng 1 phần” hoặc “Onboard”.")
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    if order.parent_id:
+        raise ManualPaymentError("Đơn thành phần của chương trình: chuyển trên đơn chương trình gốc.")
+    if order.status == "refunded":
+        raise ManualPaymentError("Đơn đã hoàn tiền: tạo đăng ký mới.")
+    if not (order.total_receivable or order.amount):
+        raise ManualPaymentError("Đăng ký chưa có học phí: nhập học phí trước.")
+    left = balance(order)
+    vnd = lambda n: f"{n:,}đ".replace(",", ".")  # noqa: E731
+    if left <= 0:
+        raise ManualPaymentError("Đơn đã đóng đủ học phí: chuyển giai đoạn bình thường.")
+    if amount > left:
+        raise ManualPaymentError(f"Số tiền vượt quá số còn phải đóng ({vnd(left)}).")
+    if stage == stages.PAID and amount != left:
+        raise ManualPaymentError(f"“Đã đóng phí” là đóng đủ: số tiền phải đúng {vnd(left)}.")
+    if stage == stages.PART_PAID and amount >= left:
+        raise ManualPaymentError("Số tiền bằng số còn phải đóng: chọn “Đã đóng phí”.")
+    opening = _opening_amount(order)
+    if amount < opening:
+        raise ManualPaymentError(
+            f"Chưa đủ để vào học: cần tối thiểu {vnd(opening)}"
+            + (" (đợt 1)." if order.installment_count > 1 else " (đơn không trả góp: đóng đủ).")
+        )
+
+    previous = stages.name(order.crm_status)
+    actor = request.user.name or request.user.email
+    if order.status == "cancelled":
+        order.status = "pending"
+        order.save(update_fields=["status", "updated_at"])
+    _credit(order, amount, source="manual", user=request.user, note=note)
+    order.refresh_from_db()
+    if stage == stages.ONBOARD:
+        order.crm_status = stages.ONBOARD
+        order.save(update_fields=["crm_status", "updated_at"])
+    Activity.objects.create(
+        order=order,
+        type="note",
+        title=f"Quản trị tối cao chuyển nhanh: {previous} → {stages.name(order.crm_status)}",
+        content=f"Học phí ghi nhận {vnd(amount)}" + (f" – {note}" if note else ""),
+        actor=actor,
+        actor_user=request.user,
+    )
+    audit(request, "crm.fast_track", order, stage=order.crm_status, amount=amount, note=note)
+    from apps.crm.learners import refresh_duplicate_flags
+
+    refresh_duplicate_flags(order.learner_id)  # a reopened / now enrolled registration
+    return order
+
+
 class RestoreError(Exception):
     pass
 

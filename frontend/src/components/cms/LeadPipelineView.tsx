@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, BarChart3, ChevronLeft, ChevronRight, Copy, Download, Edit, LayoutGrid, Loader2, Plus, Search, Table as TableIcon, X } from 'lucide-react';
 import { CRMStatus, Course, Order } from '../../types';
-import { blockedMove, FROM_PAYMENTS, stageOf } from '../../lib/stages';
+import { blockedMove, FROM_PAYMENTS, ONBOARD, stageOf } from '../../lib/stages';
 import type { IntakeRow } from '../../admin/pages/IntakesPage';
 import { api, ApiError, API_ROOT, Paginated } from '../../lib/api';
 import { useStaffCan } from '../../lib/lms';
@@ -226,7 +226,8 @@ export const LeadPipelineView: React.FC<LeadPipelineViewProps> = ({
     const blocked = blockedMove(o, next, stages.name);
     if (blocked) {
       setNotice(`${o.customerName}: ${blocked}`);
-      if (FROM_PAYMENTS.includes(next)) onOpenLeadDetail(o);
+      // The lead's detail: the payments tab, or (super admin) the fast track asking for the tuition.
+      if (FROM_PAYMENTS.includes(next) || next === ONBOARD) onOpenLeadDetail(o);
       return;
     }
     // A "call again" stage needs the call-back day, a "closed" one the reason.

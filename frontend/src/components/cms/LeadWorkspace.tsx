@@ -33,19 +33,20 @@ import {
 } from 'lucide-react';
 import { Course, Order, CRMStatus } from '../../types';
 import { CatalogOptions, catalogItems, itemFields, itemValue, ProgramOption } from '../../admin/catalog';
-import type { ManualPayment } from '../../admin/data';
+import { loadOrder, type ManualPayment } from '../../admin/data';
 import { LeadPaymentPanel } from './LeadPaymentPanel';
 import { SendResendEmailModal } from './SendResendEmailModal';
 import { LmsLearningPanel } from './LmsLearningPanel';
 import { OrderBillingPanel } from './OrderBillingPanel';
 import { LeadContactPanel } from './LeadContactPanel';
 import { useStageGate } from './StageGate';
+import { FAST_TRACK_STAGES, FastTrackDialog } from './FastTrackDialog';
 import { PlacementPanel } from '../../admin/pages/PlacementPages';
 import { api, Paginated } from '../../lib/api';
 import { useIsSuperAdmin, useStaffCan } from '../../lib/lms';
 import { navigate } from '../../admin/router';
 import { useCrmLists, useStages, withCurrent } from '../../lib/crmLists';
-import { blockedMove, FROM_PAYMENTS, POTENTIAL } from '../../lib/stages';
+import { blockedMove, FROM_PAYMENTS, ONBOARD, POTENTIAL } from '../../lib/stages';
 
 interface LeadWorkspaceProps {
   order: Order;
@@ -95,7 +96,8 @@ const SERVER_FIELDS: (keyof Order)[] = [
   'firstResponseAt',
   'status',
   'totalPaidAmount',
-  'paidAt'
+  'paidAt',
+  'learningAccess'
 ];
 const tomorrowIso = () => {
   const d = new Date();
@@ -282,6 +284,10 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
     // The paid stages follow a recorded payment (bank webhook or finance confirmation), never a click.
     if (nextStage === (saved.crmStatus || POTENTIAL)) return;
     const blocked = blockedMove(saved, nextStage, stages.name);
+    if (blocked && superAdmin && FAST_TRACK_STAGES.includes(nextStage) && !(nextStage === ONBOARD && saved.learningAccess)) {
+      setFastStage(nextStage); // several steps at once: the tuition received is the checkpoint
+      return;
+    }
     if (blocked) {
       if (FROM_PAYMENTS.includes(nextStage)) setActiveTab('payment');
       else window.alert(blocked);
@@ -293,6 +299,19 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   };
 
   // Finance confirmed the money (the payments tab asks first); the server records the payment.
+  const [fastStage, setFastStage] = useState<CRMStatus | null>(null);
+  const afterFastTrack = async () => {
+    setFastStage(null);
+    const fresh = await loadOrder(order.id).catch(() => null);
+    if (!fresh) return;
+    setSaved(fresh);
+    setOrder((cur) => {
+      const merged = { ...cur } as Record<string, unknown>;
+      SERVER_FIELDS.forEach((k) => (merged[k] = fresh[k]));
+      return merged as unknown as Order;
+    });
+  };
+
   const handleConfirmReceived = async (payment: ManualPayment) => {
     const fresh = await onConfirmPayment(payment);
     if (!fresh) return;
@@ -363,6 +382,16 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 animate-fadeIn overflow-hidden">
       {gate.dialog}
+      {fastStage && (
+        <FastTrackDialog
+          orderId={order.id}
+          stage={fastStage}
+          stageName={stages.name}
+          currentStageName={stages.name(saved.crmStatus || POTENTIAL)}
+          onClose={() => setFastStage(null)}
+          onDone={afterFastTrack}
+        />
+      )}
       <div
         className={`bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col transition-all duration-200 ${
           isFullScreen ? 'w-full h-full rounded-none' : 'max-w-7xl w-full h-full sm:h-auto sm:max-h-[96vh] rounded-none sm:rounded-2xl'

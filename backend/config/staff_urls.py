@@ -62,6 +62,7 @@ from apps.notifications.views import (
 from apps.payments.views import (
     BankTransactionViewSet,
     ConfirmManualPaymentView,
+    FastTrackView,
     OrderBillingView,
     RefundOrderView,
     RestoreTransactionView,
@@ -101,6 +102,7 @@ urlpatterns = [
     path(
         "orders/<str:pk>/confirm-payment/", ConfirmManualPaymentView.as_view(), name="staff-confirm-payment"
     ),
+    path("orders/<str:pk>/fast-track/", FastTrackView.as_view(), name="staff-order-fast-track"),
     path("orders/<str:pk>/billing/", OrderBillingView.as_view(), name="staff-order-billing"),
     path("orders/<str:pk>/refund/", RefundOrderView.as_view(), name="staff-order-refund"),
     path(
