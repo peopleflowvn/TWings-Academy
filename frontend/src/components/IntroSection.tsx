@@ -11,7 +11,7 @@ import {
   Award,
   PlayCircle
 } from 'lucide-react';
-import { CMSSectionsConfig } from '../types';
+import { CMSSectionsConfig, IntroStat, IntroTile } from '../types';
 
 interface IntroSectionProps {
   introData?: CMSSectionsConfig['intro'];
@@ -20,104 +20,80 @@ interface IntroSectionProps {
   shelfCounts?: Record<string, number>;
 }
 
-const TRUST_STATS = [
-  {
-    icon: Users,
-    number: '5.000+',
-    label: 'Học viên đã tốt nghiệp',
-    subtext: 'Gia nhập các Ngân hàng lớn',
-    color: 'text-[#0073C1]',
-    glowBg: 'bg-blue-500/10',
-    borderColor: 'border-blue-200/80',
-    badgeColor: 'bg-blue-50 text-[#0073C1]',
-    badgeText: 'Thực chiến',
-  },
-  {
-    icon: Briefcase,
-    number: '95%',
-    label: 'Tỷ lệ có việc làm',
-    subtext: 'Bảo lãnh & giới thiệu tại MSB',
-    color: 'text-emerald-600',
-    glowBg: 'bg-emerald-500/10',
-    borderColor: 'border-emerald-200/80',
-    badgeColor: 'bg-emerald-50 text-emerald-700',
-    badgeText: 'Cam kết đầu ra',
-  },
-  {
-    icon: Award,
-    number: '100%',
-    label: 'Giảng viên Giám đốc Khối',
-    subtext: '20+ năm nghiệp vụ thực chiến',
-    color: 'text-amber-600',
-    glowBg: 'bg-amber-500/10',
-    borderColor: 'border-amber-200/80',
-    badgeColor: 'bg-amber-50 text-amber-700',
-    badgeText: 'Chuyên gia đầu ngành',
-  },
-  {
-    icon: PlayCircle,
-    number: 'Miễn phí',
-    label: 'Học thử Video YouTube',
-    subtext: 'Kiểm tra chất lượng trước khi mua',
-    color: 'text-rose-600',
-    glowBg: 'bg-rose-500/10',
-    borderColor: 'border-rose-200/80',
-    badgeColor: 'bg-rose-50 text-rose-700',
-    badgeText: 'Trải nghiệm ngay',
-  },
+/** The 4 figures under the headline (editable in /app → Nội dung trang chủ → Giới thiệu). */
+export const DEFAULT_INTRO_STATS: IntroStat[] = [
+  { number: '5.000+', label: 'Học viên đã tốt nghiệp', subtext: 'Gia nhập các Ngân hàng lớn', badge: 'Thực chiến' },
+  { number: '95%', label: 'Tỷ lệ có việc làm', subtext: 'Bảo lãnh & giới thiệu tại MSB', badge: 'Cam kết đầu ra' },
+  { number: '100%', label: 'Giảng viên Giám đốc Khối', subtext: '20+ năm nghiệp vụ thực chiến', badge: 'Chuyên gia đầu ngành' },
+  { number: 'Miễn phí', label: 'Học thử Video YouTube', subtext: 'Kiểm tra chất lượng trước khi mua', badge: 'Trải nghiệm ngay' }
 ];
+
+/** The tile of each course shelf (a tile shows only when its shelf has courses). */
+export const DEFAULT_INTRO_TILES: IntroTile[] = [
+  {
+    shelf: 'popular-shelf',
+    badge: 'Bán chạy nhất',
+    title: 'Khóa Học Nghiệp Vụ Bán Chạy',
+    subtitle: 'Nghiệp vụ tín dụng, thẩm định CIC và kỹ năng quan hệ khách hàng cá nhân & SME.',
+    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    shelf: 'ai-shelf',
+    badge: 'Xu hướng 2026',
+    title: 'Đột Phá Công Nghệ & AI',
+    subtitle: 'Khai mở Generative AI, AI Agents và tự động hóa quy trình nghiệp vụ ngân hàng hiện đại.',
+    image: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    shelf: 'certificates-shelf',
+    badge: 'Bảo lãnh việc làm',
+    title: 'Chứng Chỉ Nghề Nghiệp',
+    subtitle: 'Chứng chỉ chính thức được ngân hàng đối tác MSB và các tổ chức tài chính ưu tiên tuyển dụng.',
+    image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    shelf: 'degrees-shelf',
+    badge: 'Lộ trình chuyên sâu',
+    title: 'Bằng Cấp & Nâng Cao',
+    subtitle: 'Lộ trình chuẩn hóa theo khung năng lực quản trị từ cấp Chuyên viên đến Giám đốc Chi nhánh.',
+    image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80'
+  }
+];
+
+// Look of each figure / tile, by position (the text is content, the look is not).
+const STAT_STYLES = [
+  { icon: Users, color: 'text-[#0073C1]', glowBg: 'bg-blue-500/10', borderColor: 'border-blue-200/80', badgeColor: 'bg-blue-50 text-[#0073C1]' },
+  { icon: Briefcase, color: 'text-emerald-600', glowBg: 'bg-emerald-500/10', borderColor: 'border-emerald-200/80', badgeColor: 'bg-emerald-50 text-emerald-700' },
+  { icon: Award, color: 'text-amber-600', glowBg: 'bg-amber-500/10', borderColor: 'border-amber-200/80', badgeColor: 'bg-amber-50 text-amber-700' },
+  { icon: PlayCircle, color: 'text-rose-600', glowBg: 'bg-rose-500/10', borderColor: 'border-rose-200/80', badgeColor: 'bg-rose-50 text-rose-700' }
+];
+const TILE_STYLES: Record<string, { icon: React.ElementType; tagColor: string }> = {
+  'popular-shelf': { icon: TrendingUp, tagColor: 'bg-[#D7F5FF] text-[#0073C1] border-[#94D9FF]' },
+  'ai-shelf': { icon: Sparkles, tagColor: 'bg-purple-50 text-purple-700 border-purple-200' },
+  'certificates-shelf': { icon: ShieldCheck, tagColor: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'degrees-shelf': { icon: GraduationCap, tagColor: 'bg-amber-50 text-amber-700 border-amber-200' }
+};
 
 export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollToSection, shelfCounts = {} }) => {
   const eyebrow = introData?.eyebrow || 'TWINGS ACADEMY';
   const headline = introData?.headline || 'NÂNG TẦM NĂNG LỰC, KIẾN TẠO TƯƠNG LAI';
   const description = introData?.description || 'TWings Academy giúp bạn phát triển nhanh những năng lực thực tiễn, thích ứng với thị trường lao động không ngừng thay đổi và chủ động tiến xa trên hành trình sự nghiệp.';
 
-  const categoryTiles = [
-    {
-      id: 'popular-shelf',
-      badge: 'Bán chạy nhất',
-      title: 'Khóa Học Nghiệp Vụ Bán Chạy',
-      subtitle: 'Nghiệp vụ tín dụng, thẩm định CIC và kỹ năng quan hệ khách hàng cá nhân & SME.',
+  const statsList = (introData?.stats?.length ? introData.stats : DEFAULT_INTRO_STATS).filter((st) => st.number || st.label);
+  const stats = statsList.map((st, i) => ({ ...st, ...STAT_STYLES[i % STAT_STYLES.length] }));
+  const categoryTiles = DEFAULT_INTRO_TILES.map((d) => {
+    const own = introData?.tiles?.find((t) => t.shelf === d.shelf);
+    return {
+      id: d.shelf,
+      badge: own?.badge || d.badge,
+      title: own?.title || d.title,
+      subtitle: own?.subtitle || d.subtitle,
+      image: own?.image || d.image,
       coursesCount: '',
-      icon: TrendingUp,
-      accentColor: 'from-[#0073C1] to-[#0E6BBB]',
-      tagColor: 'bg-[#D7F5FF] text-[#0073C1] border-[#94D9FF]',
-      image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      id: 'ai-shelf',
-      badge: 'Xu hướng 2026',
-      title: 'Đột Phá Công Nghệ & AI',
-      subtitle: 'Khai mở Generative AI, AI Agents và tự động hóa quy trình nghiệp vụ ngân hàng hiện đại.',
-      coursesCount: '',
-      icon: Sparkles,
-      accentColor: 'from-purple-600 to-[#0073C1]',
-      tagColor: 'bg-purple-50 text-purple-700 border-purple-200',
-      image: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      id: 'certificates-shelf',
-      badge: 'Bảo lãnh việc làm',
-      title: 'Chứng Chỉ Nghề Nghiệp',
-      subtitle: 'Chứng chỉ chính thức được ngân hàng đối tác MSB và các tổ chức tài chính ưu tiên tuyển dụng.',
-      coursesCount: '',
-      icon: ShieldCheck,
-      accentColor: 'from-emerald-600 to-teal-600',
-      tagColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      id: 'degrees-shelf',
-      badge: 'Lộ trình chuyên sâu',
-      title: 'Bằng Cấp & Nâng Cao',
-      subtitle: 'Lộ trình chuẩn hóa theo khung năng lực quản trị từ cấp Chuyên viên đến Giám đốc Chi nhánh.',
-      coursesCount: '',
-      icon: GraduationCap,
-      accentColor: 'from-amber-600 to-orange-600',
-      tagColor: 'bg-amber-50 text-amber-700 border-amber-200',
-      image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80',
-    }
-  ];
+      icon: TILE_STYLES[d.shelf].icon,
+      tagColor: TILE_STYLES[d.shelf].tagColor
+    };
+  });
 
   // Only tiles whose shelf is on the page, with its real number of courses.
   const tiles = categoryTiles
@@ -156,8 +132,8 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
 
           {/* 4 Trust & Metrics Stat Cards directly under the headline */}
           <div className="pt-4 sm:pt-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto text-left">
-              {TRUST_STATS.map((stat, sIdx) => {
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-6xl mx-auto text-left ${stats.length >= 4 ? 'lg:grid-cols-4' : stats.length === 3 ? 'lg:grid-cols-3' : ''}`}>
+              {stats.map((stat, sIdx) => {
                 const Icon = stat.icon;
                 return (
                   <div 
@@ -169,7 +145,7 @@ export const IntroSection: React.FC<IntroSectionProps> = ({ introData, onScrollT
                         <Icon className="w-6 h-6" />
                       </div>
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${stat.badgeColor} border border-current/20`}>
-                        {stat.badgeText}
+                        {stat.badge}
                       </span>
                     </div>
                     <div>

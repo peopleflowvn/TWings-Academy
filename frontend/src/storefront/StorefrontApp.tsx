@@ -177,7 +177,7 @@ const ProgramDetail: React.FC<{ slug: string }> = ({ slug }) => {
 
   if (error) return <p className="text-sm text-slate-600">{error} <a href="/chuong-trinh" className="text-[#0073C1] font-bold">Xem các chương trình</a></p>;
   if (!program) return <Loading />;
-  const firstInstallment = installmentPreview(program.price, program.installmentCount)[0];
+  const firstInstallment = installmentPreview(program.price, program.installmentCount, program.installmentAmounts)[0];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

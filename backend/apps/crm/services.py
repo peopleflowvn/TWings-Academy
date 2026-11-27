@@ -116,22 +116,105 @@ def count_coupon_use(order: Order) -> None:
     Coupon.objects.filter(code=order.discount_code).update(usage_count=F("usage_count") + 1)
 
 
-def installment_amounts(amount: int, count: int) -> list[int]:
-    """Equal installments rounded down to 1.000đ; the first one carries the remainder."""
+def installment_amounts(amount: int, count: int, plan: list[int] | None = None) -> list[int]:
+    """
+    The installments of `amount`: the course's own plan (scaled to `amount` when the registration's price
+    differs) or equal parts, rounded down to 1.000đ; the first one carries the remainder.
+    """
     if count <= 1 or amount <= 0:
         return [amount]
+    if plan and len(plan) == count and sum(plan) > 0:
+        total = sum(plan)
+        if total == amount:
+            return list(plan)
+        rest = [(amount * part // total) // 1000 * 1000 for part in plan[1:]]
+        return [amount - sum(rest), *rest]
     base = (amount // count) // 1000 * 1000
     return [amount - base * (count - 1)] + [base] * (count - 1)
 
 
-def create_installments(order: Order, interval_days: int) -> None:
+def create_installments(order: Order, interval_days: int, plan: list[int] | None = None) -> None:
     start = timezone.localdate()
     Installment.objects.bulk_create(
         Installment(
             order=order, sequence=i + 1, amount=part, due_date=start + timedelta(days=interval_days * i)
         )
-        for i, part in enumerate(installment_amounts(order.total_receivable, order.installment_count))
+        for i, part in enumerate(installment_amounts(order.total_receivable, order.installment_count, plan))
     )
+
+
+class ScheduleError(ValueError):
+    pass
+
+
+@transaction.atomic
+def set_installment_schedule(request, order: Order, rows: list[dict]) -> Order:
+    """
+    Staff re-plan what a registration still pays (the learner asks for more time, another split, to pay
+    in installments after all…): the amounts and due dates of every installment. The total stays the
+    amount receivable; payments already received count from the first installment on, as always.
+    """
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    if order.parent_id:
+        raise ScheduleError("Đơn thành phần của chương trình: sửa trên đơn chương trình gốc.")
+    if order.status != "pending":
+        raise ScheduleError("Chỉ sửa lịch trả góp của đơn đang chờ đóng học phí.")
+    receivable = order.total_receivable or order.amount
+    if not 1 <= len(rows) <= 12:
+        raise ScheduleError("Từ 1 đến 12 kỳ.")
+    if any(r["amount"] <= 0 for r in rows):
+        raise ScheduleError("Mỗi kỳ phải có số tiền lớn hơn 0.")
+    total = sum(r["amount"] for r in rows)
+    if total != receivable:
+        vnd = lambda n: f"{n:,}đ".replace(",", ".")  # noqa: E731
+        raise ScheduleError(f"Tổng các kỳ ({vnd(total)}) phải bằng số phải thu ({vnd(receivable)}).")
+    dates = [r["due_date"] for r in rows]
+    if dates != sorted(dates):
+        raise ScheduleError("Hạn đóng các kỳ phải theo thứ tự thời gian.")
+    # A learner in class keeps their access: it comes from the first installment being paid.
+    if order.learning_access and (len(rows) == 1 or rows[0]["amount"] > order.total_paid_amount):
+        raise ScheduleError(
+            "Học viên đã vào học: giữ trả góp, với kỳ 1 không lớn hơn số đã đóng "
+            f"({order.total_paid_amount:,}đ).".replace(",", ".")
+        )
+
+    before = [(i.amount, i.due_date) for i in order.installments.order_by("sequence")]
+    order.installments.all().delete()
+    paid, running = order.total_paid_amount, 0
+    if len(rows) > 1:
+        now = timezone.now()
+        items = []
+        for n, r in enumerate(rows, start=1):
+            running += r["amount"]
+            items.append(
+                Installment(
+                    order=order,
+                    sequence=n,
+                    amount=r["amount"],
+                    due_date=r["due_date"],
+                    paid_at=now if paid >= running else None,
+                )
+            )
+        Installment.objects.bulk_create(items)
+    order.installment_count = len(rows)
+    order.save()  # learning access follows the first installment
+    plan = "; ".join(f"kỳ {n}: {r['amount']:,}đ hạn {r['due_date']:%d/%m/%Y}" for n, r in enumerate(rows, 1))
+    Activity.objects.create(
+        order=order,
+        type="payment",
+        title="Sửa lịch trả góp" if len(rows) > 1 else "Chuyển sang đóng một lần",
+        content=plan.replace(",", "."),
+        actor=request.user.name or request.user.email,
+        actor_user=request.user,
+    )
+    audit(
+        request,
+        "payment.installment_schedule",
+        order,
+        before=[[a, d.isoformat()] for a, d in before],
+        after=[[r["amount"], r["due_date"].isoformat()] for r in rows],
+    )
+    return order
 
 
 @transaction.atomic
@@ -228,7 +311,7 @@ def create_public_order(data: dict, consent: dict, *, with_payment: bool) -> Ord
     if existing is not None and with_payment:
         order.installments.all().delete()  # the plan follows the new checkout
     if installments > 1:
-        create_installments(order, item.installment_interval_days)
+        create_installments(order, item.installment_interval_days, item.installment_amounts)
     if with_payment and terms_accepted:
         from apps.cms.legal import UPDATED
 

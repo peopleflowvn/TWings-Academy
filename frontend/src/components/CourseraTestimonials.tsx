@@ -73,7 +73,7 @@ export const CourseraTestimonials: React.FC<CourseraTestimonialsProps> = ({ conf
         <div className="text-center space-y-2.5 max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold text-[#0073C1] uppercase tracking-wider bg-[#D7F5FF] px-3 py-1 rounded-full border border-[#94D9FF] shadow-2xs">
             <TrendingUp className="w-3.5 h-3.5 text-[#0073C1]" />
-            <span>Học viên nói gì</span>
+            <span>{config?.eyebrow || 'Học viên nói gì'}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#263060] tracking-tight leading-tight">
             {title}

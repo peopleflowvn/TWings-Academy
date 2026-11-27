@@ -26,7 +26,7 @@ export const CourseraFAQ: React.FC<CourseraFAQProps> = ({ config }) => {
         <div className="text-center space-y-2.5">
           <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold text-[#0073C1] uppercase tracking-wider bg-[#D7F5FF] px-3 py-1 rounded-full border border-[#94D9FF] shadow-2xs">
             <HelpCircle className="w-3.5 h-3.5 text-[#0073C1]" />
-            <span>Giải Đáp Thắc Mắc</span>
+            <span>{config?.eyebrow || 'Giải Đáp Thắc Mắc'}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#263060] tracking-tight leading-tight">
             {title}

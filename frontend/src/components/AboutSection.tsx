@@ -17,8 +17,8 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
   const subtitle = aboutData?.subtitle || 'HỌC VIỆN TIÊN PHONG TRONG MÔ HÌNH ĐÀO TẠO THỰC CHIẾN';
   const lead = aboutData?.lead || 'TWings Academy - Học viện tiên phong với mô hình đào tạo thực chiến trong lĩnh vực tài chính - ngân hàng, nay mở rộng hệ sinh thái học tập với các khóa học Short course: chương trình đào tạo ngắn hạn, tập trung, ứng dụng cao, giúp học viên nhanh chóng nắm bắt kiến thức trọng tâm và nâng cấp kỹ năng cần thiết cho học tập, công việc và định hướng nghề nghiệp.\n\nBên cạnh các khóa đào tạo thực chiến chuyên sâu, TWings Academy phát triển các khóa học Short course nhằm đáp ứng nhu cầu học nhanh, học đúng trọng tâm, học để ứng dụng ngay. Với triết lý "Học đi đôi với hành", các chương trình được thiết kế tinh gọn nhưng thực tiễn, cập nhật xu hướng mới trong ngành tài chính - ngân hàng và các kỹ năng nghề nghiệp hiện đại.';
 
-  // Highlight points for homepage cards
-  const highlights = [
+  // Highlight cards: from /app ("Tiêu đề | Mô tả" per line), else these.
+  const defaultHighlights = [
     {
       title: 'Mô hình đào tạo thực chiến',
       desc: 'Giảng dạy dựa trên case study nghiệp vụ thực tế từ ngân hàng thương mại và định chế tài chính.',
@@ -35,6 +35,13 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
       icon: ShieldCheck,
     }
   ];
+  const highlightIcons = [Briefcase, Sparkles, ShieldCheck];
+  const highlights = aboutData?.homeHighlights?.length
+    ? aboutData.homeHighlights.map((row, i) => {
+        const [t, d] = row.split('|').map((x) => x.trim());
+        return { title: t, desc: d || '', icon: highlightIcons[i % highlightIcons.length] };
+      })
+    : defaultHighlights;
 
   return (
     <section id="about-twings" className="py-12 sm:py-20 bg-slate-50 border-t border-b border-[#E1E6EA]">
@@ -65,7 +72,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
                   onClick={onNavigateToAbout}
                   className="px-6 py-3 bg-gradient-to-r from-[#FF6B35] to-[#EA580C] hover:from-[#FF7A47] hover:to-[#C23010] text-white font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg hover:shadow-orange-500/20 flex items-center justify-center gap-2 cursor-pointer hover:scale-102"
                 >
-                  <span>Tìm hiểu về TWings Academy</span>
+                  <span>{aboutData?.homePrimaryButton || 'Tìm hiểu về TWings Academy'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
@@ -73,7 +80,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
                   onClick={onOpenConsultation}
                   className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer backdrop-blur-md flex items-center justify-center hover:scale-102"
                 >
-                  Đăng ký tư vấn ngay
+                  {aboutData?.homeSecondaryButton || 'Đăng ký tư vấn ngay'}
                 </button>
               </div>
             </div>

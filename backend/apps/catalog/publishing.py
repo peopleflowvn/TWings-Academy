@@ -25,6 +25,7 @@ PRICE_FIELDS = (
     "original_price",
     "installment_count",
     "installment_interval_days",
+    "installment_amounts",
     "sale_ends_on",
 )
 

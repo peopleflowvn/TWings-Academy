@@ -34,6 +34,7 @@ import { CourseClassesPanel, useClasses } from '../../admin/pages/IntakesPage';
 import { viDateToIso } from '../../lib/serverCollection';
 import { useCrmLists } from '../../lib/crmLists';
 import { MultiListPicker } from './MultiListPicker';
+import { installmentPreview } from '../../lib/commerce';
 
 interface CMSCoursesTabProps {
   courses: Course[];
@@ -717,7 +718,7 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                   <select
                     disabled={priceLocked}
                     value={editForm.installmentCount || 1}
-                    onChange={(e) => setEditForm({ ...editForm, installmentCount: Number(e.target.value) })}
+                    onChange={(e) => setEditForm({ ...editForm, installmentCount: Number(e.target.value), installmentAmounts: [] })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl"
                   >
                     {[1, 2, 3, 4, 6].map((n) => (
@@ -737,6 +738,45 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
                     className="w-full p-2.5 border border-slate-300 rounded-xl disabled:bg-slate-50"
                   />
                 </div>
+                {(editForm.installmentCount || 1) > 1 && (() => {
+                  const n = editForm.installmentCount || 1;
+                  const price = editForm.price || 0;
+                  const own = (editForm.installmentAmounts || []).length === n;
+                  const parts = own ? editForm.installmentAmounts! : installmentPreview(price, n);
+                  const total = parts.reduce((s, v) => s + v, 0);
+                  const setPart = (i: number, v: number) => setEditForm({ ...editForm, installmentAmounts: parts.map((x, j) => (j === i ? v : x)) });
+                  return (
+                    <div className="sm:col-span-2 p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-slate-700">Số tiền từng kỳ</span>
+                        <label className="flex items-center gap-1 cursor-pointer">
+                          <input type="radio" disabled={priceLocked} checked={!own} onChange={() => setEditForm({ ...editForm, installmentAmounts: [] })} /> Chia đều
+                        </label>
+                        <label className="flex items-center gap-1 cursor-pointer">
+                          <input type="radio" disabled={priceLocked} checked={own} onChange={() => setEditForm({ ...editForm, installmentAmounts: installmentPreview(price, n) })} /> Tự nhập từng kỳ
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                        {parts.map((v, i) => (
+                          <label key={i} className="block">
+                            <span className="text-[11px] text-slate-500">Kỳ {i + 1}{i === 0 ? ' (mở khóa học)' : ''}</span>
+                            <input inputMode="numeric" disabled={!own || priceLocked} value={new Intl.NumberFormat('vi-VN').format(v)}
+                              onChange={(e) => setPart(i, Number(e.target.value.replace(/\D/g, '')) || 0)}
+                              className="w-full p-2 border border-slate-300 rounded-lg font-mono bg-white disabled:bg-slate-100" />
+                          </label>
+                        ))}
+                      </div>
+                      {own && total !== price && (
+                        <p className="text-red-600 font-bold text-[11px]">
+                          Tổng {formatVND(total)} chưa bằng học phí {formatVND(price)} ({total > price ? 'thừa' : 'thiếu'} {formatVND(Math.abs(total - price))}).
+                        </p>
+                      )}
+                      <p className="text-[11px] text-slate-500">
+                        Đăng ký ở giá khác (giá lớp, mã giảm giá) giữ đúng tỷ lệ giữa các kỳ. Lịch của từng học viên vẫn sửa riêng được trong hồ sơ đăng ký (tab Học phí).
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {/* Location text */}
                 <div className="sm:col-span-2">

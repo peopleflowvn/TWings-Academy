@@ -7,7 +7,8 @@ import {
   Plus,
   Trash2
 } from 'lucide-react';
-import { CMSSectionsConfig, FAQItem, Testimonial } from '../../types';
+import { CMSSectionsConfig, FAQItem, IntroStat, IntroTile, Testimonial } from '../../types';
+import { DEFAULT_INTRO_STATS, DEFAULT_INTRO_TILES } from '../IntroSection';
 import { ImageUploadField } from './ImageUploadField';
 import { FAQ_ITEMS } from '../../data/courseraData';
 
@@ -28,6 +29,14 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
   // Local text drafts for multiline array fields so pressing Enter at the end of a line works smoothly.
   const [statsText, setStatsText] = useState(() => (cmsSections.about?.stats || []).join('\n'));
   const [pillarsText, setPillarsText] = useState(() => (cmsSections.about?.pillars || []).join('\n'));
+  const HOME_HIGHLIGHTS_DEFAULT = [
+    'Mô hình đào tạo thực chiến | Giảng dạy dựa trên case study nghiệp vụ thực tế từ ngân hàng thương mại và định chế tài chính.',
+    'Hệ sinh thái Short Course | Thiết kế tinh gọn, học đúng trọng tâm, ứng dụng ngay vào công việc và định hướng nghề nghiệp.',
+    'Bảo lãnh nghề nghiệp | Cơ hội kết nối thực tập và tuyển dụng trực tiếp tại MSB Bank và hệ thống đối tác.'
+  ];
+  const [highlightsText, setHighlightsText] = useState(() =>
+    (cmsSections.about?.homeHighlights?.length ? cmsSections.about.homeHighlights : HOME_HIGHLIGHTS_DEFAULT).join('\n')
+  );
   const [missionText, setMissionText] = useState(() =>
     cmsSections.about?.mission?.length
       ? cmsSections.about.mission.join('\n')
@@ -43,6 +52,7 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
     setSections(cmsSections);
     setStatsText((cmsSections.about?.stats || []).join('\n'));
     setPillarsText((cmsSections.about?.pillars || []).join('\n'));
+    if (cmsSections.about?.homeHighlights?.length) setHighlightsText(cmsSections.about.homeHighlights.join('\n'));
     if (cmsSections.about?.mission?.length) setMissionText(cmsSections.about.mission.join('\n'));
     if (cmsSections.about?.coreValues?.length) setCoreValuesText(cmsSections.about.coreValues.join('\n'));
   }, [cmsSections]);
@@ -105,6 +115,22 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
     const next = buildGallerySection(photos);
     setSections(next);
     if (autoSave) void persistSections(next);
+  };
+
+  // Intro figures and shelf tiles: the website's defaults until edited once.
+  const introStats: IntroStat[] = sections.intro?.stats?.length ? sections.intro.stats : DEFAULT_INTRO_STATS;
+  const setIntroStats = (stats: IntroStat[]) => setSections({ ...sections, intro: { ...sections.intro, stats } });
+  const introTiles: IntroTile[] = DEFAULT_INTRO_TILES.map((d) => ({ ...d, ...(sections.intro?.tiles?.find((t) => t.shelf === d.shelf) || {}) }));
+  const setIntroTile = (shelf: string, patch: Partial<IntroTile>) =>
+    setSections({
+      ...sections,
+      intro: { ...sections.intro, tiles: introTiles.map((t) => (t.shelf === shelf ? { ...t, ...patch } : t)) }
+    });
+  const TILE_NAMES: Record<string, string> = {
+    'popular-shelf': 'Khay 1 – bán chạy',
+    'ai-shelf': 'Khay 2 – AI & đề xuất',
+    'certificates-shelf': 'Khay 3 – chứng chỉ / mới',
+    'degrees-shelf': 'Khay 4 – dài hạn / hữu ích'
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -310,6 +336,16 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
             duyệt ở mục Đánh giá của học viên sẽ tự hiện thêm sau các mục này.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className="font-bold text-slate-700 block mb-1">Nhãn nhỏ phía trên tiêu đề</label>
+              <input
+                type="text"
+                value={sections.testimonials?.eyebrow || ''}
+                placeholder="Học viên nói gì"
+                onChange={(e) => setTestimonialSection({ eyebrow: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl"
+              />
+            </div>
             <div>
               <label className="font-bold text-slate-700 block mb-1">Tiêu đề khối</label>
               <input
@@ -403,7 +439,7 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
       {activeSubSection === 'intro' && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-4 text-xs">
           <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">
-            Khối Giới Thiệu Cốt Lõi (PDF Trang 2: "NÂNG TẦM NĂNG LỰC, KIẾN TẠO TƯƠNG LAI")
+            Khối "NÂNG TẦM NĂNG LỰC, KIẾN TẠO TƯƠNG LAI": tiêu đề, thẻ số liệu và thẻ nhóm chương trình
           </h3>
 
           <div>
@@ -444,6 +480,51 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
               className="w-full p-2.5 border border-slate-300 rounded-xl leading-relaxed"
             />
           </div>
+
+          <div className="border-t border-slate-200 pt-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-sm text-slate-900">Thẻ số liệu dưới tiêu đề</h4>
+              {introStats.length < 6 && (
+                <button type="button" onClick={() => setIntroStats([...introStats, { number: '', label: '', subtext: '', badge: '' }])}
+                  className="px-2.5 py-1 rounded-lg border border-slate-300 font-bold flex items-center gap-1 cursor-pointer hover:bg-slate-50">
+                  <Plus className="w-3.5 h-3.5" /> Thêm thẻ
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500">Biểu tượng và màu theo thứ tự thẻ. Nên giữ 4 thẻ để vừa một hàng trên máy tính.</p>
+            {introStats.map((st, i) => (
+              <div key={i} className="grid grid-cols-1 sm:grid-cols-[110px_1fr_1fr_140px_auto] gap-2 items-center p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <input value={st.number} placeholder="Số liệu (5.000+)" onChange={(e) => setIntroStats(introStats.map((x, j) => (j === i ? { ...x, number: e.target.value } : x)))}
+                  className="p-2 border border-slate-300 rounded-lg font-black" />
+                <input value={st.label} placeholder="Tiêu đề" onChange={(e) => setIntroStats(introStats.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
+                  className="p-2 border border-slate-300 rounded-lg font-bold" />
+                <input value={st.subtext} placeholder="Dòng mô tả" onChange={(e) => setIntroStats(introStats.map((x, j) => (j === i ? { ...x, subtext: e.target.value } : x)))}
+                  className="p-2 border border-slate-300 rounded-lg" />
+                <input value={st.badge} placeholder="Nhãn góc" onChange={(e) => setIntroStats(introStats.map((x, j) => (j === i ? { ...x, badge: e.target.value } : x)))}
+                  className="p-2 border border-slate-300 rounded-lg" />
+                <button type="button" onClick={() => setIntroStats(introStats.filter((_, j) => j !== i))} title="Xóa thẻ"
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-slate-200 pt-4 space-y-3">
+            <h4 className="font-bold text-sm text-slate-900">Thẻ nhóm chương trình (dẫn xuống từng khay khóa học)</h4>
+            <p className="text-[11px] text-slate-500">Thẻ chỉ hiện khi khay tương ứng có khóa học; số khóa học tự đếm.</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {introTiles.map((t) => (
+                <div key={t.shelf} className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
+                  <div className="font-bold text-[#0073C1] uppercase text-[11px]">{TILE_NAMES[t.shelf]}</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={t.badge} placeholder="Nhãn" onChange={(e) => setIntroTile(t.shelf, { badge: e.target.value })} className="p-2 border border-slate-300 rounded-lg" />
+                    <input value={t.title} placeholder="Tiêu đề" onChange={(e) => setIntroTile(t.shelf, { title: e.target.value })} className="p-2 border border-slate-300 rounded-lg font-bold" />
+                  </div>
+                  <textarea rows={2} value={t.subtitle} placeholder="Mô tả" onChange={(e) => setIntroTile(t.shelf, { subtitle: e.target.value })} className="w-full p-2 border border-slate-300 rounded-lg" />
+                  <ImageUploadField label="Ảnh thẻ" value={t.image} onChange={(url) => setIntroTile(t.shelf, { image: url })} previewClassName="w-20 h-12 object-cover rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -453,6 +534,44 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
           <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">
             Tiêu Đề & Phụ Đề 4 Khay Khóa Học (Theo layout đính kèm PDF)
           </h3>
+
+          {/* Recruiting shelf */}
+          <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
+            <span className="font-bold text-[#0073C1] uppercase text-[11px]">Khay "Đang tuyển sinh" (các lớp đang nhận đăng ký)</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {([
+                ['badge', 'Nhãn nhỏ', 'Lớp sắp khai giảng'],
+                ['title', 'Tiêu đề', 'Đang tuyển sinh'],
+                ['subtitle', 'Mô tả phụ', 'Các lớp đang nhận đăng ký: ngày khai giảng, hạn đăng ký và số chỗ còn lại.']
+              ] as const).map(([key, label, ph]) => (
+                <div key={key}>
+                  <label className="font-bold text-slate-700 block mb-1">{label}</label>
+                  <input type="text" value={sections.recruiting?.[key] || ''} placeholder={ph}
+                    onChange={(e) => setSections({ ...sections, recruiting: { ...sections.recruiting, [key]: e.target.value } })}
+                    className="w-full p-2 border border-slate-300 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-3 rounded-2xl border border-blue-100 bg-blue-50/40 space-y-2">
+            <span className="font-bold text-slate-800 text-[11px] uppercase">Nhãn nhỏ phía trên tiêu đề từng khay</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+              {([
+                ['bestsellers', 'Khay 1', 'Khóa học & Chứng chỉ hàng đầu'],
+                ['recommended', 'Khay 2', 'Đột phá công nghệ 2026'],
+                ['newReleases', 'Khay 3', 'Khởi đầu sự nghiệp mới'],
+                ['mostUseful', 'Khay 4', 'Bằng cấp trực tuyến 100%']
+              ] as const).map(([key, label, ph]) => (
+                <div key={key}>
+                  <label className="font-bold text-slate-700 block mb-1">{label}</label>
+                  <input type="text" value={sections[key]?.badge || ''} placeholder={ph}
+                    onChange={(e) => setSections({ ...sections, [key]: { ...sections[key], enabled: sections[key]?.enabled ?? true, title: sections[key]?.title || '', badge: e.target.value } })}
+                    className="w-full p-2 border border-slate-300 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Shelf 1 */}
           <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
@@ -848,6 +967,34 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
               </div>
             ))}
           </div>
+
+          <div className="border-t border-slate-200 pt-4 space-y-3">
+            <h4 className="font-bold text-sm text-slate-900">Khối "Về TWings" trên trang chủ</h4>
+            <p className="text-[11px] text-slate-500">Dùng chung tiêu đề, dòng giới thiệu và nội dung ở trên; riêng các thẻ nổi bật và nút sửa tại đây.</p>
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Thẻ nổi bật (mỗi dòng: Tiêu đề | Mô tả)</label>
+              <textarea rows={4} value={highlightsText}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setHighlightsText(raw);
+                  setSections({ ...sections, about: { ...sections.about, homeHighlights: raw.split('\n').map((x) => x.trim()).filter(Boolean) } });
+                }}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs leading-relaxed" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {([
+                ['homePrimaryButton', 'Nút chính', 'Tìm hiểu về TWings Academy'],
+                ['homeSecondaryButton', 'Nút tư vấn', 'Đăng ký tư vấn ngay']
+              ] as const).map(([key, label, ph]) => (
+                <div key={key}>
+                  <label className="font-bold text-slate-700 block mb-1">{label}</label>
+                  <input type="text" value={sections.about?.[key] || ''} placeholder={ph}
+                    onChange={(e) => setSections({ ...sections, about: { ...sections.about, [key]: e.target.value } })}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -857,6 +1004,20 @@ export const CMSHomepageContentTab: React.FC<CMSHomepageContentTabProps> = ({
           <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">
             Giải Đáp Thắc Mắc & Câu Hỏi Thường Gặp (FAQ)
           </h3>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Nhãn nhỏ phía trên tiêu đề</label>
+            <input
+              type="text"
+              value={sections.faq?.eyebrow || ''}
+              placeholder="Giải Đáp Thắc Mắc"
+              onChange={(e) => setSections({
+                ...sections,
+                faq: { ...sections.faq, enabled: sections.faq?.enabled ?? true, title: sections.faq?.title || 'Giải Đáp Thắc Mắc Thường Gặp (FAQ)', eyebrow: e.target.value }
+              })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl"
+            />
+          </div>
 
           <div>
             <label className="font-bold text-slate-700 block mb-1">Tiêu đề khối FAQ</label>

@@ -25,7 +25,7 @@ export const priceFor = (course: Course, intake?: Intake) => intake?.price ?? co
 export function installmentLine(course: Course, price: number): string {
   const n = course.installmentCount || 1;
   if (n <= 1 || price <= 0) return '';
-  return `Trả góp ${n} kỳ · kỳ đầu ${vnd(installmentPreview(price, n)[0])}`;
+  return `Trả góp ${n} kỳ · kỳ đầu ${vnd(installmentPreview(price, n, course.installmentAmounts)[0])}`;
 }
 
 /** "Khai giảng dd/mm/yyyy · còn N chỗ" of one class (places only when staff show them). */

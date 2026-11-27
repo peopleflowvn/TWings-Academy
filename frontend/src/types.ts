@@ -259,6 +259,8 @@ export interface Course {
   checkoutOpen?: boolean;
   /** Pay-in-installments plan offered at checkout (1 = pay in full only). */
   installmentCount?: number;
+  /** Own amount of each installment (empty: equal parts). */
+  installmentAmounts?: number[];
   installmentIntervalDays?: number;
   /** Certificate requires at least this attendance % (0 = no requirement). */
   minAttendanceRate?: number;
@@ -673,6 +675,9 @@ export interface FAQItem {
   isExpandedByDefault?: boolean;
 }
 
+export interface IntroStat { number: string; label: string; subtext: string; badge: string }
+export interface IntroTile { shelf: string; badge: string; title: string; subtitle: string; image: string }
+
 export interface CMSSectionsConfig {
   hero: {
     enabled: boolean;
@@ -696,6 +701,8 @@ export interface CMSSectionsConfig {
     title: string;
     subtitle?: string;
     bgColor?: string;
+    /** The small tag above the shelf title. */
+    badge?: string;
   };
   trendingAI?: {
     enabled: boolean;
@@ -723,6 +730,7 @@ export interface CMSSectionsConfig {
     enabled: boolean;
     title: string;
     subtitle?: string;
+    eyebrow?: string;
     /** Entered in /app from TWings' own surveys (edited for the website). */
     items?: Testimonial[];
   };
@@ -735,6 +743,7 @@ export interface CMSSectionsConfig {
     enabled: boolean;
     title: string;
     subtitle?: string;
+    eyebrow?: string;
     items?: FAQItem[];
   };
   intro: { 
@@ -744,10 +753,16 @@ export interface CMSSectionsConfig {
     description?: string; 
     title?: string;
     buttonText?: string;
+    /** The figures under the headline (empty: the defaults in IntroSection). */
+    stats?: IntroStat[];
+    /** Text and image of each course-shelf tile (by shelf id). */
+    tiles?: IntroTile[];
   };
-  recommended: { enabled: boolean; title: string; subtitle?: string; bgColor?: string };
-  newReleases: { enabled: boolean; title: string; subtitle?: string; bgColor?: string };
-  mostUseful: { enabled: boolean; title: string; subtitle?: string; bgColor?: string };
+  /** The "Đang tuyển sinh" shelf (classes taking registrations). */
+  recruiting?: { title?: string; subtitle?: string; badge?: string };
+  recommended: { enabled: boolean; title: string; subtitle?: string; bgColor?: string; badge?: string };
+  newReleases: { enabled: boolean; title: string; subtitle?: string; bgColor?: string; badge?: string };
+  mostUseful: { enabled: boolean; title: string; subtitle?: string; bgColor?: string; badge?: string };
   instructors: { enabled: boolean; title: string; subtitle?: string; items: Instructor[] };
   gallery: { enabled: boolean; title: string; photos: GalleryPhoto[] };
   about: { 
@@ -786,6 +801,10 @@ export interface CMSSectionsConfig {
     ctaDescription?: string;
     ctaPrimaryButton?: string;
     ctaSecondaryButton?: string;
+    /** Homepage "about" block: its highlight cards ("Tiêu đề | Mô tả" per line) and buttons. */
+    homeHighlights?: string[];
+    homePrimaryButton?: string;
+    homeSecondaryButton?: string;
   };
   contact: {
     address?: string;

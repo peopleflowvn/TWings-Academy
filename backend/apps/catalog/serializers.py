@@ -84,8 +84,28 @@ class CourseSerializer(NormalizeListFields, serializers.ModelSerializer):
     def validate_syllabus(self, value):
         return _validate_syllabus(value)
 
+    def validate_installment_amounts(self, value):
+        if not isinstance(value, list) or any(not isinstance(v, int) or v < 0 for v in value):
+            raise serializers.ValidationError("Số tiền từng kỳ phải là số nguyên không âm.")
+        return value
+
     def validate(self, attrs):
         """A course on sale keeps the price it was approved with unless the user may set prices."""
+        plan = attrs.get("installment_amounts", getattr(self.instance, "installment_amounts", None)) or []
+        count = attrs.get("installment_count", getattr(self.instance, "installment_count", 1)) or 1
+        price = attrs.get("price", getattr(self.instance, "price", 0)) or 0
+        if plan and count > 1:
+            if len(plan) != count:
+                raise serializers.ValidationError(
+                    {"installment_amounts": f"Nhập đủ số tiền cho {count} kỳ (hoặc để trống: chia đều)."}
+                )
+            if sum(plan) != price:
+                total = f"{sum(plan):,}đ".replace(",", ".")
+                raise serializers.ValidationError(
+                    {"installment_amounts": f"Tổng các kỳ ({total}) phải bằng học phí."}
+                )
+        if count <= 1 and "installment_amounts" in attrs:
+            attrs["installment_amounts"] = []
         if "locations" in attrs:  # the address line follows the picked locations (none: none)
             attrs["location_text"] = " · ".join(attrs["locations"])[:300]
         get = lambda f: attrs.get(f, getattr(self.instance, f, None) if self.instance else None)  # noqa: E731

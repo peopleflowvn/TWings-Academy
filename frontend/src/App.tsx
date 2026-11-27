@@ -523,9 +523,9 @@ export default function App() {
               the course page on the class */}
           <CourseraShelf
             id="tuyen-sinh"
-            badgeTag="Lớp sắp khai giảng"
-            title="Đang tuyển sinh"
-            subtitle="Các lớp đang nhận đăng ký: ngày khai giảng, hạn đăng ký và số chỗ còn lại."
+            badgeTag={cmsSections.recruiting?.badge || 'Lớp sắp khai giảng'}
+            title={cmsSections.recruiting?.title || 'Đang tuyển sinh'}
+            subtitle={cmsSections.recruiting?.subtitle || 'Các lớp đang nhận đăng ký: ngày khai giảng, hạn đăng ký và số chỗ còn lại.'}
             classes={recruitingClasses(courses)}
             enrolledCourseIds={enrolledCourseIds}
             onSelectCourse={handleSelectCourse}
@@ -561,7 +561,7 @@ export default function App() {
           {!!visibleShelves['popular-shelf'] && (
             <CourseraShelf
               id="popular-shelf"
-              badgeTag="Khóa học & Chứng chỉ hàng đầu"
+              badgeTag={cmsSections.bestsellers?.badge || 'Khóa học & Chứng chỉ hàng đầu'}
               title={cmsSections.bestsellers?.title || 'Các khóa học và Chứng chỉ phổ biến nhất'}
               subtitle={cmsSections.bestsellers?.subtitle || 'Khóa học thực chiến nổi bật của TWings Academy, có lịch khai giảng và hỗ trợ trả góp.'}
               courses={mostPopularCourses}
@@ -577,7 +577,7 @@ export default function App() {
           {!!visibleShelves['ai-shelf'] && (
             <CourseraShelf
               id="ai-shelf"
-              badgeTag="Đột phá công nghệ 2026"
+              badgeTag={cmsSections.recommended?.badge || 'Đột phá công nghệ 2026'}
               title={cmsSections.recommended?.title || cmsSections.trendingAI?.title || 'Khám phá các khóa học AI & Công nghệ đột phá'}
               subtitle={cmsSections.recommended?.subtitle || cmsSections.trendingAI?.subtitle || 'Ứng dụng AI và công nghệ vào công việc tài chính – ngân hàng.'}
               courses={trendingAICourses}
@@ -596,7 +596,7 @@ export default function App() {
           {!!visibleShelves['certificates-shelf'] && (
             <CourseraShelf
               id="certificates-shelf"
-              badgeTag="Khởi đầu sự nghiệp mới"
+              badgeTag={cmsSections.newReleases?.badge || 'Khởi đầu sự nghiệp mới'}
               title={cmsSections.newReleases?.title || cmsSections.certificates?.title || 'Chứng chỉ chuyên môn'}
               subtitle={cmsSections.newReleases?.subtitle || cmsSections.certificates?.subtitle || 'Trang bị các kỹ năng nghề nghiệp thực tế có chứng chỉ được doanh nghiệp săn đón.'}
               courses={professionalCertificates}
@@ -620,7 +620,7 @@ export default function App() {
           {!!visibleShelves['degrees-shelf'] && (
             <CourseraShelf
               id="degrees-shelf"
-              badgeTag="Bằng cấp trực tuyến 100%"
+              badgeTag={cmsSections.mostUseful?.badge || 'Bằng cấp trực tuyến 100%'}
               title={cmsSections.mostUseful?.title || cmsSections.degrees?.title || 'Chương trình Cử nhân & Thạc sĩ từ các trường đại học uy tín'}
               subtitle={cmsSections.mostUseful?.subtitle || cmsSections.degrees?.subtitle || 'Chương trình học dài hạn cùng các trường đối tác.'}
               courses={degreePrograms}

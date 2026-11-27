@@ -151,6 +151,8 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   const [activeTab, setActiveTab] = useState<'profile' | 'contact' | 'timeline' | 'tasks' | 'payment' | 'training'>(payForStage ? 'payment' : 'profile');
   // A stage that follows the money was clicked: the payments tab asks for the tuition first.
   const [payTarget, setPayTarget] = useState<CRMStatus | null>(payForStage);
+  // Bumped when the installment plan changes: the payment box re-reads what is due now.
+  const [scheduleVersion, setScheduleVersion] = useState(0);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -1253,7 +1255,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
             {activeTab === 'payment' && (
               <div className="space-y-4 animate-fadeIn">
                 <LeadPaymentPanel
-                  key={`pay-${order.totalPaidAmount}`}
+                  key={`pay-${order.totalPaidAmount}-${scheduleVersion}`}
                   orderId={order.id}
                   onConfirmReceived={handleConfirmReceived}
                   targetStage={payTarget}
@@ -1261,7 +1263,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                   onDismissTarget={() => setPayTarget(null)}
                   onFastTracked={afterFastTrack}
                 />
-                <OrderBillingPanel key={`bill-${order.totalPaidAmount}`} orderId={order.id} />
+                <OrderBillingPanel key={`bill-${order.totalPaidAmount}`} orderId={order.id} onScheduleChanged={() => setScheduleVersion((v) => v + 1)} />
               </div>
             )}
 

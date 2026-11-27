@@ -230,6 +230,33 @@ class FastTrackView(APIView):
         )
 
 
+class InstallmentRowSerializer(serializers.Serializer):
+    amount = serializers.IntegerField(min_value=1)
+    due_date = serializers.DateField()
+
+
+class InstallmentScheduleSerializer(serializers.Serializer):
+    installments = InstallmentRowSerializer(many=True)
+
+
+class InstallmentScheduleView(APIView):
+    """Consultant or finance: re-plan a registration's installments (amounts, due dates, how many)."""
+
+    permission_classes = [require_perms("crm.record_payment", "finance.confirm_manual")]
+
+    def put(self, request, pk):
+        from apps.crm.services import ScheduleError, set_installment_schedule
+
+        order = get_object_or_404(Order, pk=pk)
+        ser = InstallmentScheduleSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            order = set_installment_schedule(request, order, ser.validated_data["installments"])
+        except ScheduleError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(order_billing(order, staff=True))
+
+
 class RestoreTransactionView(APIView):
     """Finance: credit an unmatched transfer, reopening the order cancelled at the end of its hold."""
 

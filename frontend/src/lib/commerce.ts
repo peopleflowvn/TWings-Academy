@@ -28,6 +28,7 @@ export interface Program {
   originalPrice: number;
   installmentCount: number;
   installmentIntervalDays: number;
+  installmentAmounts?: number[];
   courses: ProgramCourseSummary[];
   coursesTotalPrice: number;
   /** Staff only */
@@ -168,8 +169,18 @@ export const formatDate = (iso: string | null | undefined) =>
   iso ? new Date(iso.length === 10 ? `${iso}T00:00:00` : iso).toLocaleDateString('vi-VN') : '';
 
 /** Same split as the server (crm.services.installment_amounts): equal parts, the first carries the remainder. */
-export function installmentPreview(amount: number, count: number): number[] {
+/**
+ * The installments of `amount` (same rule as the server): the course's own plan, scaled to `amount` when the
+ * price differs (class price, coupon), or equal parts; rounded down to 1.000đ, the first one carries the rest.
+ */
+export function installmentPreview(amount: number, count: number, plan?: number[] | null): number[] {
   if (count <= 1 || amount <= 0) return [amount];
+  const total = (plan || []).reduce((s, v) => s + v, 0);
+  if (plan && plan.length === count && total > 0) {
+    if (total === amount) return [...plan];
+    const rest = plan.slice(1).map((part) => Math.floor((amount * part) / total / 1000) * 1000);
+    return [amount - rest.reduce((s, v) => s + v, 0), ...rest];
+  }
   const base = Math.floor(amount / count / 1000) * 1000;
   return [amount - base * (count - 1), ...Array(count - 1).fill(base)];
 }

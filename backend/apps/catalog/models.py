@@ -87,6 +87,9 @@ class InstallmentPlan(models.Model):
     installment_interval_days = models.PositiveSmallIntegerField(
         default=30, validators=[MinValueValidator(7), MaxValueValidator(180)]
     )
+    # Optional own amount of each installment (VND, one per installment), e.g. a bigger first one. Empty:
+    # equal parts. A registration at another price (class price, coupon) keeps the proportions.
+    installment_amounts = models.JSONField(default=list, blank=True)
 
     class Meta:
         abstract = True
