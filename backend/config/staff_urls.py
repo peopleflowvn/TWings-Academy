@@ -18,7 +18,7 @@ from apps.catalog.views import (
 from apps.cms.views import ArticleViewSet, HeroBannerViewSet, SiteConfigViewSet
 from apps.core.dashboard import BackgroundTasksView, DashboardView, RetryBackgroundTaskView, SystemHealthView
 from apps.core.reports import ReportsView
-from apps.core.uploads import FontUploadView, ImageUploadView
+from apps.core.uploads import FontUploadView, ImageImportView, ImageUploadView
 from apps.core.views import AuditLogViewSet
 from apps.crm.learner_views import LearnerMatchViewSet, LearnerViewSet
 from apps.crm.list_views import (
@@ -98,6 +98,7 @@ urlpatterns = [
     path("emails/settings/check/", EmailConnectionCheckView.as_view(), name="staff-email-check"),
     path("emails/stats/", EmailStatsView.as_view(), name="staff-email-stats"),
     path("uploads/images/", ImageUploadView.as_view(), name="staff-image-upload"),
+    path("uploads/images/import/", ImageImportView.as_view(), name="staff-image-import"),
     path("uploads/fonts/", FontUploadView.as_view(), name="staff-font-upload"),
     path(
         "orders/<str:pk>/confirm-payment/", ConfirmManualPaymentView.as_view(), name="staff-confirm-payment"

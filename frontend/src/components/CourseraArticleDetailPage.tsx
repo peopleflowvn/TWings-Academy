@@ -16,7 +16,7 @@ import {
   Clock
 } from 'lucide-react';
 import { ShareButtons } from './ShareButtons';
-import { MarkdownContent } from './MarkdownContent';
+import { ArticleBody } from './ArticleBody';
 import { Article, Course } from '../types';
 import { routePath } from '../lib/routes';
 import { articleDate, readingMinutes } from '../lib/articles';
@@ -116,7 +116,7 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
         <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200 bg-slate-100 max-h-[460px]">
           <img fetchPriority="high"
             src={article.featuredImage}
-            alt={article.title}
+            alt={article.featuredImageAlt || article.title}
             className="w-full h-full object-cover"
           />
         </div>
@@ -128,7 +128,7 @@ export const CourseraArticleDetailPage: React.FC<CourseraArticleDetailPageProps>
 
         {/* Article Full Content (Rich Markdown typography) */}
         <div className="bg-white p-6 sm:p-10 rounded-3xl border border-slate-200 shadow-2xs">
-          <MarkdownContent content={article.content} />
+          <ArticleBody content={article.content} />
         </div>
 
         {/* Tags */}

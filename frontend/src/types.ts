@@ -479,6 +479,12 @@ export interface Article {
   status: 'published' | 'draft' | 'scheduled';
   tags: string[];
   viewsCount: number;
+  /** Shown first in the news list. */
+  isFeatured?: boolean;
+  featuredImageAlt?: string;
+  /** Staff: live on the site now (published, or scheduled and due). */
+  isPublic?: boolean;
+  updatedAt?: string;
 
   // SEO Fields
   metaTitle: string;

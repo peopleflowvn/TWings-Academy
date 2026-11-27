@@ -7,6 +7,10 @@ ALLOWED_TAGS = {
     "abbr",
     "b",
     "blockquote",
+    "caption",
+    "col",
+    "colgroup",
+    "del",
     "br",
     "code",
     "div",
@@ -23,9 +27,11 @@ ALLOWED_TAGS = {
     "i",
     "img",
     "li",
+    "mark",
     "ol",
     "p",
     "pre",
+    "s",
     "span",
     "strong",
     "sub",
@@ -40,11 +46,24 @@ ALLOWED_TAGS = {
     "ul",
 }
 ALLOWED_ATTRIBUTES = {
-    "*": {"class"},
+    "*": {"class", "style"},
     "a": {"href", "title", "target"},
     "img": {"src", "alt", "title", "width", "height", "loading"},
-    "td": {"colspan", "rowspan"},
-    "th": {"colspan", "rowspan"},
+    "td": {"colspan", "rowspan", "colwidth"},
+    "th": {"colspan", "rowspan", "colwidth"},
+    "col": {"span"},
+}
+# Inline styles the article editor writes (alignment, text / highlight colour, table and image width);
+# every other property (position, url(), expression...) is dropped.
+ALLOWED_STYLES = {
+    "text-align",
+    "color",
+    "background-color",
+    "width",
+    "min-width",
+    "max-width",
+    "height",
+    "font-size",
 }
 
 
@@ -56,5 +75,6 @@ def sanitize_html(value: str) -> str:
         tags=ALLOWED_TAGS,
         attributes=ALLOWED_ATTRIBUTES,
         url_schemes={"http", "https", "mailto", "tel"},
+        filter_style_properties=ALLOWED_STYLES,
         link_rel="noopener noreferrer nofollow",
     )

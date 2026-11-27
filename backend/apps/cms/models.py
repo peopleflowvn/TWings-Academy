@@ -19,6 +19,9 @@ class Article(BaseModel):
     published_at = models.DateTimeField(null=True, blank=True)
     tags = models.JSONField(default=list, blank=True)
     views_count = models.PositiveIntegerField(default=0)
+    # Shown first in the news list (and its top story).
+    is_featured = models.BooleanField(default=False)
+    featured_image_alt = models.CharField(max_length=250, blank=True)
 
     meta_title = models.CharField(max_length=200, blank=True)
     meta_description = models.CharField(max_length=320, blank=True)
@@ -44,6 +47,26 @@ class Article(BaseModel):
         return self.status == "published" or (
             self.status == "scheduled" and self.published_at and self.published_at <= timezone.now()
         )
+
+
+class ArticleRevision(models.Model):
+    """What an article was before a save (title, excerpt, content), to compare and restore. Last 30 kept."""
+
+    KEEP = 30
+
+    article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="revisions")
+    title = models.CharField(max_length=300)
+    excerpt = models.TextField(blank=True)
+    content = models.TextField(blank=True)
+    status = models.CharField(max_length=20, blank=True)
+    saved_by = models.CharField(max_length=150, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.article_id} @ {self.created_at:%Y-%m-%d %H:%M}"
 
 
 class PageViewDaily(models.Model):

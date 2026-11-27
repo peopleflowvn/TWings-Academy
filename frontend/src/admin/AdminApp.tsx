@@ -62,7 +62,8 @@ import { CMSInstructorsTab } from '../components/cms/CMSInstructorsTab';
 import { CMSLmsTab } from '../components/cms/CMSLmsTab';
 import { CMSHomepageContentTab } from '../components/cms/CMSHomepageContentTab';
 import { CMSPartnersTab } from '../components/cms/CMSPartnersTab';
-import { CMSArticlesSEOTab } from '../components/cms/CMSArticlesSEOTab';
+// The article editor (TipTap) is loaded only when the articles page opens.
+const CMSArticlesSEOTab = React.lazy(() => import('../components/cms/CMSArticlesSEOTab').then((m) => ({ default: m.CMSArticlesSEOTab })));
 import { CMSSiteSEOSettingsTab } from '../components/cms/CMSSiteSEOSettingsTab';
 import { CMSEmailTemplatesTab } from '../components/cms/CMSEmailTemplatesTab';
 import { CMSUsersTab } from '../components/cms/CMSUsersTab';
@@ -463,7 +464,11 @@ const Workspace: React.FC<{ user: AdminUser; logout: () => void }> = ({ user, lo
       case '/content/layout':
         return waitHomepage || <LayoutPage sectionsState={homepage.sections} handleToggleSection={toggleSection} />;
       case '/content/articles':
-        return <CMSArticlesSEOTab />;
+        return (
+          <React.Suspense fallback={<div className="p-10 text-center text-xs text-slate-500">Đang tải trình soạn thảo…</div>}>
+            <CMSArticlesSEOTab />
+          </React.Suspense>
+        );
       case '/content/seo':
         return <CMSSiteSEOSettingsTab />;
       case '/content/email':
