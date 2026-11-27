@@ -6,7 +6,8 @@ import {
 import { api, Paginated } from '../../lib/api';
 import { useCrmLists, withCurrent } from '../../lib/crmLists';
 import { StaffUserContext, useStaffCan } from '../../lib/lms';
-import { ArticleBody } from '../ArticleBody';
+import { ArticleBody, isHtml } from '../ArticleBody';
+import { markdownToHtml } from '../../lib/articles';
 import { ImageUploadField } from './ImageUploadField';
 import { RichTextEditor } from './RichTextEditor';
 
@@ -78,7 +79,8 @@ const fromServer = (d: Record<string, any>): Form => ({ // eslint-disable-line @
   title: d.title || '',
   slug: d.slug || '',
   excerpt: d.excerpt || '',
-  content: d.content || '',
+  // Older articles are Markdown / plain text: opened as HTML, their lines and headings are kept.
+  content: d.content && !isHtml(d.content) ? markdownToHtml(d.content) : d.content || '',
   category: d.category || '',
   author: d.author || '',
   featuredImage: d.featuredImage || '',
