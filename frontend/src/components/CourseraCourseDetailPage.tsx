@@ -194,10 +194,19 @@ export const CourseraCourseDetailPage: React.FC<CourseraCourseDetailPageProps> =
                 <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
                   {course.overview || course.description || course.subtitle}
                 </p>
-                {course.locationText && (
-                  <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    <MapPin className="w-4 h-4 text-[#0073C1] shrink-0" />
-                    <span><strong>Địa điểm đào tạo:</strong> {course.locationText}</span>
+                {(course.locations?.length || course.locationText) && (
+                  <div className="flex items-start gap-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <MapPin className="w-4 h-4 text-[#0073C1] shrink-0 mt-0.5" />
+                    {course.locations && course.locations.length > 1 ? (
+                      <div>
+                        <strong>Địa điểm đào tạo:</strong>
+                        <ul className="mt-1 space-y-0.5 list-disc pl-4">
+                          {course.locations.map((l) => <li key={l}>{l}</li>)}
+                        </ul>
+                      </div>
+                    ) : (
+                      <span><strong>Địa điểm đào tạo:</strong> {course.locations?.[0] || course.locationText}</span>
+                    )}
                   </div>
                 )}
               </section>

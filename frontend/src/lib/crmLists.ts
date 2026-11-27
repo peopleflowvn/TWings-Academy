@@ -20,6 +20,8 @@ export interface CrmLists {
   msbUnits: string[];
   courseCategories: string[];
   courseLevels: string[];
+  /** Training locations a course picks (several allowed). */
+  trainingLocations: string[];
   pics: string[];
   /** The CRM stages, hidden ones included (lib/stages.ts). */
   stages: StageDef[];
@@ -37,6 +39,7 @@ export const DEFAULT_LISTS: CrmLists = {
   msbUnits: [],
   courseCategories: [],
   courseLevels: [],
+  trainingLocations: [],
   pics: [],
   stages: DEFAULT_STAGES
 };

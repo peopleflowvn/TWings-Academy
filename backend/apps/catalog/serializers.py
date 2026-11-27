@@ -58,7 +58,7 @@ def public_syllabus(syllabus):
 class CourseSerializer(NormalizeListFields, serializers.ModelSerializer):
     """Staff serializer: full content, instructors written by id."""
 
-    list_fields = {"category": "course_category", "level": "course_level"}
+    list_fields = {"category": "course_category", "level": "course_level", "locations": "training_location"}
 
     instructor_ids = serializers.PrimaryKeyRelatedField(
         source="instructors", many=True, queryset=Instructor.objects.all(), required=False
@@ -86,6 +86,8 @@ class CourseSerializer(NormalizeListFields, serializers.ModelSerializer):
 
     def validate(self, attrs):
         """A course on sale keeps the price it was approved with unless the user may set prices."""
+        if "locations" in attrs:  # the address line follows the picked locations (none: none)
+            attrs["location_text"] = " · ".join(attrs["locations"])[:300]
         get = lambda f: attrs.get(f, getattr(self.instance, f, None) if self.instance else None)  # noqa: E731
         price, original, ends = get("price") or 0, get("original_price") or 0, get("sale_ends_on")
         if original > price and ends and original > 2 * price:

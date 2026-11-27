@@ -231,7 +231,9 @@ export interface Course {
   type?: CourseType;
   level: CourseLevel;
   deliveryFormat?: CourseDeliveryFormat; // offline | hybrid | online_external_lms
-  locationText?: string; // e.g. "Tòa ROX Tower, 54A Nguyễn Chí Thanh, Hà Nội"
+  locationText?: string; // e.g. "Tòa ROX Tower, 54A Nguyễn Chí Thanh, Hà Nội" (built from `locations`)
+  /** Training locations picked from the list (/app → Danh mục), in order. */
+  locations?: string[];
   /** Public API: average of approved learner reviews (0 when none) and their number. */
   rating: number;
   reviewsCount: number;

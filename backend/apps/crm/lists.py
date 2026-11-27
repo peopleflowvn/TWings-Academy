@@ -34,6 +34,7 @@ class Kind:
     fields: tuple  # ("app.Model", "field") it fills
     hint: str = ""
     coded: bool = False  # the records hold ListItem.code, not the value (the CRM stages)
+    multi: bool = False  # the field is a JSON list: a record may hold several values (training locations)
 
 
 CRM, PROFILE, CONTENT = "CRM & tuyển sinh", "Hồ sơ học viên", "Khóa học & nội dung"
@@ -87,6 +88,16 @@ KINDS = [
         "Dùng chung cho lĩnh vực khóa học và chuyên mục bài viết; website lọc theo danh mục này.",
     ),
     Kind("course_level", "Cấp độ khóa học", CONTENT, "courseLevels", (("catalog.Course", "level"),)),
+    Kind(
+        "training_location",
+        "Địa điểm / địa chỉ đào tạo",
+        CONTENT,
+        "trainingLocations",
+        (("catalog.Course", "locations"),),
+        "Khóa học chọn một hoặc nhiều địa điểm; trang khóa học hiển thị theo thứ tự chọn. Đổi tên ở đây "
+        "cập nhật mọi khóa học đang dùng.",
+        multi=True,
+    ),
 ]
 KIND = {k.key: k for k in KINDS}
 
@@ -176,6 +187,7 @@ COURSE_CATEGORIES = [
     "Dữ Liệu & Phân Tích",
     "Chứng chỉ Chuyên môn",
 ]
+TRAINING_LOCATIONS = ["Học trực tuyến (LMS)", "Tòa ROX Tower, 54A Nguyễn Chí Thanh, Hà Nội"]
 COURSE_LEVELS = [
     "Người mới bắt đầu",
     "Chuyên viên Mới (Fresher)",
@@ -204,6 +216,7 @@ def defaults() -> dict[str, list[str]]:
         "msb_unit": _reference()["msb_units"],
         "course_category": COURSE_CATEGORIES,
         "course_level": COURSE_LEVELS,
+        "training_location": TRAINING_LOCATIONS,
     }
 
 
@@ -304,6 +317,8 @@ def max_length(kind: str) -> int:
     """The longest value every field of the list can hold."""
     if KIND[kind].coded:
         return 60  # a name only: the records hold the code
+    if KIND[kind].multi:
+        return 200  # one value of a JSON list
     return min(_model(label)._meta.get_field(field).max_length for label, field in KIND[kind].fields)
 
 
@@ -325,6 +340,12 @@ def usage(kind: str) -> dict[str, int]:
                 value = name.get(row[field], row[field])
                 counts[value] = counts.get(value, 0) + row["n"]
         return counts
+    if KIND[kind].multi:
+        for label, field in KIND[kind].fields:
+            for held in _model(label).objects.values_list(field, flat=True):
+                for value in set(held or []):
+                    counts[value] = counts.get(value, 0) + 1
+        return counts
     for label, field in KIND[kind].fields:
         rows = _model(label).objects.exclude(**{field: ""}).values(field).annotate(n=Count("pk"))
         for row in rows:
@@ -338,6 +359,15 @@ def replace_in_records(kind: str, old: str, new: str) -> int:
         return 0  # the records hold the code: a new name changes none of them
     changed = 0
     for label, field in KIND[kind].fields:
+        if KIND[kind].multi:
+            for record in _model(label).objects.all():
+                held = getattr(record, field) or []
+                if old in held:
+                    # Saved through the model: what is built from the list (Course.location_text) follows.
+                    setattr(record, field, list(dict.fromkeys(new if v == old else v for v in held)))
+                    record.save(update_fields=[field])
+                    changed += 1
+            continue
         changed += _model(label).objects.filter(**{field: old}).update(**{field: new})
     return changed
 
@@ -384,6 +414,11 @@ class NormalizeListFields:
         attrs = super().to_internal_value(data)
         errors = {}
         for field, kind in self.list_fields.items():
+            if isinstance(attrs.get(field), list):  # a multi-value list field: each value, once
+                items = values(kind, include_hidden=True)
+                held = [normalize(kind, v, items) for v in attrs[field] if isinstance(v, str)]
+                attrs[field] = list(dict.fromkeys(v for v in held if v))
+                continue
             if not isinstance(attrs.get(field), str):
                 continue
             items = values(kind, include_hidden=True)

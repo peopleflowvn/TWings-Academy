@@ -112,6 +112,9 @@ class Course(InstallmentPlan, BaseModel):
     level = models.CharField(max_length=100, blank=True)
     delivery_format = models.CharField(max_length=32, choices=DELIVERY_CHOICES, blank=True)
     location_text = models.CharField(max_length=300, blank=True)
+    # Picked from the "training_location" list (/app → Danh mục), several allowed; location_text is
+    # written from them (the public page, SEO and search read it).
+    locations = models.JSONField(default=list, blank=True)
     category = models.CharField(max_length=100, blank=True)
     career_role = models.CharField(max_length=200, blank=True)
     badge_section = models.CharField(max_length=50, blank=True)
@@ -167,8 +170,10 @@ class Course(InstallmentPlan, BaseModel):
 
     def save(self, *args, **kwargs):
         self.is_published = self.status == "published"
+        if self.locations:
+            self.location_text = " · ".join(self.locations)[:300]
         if "update_fields" in kwargs and kwargs["update_fields"] is not None:
-            kwargs["update_fields"] = {*kwargs["update_fields"], "is_published"}
+            kwargs["update_fields"] = {*kwargs["update_fields"], "is_published", "location_text"}
         super().save(*args, **kwargs)
         sync_registration_names(course=self)
 

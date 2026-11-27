@@ -33,6 +33,7 @@ import { navigate, useAppSearch } from '../../admin/router';
 import { CourseClassesPanel, useClasses } from '../../admin/pages/IntakesPage';
 import { viDateToIso } from '../../lib/serverCollection';
 import { useCrmLists } from '../../lib/crmLists';
+import { MultiListPicker } from './MultiListPicker';
 
 interface CMSCoursesTabProps {
   courses: Course[];
@@ -739,13 +740,13 @@ export const CMSCoursesTab: React.FC<CMSCoursesTabProps> = ({
 
                 {/* Location text */}
                 <div className="sm:col-span-2">
-                  <label className="font-bold text-slate-700 block mb-1">Địa điểm / Địa chỉ đào tạo</label>
-                  <input
-                    type="text"
-                    value={editForm.locationText || ''}
-                    onChange={(e) => setEditForm({ ...editForm, locationText: e.target.value })}
-                    className="w-full p-2.5 border border-slate-300 rounded-xl"
-                    placeholder="VD: 54A Nguyễn Chí Thanh, Hà Nội · hoặc: Học trên LMS"
+                  <label className="font-bold text-slate-700 block mb-1">Địa điểm / Địa chỉ đào tạo (chọn một hoặc nhiều)</label>
+                  <MultiListPicker
+                    options={lists.trainingLocations}
+                    value={editForm.locations || []}
+                    onChange={(locations) => setEditForm({ ...editForm, locations, locationText: locations.join(' · ') })}
+                    placeholder="Lọc địa điểm…"
+                    manageHint="Thêm / sửa địa điểm tại Hệ thống → Danh mục → “Địa điểm / địa chỉ đào tạo”. Website hiển thị theo thứ tự chọn."
                   />
                 </div>
 
