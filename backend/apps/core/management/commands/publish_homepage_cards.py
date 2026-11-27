@@ -139,11 +139,13 @@ class Command(BaseCommand):
                         "show_overlay_text": False,
                         "show_overlay_button": False,
                         "sort_order": card["sort"],
-                        "is_active": True,
+                        "status": "published",
+                        "starts_at": None,
+                        "ends_at": None,
                     },
                 )
 
-        active = HeroBanner.objects.filter(id__in=[card["id"] for card in CARDS], is_active=True).count()
+        active = HeroBanner.objects.live().filter(id__in=[card["id"] for card in CARDS]).count()
         if active != len(CARDS):
             raise CommandError(f"Expected {len(CARDS)} active homepage cards, got {active}.")
         self.stdout.write(self.style.SUCCESS(f"Published {active} homepage hero cards."))

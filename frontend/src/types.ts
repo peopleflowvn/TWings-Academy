@@ -620,6 +620,12 @@ export interface HeroBannerItem {
   showOverlayText?: boolean;
   showOverlayButton?: boolean;
   sortOrder?: number;
+  /** Draft (hidden), shown, or shown from `startsAt`; hidden again after `endsAt` if set. */
+  status?: 'draft' | 'published' | 'scheduled';
+  startsAt?: string | null;
+  endsAt?: string | null;
+  /** From the server: on the homepage now. */
+  isLive?: boolean;
 }
 
 

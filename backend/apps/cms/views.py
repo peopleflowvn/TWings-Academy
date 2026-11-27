@@ -55,7 +55,9 @@ class PublicBannerViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     authentication_classes = []
     serializer_class = HeroBannerSerializer
     pagination_class = None
-    queryset = HeroBanner.objects.filter(is_active=True)
+
+    def get_queryset(self):
+        return HeroBanner.objects.live()
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)

@@ -147,7 +147,11 @@ export const BANNERS: CollectionOptions<HeroBannerItem> = {
     linkUrl: d.linkUrl || d.link_url || '',
     targetBlank: !!(d.targetBlank ?? d.target_blank),
     showOverlayText: !!(d.showOverlayText ?? d.show_overlay_text),
-    showOverlayButton: !!(d.showOverlayButton ?? d.show_overlay_button)
+    showOverlayButton: !!(d.showOverlayButton ?? d.show_overlay_button),
+    status: d.status || 'draft',
+    startsAt: d.startsAt || null,
+    endsAt: d.endsAt || null,
+    isLive: !!d.isLive
   }),
   toServer: (b) => ({
     title: b.title,
@@ -182,8 +186,9 @@ export const BANNERS: CollectionOptions<HeroBannerItem> = {
     show_overlay_text: !!b.showOverlayText,
     showOverlayButton: !!b.showOverlayButton,
     show_overlay_button: !!b.showOverlayButton,
-    isActive: true,
-    is_active: true
+    status: b.status || 'draft',
+    startsAt: b.status === 'scheduled' ? b.startsAt || null : null,
+    endsAt: b.endsAt || null
   })
 };
 

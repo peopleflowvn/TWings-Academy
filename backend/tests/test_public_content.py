@@ -69,11 +69,6 @@ def test_seed_content_does_not_create_demo_products_by_default():
 
 
 def test_demo_banners_and_seo_placeholders_are_cleaned(settings):
-    keep = HeroBanner.objects.create(title="Đột phá Sự nghiệp Ngân hàng Thực chiến")
-    demo = HeroBanner.objects.create(title="Learn AI from the companies building it")
-    _migration("cms", "0002_hide_demo_banners").hide_demo_banners(django_apps, None)
-    assert HeroBanner.objects.get(pk=keep.pk).is_active and not HeroBanner.objects.get(pk=demo.pk).is_active
-
     SiteConfig.objects.create(
         key=SiteConfig.KEY_SITE_SEO,
         data={
@@ -201,11 +196,6 @@ def test_course_editor_saves_instructors_by_id(course, staff_client, api):
 
 
 def test_demo_banners_hidden_again_and_coursera_wording_removed():
-    back = HeroBanner.objects.create(title="Learn AI from the companies building it", is_active=True)
-    real = HeroBanner.objects.create(title="Đột phá Sự nghiệp Ngân hàng Thực chiến", is_active=True)
-    _migration("cms", "0004_hide_demo_banners_again").hide_demo_banners(django_apps, None)
-    assert not HeroBanner.objects.get(pk=back.pk).is_active and HeroBanner.objects.get(pk=real.pk).is_active
-
     from apps.notifications.models import EmailTemplate
 
     fix = _migration("notifications", "0002_remove_coursera_wording")
@@ -238,11 +228,11 @@ def test_demo_banners_hidden_again_and_coursera_wording_removed():
 
 
 def test_demo_banners_are_deleted_for_good():
-    demo = HeroBanner.objects.create(title="Learn AI from the companies building it", is_active=True)
-    real = HeroBanner.objects.create(title="Đột phá Sự nghiệp Ngân hàng Thực chiến", is_active=True)
+    demo = HeroBanner.objects.create(title="Learn AI from the companies building it", status="published")
+    real = HeroBanner.objects.create(title="Đột phá Sự nghiệp Ngân hàng Thực chiến", status="published")
     _migration("cms", "0005_delete_demo_banners").delete_demo_banners(django_apps, None)
     assert not HeroBanner.objects.filter(pk=demo.pk).exists()
-    assert HeroBanner.objects.get(pk=real.pk).is_active
+    assert HeroBanner.objects.filter(pk=real.pk).exists()
 
 
 def test_hero_banner_card_template_sort_order_and_no_cache(client):
@@ -250,7 +240,7 @@ def test_hero_banner_card_template_sort_order_and_no_cache(client):
         title="Banner 2 Cyber Glow",
         card_template="cyber_glow",
         sort_order=2,
-        is_active=True,
+        status="published",
         show_overlay_text=True,
         show_overlay_button=True,
     )
@@ -258,7 +248,7 @@ def test_hero_banner_card_template_sort_order_and_no_cache(client):
         title="Banner 1 Modern Split",
         card_template="modern_split",
         sort_order=1,
-        is_active=True,
+        status="published",
     )
     res = client.get("/api/v1/public/banners/")
     assert res.status_code == 200

@@ -111,7 +111,20 @@ class CrawlDaily(models.Model):
         return f"{self.date} {self.bot} {self.path or '-'} {self.status}: {self.hits}"
 
 
+class HeroBannerQuerySet(models.QuerySet):
+    def live(self, now=None):
+        """On the homepage now: shown (or scheduled and started), not past its end."""
+        now = now or timezone.now()
+        return self.filter(
+            models.Q(status="published") | models.Q(status="scheduled", starts_at__lte=now)
+        ).filter(models.Q(ends_at__isnull=True) | models.Q(ends_at__gt=now))
+
+
 class HeroBanner(BaseModel):
+    """A homepage slide: draft (hidden), shown, or scheduled from a time; optionally hidden at an end."""
+
+    STATUS_CHOICES = [("draft", "Nháp / ẩn"), ("published", "Đang hiện"), ("scheduled", "Hẹn giờ hiện")]
+
     title = models.CharField(max_length=300)
     subtitle = models.TextField(blank=True)
     bg_gradient = models.CharField(max_length=200, blank=True)
@@ -129,10 +142,22 @@ class HeroBanner(BaseModel):
     show_overlay_text = models.BooleanField(default=False)
     show_overlay_button = models.BooleanField(default=False)
     sort_order = models.PositiveIntegerField(default=0)
-    is_active = models.BooleanField(default=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    starts_at = models.DateTimeField(null=True, blank=True)
+    ends_at = models.DateTimeField(null=True, blank=True)
+
+    objects = HeroBannerQuerySet.as_manager()
 
     class Meta:
         ordering = ["sort_order", "created_at"]
+
+    @property
+    def is_live(self) -> bool:
+        now = timezone.now()
+        started = self.status == "published" or (
+            self.status == "scheduled" and self.starts_at is not None and self.starts_at <= now
+        )
+        return started and (self.ends_at is None or self.ends_at > now)
 
     def __str__(self):
         return self.title

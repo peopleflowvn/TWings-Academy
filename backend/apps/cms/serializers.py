@@ -100,9 +100,22 @@ class PublicArticleSerializer(serializers.ModelSerializer):
 
 
 class HeroBannerSerializer(serializers.ModelSerializer):
+    is_live = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = HeroBanner
-        exclude = ["created_at", "updated_at"]
+        exclude = ["created_at"]
+        read_only_fields = ["updated_at"]
+
+    def validate(self, attrs):
+        status = attrs.get("status", getattr(self.instance, "status", "draft"))
+        starts = attrs.get("starts_at", getattr(self.instance, "starts_at", None))
+        ends = attrs.get("ends_at", getattr(self.instance, "ends_at", None))
+        if status == "scheduled" and not starts:
+            raise serializers.ValidationError({"starts_at": "Chọn thời điểm bắt đầu hiện banner."})
+        if starts and ends and ends <= starts:
+            raise serializers.ValidationError({"ends_at": "Thời điểm tự ẩn phải sau thời điểm bắt đầu."})
+        return attrs
 
     def validate_link_url(self, value):
         return _safe_link(value)

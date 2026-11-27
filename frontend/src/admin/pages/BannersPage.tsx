@@ -29,11 +29,53 @@ import {
   Palette,
   RefreshCw,
   RotateCcw,
-  Info
+  Info,
+  EyeOff,
+  Copy,
+  CalendarClock
 } from 'lucide-react';
 import { HeroBannerItem, HeroBannerCardTemplate } from '../../types';
 import { uploadImage } from '../../components/cms/ImageUploadField';
-import { broadcastBannersUpdate, clearBannersCache } from '../../lib/bannerSync';
+import { broadcastBannersUpdate, clearBannersCache, isBannerLive } from '../../lib/bannerSync';
+
+type BannerFilter = 'all' | 'live' | 'scheduled' | 'draft' | 'ended';
+
+const toLocalInput = (iso?: string | null) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null);
+const fmtTime = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+
+/** Where a slide stands now: live, waiting for its start, ended, or a draft (hidden). */
+function bannerState(b: HeroBannerItem): Exclude<BannerFilter, 'all'> {
+  if (isBannerLive(b)) return 'live';
+  const status = b.status || 'draft';
+  if (status === 'draft') return 'draft';
+  if (b.endsAt && new Date(b.endsAt).getTime() <= Date.now()) return 'ended';
+  return 'scheduled';
+}
+const STATE_LABEL: Record<Exclude<BannerFilter, 'all'>, string> = {
+  live: 'Đang hiện',
+  scheduled: 'Hẹn giờ',
+  draft: 'Nháp / ẩn',
+  ended: 'Hết hạn'
+};
+const STATE_CLASS: Record<Exclude<BannerFilter, 'all'>, string> = {
+  live: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  scheduled: 'bg-violet-100 text-violet-800 border-violet-200',
+  draft: 'bg-slate-100 text-slate-700 border-slate-200',
+  ended: 'bg-amber-100 text-amber-800 border-amber-200'
+};
+const scheduleText = (b: HeroBannerItem) =>
+  [
+    b.status === 'scheduled' && b.startsAt ? `Hiện từ ${fmtTime(b.startsAt)}` : '',
+    b.endsAt ? `Tự ẩn lúc ${fmtTime(b.endsAt)}` : ''
+  ].filter(Boolean).join(' · ');
 
 export const CARD_TEMPLATES: Array<{
   id: HeroBannerCardTemplate;
@@ -460,6 +502,7 @@ export const BannersPage: React.FC<{
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [filter, setFilter] = useState<BannerFilter>('all');
   const [isUploadingFull, setIsUploadingFull] = useState(false);
   const [isUploadingFaculty, setIsUploadingFaculty] = useState(false);
   const fullFileInputRef = useRef<HTMLInputElement>(null);
@@ -527,9 +570,53 @@ export const BannersPage: React.FC<{
     }
   };
 
+  const persist = async (next: HeroBannerItem[], done: string) => {
+    setBannersState(next);
+    broadcastBannersUpdate(next);
+    if (onSaveNow) {
+      try {
+        await onSaveNow(next);
+      } catch (err) {
+        showToast('Có lỗi khi lưu lên máy chủ: ' + (err instanceof Error ? err.message : String(err)));
+        return;
+      }
+    }
+    showToast(done);
+  };
+
+  /** Show now (a draft / ended slide) or hide (any other). */
+  const handleToggleVisible = (banner: HeroBannerItem, idx: number) => {
+    const showing = bannerState(banner) === 'live' || bannerState(banner) === 'scheduled';
+    if (!window.confirm(showing ? `Ẩn Slide #${idx + 1} khỏi trang chủ (chuyển về nháp)?` : `Hiện Slide #${idx + 1} lên trang chủ ngay?`)) return;
+    const next = bannersState.map((b) =>
+      b.id !== banner.id
+        ? b
+        : showing
+          ? { ...b, status: 'draft' as const }
+          : { ...b, status: 'published' as const, startsAt: null, endsAt: b.endsAt && new Date(b.endsAt).getTime() <= Date.now() ? null : b.endsAt }
+    );
+    persist(next, showing ? `Đã ẩn Slide #${idx + 1}.` : `Đã hiện Slide #${idx + 1} trên trang chủ.`);
+  };
+
+  const handleDuplicate = (banner: HeroBannerItem, idx: number) => {
+    const copy: HeroBannerItem = {
+      ...JSON.parse(JSON.stringify(banner)),
+      id: `banner-${Date.now()}`,
+      title: `${banner.title} (bản sao)`,
+      status: 'draft',
+      startsAt: null,
+      endsAt: null,
+      isLive: false
+    };
+    const next = [...bannersState];
+    next.splice(idx + 1, 0, copy);
+    persist(withSortOrders(next), `Đã nhân bản Slide #${idx + 1} (bản nháp, chưa hiện).`);
+  };
+
   const handleStartEdit = (banner: HeroBannerItem) => {
     const clone = JSON.parse(JSON.stringify(banner));
     if (!clone.cardTemplate) clone.cardTemplate = 'modern_split';
+    if (!clone.status) clone.status = 'draft';
     setEditingBanner(clone);
     setIsNewBanner(false);
     setActiveTab('templates');
@@ -553,6 +640,9 @@ export const BannersPage: React.FC<{
       targetBlank: false,
       showOverlayText: false,
       showOverlayButton: false,
+      status: 'draft',
+      startsAt: null,
+      endsAt: null,
       partnerBadges: [{ name: 'TWINGS ACADEMY' }, { name: 'ĐỐI TÁC MSB BANK' }],
       floatingBadges: [
         { text: 'Cố vấn 1-1 cùng Giám đốc Khối MSB', position: 'top-left' },
@@ -566,6 +656,14 @@ export const BannersPage: React.FC<{
 
   const handleSaveEdit = async () => {
     if (!editingBanner) return;
+    if (editingBanner.status === 'scheduled' && !editingBanner.startsAt) {
+      showToast('Chọn thời điểm bắt đầu hiện banner.');
+      return;
+    }
+    if (editingBanner.startsAt && editingBanner.endsAt && new Date(editingBanner.endsAt) <= new Date(editingBanner.startsAt)) {
+      showToast('Thời điểm tự ẩn phải sau thời điểm bắt đầu.');
+      return;
+    }
     setIsSaving(true);
     let nextList: HeroBannerItem[];
     if (isNewBanner) {
@@ -589,7 +687,14 @@ export const BannersPage: React.FC<{
       }
     }
     setIsSaving(false);
-    showToast(isNewBanner ? 'Đã thêm & đồng bộ banner ra trang chủ!' : 'Đã lưu & đồng bộ banner ra trang chủ thành công!');
+    const state = bannerState(editingBanner);
+    showToast(
+      state === 'live'
+        ? 'Đã lưu: banner đang hiện trên trang chủ.'
+        : state === 'scheduled'
+          ? `Đã lưu: banner sẽ hiện từ ${fmtTime(editingBanner.startsAt)}.`
+          : 'Đã lưu bản nháp (chưa hiện trên trang chủ).'
+    );
     setEditingBanner(null);
   };
 
@@ -690,7 +795,7 @@ export const BannersPage: React.FC<{
               Quản Lý Banner Hero Trang Chủ
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-[#0073C1] border border-blue-200">
-              {bannersState.length} Slideshow
+              {bannersState.filter((b) => bannerState(b) === 'live').length} đang hiện / {bannersState.length} slide
             </span>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -750,6 +855,19 @@ export const BannersPage: React.FC<{
 
       {/* Overview Slides List */}
       <div className="space-y-4">
+        {bannersState.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {(['all', 'live', 'scheduled', 'draft', 'ended'] as BannerFilter[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${filter === f ? 'bg-[#0073C1] text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+              >
+                {f === 'all' ? 'Tất cả' : STATE_LABEL[f]} ({f === 'all' ? bannersState.length : bannersState.filter((b) => bannerState(b) === f).length})
+              </button>
+            ))}
+          </div>
+        )}
         {bannersState.length === 0 && (
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center space-y-3">
             <SlidersHorizontal className="w-10 h-10 text-slate-400 mx-auto" />
@@ -768,6 +886,8 @@ export const BannersPage: React.FC<{
         )}
 
         {bannersState.map((banner, idx) => {
+          const state = bannerState(banner);
+          if (filter !== 'all' && state !== filter) return null;
           const isImageOnly = banner.displayType === 'image_only';
           const partnerNames = banner.partnerBadges?.map((p) => p.name).join(' • ') || '';
           const tag1 = banner.floatingBadges?.[0]?.text;
@@ -776,7 +896,7 @@ export const BannersPage: React.FC<{
           return (
             <div
               key={banner.id}
-              className="bg-white rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition-all duration-200 overflow-hidden group"
+              className={`bg-white rounded-2xl border shadow-2xs hover:shadow-md transition-all duration-200 overflow-hidden group ${state === 'live' ? 'border-slate-200' : 'border-dashed border-slate-300 opacity-80'}`}
             >
               <div className="p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 {/* Left: Slide Order & Visual Thumbnail Preview */}
@@ -838,6 +958,12 @@ export const BannersPage: React.FC<{
                 {/* Middle: Content summary */}
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATE_CLASS[state]}`}>{STATE_LABEL[state]}</span>
+                    {scheduleText(banner) && (
+                      <span className="text-[10px] font-bold text-violet-700 flex items-center gap-1">
+                        <CalendarClock className="w-3 h-3" /> {scheduleText(banner)}
+                      </span>
+                    )}
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                         isImageOnly
@@ -915,6 +1041,20 @@ export const BannersPage: React.FC<{
                 {/* Right: Actions */}
                 <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
                   <button
+                    onClick={() => handleToggleVisible(banner, idx)}
+                    className={`p-2 border rounded-xl transition-all cursor-pointer ${state === 'live' || state === 'scheduled' ? 'text-slate-600 border-slate-200 hover:bg-slate-100' : 'text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100'}`}
+                    title={state === 'live' || state === 'scheduled' ? 'Ẩn khỏi trang chủ (về nháp)' : 'Hiện lên trang chủ ngay'}
+                  >
+                    {state === 'live' || state === 'scheduled' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => handleDuplicate(banner, idx)}
+                    className="p-2 text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer"
+                    title="Nhân bản (tạo bản nháp)"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={() => handleStartEdit(banner)}
                     className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-[#0073C1] border border-blue-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
                   >
@@ -967,6 +1107,59 @@ export const BannersPage: React.FC<{
 
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* Hiển thị: nháp / hiện ngay / hẹn giờ, tự ẩn */}
+              <div className="space-y-2 bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block">Hiển thị trên trang chủ</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {([
+                    ['draft', 'Nháp / ẩn', 'Lưu lại, chưa hiện trên trang chủ'],
+                    ['published', 'Hiện ngay', 'Hiện khi bấm lưu'],
+                    ['scheduled', 'Hẹn giờ hiện', 'Tự hiện từ thời điểm chọn']
+                  ] as const).map(([value, label, hint]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setEditingBanner({ ...editingBanner, status: value })}
+                      className={`p-3 rounded-xl border text-left cursor-pointer ${(editingBanner.status || 'draft') === value ? 'border-[#0073C1] bg-blue-50 ring-2 ring-blue-500/20' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                    >
+                      <div className="text-xs font-bold text-slate-900">{label}</div>
+                      <div className="text-[11px] text-slate-500">{hint}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {editingBanner.status === 'scheduled' && (
+                    <label className="block text-xs">
+                      <span className="font-bold text-slate-700 block mb-1">Bắt đầu hiện lúc *</span>
+                      <input
+                        type="datetime-local"
+                        value={toLocalInput(editingBanner.startsAt)}
+                        onChange={(e) => setEditingBanner({ ...editingBanner, startsAt: fromLocalInput(e.target.value) })}
+                        className="w-full p-2 border border-slate-300 rounded-xl bg-white"
+                      />
+                    </label>
+                  )}
+                  {editingBanner.status !== 'draft' && (
+                    <label className="block text-xs">
+                      <span className="font-bold text-slate-700 block mb-1">Tự ẩn lúc (không bắt buộc – VD hết đợt tuyển sinh)</span>
+                      <div className="flex gap-1">
+                        <input
+                          type="datetime-local"
+                          value={toLocalInput(editingBanner.endsAt)}
+                          onChange={(e) => setEditingBanner({ ...editingBanner, endsAt: fromLocalInput(e.target.value) })}
+                          className="w-full p-2 border border-slate-300 rounded-xl bg-white"
+                        />
+                        {editingBanner.endsAt && (
+                          <button type="button" onClick={() => setEditingBanner({ ...editingBanner, endsAt: null })} className="px-2 border border-slate-300 rounded-xl bg-white cursor-pointer" title="Bỏ hạn">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </label>
+                  )}
+                </div>
+              </div>
+
               {/* Định dạng hiển thị Slide Selector */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
@@ -1843,7 +2036,7 @@ export const BannersPage: React.FC<{
             {/* Modal Footer (Nút Lưu Thay Đổi & Hủy Bỏ) */}
             <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
               <span className="text-[11px] text-slate-500 text-center sm:text-left">
-                Nhấn <strong>"Lưu Thay Đổi"</strong> để áp dụng lên trang chủ hoặc <strong>"Hủy"</strong> để giữ nguyên slide cũ.
+                Chọn <strong>"Hiển thị trên trang chủ"</strong> ở đầu cửa sổ: nháp không hiện, hẹn giờ tự hiện / tự ẩn theo thời điểm đã chọn.
               </span>
 
               <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
@@ -1869,7 +2062,13 @@ export const BannersPage: React.FC<{
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      <span>Lưu & Đồng Bộ Ngay</span>
+                      <span>
+                        {(editingBanner.status || 'draft') === 'draft'
+                          ? 'Lưu nháp'
+                          : editingBanner.status === 'scheduled'
+                            ? 'Lưu & hẹn giờ'
+                            : 'Lưu & hiện ngay'}
+                      </span>
                     </>
                   )}
                 </button>

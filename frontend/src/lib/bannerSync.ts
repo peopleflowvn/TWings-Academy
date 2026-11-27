@@ -6,6 +6,18 @@ export const BANNERS_CHANNEL_NAME = 'twings_banner_sync';
 export const BANNERS_EVENT_NAME = 'twings_banners_updated';
 
 /**
+ * On the homepage now (same rule as the server): shown, or scheduled and started, and not past its end. A
+ * banner without a status came from the public API, which only lists live ones.
+ */
+export function isBannerLive(b: HeroBannerItem, now = Date.now()): boolean {
+  const status = b.status ?? 'published';
+  const started = status === 'published' || (status === 'scheduled' && !!b.startsAt && new Date(b.startsAt).getTime() <= now);
+  return started && (!b.endsAt || new Date(b.endsAt).getTime() > now);
+}
+
+export const liveBanners = (list: HeroBannerItem[]) => list.filter((b) => isBannerLive(b));
+
+/**
  * Reads cached banners from localStorage if available.
  */
 export function getCachedBanners(): HeroBannerItem[] | null {
@@ -14,7 +26,8 @@ export function getCachedBanners(): HeroBannerItem[] | null {
     const raw = localStorage.getItem(BANNERS_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? (parsed as HeroBannerItem[]) : null;
+    const live = Array.isArray(parsed) ? liveBanners(parsed as HeroBannerItem[]) : [];
+    return live.length > 0 ? live : null;
   } catch {
     return null;
   }
@@ -24,8 +37,10 @@ export function getCachedBanners(): HeroBannerItem[] | null {
  * Saves and broadcasts updated banners instantly to all tabs/windows and storage.
  * Ensures that changes made in the admin CMS are immediately visible on the homepage.
  */
-export function broadcastBannersUpdate(banners: HeroBannerItem[]): void {
+export function broadcastBannersUpdate(all: HeroBannerItem[]): void {
   if (typeof window === 'undefined') return;
+  // The admin list holds drafts and scheduled slides: the homepage only gets what is live now.
+  const banners = liveBanners(all);
 
   const version = Date.now();
 
@@ -102,7 +117,7 @@ export function subscribeBannersUpdate(callback: (banners: HeroBannerItem[]) => 
       channel = new BroadcastChannel(BANNERS_CHANNEL_NAME);
       channel.onmessage = (event) => {
         if (event.data?.type === 'BANNERS_UPDATED' && Array.isArray(event.data.banners)) {
-          callback(event.data.banners);
+          callback(liveBanners(event.data.banners));
         }
       };
     }
@@ -115,7 +130,7 @@ export function subscribeBannersUpdate(callback: (banners: HeroBannerItem[]) => 
     if (e.key === BANNERS_CACHE_KEY && e.newValue) {
       try {
         const parsed = JSON.parse(e.newValue);
-        if (Array.isArray(parsed)) callback(parsed);
+        if (Array.isArray(parsed)) callback(liveBanners(parsed));
       } catch {
         // Ignore JSON parse errors
       }

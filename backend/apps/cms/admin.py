@@ -13,5 +13,5 @@ class ArticleAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ["title"]}
 
 
-admin.site.register(HeroBanner, list_display=["title", "sort_order", "is_active"])
+admin.site.register(HeroBanner, list_display=["title", "sort_order", "status", "starts_at", "ends_at"])
 admin.site.register(SiteConfig, list_display=["key", "updated_at"])

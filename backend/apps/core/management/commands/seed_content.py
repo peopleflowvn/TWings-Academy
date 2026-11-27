@@ -130,7 +130,9 @@ class Command(BaseCommand):
             bump("coupons")
 
         for i, b in enumerate(data.get("banners", [])):
-            HeroBanner.objects.update_or_create(id=b["id"], defaults={**pick(HeroBanner, b), "sort_order": i})
+            HeroBanner.objects.update_or_create(
+                id=b["id"], defaults={"status": "published", **pick(HeroBanner, b), "sort_order": i}
+            )
             bump("banners")
 
         for a in data.get("articles", []):

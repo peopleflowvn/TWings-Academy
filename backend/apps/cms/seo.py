@@ -131,7 +131,7 @@ def site_seo() -> dict:
 def default_image(seo: dict) -> str:
     if seo.get("og_image_url"):
         return seo["og_image_url"]
-    banner = HeroBanner.objects.filter(is_active=True).exclude(image_url="").order_by("sort_order").first()
+    banner = HeroBanner.objects.live().exclude(image_url="").order_by("sort_order").first()
     return banner.image_url if banner else ""
 
 
